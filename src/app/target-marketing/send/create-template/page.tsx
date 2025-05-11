@@ -163,14 +163,21 @@ export default function TemplateCreatePage() {
   };
   
   const applyAiCampaignData = (data: CampaignData) => {
-    if (data.title) setTitleText(data.title);
-    if (data.subtitle) setSubTitleText(data.subtitle);
-    if (data.body) setBodyText(data.body);
-    if (data.additional) setAdditionalText(data.additional);
-    if (data.button1) setButton1Text(data.button1);
-    if (data.button2) setButton2Text(data.button2);
-    if (data.templateTitle) setTemplateTitle(data.templateTitle);
-    if (data.imagePrompt) setImagePrompt(data.imagePrompt);
+    console.log('캠페인 데이터 적용 시작:', data);
+    try {
+      if (data.title) setTitleText(data.title);
+      if (data.subtitle) setSubTitleText(data.subtitle);
+      if (data.body) setBodyText(data.body);
+      if (data.additional) setAdditionalText(data.additional);
+      if (data.button1) setButton1Text(data.button1);
+      if (data.button2) setButton2Text(data.button2);
+      if (data.templateTitle) setTemplateTitle(data.templateTitle);
+      if (data.imagePrompt) setImagePrompt(data.imagePrompt);
+      
+      console.log('캠페인 데이터 적용 완료');
+    } catch (error) {
+      console.error('캠페인 데이터 적용 중 오류 발생:', error);
+    }
   };
   
   const sendMessage = async () => {
@@ -224,8 +231,8 @@ export default function TemplateCreatePage() {
       role: 'system',
       content: `당신은 마케팅 템플릿 생성 전문가입니다. 사용자가 제공하는 정보를 바탕으로 효과적인 마케팅 템플릿을 만들어주세요.
       응답은 항상 두 파트로 구성해주세요:
-      1. 사용자에게 보여줄 친절한 대화형 응답
-      2. JSON 형식의 템플릿 데이터 (templateTitle, title, subtitle, body, additional, button1, button2, imagePrompt)
+      1. 사용자에게 보여줄, 마케팅 템플릿에 대한 설명과 제안을 담은 친절한 대화형 응답
+      2. 템플릿에 사용될 정확한 JSON 형식의 데이터
       
       JSON 데이터는 반드시 다음 형식으로 제공해주세요:
       ===CAMPAIGN_DATA===
@@ -240,6 +247,9 @@ export default function TemplateCreatePage() {
         "imagePrompt": "이미지 생성을 위한 상세한 설명 (영어로 작성)"
       }
       ===END_DATA===
+      
+      중요: JSON 데이터는 반드시 위와 같은 정확한 형식으로, 별도의 설명 없이 제공해야 합니다.
+      JSON 데이터에 맞지 않는 텍스트를 JSON 블록 내에 포함시키지 마세요.
       
       imagePrompt는 DALL-E에 전달할 영어로 된 이미지 생성 프롬프트입니다. 템플릿 내용과 일치하는 적절한 이미지를 생성할 수 있도록 상세하게 작성해주세요.
       
@@ -282,19 +292,30 @@ export default function TemplateCreatePage() {
       
       // 응답에서 템플릿 데이터 추출
       let campaignData = null;
-      const dataMatch = responseText.match(/===CAMPAIGN_DATA===\s*({[\s\S]*?})\s*===END_DATA===/);
+      // 정규 표현식 수정: 더 유연하게 JSON 데이터 추출
+      const dataMatch = responseText.match(/===CAMPAIGN_DATA===\s*([\s\S]*?)\s*===END_DATA===/) || 
+                        responseText.match(/CAMPAIGN_DATA[=\s]*[\s\S]*?[=\s]*END_DATA/);
       
       if (dataMatch && dataMatch[1]) {
         try {
-          campaignData = JSON.parse(dataMatch[1].trim());
+          // JSON 문자열 정리: 앞뒤 공백 제거 및 유효한 JSON 형식인지 확인
+          const jsonStr = dataMatch[1].trim();
+          campaignData = JSON.parse(jsonStr);
+          console.log('추출된 캠페인 데이터:', campaignData);
+          
           // 응답 텍스트에서 JSON 부분 제거
-          const cleanedText = responseText.replace(/===CAMPAIGN_DATA===[\s\S]*?===END_DATA===/g, '').trim();
+          const cleanedText = responseText
+            .replace(/===CAMPAIGN_DATA===[\s\S]*?===END_DATA===/g, '')
+            .replace(/CAMPAIGN_DATA[=\s]*[\s\S]*?[=\s]*END_DATA/g, '')
+            .trim();
+            
           return { text: cleanedText, campaignData };
         } catch (e) {
-          console.error('JSON 파싱 오류:', e);
+          console.error('JSON 파싱 오류:', e, '원본 텍스트:', dataMatch[1]);
         }
       }
       
+      // JSON 데이터를 찾지 못하거나 파싱 실패 시 원본 텍스트만 반환
       return { text: responseText };
     } catch (error) {
       console.error('API 요청 오류:', error);
@@ -487,14 +508,25 @@ export default function TemplateCreatePage() {
                   >
                     {imagePreview && (
                       <div className="preview-container">
-                        <Image
-                          src={imagePreview}
-                          alt="업로드 이미지"
-                          width={300}
-                          height={200}
-                          className="upload-preview"
-                          style={{ objectFit: 'contain' }}
-                        />
+                        {isUsingImageUrl ? (
+                          // 외부 URL인 경우 일반 img 태그 사용
+                          <img
+                            src={imagePreview}
+                            alt="업로드 이미지"
+                            className="upload-preview"
+                            style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }}
+                          />
+                        ) : (
+                          // 로컬 이미지인 경우 Next.js Image 컴포넌트 사용
+                          <Image
+                            src={imagePreview}
+                            alt="업로드 이미지"
+                            width={300}
+                            height={200}
+                            className="upload-preview"
+                            style={{ objectFit: 'contain' }}
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={() => setImagePreview('')}
@@ -744,14 +776,25 @@ export default function TemplateCreatePage() {
                 <div className="message-bubble">
                   {imagePreview && (
                     <div className="message-image-container">
-                      <Image
-                        src={imagePreview}
-                        alt="템플릿 이미지"
-                        width={300}
-                        height={200}
-                        className="message-image"
-                        style={{ objectFit: 'contain' }}
-                      />
+                      {isUsingImageUrl ? (
+                        // 외부 URL인 경우 일반 img 태그 사용
+                        <img
+                          src={imagePreview}
+                          alt="템플릿 이미지"
+                          className="message-image"
+                          style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        // 로컬 이미지인 경우 Next.js Image 컴포넌트 사용
+                        <Image
+                          src={imagePreview}
+                          alt="템플릿 이미지"
+                          width={300}
+                          height={200}
+                          className="message-image"
+                          style={{ objectFit: 'contain' }}
+                        />
+                      )}
                     </div>
                   )}
                   

@@ -10,8 +10,8 @@ export default function Home() {
           <h1>실시간 타겟팅으로<br/>마케팅 효과 극대화</h1>
           <p className="hero-subtitle">인공지능 기반 마케팅 솔루션으로 고객에게 딱 맞는 메시지를 전달하세요</p>
           <div className="cta-buttons">
-            <Link href="/signup" className="btn btn-primary">실시간 타겟 마케팅 시작하기</Link>
-            <Link href="/customer-support/faq" className="btn btn-secondary">자세히 알아보기</Link>
+            <Link href="/target-marketing/send/create-template" className="btn btn-primary">실시간 타겟 마케팅 시작하기</Link>
+            <Link href="/target-marketing/send/create-template" className="btn btn-secondary">자세히 알아보기</Link>
           </div>
         </div>
         <div className="hero-image">
@@ -89,7 +89,7 @@ export default function Home() {
       <section className="cta-section">
         <h2>지금 바로 시작하세요</h2>
         <p>가입 후 5분 만에 첫 캠페인을 시작할 수 있습니다</p>
-        <Link href="/signup" className="btn btn-primary cta-button">실시간 타겟 마케팅 시작하기</Link>
+        <Link href="/target-marketing/send/create-template" className="btn btn-primary cta-button">실시간 타겟 마케팅 시작하기</Link>
       </section>
     </div>
   );
