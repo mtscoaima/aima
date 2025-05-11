@@ -1,0 +1,181 @@
+.receiver-selector {
+  background-color: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-top: 20px;
+}
+
+.receiver-selector h2 {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333333;
+  margin-bottom: 15px;
+}
+
+.receiver-input-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.receiver-input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid #E5E8EC;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.add-receiver-btn {
+  background-color: #0066FF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.add-receiver-btn:hover {
+  background-color: #0055dd;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.import-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.import-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  background-color: #F5F7FA;
+  border: 1px solid #E5E8EC;
+  border-radius: 8px;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.import-btn:hover {
+  background-color: #E5E8EC;
+}
+
+.receivers-list {
+  border: 1px solid #E5E8EC;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 15px;
+}
+
+.receivers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background-color: #F5F7FA;
+  border-bottom: 1px solid #E5E8EC;
+  font-weight: bold;
+  color: #333333;
+}
+
+.receivers-count {
+  color: #0066FF;
+  font-size: 14px;
+}
+
+.receivers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.receiver-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #E5E8EC;
+}
+
+.receiver-item:last-child {
+  border-bottom: none;
+}
+
+.remove-receiver-btn {
+  background: none;
+  border: none;
+  color: #999999;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+}
+
+.remove-receiver-btn:hover {
+  background-color: #f0f0f0;
+  color: #FF5500;
+}
+
+.no-receivers {
+  padding: 30px 15px;
+  text-align: center;
+  color: #999999;
+  font-size: 14px;
+}
+
+.receivers-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.clear-all-btn {
+  background: none;
+  border: 1px solid #E5E8EC;
+  border-radius: 8px;
+  padding: 8px 15px;
+  color: #FF5500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.clear-all-btn:hover {
+  background-color: #fff1ec;
+}
+
+.duplicate-check-btn {
+  background: none;
+  border: 1px solid #E5E8EC;
+  border-radius: 8px;
+  padding: 8px 15px;
+  color: #0066FF;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.duplicate-check-btn:hover {
+  background-color: #f0f5ff;
+}
+
+@media (max-width: 768px) {
+  .receiver-selector {
+    padding: 15px;
+  }
+  
+  .receiver-input-section {
+    flex-direction: column;
+  }
+  
+  .add-receiver-btn {
+    align-self: flex-start;
+  }
+} 
