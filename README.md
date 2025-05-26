@@ -4,21 +4,48 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ### Environment Setup
 
-Create a `.env.local` file in the root directory and add your backend API server URL:
+Create a `.env.local` file in the root directory and add your Supabase configuration:
 
 ```bash
-# 백엔드 API 서버 URL (서버 사이드에서 사용) - /api 경로 제외
-BACKEND_API_URL=https://ea3d-211-243-12-130.ngrok-free.app
+# Supabase 설정
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-# 클라이언트 사이드 API URL (선택사항, 기본값은 빈 문자열)
-NEXT_PUBLIC_API_BASE_URL=
+# JWT 토큰 시크릿 키 (로그인 시 사용)
+JWT_SECRET=your_jwt_secret_key_here
 ```
 
-**CORS 해결 방법:**
+**Supabase 설정 방법:**
 
-- 이 프로젝트는 Next.js API 라우트를 프록시로 사용하여 CORS 문제를 해결합니다
-- 클라이언트에서는 `/api/users/login`으로 요청하고, Next.js 서버에서 실제 백엔드 API로 프록시합니다
-- `BACKEND_API_URL`에는 실제 백엔드 서버 주소를 설정하세요
+1. [Supabase](https://supabase.com)에서 새 프로젝트를 생성합니다
+2. 프로젝트 설정에서 API 키를 확인합니다:
+   - `NEXT_PUBLIC_SUPABASE_URL`: 프로젝트 URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: anon/public 키
+   - `SUPABASE_SERVICE_ROLE_KEY`: service_role 키 (서버 사이드 전용)
+3. SQL Editor에서 다음 테이블을 생성합니다:
+
+```sql
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  phone_number VARCHAR(20) NOT NULL,
+  role VARCHAR(20) DEFAULT 'USER',
+  is_active BOOLEAN DEFAULT true,
+  email_verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_login_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+**데이터베이스 직접 연결:**
+
+- 이 프로젝트는 Supabase를 직접 사용하여 사용자 인증을 처리합니다
+- 별도의 백엔드 서버 없이 Next.js API 라우트에서 직접 데이터베이스에 연결합니다
+- 비밀번호는 bcrypt로 해싱되어 안전하게 저장됩니다
 
 **중요:** 환경변수를 변경한 후에는 개발 서버를 재시작해야 합니다.
 

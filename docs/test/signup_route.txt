@@ -5,9 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 // 서버 사이드에서는 서비스 역할 키 우선 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // 서비스 키가 있으면 서비스 키 사용, 없으면 anon 키 사용
-const supabaseKey = supabaseServiceKey || "";
+const supabaseKey = supabaseServiceKey || supabaseAnonKey;
 
 if (!supabaseServiceKey) {
   console.warn(
@@ -75,6 +76,12 @@ export async function POST(request: NextRequest) {
     console.log(
       "SUPABASE_SERVICE_KEY:",
       supabaseServiceKey ? "✓ Set (using service key)" : "✗ Not set"
+    );
+    console.log(
+      "SUPABASE_ANON_KEY:",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        ? "✓ Set (fallback)"
+        : "✗ Not set"
     );
     console.log(
       "Using key type:",
@@ -293,3 +300,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(errorResponse, { status: 500 });
   }
 }
+
+signup/route.ts
