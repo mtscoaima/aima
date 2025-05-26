@@ -9,7 +9,7 @@
 
 .signupWrapper {
   width: 100%;
-  max-width: 580px;
+  max-width: 480px;
 }
 
 .signupCard {
@@ -62,7 +62,7 @@
 }
 
 .formSection {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .sectionTitle {
@@ -75,7 +75,7 @@
 }
 
 .formRow {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .formGroup {
@@ -138,7 +138,8 @@
 .termsGroup {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .checkboxLabel {
@@ -195,6 +196,77 @@
   background: #0051cc;
   transform: translateY(-2px);
   box-shadow: 0 10px 25px rgba(0, 112, 243, 0.3);
+}
+
+.signupButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.formInput:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.checkboxInput:disabled {
+  cursor: not-allowed;
+}
+
+.checkboxLabel.error {
+  color: #ef4444;
+}
+
+.errorMessage {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.successMessage {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.successIcon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.successMessage h2 {
+  color: #059669;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.successMessage p {
+  color: #64748b;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.loginButton {
+  display: inline-block;
+  background: #0070f3;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.loginButton:hover {
+  background: #0051cc;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 112, 243, 0.3);
 }
 
 .loginLink {

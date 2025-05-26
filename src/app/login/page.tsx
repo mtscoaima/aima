@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -11,6 +13,9 @@ export default function LoginPage() {
     rememberMe: false,
   });
 
+  const { login, isLoading, error } = useAuth();
+  const router = useRouter();
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -19,10 +24,21 @@ export default function LoginPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 로그인 로직은 추후 구현
-    console.log("로그인 시도:", formData);
+
+    try {
+      await login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // 로그인 성공 시 메인 페이지로 이동
+      router.push("/");
+    } catch (err) {
+      // 에러는 AuthContext에서 처리됨
+      console.error("로그인 실패:", err);
+    }
   };
 
   return (
@@ -37,6 +53,9 @@ export default function LoginPage() {
             </div>
             <h2 className={styles.loginTitle}>로그인</h2>
           </div>
+
+          {/* 에러 메시지 */}
+          {error && <div className={styles.errorMessage}>{error}</div>}
 
           {/* 로그인 폼 */}
           <form onSubmit={handleSubmit} className={styles.loginForm}>
@@ -53,6 +72,7 @@ export default function LoginPage() {
                 className={styles.formInput}
                 placeholder="example@email.com"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -69,6 +89,7 @@ export default function LoginPage() {
                 className={styles.formInput}
                 placeholder="비밀번호를 입력하세요"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -80,6 +101,7 @@ export default function LoginPage() {
                   checked={formData.rememberMe}
                   onChange={handleInputChange}
                   className={styles.checkboxInput}
+                  disabled={isLoading}
                 />
                 <span className={styles.checkboxText}>로그인 상태 유지</span>
               </label>
@@ -88,8 +110,12 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <button type="submit" className={styles.loginButton}>
-              로그인
+            <button
+              type="submit"
+              className={styles.loginButton}
+              disabled={isLoading}
+            >
+              {isLoading ? "로그인 중..." : "로그인"}
             </button>
           </form>
 

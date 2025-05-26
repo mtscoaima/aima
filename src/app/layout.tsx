@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Layout from "../components/Layout";
+import { AuthProvider } from "../contexts/AuthContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MTS마케팅 - SaaS 마케팅 플랫폼",
-  description: "AI 기반 타겟 마케팅 솔루션으로 효과적인 마케팅 캠페인을 만들어보세요",
+  description:
+    "AI 기반 타겟 마케팅 솔루션으로 효과적인 마케팅 캠페인을 만들어보세요",
 };
 
 export default function RootLayout({
@@ -28,7 +30,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Layout>{children}</Layout>
+        <AuthProvider>
+          <Layout>{children}</Layout>
+        </AuthProvider>
       </body>
     </html>
   );

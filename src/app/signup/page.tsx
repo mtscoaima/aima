@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import styles from "./signup.module.css";
 
 export default function SignupPage() {
@@ -10,14 +12,16 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     name: "",
-    company: "",
     phone: "",
     agreeTerms: false,
     agreePrivacy: false,
-    agreeMarketing: false,
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const { signup, isLoading, error } = useAuth();
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -37,11 +41,98 @@ export default function SignupPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // 회원가입 로직은 추후 구현
-    console.log("회원가입 시도:", formData);
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+
+    // 이메일 검증
+    if (!formData.email) {
+      newErrors.email = "이메일을 입력해주세요.";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "유효한 이메일 주소를 입력해주세요.";
+    }
+
+    // 이름 검증
+    if (!formData.name.trim()) {
+      newErrors.name = "이름을 입력해주세요.";
+    }
+
+    // 전화번호 검증
+    if (!formData.phone.trim()) {
+      newErrors.phone = "전화번호를 입력해주세요.";
+    }
+
+    // 비밀번호 검증
+    if (!formData.password) {
+      newErrors.password = "비밀번호를 입력해주세요.";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "비밀번호는 최소 6자 이상이어야 합니다.";
+    }
+
+    // 비밀번호 확인 검증
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "비밀번호가 일치하지 않습니다.";
+    }
+
+    // 필수 약관 동의 검증
+    if (!formData.agreeTerms) {
+      newErrors.agreeTerms = "이용약관에 동의해주세요.";
+    }
+
+    if (!formData.agreePrivacy) {
+      newErrors.agreePrivacy = "개인정보 처리방침에 동의해주세요.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      await signup({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        phoneNumber: formData.phone,
+      });
+
+      // 회원가입 성공
+      setIsSuccess(true);
+
+      // 3초 후 로그인 페이지로 이동
+      setTimeout(() => {
+        router.push("/login");
+      }, 3000);
+    } catch (err) {
+      // 에러는 AuthContext에서 처리됨
+      console.error("회원가입 실패:", err);
+    }
+  };
+
+  // 회원가입 성공 화면
+  if (isSuccess) {
+    return (
+      <div className={styles.signupContainer}>
+        <div className={styles.signupWrapper}>
+          <div className={styles.signupCard}>
+            <div className={styles.successMessage}>
+              <div className={styles.successIcon}>✅</div>
+              <h2>회원가입이 완료되었습니다!</h2>
+              <p>잠시 후 로그인 페이지로 이동합니다.</p>
+              <Link href="/login" className={styles.loginButton}>
+                지금 로그인하기
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.signupContainer}>
@@ -54,17 +145,15 @@ export default function SignupPage() {
               <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
             </div>
             <h2 className={styles.signupTitle}>회원가입</h2>
-            <p className={styles.signupDescription}>
-              MTS플러스와 함께 효과적인 마케팅을 시작하세요
-            </p>
           </div>
+
+          {/* 에러 메시지 */}
+          {error && <div className={styles.errorMessage}>{error}</div>}
 
           {/* 회원가입 폼 */}
           <form onSubmit={handleSubmit} className={styles.signupForm}>
             {/* 기본 정보 */}
             <div className={styles.formSection}>
-              <h3 className={styles.sectionTitle}>기본 정보</h3>
-
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label
@@ -79,10 +168,16 @@ export default function SignupPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={styles.formInput}
+                    className={`${styles.formInput} ${
+                      errors.email ? styles.error : ""
+                    }`}
                     placeholder="example@email.com"
                     required
+                    disabled={isLoading}
                   />
+                  {errors.email && (
+                    <p className={styles.formError}>{errors.email}</p>
+                  )}
                 </div>
               </div>
 
@@ -100,10 +195,16 @@ export default function SignupPage() {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className={styles.formInput}
+                    className={`${styles.formInput} ${
+                      errors.name ? styles.error : ""
+                    }`}
                     placeholder="홍길동"
                     required
+                    disabled={isLoading}
                   />
+                  {errors.name && (
+                    <p className={styles.formError}>{errors.name}</p>
+                  )}
                 </div>
               </div>
 
@@ -121,34 +222,18 @@ export default function SignupPage() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className={styles.formInput}
+                    className={`${styles.formInput} ${
+                      errors.phone ? styles.error : ""
+                    }`}
                     placeholder="010-1234-5678"
                     required
+                    disabled={isLoading}
                   />
+                  {errors.phone && (
+                    <p className={styles.formError}>{errors.phone}</p>
+                  )}
                 </div>
               </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="company" className={styles.formLabel}>
-                    회사명 (선택)
-                  </label>
-                  <input
-                    type="text"
-                    id="company"
-                    name="company"
-                    value={formData.company}
-                    onChange={handleInputChange}
-                    className={styles.formInput}
-                    placeholder="회사명을 입력하세요"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 비밀번호 */}
-            <div className={styles.formSection}>
-              <h3 className={styles.sectionTitle}>비밀번호 설정</h3>
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
@@ -164,13 +249,16 @@ export default function SignupPage() {
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className={styles.formInput}
-                    placeholder="8자 이상의 비밀번호"
+                    className={`${styles.formInput} ${
+                      errors.password ? styles.error : ""
+                    }`}
+                    placeholder="6자 이상의 비밀번호"
                     required
+                    disabled={isLoading}
                   />
-                  <p className={styles.formHelp}>
-                    영문, 숫자, 특수문자를 포함하여 8자 이상 입력하세요
-                  </p>
+                  {errors.password && (
+                    <p className={styles.formError}>{errors.password}</p>
+                  )}
                 </div>
               </div>
 
@@ -193,6 +281,7 @@ export default function SignupPage() {
                     }`}
                     placeholder="비밀번호를 다시 입력하세요"
                     required
+                    disabled={isLoading}
                   />
                   {errors.confirmPassword && (
                     <p className={styles.formError}>{errors.confirmPassword}</p>
@@ -203,11 +292,11 @@ export default function SignupPage() {
 
             {/* 약관 동의 */}
             <div className={styles.formSection}>
-              <h3 className={styles.sectionTitle}>약관 동의</h3>
-
               <div className={styles.termsGroup}>
                 <label
-                  className={`${styles.checkboxLabel} ${styles.requiredTerm}`}
+                  className={`${styles.checkboxLabel} ${styles.requiredTerm} ${
+                    errors.agreeTerms ? styles.error : ""
+                  }`}
                 >
                   <input
                     type="checkbox"
@@ -216,6 +305,7 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className={styles.checkboxInput}
                     required
+                    disabled={isLoading}
                   />
                   <span className={styles.checkboxText}>
                     <strong>이용약관</strong>에 동의합니다 (필수)
@@ -224,9 +314,14 @@ export default function SignupPage() {
                     보기
                   </Link>
                 </label>
+                {errors.agreeTerms && (
+                  <p className={styles.formError}>{errors.agreeTerms}</p>
+                )}
 
                 <label
-                  className={`${styles.checkboxLabel} ${styles.requiredTerm}`}
+                  className={`${styles.checkboxLabel} ${styles.requiredTerm} ${
+                    errors.agreePrivacy ? styles.error : ""
+                  }`}
                 >
                   <input
                     type="checkbox"
@@ -235,6 +330,7 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className={styles.checkboxInput}
                     required
+                    disabled={isLoading}
                   />
                   <span className={styles.checkboxText}>
                     <strong>개인정보 처리방침</strong>에 동의합니다 (필수)
@@ -243,27 +339,18 @@ export default function SignupPage() {
                     보기
                   </Link>
                 </label>
-
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    name="agreeMarketing"
-                    checked={formData.agreeMarketing}
-                    onChange={handleInputChange}
-                    className={styles.checkboxInput}
-                  />
-                  <span className={styles.checkboxText}>
-                    마케팅 정보 수신에 동의합니다 (선택)
-                  </span>
-                  <Link href="/marketing" className={styles.termsLink}>
-                    보기
-                  </Link>
-                </label>
+                {errors.agreePrivacy && (
+                  <p className={styles.formError}>{errors.agreePrivacy}</p>
+                )}
               </div>
             </div>
 
-            <button type="submit" className={styles.signupButton}>
-              회원가입
+            <button
+              type="submit"
+              className={styles.signupButton}
+              disabled={isLoading}
+            >
+              {isLoading ? "회원가입 중..." : "회원가입"}
             </button>
           </form>
 
