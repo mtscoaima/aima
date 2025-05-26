@@ -179,11 +179,21 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 - User login with email and password
 - User signup with email, password, name, and phone number
-- JWT token management
+- JWT token management with automatic refresh
 - Automatic logout functionality
 - Protected routes and user state management
 - Form validation and error handling
 - Phone number verification with SMS-like functionality
+
+### Token Management
+
+- **Access Token**: 1시간 유효기간
+- **Refresh Token**: 장기간 유효 (로그인 시 발급)
+- **자동 토큰 갱신**:
+  - API 호출 시 401 에러 발생 시 자동으로 토큰 갱신 후 재시도
+  - 55분마다 정기적으로 토큰 갱신 (백그라운드)
+  - 토큰 갱신 실패 시 자동 로그아웃
+- **보안**: 리프레시 토큰 만료 시 재로그인 필요
 
 ### File Upload
 
@@ -201,6 +211,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - Signup with Files API: `POST /api/users/signup-with-files` (with file upload)
 - Upload Documents API: `POST /api/users/upload-documents` (requires authentication)
 - User Info API: `GET /api/users/me` (requires authentication)
+- **Token Refresh API: `POST /api/users/refresh`** (토큰 갱신)
 
 ### Form Features
 
@@ -211,6 +222,15 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - Phone number verification
 - File upload with drag & drop support
 - Terms and conditions with bulk agreement option
+
+### Advanced Features
+
+- **Automatic Token Refresh**:
+  - 모든 API 호출에서 401 에러 시 자동 토큰 갱신
+  - 사용자 경험 중단 없이 seamless 인증 유지
+- **Background Token Refresh**: 55분마다 자동 갱신
+- **Error Handling**: 토큰 만료, 네트워크 오류 등 다양한 상황 처리
+- **Security**: JWT 기반 stateless 인증
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

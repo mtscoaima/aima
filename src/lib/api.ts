@@ -26,9 +26,28 @@ export interface SignupRequest {
   agreeMarketing?: boolean;
 }
 
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    phoneNumber: string;
+    role: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
   tokenType: string;
   expiresIn: number;
   user: {
@@ -74,10 +93,52 @@ export interface ApiError {
   }>;
 }
 
-// API 호출 기본 함수
+// 토큰 갱신 함수 (내부용)
+async function refreshTokenInternal(): Promise<boolean> {
+  const refreshTokenValue = tokenManager.getRefreshToken();
+  if (!refreshTokenValue) {
+    return false;
+  }
+
+  try {
+    console.log("API 레벨에서 토큰 갱신 시도...");
+    const refreshData: RefreshTokenRequest = {
+      refreshToken: refreshTokenValue,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/api/users/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(refreshData),
+    });
+
+    if (!response.ok) {
+      throw new Error("토큰 갱신 실패");
+    }
+
+    const result: RefreshTokenResponse = await response.json();
+
+    // 새로운 액세스 토큰 저장 (리프레시 토큰은 그대로 유지)
+    tokenManager.setTokens(result.accessToken, refreshTokenValue);
+
+    console.log("API 레벨에서 토큰 갱신 성공");
+    return true;
+  } catch (err) {
+    console.error("API 레벨에서 토큰 갱신 실패:", err);
+
+    // 리프레시 토큰도 만료된 경우 토큰 제거
+    tokenManager.clearTokens();
+    return false;
+  }
+}
+
+// API 호출 기본 함수 (토큰 갱신 로직 포함)
 async function apiCall<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry: boolean = false
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -93,6 +154,31 @@ async function apiCall<T>(
     const response = await fetch(url, defaultOptions);
 
     if (!response.ok) {
+      // 401 에러이고 재시도가 아닌 경우 토큰 갱신 시도
+      if (
+        response.status === 401 &&
+        !isRetry &&
+        endpoint !== "/api/users/refresh"
+      ) {
+        console.log("401 에러 감지, 토큰 갱신 후 재시도...");
+        const refreshSuccess = await refreshTokenInternal();
+
+        if (refreshSuccess) {
+          // 토큰 갱신 성공 시 Authorization 헤더 업데이트하고 재시도
+          const newToken = tokenManager.getAccessToken();
+          if (newToken) {
+            const retryOptions = {
+              ...options,
+              headers: {
+                ...options.headers,
+                Authorization: `Bearer ${newToken}`,
+              },
+            };
+            return apiCall<T>(endpoint, retryOptions, true);
+          }
+        }
+      }
+
       const errorData: ApiError = await response.json();
       throw new Error(
         errorData.message || `HTTP error! status: ${response.status}`
@@ -125,6 +211,16 @@ export async function signupUser(
   return apiCall<SignupResponse>("/api/users/signup", {
     method: "POST",
     body: JSON.stringify(signupData),
+  });
+}
+
+// 토큰 갱신 API 함수
+export async function refreshToken(
+  refreshData: RefreshTokenRequest
+): Promise<RefreshTokenResponse> {
+  return apiCall<RefreshTokenResponse>("/api/users/refresh", {
+    method: "POST",
+    body: JSON.stringify(refreshData),
   });
 }
 
