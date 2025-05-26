@@ -1,0 +1,182 @@
+.loginContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background-color: #0a0a0a;
+}
+
+.loginWrapper {
+  width: 100%;
+  max-width: 440px;
+}
+
+.loginCard {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 40px;
+}
+
+.loginHeader {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logoSection {
+  margin-bottom: 24px;
+}
+
+.logoText {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0070f3;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.loginTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.loginForm {
+  margin-bottom: 32px;
+}
+
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.formInput {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 16px;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: #0070f3;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.1);
+}
+
+.formInput::placeholder {
+  color: #9ca3af;
+}
+
+.formOptions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.checkboxInput {
+  margin-right: 8px;
+  transform: scale(1.1);
+}
+
+.checkboxText {
+  font-size: 14px;
+  color: #475569;
+}
+
+.forgotLink {
+  font-size: 14px;
+  color: #0070f3;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.forgotLink:hover {
+  text-decoration: underline;
+  color: #0051cc;
+}
+
+.loginButton {
+  width: 100%;
+  background: #0070f3;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.loginButton:hover {
+  background: #0051cc;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 112, 243, 0.3);
+}
+
+.signupLink {
+  text-align: center;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.signupLink span {
+  color: #475569;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.signupButton {
+  color: #0070f3;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.signupButton:hover {
+  text-decoration: underline;
+  color: #0051cc;
+}
+
+@media (max-width: 480px) {
+  .loginCard {
+    padding: 24px;
+  }
+
+  .logoText {
+    font-size: 28px;
+  }
+
+  .loginTitle {
+    font-size: 24px;
+  }
+}
