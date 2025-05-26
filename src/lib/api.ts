@@ -12,21 +12,17 @@ export interface SignupRequest {
   password: string;
   name: string;
   phoneNumber: string;
-  companyInfo?: {
-    companyName: string;
-    ceoName: string;
-    businessNumber: string;
-    companyAddress: string;
-    companyAddressDetail?: string;
-    companyPhone: string;
-    toll080Number?: string;
-    customerServiceNumber?: string;
-  };
-  taxInvoiceInfo?: {
-    email: string;
-    manager: string;
-    contact: string;
-  };
+  companyName?: string;
+  ceoName?: string;
+  businessNumber?: string;
+  companyAddress?: string;
+  companyAddressDetail?: string;
+  companyPhone?: string;
+  toll080Number?: string;
+  customerServiceNumber?: string;
+  taxInvoiceEmail?: string;
+  taxInvoiceManager?: string;
+  taxInvoiceContact?: string;
   agreeMarketing?: boolean;
 }
 

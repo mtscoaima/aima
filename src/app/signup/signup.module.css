@@ -142,6 +142,33 @@
   margin-bottom: 8px;
 }
 
+/* 전체 동의 스타일 */
+.agreeAllLabel {
+  padding: 16px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.agreeAllLabel:hover {
+  background: #f1f5f9;
+  border-color: #0070f3;
+}
+
+.agreeAllText {
+  font-size: 16px;
+  color: #0070f3;
+  font-weight: 600;
+}
+
+.termsDivider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 8px 0;
+}
+
 .checkboxLabel {
   display: flex;
   align-items: center;
@@ -393,6 +420,52 @@
   font-size: 14px;
   margin-bottom: 16px;
   text-align: center;
+}
+
+/* Timer styles */
+.timer {
+  color: #0070f3;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.timerExpired {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* Password Strength */
+.passwordStrength {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strengthBar {
+  flex: 1;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.strengthFill {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+.strengthText {
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 40px;
 }
 
 /* File Upload */
