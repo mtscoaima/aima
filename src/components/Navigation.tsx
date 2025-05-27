@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 // 메뉴 아이템 인터페이스
 interface MenuItem {
@@ -168,9 +169,10 @@ const SubSubMenu = ({ items }: { items: SubSubMenuItem[] }) => {
 };
 
 export default function Navigation() {
-  const pathname = usePathname();
+  // const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
+  const { toggle: toggleSidebar, isOpen: sidebarOpen } = useSidebar();
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const [visible, setVisible] = useState(true);
   const [prevScrollPos, setPrevScrollPos] = useState(0);
@@ -204,9 +206,9 @@ export default function Navigation() {
     };
   }, [prevScrollPos]);
 
-  const handleMenuMouseEnter = (index: number) => {
-    setOpenMenuIndex(index);
-  };
+  // const handleMenuMouseEnter = (index: number) => {
+  //   setOpenMenuIndex(index);
+  // };
 
   const handleMenuMouseLeave = () => {
     setOpenMenuIndex(null);
@@ -261,31 +263,39 @@ export default function Navigation() {
 
   return (
     <nav
-      className={`navigation ${visible ? "nav-visible" : "nav-hidden"}`}
+      className={`navigation ${visible ? "nav-visible" : "nav-hidden"} ${
+        isAuthenticated && sidebarOpen ? "sidebar-open" : ""
+      }`}
       onMouseLeave={handleMenuMouseLeave}
     >
       <div className="nav-container">
-        <Link href="/" className="logo">
-          MTS플러스
-        </Link>
-
-        <div className="menu-container">
-          {menuItems.map((item, index) => (
-            <div
-              key={index}
-              className="menu-item-wrapper"
-              onMouseEnter={() => handleMenuMouseEnter(index)}
+        <div className="nav-left">
+          {isAuthenticated && (
+            <button
+              onClick={toggleSidebar}
+              className="sidebar-toggle-btn"
+              aria-label="사이드바 토글"
             >
-              <Link
-                href={item.path}
-                className={`menu-item ${
-                  pathname === item.path ? "active" : ""
-                }`}
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {item.title}
-              </Link>
-            </div>
-          ))}
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+          )}
+
+          <Link href="/" className="logo">
+            MTS플러스
+          </Link>
         </div>
 
         <div className="auth-buttons">
@@ -519,16 +529,32 @@ export default function Navigation() {
                     >
                       관리자
                     </button>
+                    <button
+                      onClick={() => changeUserType("all")}
+                      style={{
+                        padding: "6px 10px",
+                        background: userType === "all" ? "#3b82f6" : "#555",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontWeight: "medium",
+                        transition: "all 0.2s",
+                        fontSize: "12px",
+                      }}
+                    >
+                      전체
+                    </button>
                   </div>
                 </div>
               )}
-              {currentSubmenu.map((subItem, subIndex) => (
-                <div key={subIndex} className="submenu-item-wrapper">
-                  <Link href={subItem.path} className="submenu-item">
-                    {subItem.title}
-                  </Link>
 
-                  {subItem.submenu && <SubSubMenu items={subItem.submenu} />}
+              {currentSubmenu.map((submenuItem, submenuIndex) => (
+                <div key={submenuIndex} className="submenu-item-wrapper">
+                  <Link href={submenuItem.path} className="submenu-item">
+                    {submenuItem.title}
+                  </Link>
+                  <SubSubMenu items={submenuItem.submenu || []} />
                 </div>
               ))}
             </div>
