@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
+import { getKSTISOString } from "@/lib/utils";
 
 // 서버 사이드에서는 서비스 역할 키 우선 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -22,11 +23,6 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
-  },
-  global: {
-    headers: {
-      "Content-Type": "application/json",
-    },
   },
 });
 
@@ -203,7 +199,7 @@ export async function POST(request: NextRequest) {
         message: "잘못된 요청 (유효성 검증 실패)",
         error: "string",
         status: 400,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/signup-with-files",
         fieldErrors,
       };
@@ -225,7 +221,7 @@ export async function POST(request: NextRequest) {
         message: "이메일 확인 중 오류가 발생했습니다",
         error: `Database Error: ${checkError.message}`,
         status: 500,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/signup-with-files",
       };
       return NextResponse.json(errorResponse, { status: 500 });
@@ -237,7 +233,7 @@ export async function POST(request: NextRequest) {
         message: "이메일 중복",
         error: "string",
         status: 409,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/signup-with-files",
         fieldErrors: [
           { field: "email", message: "이미 사용 중인 이메일입니다." },
@@ -253,7 +249,7 @@ export async function POST(request: NextRequest) {
 
     // 사용자 생성
     console.log("Creating new user...");
-    const now = new Date().toISOString();
+    const now = getKSTISOString();
 
     // 기업 정보 JSON 객체 생성
     const companyInfo = companyName
@@ -283,7 +279,7 @@ export async function POST(request: NextRequest) {
       terms: agreeTerms || false,
       privacy: agreePrivacy || false,
       marketing: agreeMarketing || false,
-      agreedAt: new Date().toISOString(),
+      agreedAt: getKSTISOString(),
     };
 
     const { data: newUser, error: insertError } = await supabase
@@ -315,7 +311,7 @@ export async function POST(request: NextRequest) {
         message: "사용자 생성 중 오류가 발생했습니다",
         error: `Database Error: ${insertError.message}`,
         status: 500,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/signup-with-files",
       };
       return NextResponse.json(errorResponse, { status: 500 });
@@ -333,11 +329,15 @@ export async function POST(request: NextRequest) {
         const fileName = `business_registration_${Date.now()}.${fileExt}`;
         const filePath = `documents/${newUser.id}/${fileName}`;
 
+        // 파일을 ArrayBuffer로 변환
+        const fileBuffer = await businessRegistration.arrayBuffer();
+
         const { error: uploadError } = await supabase.storage
           .from("user-documents")
-          .upload(filePath, businessRegistration, {
+          .upload(filePath, fileBuffer, {
             cacheControl: "3600",
             upsert: false,
+            contentType: businessRegistration.type,
           });
 
         if (uploadError) {
@@ -350,7 +350,7 @@ export async function POST(request: NextRequest) {
           documents.businessRegistration = {
             fileName: businessRegistration.name,
             fileUrl: urlData.publicUrl,
-            uploadedAt: new Date().toISOString(),
+            uploadedAt: getKSTISOString(),
           };
         }
       }
@@ -361,11 +361,15 @@ export async function POST(request: NextRequest) {
         const fileName = `employment_certificate_${Date.now()}.${fileExt}`;
         const filePath = `documents/${newUser.id}/${fileName}`;
 
+        // 파일을 ArrayBuffer로 변환
+        const fileBuffer = await employmentCertificate.arrayBuffer();
+
         const { error: uploadError } = await supabase.storage
           .from("user-documents")
-          .upload(filePath, employmentCertificate, {
+          .upload(filePath, fileBuffer, {
             cacheControl: "3600",
             upsert: false,
+            contentType: employmentCertificate.type,
           });
 
         if (uploadError) {
@@ -378,7 +382,7 @@ export async function POST(request: NextRequest) {
           documents.employmentCertificate = {
             fileName: employmentCertificate.name,
             fileUrl: urlData.publicUrl,
-            uploadedAt: new Date().toISOString(),
+            uploadedAt: getKSTISOString(),
           };
         }
       }
@@ -389,7 +393,7 @@ export async function POST(request: NextRequest) {
           .from("users")
           .update({
             documents: documents,
-            updated_at: new Date().toISOString(),
+            updated_at: getKSTISOString(),
           })
           .eq("id", newUser.id);
 
@@ -436,7 +440,7 @@ export async function POST(request: NextRequest) {
       message: "서버 내부 오류",
       error: error instanceof Error ? error.message : "Unknown error",
       status: 500,
-      timestamp: new Date().toISOString(),
+      timestamp: getKSTISOString(),
       path: "/api/users/signup-with-files",
     };
     return NextResponse.json(errorResponse, { status: 500 });

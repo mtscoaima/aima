@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { getKSTISOString } from "@/lib/utils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
           message: "이메일과 비밀번호는 필수입니다.",
           error: "Missing required fields",
           status: 400,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/login",
           fieldErrors: [
             {
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
           message: "올바른 이메일 형식이 아닙니다.",
           error: "Invalid email format",
           status: 400,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/login",
           fieldErrors: [
             {
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
           message: "사용자를 찾을 수 없습니다.",
           error: "User not found",
           status: 404,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/login",
           fieldErrors: [
             {
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
           message: "비밀번호가 일치하지 않습니다.",
           error: "Invalid password",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/login",
           fieldErrors: [
             {
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
           message: "비활성화된 계정입니다.",
           error: "Account deactivated",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/login",
           fieldErrors: [
             {
@@ -178,9 +179,10 @@ export async function POST(request: NextRequest) {
       { expiresIn: "7d" }
     );
 
-    // 마지막 로그인 시간 업데이트
+    // 마지막 로그인 시간 업데이트 (한국 시간 사용)
     console.log("Updating last_login_at for user:", user.id);
-    const updateTime = new Date().toISOString();
+    const updateTime = getKSTISOString();
+    console.log("KST update time:", updateTime);
     const { data: updateData, error: updateError } = await supabase
       .from("users")
       .update({ last_login_at: updateTime })
@@ -242,7 +244,7 @@ export async function POST(request: NextRequest) {
         message: "서버 내부 오류가 발생했습니다.",
         error: "Internal server error",
         status: 500,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/login",
         fieldErrors: [],
       },

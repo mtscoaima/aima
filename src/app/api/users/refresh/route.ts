@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
+import { getKSTISOString } from "@/lib/utils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
           message: "리프레시 토큰이 필요합니다.",
           error: "Missing refresh token",
           status: 400,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/refresh",
         },
         { status: 400 }
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
           message: "유효하지 않은 리프레시 토큰입니다.",
           error: "Invalid refresh token",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/refresh",
         },
         { status: 401 }
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
           message: "잘못된 토큰 타입입니다.",
           error: "Invalid token type",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/refresh",
         },
         { status: 401 }
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
           message: "사용자를 찾을 수 없습니다.",
           error: "User not found",
           status: 404,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/refresh",
         },
         { status: 404 }
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
           message: "비활성화된 계정입니다.",
           error: "Account deactivated",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/refresh",
         },
         { status: 401 }
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
       "Updating last_login_at for user during token refresh:",
       user.id
     );
-    const updateTime = new Date().toISOString();
+    const updateTime = getKSTISOString();
     const { data: updateData, error: updateError } = await supabase
       .from("users")
       .update({ last_login_at: updateTime })
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
         message: "서버 내부 오류가 발생했습니다.",
         error: "Internal server error",
         status: 500,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/refresh",
       },
       { status: 500 }

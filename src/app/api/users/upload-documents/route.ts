@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
+import { getKSTISOString } from "@/lib/utils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
           message: "인증되지 않은 사용자",
           error: "Unauthorized",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/upload-documents",
         },
         { status: 401 }
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
           message: "유효하지 않은 토큰",
           error: "Invalid token",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/upload-documents",
         },
         { status: 401 }
@@ -73,11 +74,15 @@ export async function POST(request: NextRequest) {
       const fileName = `business_registration_${Date.now()}.${fileExt}`;
       const filePath = `documents/${userId}/${fileName}`;
 
+      // 파일을 ArrayBuffer로 변환
+      const fileBuffer = await businessRegistration.arrayBuffer();
+
       const { error: uploadError } = await supabase.storage
         .from("user-documents")
-        .upload(filePath, businessRegistration, {
+        .upload(filePath, fileBuffer, {
           cacheControl: "3600",
           upsert: false,
+          contentType: businessRegistration.type,
         });
 
       if (uploadError) {
@@ -91,7 +96,7 @@ export async function POST(request: NextRequest) {
       documents.businessRegistration = {
         fileName: businessRegistration.name,
         fileUrl: urlData.publicUrl,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: getKSTISOString(),
       };
     }
 
@@ -101,11 +106,15 @@ export async function POST(request: NextRequest) {
       const fileName = `employment_certificate_${Date.now()}.${fileExt}`;
       const filePath = `documents/${userId}/${fileName}`;
 
+      // 파일을 ArrayBuffer로 변환
+      const fileBuffer = await employmentCertificate.arrayBuffer();
+
       const { error: uploadError } = await supabase.storage
         .from("user-documents")
-        .upload(filePath, employmentCertificate, {
+        .upload(filePath, fileBuffer, {
           cacheControl: "3600",
           upsert: false,
+          contentType: employmentCertificate.type,
         });
 
       if (uploadError) {
@@ -119,7 +128,7 @@ export async function POST(request: NextRequest) {
       documents.employmentCertificate = {
         fileName: employmentCertificate.name,
         fileUrl: urlData.publicUrl,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: getKSTISOString(),
       };
     }
 
@@ -128,7 +137,7 @@ export async function POST(request: NextRequest) {
       .from("users")
       .update({
         documents: documents,
-        updated_at: new Date().toISOString(),
+        updated_at: getKSTISOString(),
       })
       .eq("id", userId);
 
@@ -150,7 +159,7 @@ export async function POST(request: NextRequest) {
         message: "문서 업로드 중 오류가 발생했습니다.",
         error: error instanceof Error ? error.message : "Unknown error",
         status: 500,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/upload-documents",
       },
       { status: 500 }

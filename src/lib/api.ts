@@ -101,6 +101,58 @@ export interface UserInfoResponse {
   role: string;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt?: string;
+  companyInfo?: {
+    companyName?: string;
+    ceoName?: string;
+    businessNumber?: string;
+    companyAddress?: string;
+    companyAddressDetail?: string;
+    companyPhone?: string;
+    toll080Number?: string;
+    customerServiceNumber?: string;
+  };
+  taxInvoiceInfo?: {
+    email?: string;
+    manager?: string;
+    contact?: string;
+  };
+  documents?: {
+    businessRegistration?: {
+      fileName: string;
+      fileUrl: string;
+      uploadedAt: string;
+    };
+    employmentCertificate?: {
+      fileName: string;
+      fileUrl: string;
+      uploadedAt: string;
+    };
+  };
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  phoneNumber?: string;
+  position?: string;
+  department?: string;
+  companyName?: string;
+  representativeName?: string;
+  address?: string;
+  phoneNumberCompany?: string;
+  customerServiceNumber?: string;
+  optOutNumber?: string;
+}
+
+export interface UpdateUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  phoneNumber: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  message: string;
 }
 
 export interface ApiError {
@@ -258,6 +310,24 @@ export async function getUserInfo(): Promise<UserInfoResponse> {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+}
+
+// 사용자 정보 업데이트 API 함수
+export async function updateUserInfo(
+  updateData: UpdateUserRequest
+): Promise<UpdateUserResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  return apiCall<UpdateUserResponse>("/api/users/me", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(updateData),
   });
 }
 
