@@ -142,9 +142,50 @@ export default function SignupPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
     if (files && files[0]) {
+      const file = files[0];
+
+      // 파일 유형 검증
+      const allowedTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]:
+            "PDF 또는 이미지 파일(JPG, PNG, GIF, WEBP)만 업로드 가능합니다.",
+        }));
+        // 파일 입력 초기화
+        e.target.value = "";
+        return;
+      }
+
+      // 파일 크기 검증 (10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]: "파일 크기는 10MB 이하여야 합니다.",
+        }));
+        // 파일 입력 초기화
+        e.target.value = "";
+        return;
+      }
+
+      // 에러 초기화
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+
       setFormData((prev) => ({
         ...prev,
-        [name]: files[0],
+        [name]: file,
       }));
     }
   };
@@ -367,10 +408,10 @@ export default function SignupPage() {
       case 5:
         // 약관 동의 검증
         if (!formData.agreeTerms) {
-          newErrors.agreeTerms = "이용약관에 동의해주세요.";
+          newErrors.agreeTerms = "서비스 이용약관에 동의해주세요.";
         }
         if (!formData.agreePrivacy) {
-          newErrors.agreePrivacy = "개인정보 처리방침에 동의해주세요.";
+          newErrors.agreePrivacy = "개인정보 수집 및 이용에 동의해주세요.";
         }
         break;
     }
@@ -448,6 +489,10 @@ export default function SignupPage() {
         "agreeMarketing",
         formData.agreeMarketing.toString()
       );
+
+      // 약관 동의
+      formDataToSend.append("agreeTerms", formData.agreeTerms.toString());
+      formDataToSend.append("agreePrivacy", formData.agreePrivacy.toString());
 
       // 파일 추가
       if (formData.businessRegistration) {
@@ -1083,12 +1128,15 @@ export default function SignupPage() {
                       id="businessRegistration"
                       name="businessRegistration"
                       onChange={handleFileChange}
-                      className={styles.fileInput}
-                      accept=".pdf,.jpg,.jpeg,.png"
+                      className={`${styles.fileInput} ${
+                        errors.businessRegistration ? styles.error : ""
+                      }`}
+                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/*"
                       required
                     />
                     <p className={styles.fileHelp}>
-                      PDF, JPG, PNG 파일만 업로드 가능합니다.
+                      PDF 또는 이미지 파일(JPG, PNG, GIF, WEBP)만 업로드
+                      가능합니다. (최대 10MB)
                     </p>
                     {errors.businessRegistration && (
                       <p className={styles.formError}>
@@ -1111,11 +1159,14 @@ export default function SignupPage() {
                       id="employmentCertificate"
                       name="employmentCertificate"
                       onChange={handleFileChange}
-                      className={styles.fileInput}
-                      accept=".pdf,.jpg,.jpeg,.png"
+                      className={`${styles.fileInput} ${
+                        errors.employmentCertificate ? styles.error : ""
+                      }`}
+                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/*"
                     />
                     <p className={styles.fileHelp}>
-                      영업사원인 경우 재직증명서를 업로드해주세요.
+                      영업사원인 경우 재직증명서를 업로드해주세요. PDF 또는
+                      이미지 파일만 가능합니다. (최대 10MB)
                     </p>
                   </div>
                 </div>

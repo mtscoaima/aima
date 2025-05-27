@@ -68,6 +68,14 @@ interface SuccessResponse {
   taxInvoiceManager?: string;
   taxInvoiceContact?: string;
   agreeMarketing?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
+  agreementInfo?: {
+    terms: boolean;
+    privacy: boolean;
+    marketing: boolean;
+    agreedAt: string;
+  };
   documents?: { [key: string]: UploadedFile };
 }
 
@@ -101,6 +109,10 @@ export async function POST(request: NextRequest) {
 
     // 마케팅 동의
     const agreeMarketing = formData.get("agreeMarketing") === "true";
+
+    // 약관 동의
+    const agreeTerms = formData.get("agreeTerms") === "true";
+    const agreePrivacy = formData.get("agreePrivacy") === "true";
 
     // 파일 추출
     const businessRegistration = formData.get(
@@ -146,6 +158,44 @@ export async function POST(request: NextRequest) {
         field: "phoneNumber",
         message: "전화번호를 입력해주세요.",
       });
+    }
+
+    // 파일 유형 및 크기 검증 함수
+    const validateFile = (file: File, fieldName: string) => {
+      const allowedTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        fieldErrors.push({
+          field: fieldName,
+          message:
+            "PDF 또는 이미지 파일(JPG, PNG, GIF, WEBP)만 업로드 가능합니다.",
+        });
+      }
+
+      // 파일 크기 검증 (10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        fieldErrors.push({
+          field: fieldName,
+          message: "파일 크기는 10MB 이하여야 합니다.",
+        });
+      }
+    };
+
+    // 파일 유형 및 크기 검증
+    if (businessRegistration) {
+      validateFile(businessRegistration, "businessRegistration");
+    }
+
+    if (employmentCertificate) {
+      validateFile(employmentCertificate, "employmentCertificate");
     }
 
     if (fieldErrors.length > 0) {
@@ -228,6 +278,14 @@ export async function POST(request: NextRequest) {
         }
       : null;
 
+    // 약관 동의 정보 JSON 객체 생성
+    const agreementInfo = {
+      terms: agreeTerms || false,
+      privacy: agreePrivacy || false,
+      marketing: agreeMarketing || false,
+      agreedAt: new Date().toISOString(),
+    };
+
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
@@ -245,6 +303,7 @@ export async function POST(request: NextRequest) {
         company_info: companyInfo,
         tax_invoice_info: taxInvoiceInfo,
         documents: null, // 파일 업로드 후 업데이트
+        agreement_info: agreementInfo,
         agree_marketing: agreeMarketing,
       })
       .select()
@@ -364,6 +423,9 @@ export async function POST(request: NextRequest) {
       taxInvoiceManager: newUser.tax_invoice_info?.manager,
       taxInvoiceContact: newUser.tax_invoice_info?.contact,
       agreeMarketing: newUser.agree_marketing,
+      agreeTerms: newUser.agreement_info?.terms,
+      agreePrivacy: newUser.agreement_info?.privacy,
+      agreementInfo: newUser.agreement_info,
       documents: Object.keys(documents).length > 0 ? documents : undefined,
     };
 

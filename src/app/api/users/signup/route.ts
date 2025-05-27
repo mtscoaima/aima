@@ -47,6 +47,8 @@ interface SignupRequest {
   taxInvoiceManager?: string;
   taxInvoiceContact?: string;
   agreeMarketing?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
 }
 
 interface ErrorResponse {
@@ -81,6 +83,14 @@ interface SuccessResponse {
   taxInvoiceManager?: string;
   taxInvoiceContact?: string;
   agreeMarketing?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
+  agreementInfo?: {
+    terms: boolean;
+    privacy: boolean;
+    marketing: boolean;
+    agreedAt: string;
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -103,6 +113,8 @@ export async function POST(request: NextRequest) {
       taxInvoiceManager,
       taxInvoiceContact,
       agreeMarketing,
+      agreeTerms,
+      agreePrivacy,
     } = body;
 
     console.log("Signup request received:", {
@@ -309,6 +321,14 @@ export async function POST(request: NextRequest) {
         }
       : null;
 
+    // 약관 동의 정보 JSON 객체 생성
+    const agreementInfo = {
+      terms: agreeTerms || false,
+      privacy: agreePrivacy || false,
+      marketing: agreeMarketing || false,
+      agreedAt: new Date().toISOString(),
+    };
+
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
@@ -326,7 +346,8 @@ export async function POST(request: NextRequest) {
         company_info: companyInfo,
         tax_invoice_info: taxInvoiceInfo,
         documents: null, // 파일은 별도 API에서 업로드
-        agree_marketing: agreeMarketing || false,
+        agreement_info: agreementInfo,
+        agree_marketing: agreeMarketing || false, // 기존 호환성을 위해 유지
       })
       .select()
       .single();
@@ -366,6 +387,9 @@ export async function POST(request: NextRequest) {
       taxInvoiceManager: newUser.tax_invoice_info?.manager,
       taxInvoiceContact: newUser.tax_invoice_info?.contact,
       agreeMarketing: newUser.agree_marketing,
+      agreeTerms: newUser.agreement_info?.terms,
+      agreePrivacy: newUser.agreement_info?.privacy,
+      agreementInfo: newUser.agreement_info,
     };
 
     return NextResponse.json(successResponse, { status: 201 });

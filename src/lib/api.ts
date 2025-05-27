@@ -24,6 +24,8 @@ export interface SignupRequest {
   taxInvoiceManager?: string;
   taxInvoiceContact?: string;
   agreeMarketing?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
 }
 
 export interface RefreshTokenRequest {
@@ -69,6 +71,26 @@ export interface SignupResponse {
   role: string;
   createdAt: string;
   updatedAt: string;
+  companyName?: string;
+  ceoName?: string;
+  businessNumber?: string;
+  companyAddress?: string;
+  companyAddressDetail?: string;
+  companyPhone?: string;
+  toll080Number?: string;
+  customerServiceNumber?: string;
+  taxInvoiceEmail?: string;
+  taxInvoiceManager?: string;
+  taxInvoiceContact?: string;
+  agreeMarketing?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
+  agreementInfo?: {
+    terms: boolean;
+    privacy: boolean;
+    marketing: boolean;
+    agreedAt: string;
+  };
 }
 
 export interface UserInfoResponse {

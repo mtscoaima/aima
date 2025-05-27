@@ -46,13 +46,15 @@ CREATE TABLE users (
   company_info JSONB,           -- 기업 정보
   tax_invoice_info JSONB,       -- 세금계산서 정보
   documents JSONB,              -- 제출 서류 (Storage URL)
-  agree_marketing BOOLEAN DEFAULT false
+  agreement_info JSONB,         -- 약관 동의 정보
+  agree_marketing BOOLEAN DEFAULT false  -- 기존 호환성을 위해 유지
 );
 
 -- JSON 필드 검색 성능을 위한 인덱스
 CREATE INDEX idx_users_company_info ON users USING GIN (company_info);
 CREATE INDEX idx_users_tax_invoice_info ON users USING GIN (tax_invoice_info);
 CREATE INDEX idx_users_documents ON users USING GIN (documents);
+CREATE INDEX idx_users_agreement_info ON users USING GIN (agreement_info);
 ```
 
 ### Storage Setup
@@ -69,7 +71,7 @@ VALUES (
   'user-documents',
   false,  -- private 버킷
   10485760,  -- 10MB 제한
-  ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+  ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
 );
 
 -- 2. 사용자별 폴더 접근 정책 설정
@@ -146,6 +148,14 @@ FOR SELECT USING (
     "uploadedAt": "2025-01-15T10:35:00Z"
   }
 }
+
+// agreement_info 예시
+{
+  "terms": true,           // 서비스 이용약관 동의
+  "privacy": true,         // 개인정보 수집 및 이용 동의
+  "marketing": false,      // 마케팅 정보 수집 및 활용 동의 (선택)
+  "agreedAt": "2025-01-15T10:30:00Z"  // 동의 시점
+}
 ```
 
 **데이터베이스 직접 연결:**
@@ -154,6 +164,28 @@ FOR SELECT USING (
 - 별도의 백엔드 서버 없이 Next.js API 라우트에서 직접 데이터베이스에 연결합니다
 - 비밀번호는 bcrypt로 해싱되어 안전하게 저장됩니다
 - 파일은 Supabase Storage에 안전하게 저장되며 사용자별 접근 제어가 적용됩니다
+
+**기존 데이터베이스 업데이트 (마이그레이션):**
+
+기존에 users 테이블이 있는 경우, 다음 SQL을 실행하여 약관 동의 정보 필드를 추가하세요:
+
+```sql
+-- agreement_info 컬럼 추가
+ALTER TABLE users ADD COLUMN IF NOT EXISTS agreement_info JSONB;
+
+-- 인덱스 추가
+CREATE INDEX IF NOT EXISTS idx_users_agreement_info ON users USING GIN (agreement_info);
+
+-- 기존 사용자들의 약관 동의 정보 초기화 (선택사항)
+UPDATE users
+SET agreement_info = jsonb_build_object(
+  'terms', false,
+  'privacy', false,
+  'marketing', COALESCE(agree_marketing, false),
+  'agreedAt', created_at
+)
+WHERE agreement_info IS NULL;
+```
 
 **중요:** 환경변수를 변경한 후에는 개발 서버를 재시작해야 합니다.
 
