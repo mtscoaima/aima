@@ -932,6 +932,16 @@ h3 {
     height: 60px;
   }
 
+  /* 데스크톱 메뉴 숨기기 */
+  .desktop-menu {
+    display: none;
+  }
+
+  /* 모바일 메뉴 토글 버튼 표시 */
+  .mobile-menu-toggle {
+    display: flex;
+  }
+
   .auth-buttons {
     gap: 0.5rem;
   }
@@ -999,6 +1009,34 @@ h3 {
   }
 }
 
+/* 태블릿 크기에서의 추가 조정 */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .nav-container {
+    padding: 0 1.5rem;
+  }
+
+  .menu-item-wrapper {
+    margin: 0 0.5rem;
+  }
+
+  .menu-item {
+    font-size: 0.9rem;
+  }
+
+  .submenu-inner {
+    padding: 0 1.5rem;
+  }
+
+  .submenu-content {
+    gap: 15px;
+  }
+
+  .submenu-item-wrapper {
+    min-width: 180px;
+    max-width: 220px;
+  }
+}
+
 /* 작은 모바일 화면 */
 @media (max-width: 480px) {
   .nav-container {
@@ -1010,9 +1048,33 @@ h3 {
     font-size: 1.25rem;
   }
 
-  .sidebar-toggle-btn {
+  .sidebar-toggle-btn,
+  .mobile-menu-toggle {
     width: 36px;
     height: 36px;
+  }
+
+  .mobile-menu-item {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .mobile-submenu-item {
+    padding: 0.6rem 1.5rem;
+  }
+
+  .mobile-subsubmenu-item {
+    padding: 0.4rem 2rem;
+    font-size: 0.85rem;
+  }
+
+  .mobile-user-type-selector {
+    padding: 0.75rem 1rem;
+  }
+
+  .mobile-user-type-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
   }
 
   .user-info-button {
