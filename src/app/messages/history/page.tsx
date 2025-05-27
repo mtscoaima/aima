@@ -1,63 +1,89 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import {
+  Calendar,
+  BarChart3,
+  Tag,
+  FileText,
+  Send,
+  RotateCcw,
+  Clock,
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+} from "lucide-react";
+import "./styles.css";
 
 interface MessageHistory {
   id: string;
+  createdAt: string;
+  groupId: string;
   recipient: string;
   message: string;
   status: "success" | "failed" | "pending";
   sentAt: string;
-  cost: number;
+  type: "전송요청내역" | "메시지목록";
+  lastUpdate: string;
 }
 
 export default function MessageHistoryPage() {
+  const [activeTab, setActiveTab] = useState<"전송요청내역" | "메시지목록">(
+    "전송요청내역"
+  );
   const [messages, setMessages] = useState<MessageHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<
-    "all" | "success" | "failed" | "pending"
-  >("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [filters, setFilters] = useState({
+    생성일: "",
+    그룹상태: "사용자정렬하기",
+    GroupID: "",
+    접수건수: "",
+    발송건수: "",
+  });
 
   useEffect(() => {
     // 임시 데이터 로드
     const loadMessages = async () => {
       setIsLoading(true);
       try {
-        // 실제 환경에서는 API 호출
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const mockData: MessageHistory[] = [
           {
             id: "1",
+            createdAt: "2024-01-15",
+            groupId: "GRP001",
             recipient: "010-1234-5678",
             message: "안녕하세요! 새로운 이벤트 소식을 알려드립니다.",
             status: "success",
             sentAt: "2024-01-15 14:30:00",
-            cost: 20,
+            type: "전송요청내역",
+            lastUpdate: "2024-01-15 14:30:00",
           },
           {
             id: "2",
+            createdAt: "2024-01-15",
+            groupId: "GRP002",
             recipient: "010-9876-5432",
             message: "할인 쿠폰이 발급되었습니다. 확인해보세요!",
             status: "success",
             sentAt: "2024-01-15 13:15:00",
-            cost: 20,
+            type: "전송요청내역",
+            lastUpdate: "2024-01-15 13:15:00",
           },
           {
             id: "3",
+            createdAt: "2024-01-15",
+            groupId: "GRP003",
             recipient: "010-5555-1234",
             message: "배송이 완료되었습니다.",
             status: "failed",
             sentAt: "2024-01-15 12:00:00",
-            cost: 0,
-          },
-          {
-            id: "4",
-            recipient: "010-7777-8888",
-            message: "회원가입을 환영합니다!",
-            status: "pending",
-            sentAt: "2024-01-15 11:45:00",
-            cost: 0,
+            type: "메시지목록",
+            lastUpdate: "2024-01-15 12:00:00",
           },
         ];
 
@@ -72,295 +98,338 @@ export default function MessageHistoryPage() {
     loadMessages();
   }, []);
 
-  const filteredMessages = messages.filter(
-    (msg) => filter === "all" || msg.status === filter
-  );
+  const filteredMessages = messages.filter((msg) => msg.type === activeTab);
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      success: { text: "성공", className: "status-success" },
-      failed: { text: "실패", className: "status-failed" },
-      pending: { text: "대기중", className: "status-pending" },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig];
-    return (
-      <span className={`status-badge ${config.className}`}>{config.text}</span>
-    );
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1000);
   };
 
-  const totalCost = messages
-    .filter((msg) => msg.status === "success")
-    .reduce((sum, msg) => sum + msg.cost, 0);
+  const handleExport = () => {
+    console.log("엑셀 다운로드");
+  };
+
+  const totalPages = Math.ceil(filteredMessages.length / itemsPerPage);
 
   return (
-    <div className="message-history-page">
-      <div className="page-header">
-        <h1>발송 내역</h1>
-        <p>메시지 발송 기록을 확인하세요</p>
+    <div className="message-history-container">
+      <div className="history-header">
+        <h1>모든 발송 내역과 메시지 목록을 접수일로부터 6개월간 보관됩니다.</h1>
       </div>
 
-      <div className="stats-container">
-        <div className="stat-card">
-          <h3>총 발송</h3>
-          <p className="stat-number">{messages.length}건</p>
-        </div>
-        <div className="stat-card">
-          <h3>성공</h3>
-          <p className="stat-number success">
-            {messages.filter((m) => m.status === "success").length}건
-          </p>
-        </div>
-        <div className="stat-card">
-          <h3>실패</h3>
-          <p className="stat-number failed">
-            {messages.filter((m) => m.status === "failed").length}건
-          </p>
-        </div>
-        <div className="stat-card">
-          <h3>총 비용</h3>
-          <p className="stat-number">{totalCost}원</p>
-        </div>
-      </div>
-
-      <div className="history-container">
-        <div className="filter-section">
-          <select
-            value={filter}
-            onChange={(e) =>
-              setFilter(
-                e.target.value as "all" | "success" | "failed" | "pending"
-              )
-            }
-            className="filter-select"
+      <div className="history-content">
+        {/* 탭 메뉴 */}
+        <div className="history-tabs">
+          <button
+            className={`tab-button ${
+              activeTab === "전송요청내역" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("전송요청내역")}
           >
-            <option value="all">전체</option>
-            <option value="success">성공</option>
-            <option value="failed">실패</option>
-            <option value="pending">대기중</option>
-          </select>
+            전송요청내역
+          </button>
+          <button
+            className={`tab-button ${
+              activeTab === "메시지목록" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("메시지목록")}
+          >
+            메시지목록
+          </button>
         </div>
 
-        {isLoading ? (
-          <div className="loading">
-            <p>로딩 중...</p>
+        {/* 필터 섹션 */}
+        <div className="filter-section">
+          <div className="filter-header">
+            <Filter size={16} className="filter-main-icon" />
+            <span>필터</span>
           </div>
-        ) : (
-          <div className="messages-table">
-            <div className="table-header">
-              <div>수신자</div>
-              <div>메시지</div>
-              <div>상태</div>
-              <div>발송시간</div>
-              <div>비용</div>
-            </div>
-
-            {filteredMessages.map((message) => (
-              <div key={message.id} className="table-row">
-                <div className="recipient">{message.recipient}</div>
-                <div className="message-content">
-                  {message.message.length > 30
-                    ? `${message.message.substring(0, 30)}...`
-                    : message.message}
+          <div className="filter-row">
+            {activeTab === "전송요청내역" ? (
+              <>
+                <div className="filter-group">
+                  <Calendar className="filter-icon" size={16} />
+                  <span className="filter-label">생성일</span>
+                  <input
+                    type="date"
+                    className="filter-input"
+                    value={filters.생성일}
+                    onChange={(e) =>
+                      setFilters({ ...filters, 생성일: e.target.value })
+                    }
+                  />
                 </div>
-                <div>{getStatusBadge(message.status)}</div>
-                <div className="sent-time">{message.sentAt}</div>
-                <div className="cost">{message.cost}원</div>
-              </div>
-            ))}
+                <div className="filter-group">
+                  <BarChart3 className="filter-icon" size={16} />
+                  <span className="filter-label">그룹상태</span>
+                  <select
+                    className="filter-select"
+                    value={filters.그룹상태}
+                    onChange={(e) =>
+                      setFilters({ ...filters, 그룹상태: e.target.value })
+                    }
+                  >
+                    <option value="사용자정렬하기">사용자정렬하기</option>
+                    <option value="전체">전체</option>
+                    <option value="성공">성공</option>
+                    <option value="실패">실패</option>
+                    <option value="대기중">대기중</option>
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <Tag className="filter-icon" size={16} />
+                  <span className="filter-label">Group ID</span>
+                  <input
+                    type="text"
+                    className="filter-input"
+                    placeholder="Group ID 입력"
+                    value={filters.GroupID}
+                    onChange={(e) =>
+                      setFilters({ ...filters, GroupID: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="filter-group">
+                  <FileText className="filter-icon" size={16} />
+                  <span className="filter-label">접수건수</span>
+                  <input
+                    type="number"
+                    className="filter-input"
+                    placeholder="건수"
+                    value={filters.접수건수}
+                    onChange={(e) =>
+                      setFilters({ ...filters, 접수건수: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="filter-group">
+                  <Send className="filter-icon" size={16} />
+                  <span className="filter-label">발송건수</span>
+                  <input
+                    type="number"
+                    className="filter-input"
+                    placeholder="건수"
+                    value={filters.발송건수}
+                    onChange={(e) =>
+                      setFilters({ ...filters, 발송건수: e.target.value })
+                    }
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="filter-group">
+                  <Calendar className="filter-icon" size={16} />
+                  <span className="filter-label">생성일</span>
+                </div>
+                <div className="filter-group">
+                  <BarChart3 className="filter-icon" size={16} />
+                  <span className="filter-label">메시지종류</span>
+                </div>
+                <div className="filter-group">
+                  <Tag className="filter-icon" size={16} />
+                  <span className="filter-label">수신번호</span>
+                </div>
+                <div className="filter-group">
+                  <FileText className="filter-icon" size={16} />
+                  <span className="filter-label">발신번호</span>
+                </div>
+                <div className="filter-group">
+                  <Send className="filter-icon" size={16} />
+                  <span className="filter-label">상태코드</span>
+                </div>
+                <div className="filter-group">
+                  <Tag className="filter-icon" size={16} />
+                  <span className="filter-label">Message ID</span>
+                </div>
+                <div className="filter-group">
+                  <BarChart3 className="filter-icon" size={16} />
+                  <span className="filter-label">Group ID</span>
+                </div>
+                <div className="filter-group">
+                  <FileText className="filter-icon" size={16} />
+                  <span className="filter-label">알림톡 템플릿 ID</span>
+                </div>
+              </>
+            )}
+            <button className="filter-reset-btn">모두 제거</button>
+          </div>
+        </div>
 
-            {filteredMessages.length === 0 && (
-              <div className="no-data">
-                <p>발송 내역이 없습니다.</p>
-              </div>
+        {/* 액션 버튼 */}
+        <div className="action-buttons">
+          <button className="action-btn refresh-btn" onClick={handleRefresh}>
+            <RotateCcw size={16} />
+            새로고침
+          </button>
+          {activeTab === "메시지목록" ? (
+            <>
+              <button className="action-btn status-btn success">
+                <span className="status-indicator"></span>
+                발송성공건
+              </button>
+              <button className="action-btn status-btn failed">
+                <span className="status-indicator"></span>
+                발송실패건
+              </button>
+              <button className="action-btn status-btn pending">
+                <span className="status-indicator"></span>
+                발송불가건
+              </button>
+              <button className="action-btn export-btn">
+                <Clock size={16} />
+                CSV 내보내기
+              </button>
+            </>
+          ) : (
+            <button className="action-btn export-btn" onClick={handleExport}>
+              <Clock size={16} />
+              예약대기건
+            </button>
+          )}
+        </div>
+
+        {/* 테이블 헤더 */}
+        <div className="table-container">
+          <div
+            className={`table-header ${
+              activeTab === "메시지목록" ? "message-list-grid" : ""
+            }`}
+          >
+            {activeTab === "전송요청내역" ? (
+              <>
+                <div className="header-cell">
+                  생성일 <HelpCircle size={14} />
+                </div>
+                <div className="header-cell">
+                  상태 <HelpCircle size={14} />
+                </div>
+                <div className="header-cell">
+                  타입 <HelpCircle size={14} />
+                </div>
+                <div className="header-cell">
+                  현황 <HelpCircle size={14} />
+                </div>
+                <div className="header-cell">최근 업데이트</div>
+              </>
+            ) : (
+              <>
+                <div className="header-cell">
+                  생성일 <HelpCircle size={14} />
+                </div>
+                <div className="header-cell">타입</div>
+                <div className="header-cell">발신번호</div>
+                <div className="header-cell">수신번호</div>
+                <div className="header-cell">상태코드</div>
+                <div className="header-cell">비고</div>
+                <div className="header-cell">내용</div>
+              </>
             )}
           </div>
-        )}
+
+          {/* 테이블 내용 */}
+          {isLoading ? (
+            <div className="loading-container">
+              <div className="loading-message">목록이 없습니다.</div>
+            </div>
+          ) : filteredMessages.length === 0 ? (
+            <div className="empty-container">
+              <div className="empty-message">목록이 없습니다.</div>
+            </div>
+          ) : (
+            <div className="table-body">
+              {filteredMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`table-row ${
+                    activeTab === "메시지목록" ? "message-list-grid" : ""
+                  }`}
+                >
+                  {activeTab === "전송요청내역" ? (
+                    <>
+                      <div className="table-cell">{message.createdAt}</div>
+                      <div className="table-cell">
+                        <span
+                          className={`status-badge status-${message.status}`}
+                        >
+                          {message.status === "success"
+                            ? "성공"
+                            : message.status === "failed"
+                            ? "실패"
+                            : "대기중"}
+                        </span>
+                      </div>
+                      <div className="table-cell">{message.type}</div>
+                      <div className="table-cell">{message.groupId}</div>
+                      <div className="table-cell">{message.lastUpdate}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="table-cell">{message.createdAt}</div>
+                      <div className="table-cell">SMS</div>
+                      <div className="table-cell">010-1234-5678</div>
+                      <div className="table-cell">{message.recipient}</div>
+                      <div className="table-cell">
+                        <span
+                          className={`status-badge status-${message.status}`}
+                        >
+                          {message.status === "success"
+                            ? "성공"
+                            : message.status === "failed"
+                            ? "실패"
+                            : "대기중"}
+                        </span>
+                      </div>
+                      <div className="table-cell">-</div>
+                      <div className="table-cell message-content-cell">
+                        {message.message.length > 20
+                          ? `${message.message.substring(0, 20)}...`
+                          : message.message}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 하단 페이지네이션 */}
+        <div className="bottom-pagination">
+          <div className="pagination-info">
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="items-per-page-select"
+            >
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+            <span className="page-info">
+              {currentPage} / {totalPages}
+            </span>
+            <div className="pagination-controls">
+              <button
+                className="pagination-btn"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                className="pagination-btn"
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, currentPage + 1))
+                }
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <style jsx>{`
-        .message-history-page {
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .page-header {
-          margin-bottom: 32px;
-        }
-
-        .page-header h1 {
-          font-size: 28px;
-          font-weight: 700;
-          color: #212529;
-          margin-bottom: 8px;
-        }
-
-        .page-header p {
-          color: #6c757d;
-          font-size: 16px;
-        }
-
-        .stats-container {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
-          margin-bottom: 32px;
-        }
-
-        .stat-card {
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          padding: 20px;
-          text-align: center;
-        }
-
-        .stat-card h3 {
-          font-size: 14px;
-          color: #6c757d;
-          margin-bottom: 8px;
-          font-weight: 500;
-        }
-
-        .stat-number {
-          font-size: 24px;
-          font-weight: 700;
-          color: #212529;
-          margin: 0;
-        }
-
-        .stat-number.success {
-          color: #28a745;
-        }
-
-        .stat-number.failed {
-          color: #dc3545;
-        }
-
-        .history-container {
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          overflow: hidden;
-        }
-
-        .filter-section {
-          padding: 20px;
-          border-bottom: 1px solid #e9ecef;
-        }
-
-        .filter-select {
-          padding: 8px 12px;
-          border: 1px solid #ced4da;
-          border-radius: 6px;
-          font-size: 14px;
-          background: white;
-        }
-
-        .loading {
-          padding: 40px;
-          text-align: center;
-          color: #6c757d;
-        }
-
-        .messages-table {
-          width: 100%;
-        }
-
-        .table-header {
-          display: grid;
-          grid-template-columns: 1.5fr 2fr 1fr 1.5fr 1fr;
-          gap: 16px;
-          padding: 16px 20px;
-          background-color: #f8f9fa;
-          font-weight: 600;
-          color: #495057;
-          font-size: 14px;
-          border-bottom: 1px solid #e9ecef;
-        }
-
-        .table-row {
-          display: grid;
-          grid-template-columns: 1.5fr 2fr 1fr 1.5fr 1fr;
-          gap: 16px;
-          padding: 16px 20px;
-          border-bottom: 1px solid #f1f3f4;
-          align-items: center;
-          font-size: 14px;
-        }
-
-        .table-row:hover {
-          background-color: #f8f9fa;
-        }
-
-        .recipient {
-          font-weight: 500;
-          color: #495057;
-        }
-
-        .message-content {
-          color: #212529;
-          line-height: 1.4;
-        }
-
-        .sent-time {
-          color: #6c757d;
-          font-size: 13px;
-        }
-
-        .cost {
-          font-weight: 500;
-          color: #495057;
-        }
-
-        .status-badge {
-          display: inline-block;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 500;
-        }
-
-        .status-success {
-          background-color: #d4edda;
-          color: #155724;
-        }
-
-        .status-failed {
-          background-color: #f8d7da;
-          color: #721c24;
-        }
-
-        .status-pending {
-          background-color: #fff3cd;
-          color: #856404;
-        }
-
-        .no-data {
-          padding: 40px;
-          text-align: center;
-          color: #6c757d;
-        }
-
-        @media (max-width: 768px) {
-          .table-header,
-          .table-row {
-            grid-template-columns: 1fr;
-            gap: 8px;
-          }
-
-          .table-header {
-            display: none;
-          }
-
-          .table-row {
-            padding: 16px;
-            border: 1px solid #e9ecef;
-            margin-bottom: 8px;
-            border-radius: 8px;
-          }
-        }
-      `}</style>
     </div>
   );
 }
