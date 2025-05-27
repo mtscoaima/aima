@@ -24,32 +24,12 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     autoRefreshToken: false,
     persistSession: false,
   },
-  global: {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  },
 });
 
-interface SignupRequest {
-  email: string;
-  password: string;
-  name: string;
-  phoneNumber: string;
-  companyName?: string;
-  ceoName?: string;
-  businessNumber?: string;
-  companyAddress?: string;
-  companyAddressDetail?: string;
-  companyPhone?: string;
-  toll080Number?: string;
-  customerServiceNumber?: string;
-  taxInvoiceEmail?: string;
-  taxInvoiceManager?: string;
-  taxInvoiceContact?: string;
-  agreeMarketing?: boolean;
-  agreeTerms?: boolean;
-  agreePrivacy?: boolean;
+interface UploadedFile {
+  fileName: string;
+  fileUrl: string;
+  uploadedAt: string;
 }
 
 interface ErrorResponse {
@@ -92,73 +72,61 @@ interface SuccessResponse {
     marketing: boolean;
     agreedAt: string;
   };
+  documents?: { [key: string]: UploadedFile };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: SignupRequest = await request.json();
-    const {
-      email,
-      password,
-      name,
-      phoneNumber,
-      companyName,
-      ceoName,
-      businessNumber,
-      companyAddress,
-      companyAddressDetail,
-      companyPhone,
-      toll080Number,
-      customerServiceNumber,
-      taxInvoiceEmail,
-      taxInvoiceManager,
-      taxInvoiceContact,
-      agreeMarketing,
-      agreeTerms,
-      agreePrivacy,
-    } = body;
+    // FormData 파싱
+    const formData = await request.formData();
 
-    console.log("Signup request received:", {
+    // 기본 정보 추출
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const name = formData.get("name") as string;
+    const phoneNumber = formData.get("phoneNumber") as string;
+
+    // 기업 정보 추출
+    const companyName = formData.get("companyName") as string;
+    const ceoName = formData.get("ceoName") as string;
+    const businessNumber = formData.get("businessNumber") as string;
+    const companyAddress = formData.get("companyAddress") as string;
+    const companyAddressDetail = formData.get("companyAddressDetail") as string;
+    const companyPhone = formData.get("companyPhone") as string;
+    const toll080Number = formData.get("toll080Number") as string;
+    const customerServiceNumber = formData.get(
+      "customerServiceNumber"
+    ) as string;
+
+    // 세금계산서 정보 추출
+    const taxInvoiceEmail = formData.get("taxInvoiceEmail") as string;
+    const taxInvoiceManager = formData.get("taxInvoiceManager") as string;
+    const taxInvoiceContact = formData.get("taxInvoiceContact") as string;
+
+    // 마케팅 동의
+    const agreeMarketing = formData.get("agreeMarketing") === "true";
+
+    // 약관 동의
+    const agreeTerms = formData.get("agreeTerms") === "true";
+    const agreePrivacy = formData.get("agreePrivacy") === "true";
+
+    // 파일 추출
+    const businessRegistration = formData.get(
+      "businessRegistration"
+    ) as File | null;
+    const employmentCertificate = formData.get(
+      "employmentCertificate"
+    ) as File | null;
+
+    console.log("Signup with files request received:", {
       email,
       name,
       phoneNumber,
       companyName,
       businessNumber,
+      hasBusinessRegistration: !!businessRegistration,
+      hasEmploymentCertificate: !!employmentCertificate,
     });
-
-    // 환경 변수 확인
-    console.log("Environment variables check:");
-    console.log(
-      "SUPABASE_URL:",
-      process.env.NEXT_PUBLIC_SUPABASE_URL ? "✓ Set" : "✗ Not set"
-    );
-    console.log(
-      "SUPABASE_SERVICE_KEY:",
-      supabaseServiceKey ? "✓ Set (using service key)" : "✗ Not set"
-    );
-    console.log(
-      "Using key type:",
-      supabaseServiceKey ? "SERVICE_ROLE_KEY" : "ANON_KEY"
-    );
-
-    // Supabase 연결 및 스키마 테스트
-    console.log("Testing Supabase connection and schema access...");
-
-    // 먼저 간단한 테이블 존재 확인
-    const { data: tableCheck, error: tableError } = await supabase
-      .from("users")
-      .select("count", { count: "exact", head: true });
-
-    if (tableError) {
-      console.error("Table access test failed:", {
-        code: tableError.code,
-        message: tableError.message,
-        details: tableError.details,
-        hint: tableError.hint,
-      });
-    } else {
-      console.log("Table access test successful, count:", tableCheck);
-    }
 
     // 입력 값 검증
     const fieldErrors: Array<{ field: string; message: string }> = [];
@@ -188,88 +156,73 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 파일 유형 및 크기 검증 함수
+    const validateFile = (file: File, fieldName: string) => {
+      const allowedTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        fieldErrors.push({
+          field: fieldName,
+          message:
+            "PDF 또는 이미지 파일(JPG, PNG, GIF, WEBP)만 업로드 가능합니다.",
+        });
+      }
+
+      // 파일 크기 검증 (10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        fieldErrors.push({
+          field: fieldName,
+          message: "파일 크기는 10MB 이하여야 합니다.",
+        });
+      }
+    };
+
+    // 파일 유형 및 크기 검증
+    if (businessRegistration) {
+      validateFile(businessRegistration, "businessRegistration");
+    }
+
+    if (employmentCertificate) {
+      validateFile(employmentCertificate, "employmentCertificate");
+    }
+
     if (fieldErrors.length > 0) {
       const errorResponse: ErrorResponse = {
         message: "잘못된 요청 (유효성 검증 실패)",
         error: "string",
         status: 400,
         timestamp: getKSTISOString(),
-        path: "/api/users/signup",
+        path: "/api/users/signup-with-files",
         fieldErrors,
       };
       return NextResponse.json(errorResponse, { status: 400 });
     }
 
-    // 이메일 중복 확인 (단순화)
+    // 이메일 중복 확인
     console.log("Checking for existing email:", email);
 
-    let { data: existingUser, error: checkError } = await supabase
+    const { data: existingUser, error: checkError } = await supabase
       .from("users")
       .select("email")
       .eq("email", email)
       .maybeSingle();
 
-    // Supabase ORM이 실패하면 직접 REST API 호출
-    if (checkError && checkError.code === "PGRST106") {
-      console.log("Supabase ORM failed, trying direct REST API...");
-
-      try {
-        const response = await fetch(
-          `${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(
-            email
-          )}&select=email`,
-          {
-            method: "GET",
-            headers: {
-              apikey: supabaseKey,
-              Authorization: `Bearer ${supabaseKey}`,
-              "Content-Type": "application/json",
-              Prefer: "return=minimal",
-            },
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          existingUser = data && data.length > 0 ? data[0] : null;
-          checkError = null;
-          console.log("Direct REST API call successful");
-        } else {
-          console.error(
-            "Direct REST API call failed:",
-            response.status,
-            response.statusText
-          );
-        }
-      } catch (restError) {
-        console.error("Direct REST API call error:", restError);
-      }
-    }
-
     if (checkError) {
       console.error("Email check error:", checkError);
-
-      // 테이블이 존재하지 않는 경우
-      if (
-        checkError.code === "PGRST106" ||
-        checkError.message.includes("schema")
-      ) {
-        const errorResponse: ErrorResponse = {
-          message: "데이터베이스 테이블이 존재하지 않습니다",
-          error: `users 테이블을 먼저 생성해주세요. Supabase 대시보드 → SQL Editor에서 테이블 생성 SQL을 실행하세요. Error: ${checkError.message}`,
-          status: 500,
-          timestamp: getKSTISOString(),
-          path: "/api/users/signup",
-        };
-        return NextResponse.json(errorResponse, { status: 500 });
-      }
-
       const errorResponse: ErrorResponse = {
         message: "이메일 확인 중 오류가 발생했습니다",
         error: `Database Error: ${checkError.message}`,
         status: 500,
         timestamp: getKSTISOString(),
-        path: "/api/users/signup",
+        path: "/api/users/signup-with-files",
       };
       return NextResponse.json(errorResponse, { status: 500 });
     }
@@ -281,7 +234,7 @@ export async function POST(request: NextRequest) {
         error: "string",
         status: 409,
         timestamp: getKSTISOString(),
-        path: "/api/users/signup",
+        path: "/api/users/signup-with-files",
         fieldErrors: [
           { field: "email", message: "이미 사용 중인 이메일입니다." },
         ],
@@ -297,7 +250,6 @@ export async function POST(request: NextRequest) {
     // 사용자 생성
     console.log("Creating new user...");
     const now = getKSTISOString();
-    console.log("Setting last_login_at to:", now);
 
     // 기업 정보 JSON 객체 생성
     const companyInfo = companyName
@@ -346,7 +298,7 @@ export async function POST(request: NextRequest) {
         // JSON 객체로 저장
         company_info: companyInfo,
         tax_invoice_info: taxInvoiceInfo,
-        documents: null, // 파일은 별도 API에서 업로드
+        documents: null, // 파일 업로드 후 업데이트
         agreement_info: agreementInfo,
         agree_marketing: agreeMarketing,
       })
@@ -360,12 +312,99 @@ export async function POST(request: NextRequest) {
         error: `Database Error: ${insertError.message}`,
         status: 500,
         timestamp: getKSTISOString(),
-        path: "/api/users/signup",
+        path: "/api/users/signup-with-files",
       };
       return NextResponse.json(errorResponse, { status: 500 });
     }
 
     console.log("User created successfully:", newUser.id);
+
+    // 파일 업로드 처리
+    const documents: { [key: string]: UploadedFile } = {};
+
+    try {
+      // 사업자등록증 업로드
+      if (businessRegistration) {
+        const fileExt = businessRegistration.name.split(".").pop();
+        const fileName = `business_registration_${Date.now()}.${fileExt}`;
+        const filePath = `documents/${newUser.id}/${fileName}`;
+
+        // 파일을 ArrayBuffer로 변환
+        const fileBuffer = await businessRegistration.arrayBuffer();
+
+        const { error: uploadError } = await supabase.storage
+          .from("user-documents")
+          .upload(filePath, fileBuffer, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: businessRegistration.type,
+          });
+
+        if (uploadError) {
+          console.error("사업자등록증 업로드 실패:", uploadError);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from("user-documents")
+            .getPublicUrl(filePath);
+
+          documents.businessRegistration = {
+            fileName: businessRegistration.name,
+            fileUrl: urlData.publicUrl,
+            uploadedAt: getKSTISOString(),
+          };
+        }
+      }
+
+      // 재직증명서 업로드
+      if (employmentCertificate) {
+        const fileExt = employmentCertificate.name.split(".").pop();
+        const fileName = `employment_certificate_${Date.now()}.${fileExt}`;
+        const filePath = `documents/${newUser.id}/${fileName}`;
+
+        // 파일을 ArrayBuffer로 변환
+        const fileBuffer = await employmentCertificate.arrayBuffer();
+
+        const { error: uploadError } = await supabase.storage
+          .from("user-documents")
+          .upload(filePath, fileBuffer, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: employmentCertificate.type,
+          });
+
+        if (uploadError) {
+          console.error("재직증명서 업로드 실패:", uploadError);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from("user-documents")
+            .getPublicUrl(filePath);
+
+          documents.employmentCertificate = {
+            fileName: employmentCertificate.name,
+            fileUrl: urlData.publicUrl,
+            uploadedAt: getKSTISOString(),
+          };
+        }
+      }
+
+      // 문서 정보가 있으면 사용자 레코드 업데이트
+      if (Object.keys(documents).length > 0) {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({
+            documents: documents,
+            updated_at: getKSTISOString(),
+          })
+          .eq("id", newUser.id);
+
+        if (updateError) {
+          console.error("문서 정보 업데이트 실패:", updateError);
+        }
+      }
+    } catch (fileError) {
+      console.error("파일 업로드 중 오류:", fileError);
+      // 파일 업로드 실패해도 회원가입은 성공으로 처리
+    }
 
     // 성공 응답
     const successResponse: SuccessResponse = {
@@ -391,17 +430,18 @@ export async function POST(request: NextRequest) {
       agreeTerms: newUser.agreement_info?.terms,
       agreePrivacy: newUser.agreement_info?.privacy,
       agreementInfo: newUser.agreement_info,
+      documents: Object.keys(documents).length > 0 ? documents : undefined,
     };
 
     return NextResponse.json(successResponse, { status: 201 });
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error("Signup with files error:", error);
     const errorResponse: ErrorResponse = {
       message: "서버 내부 오류",
       error: error instanceof Error ? error.message : "Unknown error",
       status: 500,
       timestamp: getKSTISOString(),
-      path: "/api/users/signup",
+      path: "/api/users/signup-with-files",
     };
     return NextResponse.json(errorResponse, { status: 500 });
   }

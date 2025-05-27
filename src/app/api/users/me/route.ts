@@ -1,18 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
+import { getKSTISOString } from "@/lib/utils";
 
-// 실제 백엔드 API 서버 URL
-const BACKEND_API_URL = process.env.BACKEND_API_URL;
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
-// 개발용 Mock 데이터 (백엔드 API가 준비되지 않은 경우)
-const MOCK_USER_DATA = {
-  id: "1",
-  email: "test@example.com",
-  name: "홍길동",
-  phoneNumber: "010-1234-5678",
-  role: "USER",
-  createdAt: "2025-01-15T00:00:00.000Z",
-  updatedAt: "2025-01-15T00:00:00.000Z",
-};
+// 서버 사이드에서는 서비스 역할 키 우선 사용
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// 서비스 키가 있으면 서비스 키 사용, 없으면 anon 키 사용
+const supabaseKey = supabaseServiceKey || "";
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: {
+    schema: "public",
+  },
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
+
+interface UpdateUserRequest {
+  name?: string;
+  phoneNumber?: string;
+  position?: string;
+  department?: string;
+  companyName?: string;
+  representativeName?: string;
+  address?: string;
+  phoneNumberCompany?: string;
+  customerServiceNumber?: string;
+  optOutNumber?: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +45,7 @@ export async function GET(request: NextRequest) {
           message: "인증되지 않은 사용자",
           error: "Unauthorized",
           status: 401,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/me",
         },
         { status: 401 }
@@ -33,74 +54,198 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7); // "Bearer " 제거
 
-    const apiUrl = `${BACKEND_API_URL}/api/users/me`;
-    console.log("Sending request to:", apiUrl);
-
+    // JWT 토큰 검증
+    let decoded: {
+      userId: string;
+      email: string;
+      name: string;
+      phoneNumber: string;
+      role: string;
+    };
     try {
-      // 백엔드 API로 요청 전달
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          // ngrok을 사용하는 경우 필요한 헤더들
-          "ngrok-skip-browser-warning": "true",
-          "User-Agent": "NextJS-Proxy/1.0",
+      decoded = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        email: string;
+        name: string;
+        phoneNumber: string;
+        role: string;
+      };
+    } catch {
+      return NextResponse.json(
+        {
+          message: "유효하지 않은 토큰",
+          error: "Invalid token",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
         },
-      });
-
-      console.log("Response status:", response.status);
-
-      // 404 에러인 경우 Mock 데이터 반환 (개발용)
-      if (response.status === 404) {
-        console.log(
-          "Backend API not found, returning mock data for development"
-        );
-        return NextResponse.json(MOCK_USER_DATA);
-      }
-
-      // 응답의 Content-Type 확인
-      const contentType = response.headers.get("content-type");
-      console.log("Content-Type:", contentType);
-
-      // HTML 응답인 경우 텍스트로 읽기
-      if (contentType && contentType.includes("text/html")) {
-        const htmlText = await response.text();
-        console.log("HTML Response:", htmlText.substring(0, 500));
-
-        // HTML 응답도 Mock 데이터로 대체 (개발용)
-        console.log(
-          "Received HTML response, returning mock data for development"
-        );
-        return NextResponse.json(MOCK_USER_DATA);
-      }
-
-      // JSON 응답 처리
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        const textResponse = await response.text();
-        console.log("Failed to parse JSON. Raw response:", textResponse);
-
-        // JSON 파싱 실패 시도 Mock 데이터로 대체 (개발용)
-        console.log("JSON parsing failed, returning mock data for development");
-        return NextResponse.json(MOCK_USER_DATA);
-      }
-
-      console.log("Parsed response data:", data);
-
-      if (!response.ok) {
-        return NextResponse.json(data, { status: response.status });
-      }
-
-      return NextResponse.json(data);
-    } catch (fetchError) {
-      console.error("Fetch error:", fetchError);
-      // 네트워크 에러 등의 경우 Mock 데이터 반환 (개발용)
-      console.log("Network error, returning mock data for development");
-      return NextResponse.json(MOCK_USER_DATA);
+        { status: 401 }
+      );
     }
+
+    // 토큰에서 사용자 ID 추출
+    const userId = decoded.userId;
+    if (!userId) {
+      return NextResponse.json(
+        {
+          message: "토큰에 사용자 정보가 없습니다",
+          error: "Invalid token payload",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
+        },
+        { status: 401 }
+      );
+    }
+
+    // Supabase에서 사용자 정보 조회
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select(
+        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents"
+      )
+      .eq("id", userId)
+      .single();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        {
+          message: "사용자를 찾을 수 없습니다",
+          error: "User not found",
+          status: 404,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
+        },
+        { status: 404 }
+      );
+    }
+
+    // 계정 활성화 상태 확인
+    if (!user.is_active) {
+      return NextResponse.json(
+        {
+          message: "비활성화된 계정입니다",
+          error: "Account deactivated",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
+        },
+        { status: 401 }
+      );
+    }
+
+    // documents가 있는 경우 signed URL로 변환
+    let processedDocuments = user.documents;
+    if (user.documents) {
+      try {
+        processedDocuments = { ...user.documents };
+
+        // 사업자등록증 URL 처리
+        if (processedDocuments.businessRegistration?.fileUrl) {
+          const url = processedDocuments.businessRegistration.fileUrl;
+          let filePath = null;
+
+          // 다양한 Supabase Storage URL 형식 처리
+          if (url.includes("/storage/v1/object/public/user-documents/")) {
+            filePath = url.split(
+              "/storage/v1/object/public/user-documents/"
+            )[1];
+          } else if (url.includes("/storage/v1/object/sign/user-documents/")) {
+            filePath = url
+              .split("/storage/v1/object/sign/user-documents/")[1]
+              .split("?")[0];
+          } else if (url.startsWith("documents/")) {
+            filePath = url;
+          } else if (url.includes("user-documents/")) {
+            // URL에서 user-documents/ 이후 부분 추출
+            const parts = url.split("user-documents/");
+            if (parts.length > 1) {
+              filePath = parts[1].split("?")[0]; // 쿼리 파라미터 제거
+            }
+          }
+
+          if (filePath) {
+            // Public URL 생성 시도
+            const { data: publicData } = supabase.storage
+              .from("user-documents")
+              .getPublicUrl(filePath);
+
+            if (publicData?.publicUrl) {
+              processedDocuments.businessRegistration.fileUrl =
+                publicData.publicUrl;
+            }
+          }
+        }
+
+        // 재직증명서 URL 처리
+        if (processedDocuments.employmentCertificate?.fileUrl) {
+          const url = processedDocuments.employmentCertificate.fileUrl;
+          let filePath = null;
+
+          if (url.includes("/storage/v1/object/public/user-documents/")) {
+            filePath = url.split(
+              "/storage/v1/object/public/user-documents/"
+            )[1];
+          } else if (url.includes("/storage/v1/object/sign/user-documents/")) {
+            filePath = url
+              .split("/storage/v1/object/sign/user-documents/")[1]
+              .split("?")[0];
+          } else if (url.startsWith("documents/")) {
+            filePath = url;
+          } else if (url.includes("user-documents/")) {
+            const parts = url.split("user-documents/");
+            if (parts.length > 1) {
+              filePath = parts[1].split("?")[0];
+            }
+          }
+
+          if (filePath) {
+            const { data: publicData } = supabase.storage
+              .from("user-documents")
+              .getPublicUrl(filePath);
+
+            if (publicData?.publicUrl) {
+              processedDocuments.employmentCertificate.fileUrl =
+                publicData.publicUrl;
+            }
+          }
+        }
+      } catch (urlError) {
+        console.error("URL 처리 중 오류:", urlError);
+        // URL 처리 실패해도 원본 documents 반환
+      }
+    }
+
+    // 사용자 정보 반환
+    return NextResponse.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      phoneNumber: user.phone_number,
+      role: user.role,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      lastLoginAt: user.last_login_at,
+      companyInfo: user.company_info,
+      taxInvoiceInfo: user.tax_invoice_info,
+      documents:
+        processedDocuments ||
+        (user.documents
+          ? null
+          : {
+              // 테스트용 이미지 (실제 documents가 없는 경우에만)
+              businessRegistration: {
+                fileName: "사업자등록증_테스트.jpg",
+                fileUrl: "https://picsum.photos/800/600?random=1",
+                uploadedAt: "2024-01-15",
+              },
+              employmentCertificate: {
+                fileName: "재직증명서_테스트.jpg",
+                fileUrl: "https://picsum.photos/800/600?random=2",
+                uploadedAt: "2024-01-15",
+              },
+            }),
+    });
   } catch (error) {
     console.error("User info API Error:", error);
     return NextResponse.json(
@@ -108,9 +253,170 @@ export async function GET(request: NextRequest) {
         message: "서버 오류가 발생했습니다.",
         error: "Internal Server Error",
         status: 500,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/me",
         details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    // Authorization 헤더에서 토큰 추출
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        {
+          message: "인증되지 않은 사용자",
+          error: "Unauthorized",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
+        },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7); // "Bearer " 제거
+
+    // JWT 토큰 검증
+    let decoded: {
+      userId: string;
+      email: string;
+      name: string;
+      phoneNumber: string;
+      role: string;
+    };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        email: string;
+        name: string;
+        phoneNumber: string;
+        role: string;
+      };
+    } catch {
+      return NextResponse.json(
+        {
+          message: "유효하지 않은 토큰",
+          error: "Invalid token",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
+        },
+        { status: 401 }
+      );
+    }
+
+    // 토큰에서 사용자 ID 추출
+    const userId = decoded.userId;
+    if (!userId) {
+      return NextResponse.json(
+        {
+          message: "토큰에 사용자 정보가 없습니다",
+          error: "Invalid token payload",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
+        },
+        { status: 401 }
+      );
+    }
+
+    // 요청 본문 파싱
+    const updateData: UpdateUserRequest = await request.json();
+
+    // 업데이트할 데이터 준비
+    const updateFields: Record<string, unknown> = {
+      updated_at: getKSTISOString(),
+    };
+
+    // 기본 정보 업데이트
+    if (updateData.name) updateFields.name = updateData.name;
+    if (updateData.phoneNumber)
+      updateFields.phone_number = updateData.phoneNumber;
+
+    // 기업 정보가 있는 경우 JSON 객체로 업데이트
+    const companyFields = {
+      companyName: updateData.companyName,
+      representativeName: updateData.representativeName,
+      address: updateData.address,
+      phoneNumberCompany: updateData.phoneNumberCompany,
+      customerServiceNumber: updateData.customerServiceNumber,
+      optOutNumber: updateData.optOutNumber,
+    };
+
+    // 기업 정보 중 하나라도 있으면 company_info 업데이트
+    if (Object.values(companyFields).some((value) => value !== undefined)) {
+      // 기존 company_info 가져오기
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("company_info")
+        .eq("id", userId)
+        .single();
+
+      const currentCompanyInfo = currentUser?.company_info || {};
+
+      // 새로운 정보로 업데이트
+      const updatedCompanyInfo = {
+        ...currentCompanyInfo,
+        ...Object.fromEntries(
+          Object.entries(companyFields).filter(
+            ([, value]) => value !== undefined
+          )
+        ),
+      };
+
+      updateFields.company_info = updatedCompanyInfo;
+    }
+
+    // 사용자 정보 업데이트
+    const { data: updatedUser, error: updateError } = await supabase
+      .from("users")
+      .update(updateFields)
+      .eq("id", userId)
+      .select("id, email, name, phone_number, role, created_at, updated_at")
+      .single();
+
+    if (updateError) {
+      console.error("User update error:", updateError);
+      return NextResponse.json(
+        {
+          message: "사용자 정보 업데이트 중 오류가 발생했습니다",
+          error: `Database Error: ${updateError.message}`,
+          status: 500,
+          timestamp: getKSTISOString(),
+          path: "/api/users/me",
+        },
+        { status: 500 }
+      );
+    }
+
+    // 성공 응답
+    return NextResponse.json(
+      {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        phoneNumber: updatedUser.phone_number,
+        role: updatedUser.role,
+        createdAt: updatedUser.created_at,
+        updatedAt: updatedUser.updated_at,
+        message: "사용자 정보가 성공적으로 업데이트되었습니다",
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Update user info error:", error);
+    return NextResponse.json(
+      {
+        message: "서버 내부 오류",
+        error: error instanceof Error ? error.message : "Unknown error",
+        status: 500,
+        timestamp: getKSTISOString(),
+        path: "/api/users/me",
       },
       { status: 500 }
     );

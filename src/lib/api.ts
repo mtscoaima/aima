@@ -12,27 +12,44 @@ export interface SignupRequest {
   password: string;
   name: string;
   phoneNumber: string;
-  companyInfo?: {
-    companyName: string;
-    ceoName: string;
-    businessNumber: string;
-    companyAddress: string;
-    companyAddressDetail?: string;
-    companyPhone: string;
-    toll080Number?: string;
-    customerServiceNumber?: string;
-  };
-  taxInvoiceInfo?: {
-    email: string;
-    manager: string;
-    contact: string;
-  };
+  companyName?: string;
+  ceoName?: string;
+  businessNumber?: string;
+  companyAddress?: string;
+  companyAddressDetail?: string;
+  companyPhone?: string;
+  toll080Number?: string;
+  customerServiceNumber?: string;
+  taxInvoiceEmail?: string;
+  taxInvoiceManager?: string;
+  taxInvoiceContact?: string;
   agreeMarketing?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
 }
 
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    phoneNumber: string;
+    role: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
   tokenType: string;
   expiresIn: number;
   user: {
@@ -54,6 +71,26 @@ export interface SignupResponse {
   role: string;
   createdAt: string;
   updatedAt: string;
+  companyName?: string;
+  ceoName?: string;
+  businessNumber?: string;
+  companyAddress?: string;
+  companyAddressDetail?: string;
+  companyPhone?: string;
+  toll080Number?: string;
+  customerServiceNumber?: string;
+  taxInvoiceEmail?: string;
+  taxInvoiceManager?: string;
+  taxInvoiceContact?: string;
+  agreeMarketing?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
+  agreementInfo?: {
+    terms: boolean;
+    privacy: boolean;
+    marketing: boolean;
+    agreedAt: string;
+  };
 }
 
 export interface UserInfoResponse {
@@ -64,6 +101,58 @@ export interface UserInfoResponse {
   role: string;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt?: string;
+  companyInfo?: {
+    companyName?: string;
+    ceoName?: string;
+    businessNumber?: string;
+    companyAddress?: string;
+    companyAddressDetail?: string;
+    companyPhone?: string;
+    toll080Number?: string;
+    customerServiceNumber?: string;
+  };
+  taxInvoiceInfo?: {
+    email?: string;
+    manager?: string;
+    contact?: string;
+  };
+  documents?: {
+    businessRegistration?: {
+      fileName: string;
+      fileUrl: string;
+      uploadedAt: string;
+    };
+    employmentCertificate?: {
+      fileName: string;
+      fileUrl: string;
+      uploadedAt: string;
+    };
+  };
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  phoneNumber?: string;
+  position?: string;
+  department?: string;
+  companyName?: string;
+  representativeName?: string;
+  address?: string;
+  phoneNumberCompany?: string;
+  customerServiceNumber?: string;
+  optOutNumber?: string;
+}
+
+export interface UpdateUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  phoneNumber: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  message: string;
 }
 
 export interface ApiError {
@@ -78,10 +167,52 @@ export interface ApiError {
   }>;
 }
 
-// API 호출 기본 함수
+// 토큰 갱신 함수 (내부용)
+async function refreshTokenInternal(): Promise<boolean> {
+  const refreshTokenValue = tokenManager.getRefreshToken();
+  if (!refreshTokenValue) {
+    return false;
+  }
+
+  try {
+    console.log("API 레벨에서 토큰 갱신 시도...");
+    const refreshData: RefreshTokenRequest = {
+      refreshToken: refreshTokenValue,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/api/users/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(refreshData),
+    });
+
+    if (!response.ok) {
+      throw new Error("토큰 갱신 실패");
+    }
+
+    const result: RefreshTokenResponse = await response.json();
+
+    // 새로운 액세스 토큰 저장 (리프레시 토큰은 그대로 유지)
+    tokenManager.setTokens(result.accessToken, refreshTokenValue);
+
+    console.log("API 레벨에서 토큰 갱신 성공");
+    return true;
+  } catch (err) {
+    console.error("API 레벨에서 토큰 갱신 실패:", err);
+
+    // 리프레시 토큰도 만료된 경우 토큰 제거
+    tokenManager.clearTokens();
+    return false;
+  }
+}
+
+// API 호출 기본 함수 (토큰 갱신 로직 포함)
 async function apiCall<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry: boolean = false
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -97,6 +228,31 @@ async function apiCall<T>(
     const response = await fetch(url, defaultOptions);
 
     if (!response.ok) {
+      // 401 에러이고 재시도가 아닌 경우 토큰 갱신 시도
+      if (
+        response.status === 401 &&
+        !isRetry &&
+        endpoint !== "/api/users/refresh"
+      ) {
+        console.log("401 에러 감지, 토큰 갱신 후 재시도...");
+        const refreshSuccess = await refreshTokenInternal();
+
+        if (refreshSuccess) {
+          // 토큰 갱신 성공 시 Authorization 헤더 업데이트하고 재시도
+          const newToken = tokenManager.getAccessToken();
+          if (newToken) {
+            const retryOptions = {
+              ...options,
+              headers: {
+                ...options.headers,
+                Authorization: `Bearer ${newToken}`,
+              },
+            };
+            return apiCall<T>(endpoint, retryOptions, true);
+          }
+        }
+      }
+
       const errorData: ApiError = await response.json();
       throw new Error(
         errorData.message || `HTTP error! status: ${response.status}`
@@ -132,6 +288,16 @@ export async function signupUser(
   });
 }
 
+// 토큰 갱신 API 함수
+export async function refreshToken(
+  refreshData: RefreshTokenRequest
+): Promise<RefreshTokenResponse> {
+  return apiCall<RefreshTokenResponse>("/api/users/refresh", {
+    method: "POST",
+    body: JSON.stringify(refreshData),
+  });
+}
+
 // 사용자 정보 조회 API 함수
 export async function getUserInfo(): Promise<UserInfoResponse> {
   const token = tokenManager.getAccessToken();
@@ -144,6 +310,24 @@ export async function getUserInfo(): Promise<UserInfoResponse> {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+}
+
+// 사용자 정보 업데이트 API 함수
+export async function updateUserInfo(
+  updateData: UpdateUserRequest
+): Promise<UpdateUserResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  return apiCall<UpdateUserResponse>("/api/users/me", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(updateData),
   });
 }
 

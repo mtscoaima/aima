@@ -1,150 +1,252 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { getKSTISOString } from "@/lib/utils";
 
-// 실제 백엔드 API 서버 URL
-const BACKEND_API_URL = process.env.BACKEND_API_URL;
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+
+// 서버 사이드에서는 서비스 역할 키 우선 사용
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// 서비스 키가 있으면 서비스 키 사용, 없으면 anon 키 사용
+const supabaseKey = supabaseServiceKey || "";
+
+if (!supabaseServiceKey) {
+  console.warn(
+    "⚠️ SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다. ANON_KEY를 사용합니다."
+  );
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: {
+    schema: "public",
+  },
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+  global: {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  },
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password } = body;
 
-    // 유효성 검사
+    // 입력 검증
     if (!email || !password) {
       return NextResponse.json(
         {
-          message: "이메일과 비밀번호는 필수입니다",
-          error: "Validation Error",
+          message: "이메일과 비밀번호는 필수입니다.",
+          error: "Missing required fields",
           status: 400,
-          timestamp: new Date().toISOString(),
+          timestamp: getKSTISOString(),
           path: "/api/users/login",
+          fieldErrors: [
+            {
+              field: !email ? "email" : "password",
+              message: !email
+                ? "이메일은 필수입니다."
+                : "비밀번호는 필수입니다.",
+            },
+          ],
         },
         { status: 400 }
       );
     }
 
-    // 백엔드 API가 설정된 경우 백엔드로 요청 전달
-    if (BACKEND_API_URL) {
-      const apiUrl = `${BACKEND_API_URL}/api/users/login`;
-      console.log("Sending login request to:", apiUrl);
-      console.log("Request body:", { email, password: "***" });
-
-      try {
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
-            "User-Agent": "NextJS-Proxy/1.0",
-          },
-          body: JSON.stringify(body),
-        });
-
-        console.log("Response status:", response.status);
-
-        // 응답의 Content-Type 확인
-        const contentType = response.headers.get("content-type");
-        console.log("Content-Type:", contentType);
-
-        // HTML 응답인 경우
-        if (contentType && contentType.includes("text/html")) {
-          console.log("Received HTML response from backend");
-          // HTML 응답 시 임시 성공 응답 반환 (개발용)
-          return NextResponse.json({
-            accessToken: "mock-access-token-" + Date.now(),
-            refreshToken: "mock-refresh-token-" + Date.now(),
-            tokenType: "Bearer",
-            expiresIn: 3600,
-            user: {
-              id: "1",
-              email,
-              name: "테스트 사용자",
-              phoneNumber: "010-1234-5678",
-              role: "USER",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        {
+          message: "올바른 이메일 형식이 아닙니다.",
+          error: "Invalid email format",
+          status: 400,
+          timestamp: getKSTISOString(),
+          path: "/api/users/login",
+          fieldErrors: [
+            {
+              field: "email",
+              message: "올바른 이메일 형식을 입력해주세요.",
             },
-          });
-        }
+          ],
+        },
+        { status: 400 }
+      );
+    }
 
-        // JSON 응답 처리
-        let data;
-        try {
-          data = await response.json();
-        } catch {
-          console.log("Failed to parse JSON from backend");
-          // JSON 파싱 실패 시 임시 성공 응답 반환 (개발용)
-          return NextResponse.json({
-            accessToken: "mock-access-token-" + Date.now(),
-            refreshToken: "mock-refresh-token-" + Date.now(),
-            tokenType: "Bearer",
-            expiresIn: 3600,
-            user: {
-              id: "1",
-              email,
-              name: "테스트 사용자",
-              phoneNumber: "010-1234-5678",
-              role: "USER",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
+    // 사용자 조회
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        {
+          message: "사용자를 찾을 수 없습니다.",
+          error: "User not found",
+          status: 404,
+          timestamp: getKSTISOString(),
+          path: "/api/users/login",
+          fieldErrors: [
+            {
+              field: "email",
+              message: "등록되지 않은 이메일입니다.",
             },
-          });
-        }
+          ],
+        },
+        { status: 404 }
+      );
+    }
 
-        console.log("Parsed response data:", data);
+    console.log(
+      "Current user last_login_at before update:",
+      user.last_login_at
+    );
 
-        if (!response.ok) {
-          return NextResponse.json(data, { status: response.status });
-        }
+    // 비밀번호 검증
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        {
+          message: "비밀번호가 일치하지 않습니다.",
+          error: "Invalid password",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/login",
+          fieldErrors: [
+            {
+              field: "password",
+              message: "비밀번호가 올바르지 않습니다.",
+            },
+          ],
+        },
+        { status: 401 }
+      );
+    }
 
-        return NextResponse.json(data);
-      } catch (fetchError) {
-        console.error("Backend fetch error:", fetchError);
-        // 백엔드 연결 실패 시 임시 성공 응답 반환 (개발용)
-        return NextResponse.json({
-          accessToken: "mock-access-token-" + Date.now(),
-          refreshToken: "mock-refresh-token-" + Date.now(),
-          tokenType: "Bearer",
-          expiresIn: 3600,
-          user: {
-            id: "1",
-            email,
-            name: "테스트 사용자",
-            phoneNumber: "010-1234-5678",
-            role: "USER",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+    // 계정 활성화 상태 확인
+    if (!user.is_active) {
+      return NextResponse.json(
+        {
+          message: "비활성화된 계정입니다.",
+          error: "Account deactivated",
+          status: 401,
+          timestamp: getKSTISOString(),
+          path: "/api/users/login",
+          fieldErrors: [
+            {
+              field: "email",
+              message: "계정이 비활성화되어 있습니다. 관리자에게 문의하세요.",
+            },
+          ],
+        },
+        { status: 401 }
+      );
+    }
+
+    // JWT 토큰 생성
+    const accessToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        phoneNumber: user.phone_number,
+        role: user.role,
+      },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        phoneNumber: user.phone_number,
+        type: "refresh",
+      },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // 마지막 로그인 시간 업데이트 (한국 시간 사용)
+    console.log("Updating last_login_at for user:", user.id);
+    const updateTime = getKSTISOString();
+    console.log("KST update time:", updateTime);
+    const { data: updateData, error: updateError } = await supabase
+      .from("users")
+      .update({ last_login_at: updateTime })
+      .eq("id", user.id)
+      .select("last_login_at");
+
+    if (updateError) {
+      console.error("Failed to update last_login_at:", updateError);
+      console.error("Update error details:", {
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+      });
+    } else {
+      console.log("Successfully updated last_login_at for user:", user.id);
+      console.log("Update result:", updateData);
+
+      // 업데이트 후 실제 값 확인
+      const { data: verifyData, error: verifyError } = await supabase
+        .from("users")
+        .select("last_login_at")
+        .eq("id", user.id)
+        .single();
+
+      if (verifyError) {
+        console.error("Failed to verify last_login_at update:", verifyError);
+      } else {
+        console.log(
+          "Verified last_login_at after update:",
+          verifyData.last_login_at
+        );
       }
     }
 
-    // 백엔드 API가 설정되지 않은 경우 임시 응답 반환 (개발용)
-    console.log("No backend API configured, returning mock response");
-    return NextResponse.json({
-      accessToken: "mock-access-token-" + Date.now(),
-      refreshToken: "mock-refresh-token-" + Date.now(),
-      tokenType: "Bearer",
-      expiresIn: 3600,
-      user: {
-        id: "1",
-        email,
-        name: "테스트 사용자",
-        phoneNumber: "010-1234-5678",
-        role: "USER",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    console.error("Login API Error:", error);
+    // 성공 응답
     return NextResponse.json(
       {
-        message: "서버 오류가 발생했습니다.",
-        error: "Internal Server Error",
+        accessToken,
+        refreshToken,
+        tokenType: "Bearer",
+        expiresIn: 3600,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          phoneNumber: user.phone_number,
+          role: user.role,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("로그인 에러:", error);
+    return NextResponse.json(
+      {
+        message: "서버 내부 오류가 발생했습니다.",
+        error: "Internal server error",
         status: 500,
-        timestamp: new Date().toISOString(),
+        timestamp: getKSTISOString(),
         path: "/api/users/login",
-        details: error instanceof Error ? error.message : String(error),
+        fieldErrors: [],
       },
       { status: 500 }
     );
