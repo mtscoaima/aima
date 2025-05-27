@@ -4,13 +4,7 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/SidebarContext";
-import {
-  BarChart3,
-  MessageSquare,
-  Send,
-  FileText,
-  ChevronRight,
-} from "lucide-react";
+import { BarChart3, MessageSquare, Send, FileText } from "lucide-react";
 import "./Sidebar.css";
 
 interface MenuItem {
