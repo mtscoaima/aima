@@ -38,6 +38,7 @@ export default function MessageSendPage() {
   const [showAliasModal, setShowAliasModal] = useState(false);
   const [editingNumber, setEditingNumber] = useState("");
   const [aliasValue, setAliasValue] = useState("");
+  const [recipientList, setRecipientList] = useState<string[]>([]);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // 발신번호 목록 (예시 데이터)
@@ -79,19 +80,130 @@ export default function MessageSendPage() {
   ];
 
   const handleSend = async () => {
-    if (!recipientNumbers || !message) {
-      alert("수신자와 메시지를 모두 입력해주세요.");
+    if (!selectedSender) {
+      alert("발신번호를 선택해주세요.");
+      return;
+    }
+
+    if (recipientList.length === 0 && !recipientNumbers) {
+      alert("수신자를 추가해주세요.");
+      return;
+    }
+
+    if (!message) {
+      alert("메시지 내용을 입력해주세요.");
       return;
     }
 
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      alert("메시지가 성공적으로 전송되었습니다.");
-    } catch {
-      alert("메시지 전송에 실패했습니다.");
+      // 수신자 목록이 있으면 목록을 사용하고, 없으면 입력된 번호 사용
+      const recipients =
+        recipientList.length > 0 ? recipientList : [recipientNumbers];
+
+      // 빈 번호 제거
+      const validRecipients = recipients.filter((number) => number.trim());
+
+      if (validRecipients.length === 0) {
+        alert("유효한 수신번호가 없습니다.");
+        return;
+      }
+
+      const response = await fetch("/api/message/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fromNumber: selectedSender.replace(/-/g, ""), // 하이픈 제거
+          toNumbers: validRecipients.map((number) => number.replace(/-/g, "")), // 하이픈 제거
+          subject: subject,
+          message: message,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(result.message);
+
+        // 성공 시 폼 초기화 (선택사항)
+        if (result.success) {
+          // setRecipientNumbers("");
+          // setMessage("");
+          // setSubject("");
+          // setRecipientList([]);
+        }
+      } else {
+        // 서버에서 반환된 상세 오류 메시지 표시
+        const errorMessage = result.error || "알 수 없는 오류가 발생했습니다.";
+        const details = result.details
+          ? `\n\n상세 정보: ${result.details}`
+          : "";
+
+        alert(`메시지 전송에 실패했습니다.\n\n${errorMessage}${details}`);
+
+        // 인증 오류인 경우 추가 안내
+        if (
+          errorMessage.includes("인증 실패") ||
+          errorMessage.includes("Authentication Failed")
+        ) {
+          console.error("NAVER SENS 인증 오류 - 환경 변수를 확인하세요:", {
+            hasServiceId: !!process.env.NAVER_SENS_SERVICE_ID,
+            hasAccessKey: !!process.env.NAVER_ACCESS_KEY_ID,
+            hasSecretKey: !!process.env.NAVER_SECRET_KEY,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("메시지 전송 오류:", error);
+      alert("메시지 전송 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 수신번호 추가 함수
+  const handleAddRecipient = () => {
+    const number = recipientNumbers.trim();
+    if (!number) {
+      alert("수신번호를 입력해주세요.");
+      return;
+    }
+
+    // 번호 형식 검증 (간단한 검증)
+    const phoneRegex = /^(\+?\d{1,3})?[\s-]?\d{2,4}[\s-]?\d{3,4}[\s-]?\d{4}$/;
+    if (!phoneRegex.test(number)) {
+      alert("올바른 전화번호 형식을 입력해주세요.");
+      return;
+    }
+
+    // 중복 확인
+    if (recipientList.includes(number)) {
+      alert("이미 추가된 번호입니다.");
+      return;
+    }
+
+    setRecipientList((prev) => [...prev, number]);
+    setRecipientNumbers(""); // 입력 필드 초기화
+  };
+
+  // 수신번호 삭제 함수
+  const handleRemoveRecipient = (numberToRemove: string) => {
+    setRecipientList((prev) =>
+      prev.filter((number) => number !== numberToRemove)
+    );
+  };
+
+  // 수신자 목록 전체 삭제
+  const handleClearRecipients = () => {
+    setRecipientList([]);
+  };
+
+  // Enter 키로 번호 추가
+  const handleRecipientKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleAddRecipient();
     }
   };
 
@@ -195,11 +307,16 @@ export default function MessageSendPage() {
                 onChange={(e) => setRecipientNumbers(e.target.value)}
                 placeholder="01022224444 수신"
                 className="number-input"
+                onKeyDown={handleRecipientKeyPress}
               />
               <div className="input-help">
                 <HelpCircle className="help-icon" size={14} />
               </div>
               <div className="input-actions">
+                <button className="action-btn add" onClick={handleAddRecipient}>
+                  <span>+</span>
+                  추가
+                </button>
                 <button className="action-btn excel">
                   <FileSpreadsheet size={14} />
                   엑셀
@@ -215,11 +332,28 @@ export default function MessageSendPage() {
           <div className="content-section">
             <div className="section-header">
               <Users className="icon" size={16} />
-              <span>추가한 수신번호 (총 0개)</span>
-              <button className="hide-button">비우기</button>
+              <span>추가한 수신번호 (총 {recipientList.length}개)</span>
+              <button className="hide-button" onClick={handleClearRecipients}>
+                비우기
+              </button>
             </div>
             <div className="recipient-list">
-              <p className="empty-message">수신자명단이 비어있습니다.</p>
+              {recipientList.length === 0 ? (
+                <p className="empty-message">수신자명단이 비어있습니다.</p>
+              ) : (
+                recipientList.map((number, index) => (
+                  <div key={index} className="recipient-item">
+                    <span className="recipient-number">{number}</span>
+                    <button
+                      className="remove-btn"
+                      onClick={() => handleRemoveRecipient(number)}
+                    >
+                      <X size={14} />
+                      제거
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
