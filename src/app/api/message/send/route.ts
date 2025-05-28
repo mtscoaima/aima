@@ -5,6 +5,7 @@ import crypto from "crypto";
 const NAVER_SENS_SERVICE_ID = process.env.NAVER_SENS_SERVICE_ID;
 const NAVER_ACCESS_KEY_ID = process.env.NAVER_ACCESS_KEY_ID;
 const NAVER_SECRET_KEY = process.env.NAVER_SECRET_KEY;
+const TEST_CALLING_NUMBER = process.env.TEST_CALLING_NUMBER;
 
 // 서명 생성 함수
 function makeSignature(
@@ -261,11 +262,17 @@ export async function POST(request: NextRequest) {
       secretKeyLength: NAVER_SECRET_KEY?.length || 0,
     });
 
-    if (!NAVER_SENS_SERVICE_ID || !NAVER_ACCESS_KEY_ID || !NAVER_SECRET_KEY) {
+    if (
+      !NAVER_SENS_SERVICE_ID ||
+      !NAVER_ACCESS_KEY_ID ||
+      !NAVER_SECRET_KEY ||
+      !TEST_CALLING_NUMBER
+    ) {
       const missingVars = [];
       if (!NAVER_SENS_SERVICE_ID) missingVars.push("NAVER_SENS_SERVICE_ID");
       if (!NAVER_ACCESS_KEY_ID) missingVars.push("NAVER_ACCESS_KEY_ID");
       if (!NAVER_SECRET_KEY) missingVars.push("NAVER_SECRET_KEY");
+      if (!TEST_CALLING_NUMBER) missingVars.push("TEST_CALLING_NUMBER");
 
       return NextResponse.json(
         {
@@ -279,12 +286,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fromNumber, toNumber, toNumbers, subject, message } = body;
+    const { toNumber, toNumbers, subject, message } = body;
+
+    // 환경변수에서 발신번호 사용
+    const fromNumber = TEST_CALLING_NUMBER;
 
     // 필수 필드 검증
-    if (!fromNumber || !message) {
+    if (!message) {
       return NextResponse.json(
-        { error: "발신번호와 메시지 내용은 필수입니다." },
+        { error: "메시지 내용은 필수입니다." },
         { status: 400 }
       );
     }

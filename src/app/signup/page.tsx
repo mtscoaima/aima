@@ -215,7 +215,7 @@ export default function SignupPage() {
       if (response.ok) {
         setIsVerificationSent(true);
         setVerificationTimer(300); // 5분 타이머 시작
-        alert("인증번호가 발송되었습니다. 콘솔을 확인해주세요.");
+        alert("인증번호가 발송되었습니다.");
       } else {
         setErrors((prev) => ({
           ...prev,
