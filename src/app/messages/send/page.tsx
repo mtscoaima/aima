@@ -32,7 +32,7 @@ export default function MessageSendPage() {
   const [isOverseas, setIsOverseas] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSenderModal, setShowSenderModal] = useState(false);
-  const [selectedSender, setSelectedSender] = useState("");
+  const [selectedSender, setSelectedSender] = useState("테스트 번호");
   const [searchTerm, setSearchTerm] = useState("");
   const [showMoreMenu, setShowMoreMenu] = useState("");
   const [showAliasModal, setShowAliasModal] = useState(false);
@@ -43,7 +43,6 @@ export default function MessageSendPage() {
 
   // 발신번호 목록 (예시 데이터)
   const [senderNumbers, setSenderNumbers] = useState([
-    { number: "010-4205-6734", status: "별칭 없음", verified: true },
     { number: "010-1234-5678", status: "별칭 없음", verified: true },
     { number: "010-9876-5432", status: "별칭 없음", verified: true },
   ]);
@@ -115,7 +114,6 @@ export default function MessageSendPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          fromNumber: selectedSender.replace(/-/g, ""), // 하이픈 제거
           toNumbers: validRecipients.map((number) => number.replace(/-/g, "")), // 하이픈 제거
           subject: subject,
           message: message,
@@ -274,6 +272,8 @@ export default function MessageSendPage() {
                   <button
                     className="change-button"
                     onClick={() => setShowSenderModal(true)}
+                    disabled
+                    style={{ opacity: 0.5, cursor: "not-allowed" }}
                   >
                     <ArrowLeftRight size={14} />
                     변경
@@ -287,6 +287,8 @@ export default function MessageSendPage() {
                   <button
                     className="select-button"
                     onClick={() => setShowSenderModal(true)}
+                    disabled
+                    style={{ opacity: 0.5, cursor: "not-allowed" }}
                   >
                     선택
                   </button>
