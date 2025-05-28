@@ -100,7 +100,7 @@
   color: #444;
 }
 
-.input-group input, 
+.input-group input,
 .input-group textarea,
 .input-group select {
   width: 100%;
@@ -353,13 +353,27 @@
 }
 
 @keyframes typing-dot {
-  0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .chat-input-container {
@@ -558,7 +572,7 @@
 .mobile-frame {
   width: 300px;
   height: 600px;
-  border: 10px solid #333;
+  border: 10px solid #e5e8ec;
   border-radius: 30px;
   overflow: hidden;
   background-color: #f8f8f8;
@@ -723,19 +737,19 @@
     flex-direction: column;
     height: auto;
   }
-  
+
   .template-preview {
     position: static;
     max-width: 100%;
     margin-top: 2rem;
   }
-  
+
   .template-editor {
     max-height: none;
     overflow-y: visible;
   }
-  
+
   .chat-container {
     height: 500px;
   }
-} 
+}

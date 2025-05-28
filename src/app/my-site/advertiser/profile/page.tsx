@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { getUserInfo, updateUserInfo } from "@/lib/api";
 import { formatKSTDateTime, formatKSTDate } from "@/lib/utils";
@@ -1195,9 +1196,11 @@ export default function ProfilePage() {
                       </p>
                     </div>
                   ) : (
-                    <img
+                    <Image
                       src={showPreviewModal.fileUrl}
                       alt={showPreviewModal.fileName}
+                      width={800}
+                      height={600}
                       className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-md"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
