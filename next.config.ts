@@ -4,22 +4,39 @@ const nextConfig: NextConfig = {
   /* config options here */
   images: {
     domains: [
-      'oaidalleapiprodscus.blob.core.windows.net',
-      'images.unsplash.com'
+      "oaidalleapiprodscus.blob.core.windows.net",
+      "images.unsplash.com",
+      "via.placeholder.com",
+      "picsum.photos",
     ],
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'oaidalleapiprodscus.blob.core.windows.net',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "oaidalleapiprodscus.blob.core.windows.net",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: '*.windows.net',
-        pathname: '/**',
-      }
-    ]
-  }
+        protocol: "https",
+        hostname: "*.windows.net",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "plulovyzbvlmqdzmlnbp.supabase.co",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

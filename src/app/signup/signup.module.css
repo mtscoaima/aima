@@ -1,0 +1,563 @@
+.signupContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.signupWrapper {
+  width: 100%;
+  max-width: 480px;
+}
+
+.signupCard {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 40px;
+  margin: 40px 0;
+}
+
+.signupHeader {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logoSection {
+  margin-bottom: 24px;
+}
+
+.logoText {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0070f3;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.signupTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.signupDescription {
+  color: #64748b;
+  font-size: 16px;
+  margin: 0;
+}
+
+.signupForm {
+  margin-bottom: 32px;
+}
+
+.formSection {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 20px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.formRow {
+  margin-bottom: 16px;
+}
+
+.formGroup {
+  width: 100%;
+}
+
+.formLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.formLabel.required::after {
+  content: " *";
+  color: #ef4444;
+}
+
+.formInput {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 16px;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: #0070f3;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.1);
+}
+
+.formInput::placeholder {
+  color: #9ca3af;
+}
+
+.formInput.error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.formHelp {
+  font-size: 12px;
+  color: #64748b;
+  margin: 6px 0 0 0;
+}
+
+.formError {
+  font-size: 12px;
+  color: #ef4444;
+  margin: 6px 0 0 0;
+}
+
+.termsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* 전체 동의 스타일 */
+.agreeAllLabel {
+  padding: 16px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.agreeAllLabel:hover {
+  background: #f1f5f9;
+  border-color: #0070f3;
+}
+
+.agreeAllText {
+  font-size: 16px;
+  color: #0070f3;
+  font-weight: 600;
+}
+
+.termsDivider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 8px 0;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.checkboxLabel.requiredTerm .checkboxText::after {
+  content: " *";
+  color: #ef4444;
+}
+
+.checkboxInput {
+  margin-right: 12px;
+  transform: scale(1.1);
+}
+
+.checkboxText {
+  font-size: 14px;
+  color: #374151;
+  flex: 1;
+}
+
+.termsLink {
+  font-size: 12px;
+  color: #0070f3;
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.termsLink:hover {
+  text-decoration: underline;
+  color: #0051cc;
+}
+
+.signupButton {
+  width: 100%;
+  background: #0070f3;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.signupButton:hover {
+  background: #0051cc;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 112, 243, 0.3);
+}
+
+.signupButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.formInput:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.checkboxInput:disabled {
+  cursor: not-allowed;
+}
+
+.checkboxLabel.error {
+  color: #ef4444;
+}
+
+.errorMessage {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.successMessage {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.successIcon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.successMessage h2 {
+  color: #059669;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.successMessage p {
+  color: #64748b;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.loginButton {
+  display: inline-block;
+  background: #0070f3;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.loginButton:hover {
+  background: #0051cc;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 112, 243, 0.3);
+}
+
+.loginLink {
+  text-align: center;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.loginLink span {
+  color: #475569;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.loginButtonLink {
+  color: #0070f3;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.loginButtonLink:hover {
+  text-decoration: underline;
+  color: #0051cc;
+}
+
+/* Progress Bar */
+.progressBar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.progressBar::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #e5e7eb;
+  z-index: 0;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+.stepNumber {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+.progressStep.active .stepNumber {
+  background: #0070f3;
+  color: white;
+}
+
+.stepLabel {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+  text-align: center;
+}
+
+.progressStep.active .stepLabel {
+  color: #0070f3;
+}
+
+/* Phone Verification */
+.phoneInputGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.phoneInputGroup .formInput {
+  flex: 1;
+}
+
+.verifyButton {
+  padding: 14px 20px;
+  background: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.verifyButton:hover:not(:disabled) {
+  background: #0051cc;
+}
+
+.verifyButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.verifiedMessage {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #059669;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Timer styles */
+.timer {
+  color: #0070f3;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.timerExpired {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* Password Strength */
+.passwordStrength {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strengthBar {
+  flex: 1;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.strengthFill {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+.strengthText {
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 40px;
+}
+
+/* File Upload */
+.fileInput {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #374151;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fileInput:hover {
+  border-color: #0070f3;
+  background: white;
+}
+
+.fileInput:focus {
+  outline: none;
+  border-color: #0070f3;
+  background: white;
+}
+
+.fileHelp {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+/* Button Group */
+.buttonGroup {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.prevButton,
+.nextButton {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.prevButton {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.prevButton:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.nextButton {
+  background: #0070f3;
+  color: white;
+}
+
+.nextButton:hover:not(:disabled) {
+  background: #0051cc;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 112, 243, 0.3);
+}
+
+.prevButton:disabled,
+.nextButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .signupCard {
+    padding: 24px;
+  }
+
+  .logoText {
+    font-size: 28px;
+  }
+
+  .signupTitle {
+    font-size: 24px;
+  }
+
+  .signupDescription {
+    font-size: 14px;
+  }
+}
