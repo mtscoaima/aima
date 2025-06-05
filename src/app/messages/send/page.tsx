@@ -401,7 +401,7 @@ export default function MessageSendPage() {
                 type="text"
                 value={recipientNumbers}
                 onChange={(e) => setRecipientNumbers(e.target.value)}
-                placeholder="01022224444 수신"
+                placeholder="01012345678"
                 className="number-input"
               />
               <div className="input-help">
@@ -419,8 +419,7 @@ export default function MessageSendPage() {
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="이곳에 문자 내용을 입력합니다
-치환문구 예시) #{이름}님 #{시간}까지 방문 예약입니다."
+                  placeholder="문자 내용을 입력해주세요."
                   className="message-textarea"
                   maxLength={2000}
                 />
@@ -437,9 +436,7 @@ export default function MessageSendPage() {
             <div className="section-header">
               <ImageIcon className="icon" size={16} />
               <span>이미지 첨부</span>
-              <span className="file-info">
-                (최대 300KB, JPG/JPEG, 1500×1440 이하)
-              </span>
+              <span className="file-info">(최대 300KB, JPG/JPEG)</span>
             </div>
             <div className="file-attachment-section">
               <input
