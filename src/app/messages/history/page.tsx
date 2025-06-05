@@ -106,7 +106,7 @@ export default function MessageHistoryPage() {
   };
 
   const handleExport = () => {
-    console.log("엑셀 다운로드");
+    // TODO: 엑셀 다운로드 기능 구현
   };
 
   const totalPages = Math.ceil(filteredMessages.length / itemsPerPage);

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import {
   Smartphone,
   Phone,
@@ -11,9 +12,17 @@ import {
   ArrowLeftRight,
   RefreshCw,
   Paperclip,
-  Image,
+  Image as ImageIcon,
   Trash2,
 } from "lucide-react";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import {
+  getImageDimensionsFromFile,
+  resizeImage,
+  isResolutionExceeded,
+  isFileSizeExceeded,
+  ImageDimensions,
+} from "@/lib/imageUtils";
 import "./styles.css";
 
 export default function MessageSendPage() {
@@ -35,6 +44,13 @@ export default function MessageSendPage() {
       uploading: boolean;
     }>
   >([]);
+
+  // 해상도 확인 다이얼로그 상태
+  const [showResolutionDialog, setShowResolutionDialog] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{
+    file: File;
+    dimensions: ImageDimensions;
+  } | null>(null);
 
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -183,51 +199,103 @@ export default function MessageSendPage() {
   };
 
   // 파일 선택 핸들러
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = event.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
-      // 파일 크기 검증 (300KB)
-      if (file.size > 300 * 1024) {
-        alert(
-          `${file.name}: 파일 크기는 300KB 이하여야 합니다. (현재: ${Math.round(
-            file.size / 1024
-          )}KB)`
-        );
-        return;
-      }
-
+    for (const file of Array.from(files)) {
       // 파일 형식 검증 (네이버 SENS API는 JPG/JPEG만 지원)
       const allowedTypes = ["image/jpeg", "image/jpg"];
       if (!allowedTypes.includes(file.type)) {
         alert(`${file.name}: JPG/JPEG 형식의 이미지 파일만 업로드 가능합니다.`);
-        return;
+        continue;
       }
 
-      // 미리보기 생성
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const preview = e.target?.result as string;
-        const newFileData = {
-          file,
-          preview,
-          uploading: true,
-        };
+      try {
+        // 이미지 해상도 확인
+        const dimensions = await getImageDimensionsFromFile(file);
 
-        setAttachedFiles((prev) => [...prev, newFileData]);
-
-        // 바로 업로드 시작
-        const currentIndex = attachedFiles.length;
-        await uploadFileImmediately(file, currentIndex);
-      };
-      reader.readAsDataURL(file);
-    });
+        // 해상도 초과 확인
+        if (isResolutionExceeded(dimensions)) {
+          // 해상도 초과 시 사용자에게 확인
+          setPendingFile({ file, dimensions });
+          setShowResolutionDialog(true);
+          break; // 한 번에 하나씩 처리
+        } else {
+          // 해상도가 적절한 경우 바로 처리
+          await processFile(file);
+        }
+      } catch (error) {
+        console.error("이미지 해상도 확인 실패:", error);
+        alert(`${file.name}: 이미지 정보를 읽을 수 없습니다.`);
+      }
+    }
 
     // input 초기화
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  // 파일 처리 함수
+  const processFile = async (file: File) => {
+    // 파일 크기 검증 (300KB)
+    if (isFileSizeExceeded(file)) {
+      alert(
+        `${file.name}: 파일 크기는 300KB 이하여야 합니다. (현재: ${Math.round(
+          file.size / 1024
+        )}KB)`
+      );
+      return;
+    }
+
+    // 미리보기 생성
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const preview = e.target?.result as string;
+      const newFileData = {
+        file,
+        preview,
+        uploading: true,
+      };
+
+      setAttachedFiles((prev) => [...prev, newFileData]);
+
+      // 바로 업로드 시작
+      const currentIndex = attachedFiles.length;
+      await uploadFileImmediately(file, currentIndex);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 해상도 낮춤 확인 핸들러
+  const handleResolutionConfirm = async () => {
+    if (!pendingFile) return;
+
+    try {
+      // 이미지 해상도 낮춤
+      const resizedFile = await resizeImage(pendingFile.file);
+
+      // 리사이징된 파일 처리
+      await processFile(resizedFile);
+
+      // 상태 초기화
+      setPendingFile(null);
+      setShowResolutionDialog(false);
+    } catch (error) {
+      console.error("이미지 리사이징 실패:", error);
+      alert("이미지 해상도를 낮추는 중 오류가 발생했습니다.");
+      setPendingFile(null);
+      setShowResolutionDialog(false);
+    }
+  };
+
+  // 해상도 낮춤 취소 핸들러
+  const handleResolutionCancel = () => {
+    setPendingFile(null);
+    setShowResolutionDialog(false);
   };
 
   // 파일 선택 시 즉시 업로드
@@ -367,7 +435,7 @@ export default function MessageSendPage() {
 
           <div className="content-section">
             <div className="section-header">
-              <Image className="icon" size={16} />
+              <ImageIcon className="icon" size={16} />
               <span>이미지 첨부</span>
               <span className="file-info">
                 (최대 300KB, JPG/JPEG, 1500×1440 이하)
@@ -398,10 +466,13 @@ export default function MessageSendPage() {
                   {attachedFiles.map((fileData, index) => (
                     <div key={index} className="file-item">
                       <div className="file-preview">
-                        <img
+                        <Image
                           src={fileData.preview}
                           alt={fileData.file.name}
                           className="preview-image"
+                          width={100}
+                          height={100}
+                          style={{ objectFit: "cover" }}
                         />
                       </div>
                       <div className="file-info-detail">
@@ -590,6 +661,22 @@ export default function MessageSendPage() {
           </div>
         </div>
       )}
+
+      {/* 해상도 초과 확인 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={showResolutionDialog}
+        onClose={handleResolutionCancel}
+        onConfirm={handleResolutionConfirm}
+        title="이미지 해상도 초과"
+        message={
+          pendingFile
+            ? `선택한 이미지의 해상도가 제한을 초과합니다.\n\n현재 해상도: ${pendingFile.dimensions.width}×${pendingFile.dimensions.height}\n최대 허용: 1500×1440\n\n이미지 해상도를 자동으로 낮춰서 업로드하시겠습니까?`
+            : ""
+        }
+        confirmText="예, 해상도를 낮춰서 업로드"
+        cancelText="아니오, 취소"
+        type="warning"
+      />
     </div>
   );
 }

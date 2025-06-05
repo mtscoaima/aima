@@ -268,6 +268,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: `이미지 해상도가 너무 큽니다. 최대 1500×1440 픽셀까지 지원됩니다. (현재: ${dimensions.width}×${dimensions.height})`,
+            code: "RESOLUTION_EXCEEDED",
+            dimensions: {
+              current: { width: dimensions.width, height: dimensions.height },
+              max: { width: 1500, height: 1440 },
+            },
           },
           { status: 400 }
         );
@@ -277,12 +282,8 @@ export async function POST(request: NextRequest) {
       // 해상도 검증에 실패해도 업로드는 진행 (네이버 API에서 최종 검증)
     }
 
-    console.log(`파일 업로드 시작: ${cleanFileName} (${file.size} bytes)`);
-
     // 파일 업로드 실행
     const result = await uploadFile(file, cleanFileName, imageBuffer);
-
-    console.log("파일 업로드 성공:", result);
 
     return NextResponse.json({
       success: true,

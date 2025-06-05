@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react';
-import './MessageSendForm.css';
+import React, { useState } from "react";
+import "./MessageSendForm.css";
 
 const MessageSendForm: React.FC = () => {
-  const [senderNumber, setSenderNumber] = useState<string>('');
-  const [messageContent, setMessageContent] = useState<string>('');
+  const [senderNumber, setSenderNumber] = useState<string>("");
+  const [messageContent, setMessageContent] = useState<string>("");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [receiverNumbers, setReceiverNumbers] = useState<string[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -14,7 +14,7 @@ const MessageSendForm: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // 메시지 전송 로직
-    console.log('메시지 전송', { senderNumber, messageContent, receiverNumbers, attachedFiles });
+    // TODO: 실제 메시지 전송 API 호출
   };
 
   return (
@@ -33,7 +33,9 @@ const MessageSendForm: React.FC = () => {
         </div>
 
         <div className="saved-receivers-section">
-          <h3>자주 사용하는 수신번호 <span>(총 0개)</span></h3>
+          <h3>
+            자주 사용하는 수신번호 <span>(총 0개)</span>
+          </h3>
           <button className="btn-show-hidden">비우기</button>
         </div>
       </div>
@@ -41,9 +43,15 @@ const MessageSendForm: React.FC = () => {
       <div className="message-content-section">
         <div className="message-tabs">
           <button className="tab-btn active">문자메시지</button>
-          <button className="tab-btn disabled" disabled>알림톡</button>
-          <button className="tab-btn disabled" disabled>친구톡</button>
-          <button className="tab-btn disabled" disabled>네이버톡톡</button>
+          <button className="tab-btn disabled" disabled>
+            알림톡
+          </button>
+          <button className="tab-btn disabled" disabled>
+            친구톡
+          </button>
+          <button className="tab-btn disabled" disabled>
+            네이버톡톡
+          </button>
         </div>
 
         <div className="message-compose">
@@ -54,9 +62,7 @@ const MessageSendForm: React.FC = () => {
             onChange={(e) => setMessageContent(e.target.value)}
             className="message-textarea"
           />
-          <div className="character-count">
-            0 / 2,000 Bytes
-          </div>
+          <div className="character-count">0 / 2,000 Bytes</div>
         </div>
 
         <div className="attachment-section">
@@ -86,11 +92,13 @@ const MessageSendForm: React.FC = () => {
           <div className="option-tooltip">?</div>
         </div>
         <div className="option-row">
-          <button className="btn-submit" onClick={handleSubmit}>전송/예약 준비</button>
+          <button className="btn-submit" onClick={handleSubmit}>
+            전송/예약 준비
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-export default MessageSendForm; 
+export default MessageSendForm;

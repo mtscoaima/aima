@@ -366,15 +366,7 @@ async function sendMMS(
 
 export async function POST(request: NextRequest) {
   try {
-    // 환경 변수 확인 및 디버깅 정보
-    console.log("환경 변수 확인:", {
-      hasServiceId: !!NAVER_SENS_SERVICE_ID,
-      hasAccessKey: !!NAVER_ACCESS_KEY_ID,
-      hasSecretKey: !!NAVER_SECRET_KEY,
-      serviceIdLength: NAVER_SENS_SERVICE_ID?.length || 0,
-      accessKeyLength: NAVER_ACCESS_KEY_ID?.length || 0,
-      secretKeyLength: NAVER_SECRET_KEY?.length || 0,
-    });
+    // 환경 변수 확인
 
     if (
       !NAVER_SENS_SERVICE_ID ||
@@ -426,7 +418,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`메시지 전송 시작: ${recipients.length}명의 수신자`);
     const results = [];
 
     // 각 수신자에게 메시지 전송
@@ -437,9 +428,6 @@ export async function POST(request: NextRequest) {
         let result;
         if (fileIds && fileIds.length > 0) {
           // MMS 발송 (파일 첨부)
-          console.log(
-            `MMS 발송 시도: ${fromNumber} -> ${recipient}, 파일 ${fileIds.length}개`
-          );
           result = await sendMMS(
             fromNumber,
             recipient,
@@ -449,11 +437,9 @@ export async function POST(request: NextRequest) {
           );
         } else if (message.length <= 90 && !subject) {
           // SMS 발송 (90자 이하, 제목 없음)
-          console.log(`SMS 발송 시도: ${fromNumber} -> ${recipient}`);
           result = await sendSMS(fromNumber, recipient, message);
         } else {
           // LMS 발송 (90자 초과 또는 제목 있음)
-          console.log(`LMS 발송 시도: ${fromNumber} -> ${recipient}`);
           result = await sendLMS(fromNumber, recipient, subject || "", message);
         }
 
@@ -462,7 +448,6 @@ export async function POST(request: NextRequest) {
           success: true,
           data: result,
         });
-        console.log(`메시지 발송 성공: ${recipient}`);
       } catch (error) {
         console.error(`메시지 전송 실패 (${recipient}):`, error);
         results.push({
@@ -476,8 +461,6 @@ export async function POST(request: NextRequest) {
     // 결과 집계
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.length - successCount;
-
-    console.log(`전송 완료: 성공 ${successCount}건, 실패 ${failCount}건`);
 
     return NextResponse.json({
       success: failCount === 0,
