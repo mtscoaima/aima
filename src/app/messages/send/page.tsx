@@ -10,6 +10,9 @@ import {
   Settings,
   ArrowLeftRight,
   RefreshCw,
+  Paperclip,
+  Image,
+  Trash2,
 } from "lucide-react";
 import "./styles.css";
 
@@ -24,7 +27,17 @@ export default function MessageSendPage() {
   const [showAliasModal, setShowAliasModal] = useState(false);
   const [editingNumber, setEditingNumber] = useState("");
   const [aliasValue, setAliasValue] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState<
+    Array<{
+      file: File;
+      fileId?: string;
+      preview: string;
+      uploading: boolean;
+    }>
+  >([]);
+
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 발신번호 목록 (예시 데이터)
   const [senderNumbers, setSenderNumbers] = useState([
@@ -69,8 +82,29 @@ export default function MessageSendPage() {
       return;
     }
 
+    // 파일이 업로드 중인지 확인
+    const hasUploadingFiles = attachedFiles.some((file) => file.uploading);
+    if (hasUploadingFiles) {
+      alert("파일 업로드가 진행 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    // 업로드 실패한 파일이 있는지 확인
+    const hasFailedFiles = attachedFiles.some(
+      (file) => !file.uploading && !file.fileId
+    );
+    if (hasFailedFiles) {
+      alert("업로드에 실패한 파일이 있습니다. 파일을 다시 선택해주세요.");
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // 업로드된 파일 ID 수집
+      const fileIds = attachedFiles
+        .filter((file) => file.fileId)
+        .map((file) => file.fileId);
+
       const response = await fetch("/api/message/send", {
         method: "POST",
         headers: {
@@ -79,6 +113,7 @@ export default function MessageSendPage() {
         body: JSON.stringify({
           toNumbers: [recipientNumbers.replace(/-/g, "")], // 하이픈 제거
           message: message,
+          fileIds: fileIds.length > 0 ? fileIds : undefined,
         }),
       });
 
@@ -86,6 +121,10 @@ export default function MessageSendPage() {
 
       if (response.ok) {
         alert(result.message);
+        // 전송 성공 시 모든 입력 초기화
+        setRecipientNumbers("");
+        setMessage("");
+        setAttachedFiles([]);
       } else {
         const errorMessage = result.error || "알 수 없는 오류가 발생했습니다.";
         const details = result.details
@@ -141,6 +180,99 @@ export default function MessageSendPage() {
   const handleDefaultSet = (number: string) => {
     setShowMoreMenu("");
     alert(`${number}을(를) 기본으로 설정했습니다.`);
+  };
+
+  // 파일 선택 핸들러
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      // 파일 크기 검증 (300KB)
+      if (file.size > 300 * 1024) {
+        alert(
+          `${file.name}: 파일 크기는 300KB 이하여야 합니다. (현재: ${Math.round(
+            file.size / 1024
+          )}KB)`
+        );
+        return;
+      }
+
+      // 파일 형식 검증 (네이버 SENS API는 JPG/JPEG만 지원)
+      const allowedTypes = ["image/jpeg", "image/jpg"];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`${file.name}: JPG/JPEG 형식의 이미지 파일만 업로드 가능합니다.`);
+        return;
+      }
+
+      // 미리보기 생성
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const preview = e.target?.result as string;
+        const newFileData = {
+          file,
+          preview,
+          uploading: true,
+        };
+
+        setAttachedFiles((prev) => [...prev, newFileData]);
+
+        // 바로 업로드 시작
+        const currentIndex = attachedFiles.length;
+        await uploadFileImmediately(file, currentIndex);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // input 초기화
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // 파일 선택 시 즉시 업로드
+  const uploadFileImmediately = async (file: File, fileIndex: number) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/message/upload-file", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setAttachedFiles((prev) =>
+          prev.map((item, index) =>
+            index === fileIndex
+              ? { ...item, uploading: false, fileId: result.fileId }
+              : item
+          )
+        );
+      } else {
+        alert(`파일 업로드 실패: ${result.error}`);
+        setAttachedFiles((prev) =>
+          prev.map((item, index) =>
+            index === fileIndex ? { ...item, uploading: false } : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error("파일 업로드 오류:", error);
+      alert("파일 업로드 중 오류가 발생했습니다.");
+      setAttachedFiles((prev) =>
+        prev.map((item, index) =>
+          index === fileIndex ? { ...item, uploading: false } : item
+        )
+      );
+    }
+  };
+
+  // 파일 삭제
+  const removeFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -230,6 +362,76 @@ export default function MessageSendPage() {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="content-section">
+            <div className="section-header">
+              <Image className="icon" size={16} />
+              <span>이미지 첨부</span>
+              <span className="file-info">
+                (최대 300KB, JPG/JPEG, 1500×1440 이하)
+              </span>
+            </div>
+            <div className="file-attachment-section">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/jpeg,image/jpg"
+                multiple
+                style={{ display: "none" }}
+              />
+
+              <button
+                type="button"
+                className="file-select-button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+              >
+                <Paperclip size={16} />
+                이미지 선택
+              </button>
+
+              {attachedFiles.length > 0 && (
+                <div className="attached-files">
+                  {attachedFiles.map((fileData, index) => (
+                    <div key={index} className="file-item">
+                      <div className="file-preview">
+                        <img
+                          src={fileData.preview}
+                          alt={fileData.file.name}
+                          className="preview-image"
+                        />
+                      </div>
+                      <div className="file-info-detail">
+                        <div className="file-name">{fileData.file.name}</div>
+                        <div className="file-size">
+                          {Math.round(fileData.file.size / 1024)}KB
+                        </div>
+                        {fileData.uploading && (
+                          <div className="upload-status uploading">
+                            업로드 중...
+                          </div>
+                        )}
+                        {fileData.fileId && (
+                          <div className="upload-status uploaded">
+                            업로드 완료
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="remove-file-button"
+                        onClick={() => removeFile(index)}
+                        disabled={fileData.uploading || isLoading}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -391,4 +593,3 @@ export default function MessageSendPage() {
     </div>
   );
 }
-
