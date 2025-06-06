@@ -205,6 +205,9 @@ export default function TargetMarketingPage() {
                       : msg
                   )
                 );
+
+                setCurrentGeneratedImage(data.imageUrl);
+
                 // 이미지 생성 중 스크롤
                 setTimeout(() => scrollToBottom(), 100);
               } else if (data.type === "image_generated") {
