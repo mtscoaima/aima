@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Image as ImageIcon, MessageSquare, Target, Sparkles, Download, Edit, Trash2, X, Phone } from "lucide-react";
+import { Send, Image as ImageIcon, MessageSquare, Target, Sparkles, Download, Edit, Trash2, X, Phone, Smartphone, Paperclip } from "lucide-react";
 import "./styles.css";
 
 interface Message {
@@ -414,78 +414,82 @@ export default function TargetMarketingPage() {
           </div>
         </div>
 
-        {/* 우측: 생성 결과 영역 */}
-        <div className="results-section">
-          <div className="results-header">
-            <div className="results-title">
-              <ImageIcon size={20} />
-              <span>생성 결과</span>
+        {/* 우측: MMS 전송 영역 */}
+        <div className="mms-send-section">
+          <div className="mms-send-content">
+            <div className="content-section">
+              <div className="section-header">
+                <Smartphone size={16} />
+                <span>메시지 발신번호</span>
+              </div>
+              <div className="selected-sender">
+                <div className="sender-info-row">
+                  <div className="sender-details">
+                    <div className="sender-display">
+                      <Phone className="sender-icon" size={16} />
+                      <span className="sender-title">메시지 발신번호</span>
+                    </div>
+                    <div className="sender-number">010-1234-5678</div>
+                  </div>
+                  <button className="change-button" disabled>
+                    <Edit size={14} />
+                    변경
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="results-count">
-              총 {templates.length}개
-            </div>
-          </div>
 
-          <div className="templates-grid">
-            {templates.map((template) => (
-              <div key={template.id} className="template-card">
-                {template.imageUrl && (
-                  <div className="template-image">
-                    <img src={template.imageUrl} alt={template.title} />
-                    <div className="image-overlay">
-                      <button
-                        onClick={() => handleTemplateAction(template.id, "edit")}
-                        className="overlay-button"
-                        title="편집"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleTemplateAction(template.id, "delete")}
-                        className="overlay-button delete"
-                        title="삭제"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="template-content">
-                  <div className="template-header">
-                    <h3 className="template-title">{template.title}</h3>
-                    <span className={`template-status status-${template.status}`}>
-                      {template.status}
-                    </span>
-                  </div>
-                  
-                  <p className="template-description">{template.description}</p>
-                  
-                  <div className="template-meta">
-                    <span className="template-date">
-                      {template.createdAt.toLocaleDateString()}
-                    </span>
-                    <div className="template-actions">
-                      <button
-                        onClick={() => handleTemplateAction(template.id, "send")}
-                        className="action-button primary"
-                      >
-                        <Send size={14} />
-                        MMS 전송
-                      </button>
-                    </div>
+            <div className="content-section">
+              <div className="section-header">
+                <Phone size={16} />
+                <span>메시지 수신번호</span>
+              </div>
+              <div className="recipient-input">
+                <input
+                  type="text"
+                  placeholder="01012345678"
+                  className="number-input"
+                />
+              </div>
+            </div>
+
+            <div className="content-section">
+              <div className="section-header">
+                <span>내용 입력</span>
+              </div>
+              <div className="message-input-section">
+                <div className="form-group">
+                  <textarea
+                    placeholder="문자 내용을 입력해주세요."
+                    className="message-textarea"
+                    maxLength={2000}
+                  />
+                  <div className="message-footer">
+                    <span className="char-count">0 / 2,000 bytes</span>
                   </div>
                 </div>
               </div>
-            ))}
-            
-            {templates.length === 0 && (
-              <div className="empty-state">
-                <ImageIcon size={48} />
-                <h3>아직 생성된 템플릿이 없습니다</h3>
-                <p>AI와 대화하여 마케팅 캠페인을 만들어보세요</p>
+            </div>
+
+            <div className="content-section">
+              <div className="section-header">
+                <ImageIcon size={16} />
+                <span>이미지 첨부</span>
+                <span className="file-info">(최대 300KB, JPG/JPEG)</span>
               </div>
-            )}
+              <div className="file-attachment-section">
+                <button type="button" className="file-select-button" disabled>
+                  <Paperclip size={16} />
+                  이미지 선택
+                </button>
+              </div>
+            </div>
+
+            <div className="content-section">
+              <button className="send-button" disabled>
+                전송
+              </button>
+            </div>
           </div>
         </div>
       </div>
