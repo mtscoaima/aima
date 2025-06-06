@@ -799,6 +799,37 @@ body .main-content {
   to { transform: rotate(360deg); }
 }
 
+/* 버튼 그룹 스타일 */
+.button-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.clear-button {
+  padding: 12px 20px;
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 80px;
+}
+
+.clear-button:hover:not(:disabled) {
+  background: #e9ecef;
+  color: #495057;
+  border-color: #dee2e6;
+}
+
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .target-marketing-content {
@@ -873,6 +904,15 @@ body .main-content {
   }
   
   .modal-footer button {
+    width: 100%;
+  }
+  
+  .button-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .button-group button {
     width: 100%;
   }
 } 

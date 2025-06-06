@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Image as ImageIcon, MessageSquare, Target, Sparkles, Download, Trash2, X, Phone, Smartphone, Paperclip } from "lucide-react";
+import { resizeImage, isFileSizeExceeded } from "@/lib/imageUtils";
 import "./styles.css";
 
 interface Message {
@@ -55,6 +56,58 @@ export default function TargetMarketingPage() {
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevMessagesLengthRef = useRef(messages.length);
+
+  // Base64 이미지를 리사이징하는 함수
+  const resizeBase64Image = async (base64Data: string, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        
+        if (!ctx) {
+          reject(new Error("Canvas context를 생성할 수 없습니다."));
+          return;
+        }
+
+        // 원본 크기
+        const { width: originalWidth, height: originalHeight } = img;
+        
+        // 최대 해상도 제한 (1500x1440)
+        const maxWidth = 1500;
+        const maxHeight = 1440;
+        
+        // 비율 계산
+        const ratio = Math.min(
+          maxWidth / originalWidth,
+          maxHeight / originalHeight,
+          1 // 확대는 하지 않음
+        );
+
+        // 새로운 크기 계산
+        const newWidth = Math.round(originalWidth * ratio);
+        const newHeight = Math.round(originalHeight * ratio);
+
+        // Canvas 크기 설정
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+
+        // 이미지 그리기
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+        // Base64로 변환
+        const resizedBase64 = canvas.toDataURL("image/jpeg", quality);
+        resolve(resizedBase64);
+      };
+
+      img.onerror = () => {
+        reject(new Error("이미지를 로드할 수 없습니다."));
+      };
+
+      img.src = base64Data;
+    });
+  };
 
   const scrollToBottom = () => {
     if (chatMessagesRef.current) {
@@ -249,6 +302,11 @@ export default function TargetMarketingPage() {
                   setSmsTextContent(data.smsTextContent);
                 }
 
+                // 생성된 이미지가 있으면 currentGeneratedImage에도 설정
+                if (data.imageUrl && !currentGeneratedImage) {
+                  setCurrentGeneratedImage(data.imageUrl);
+                }
+
                 // 생성된 이미지를 우측 첨부 영역에 표시
                 if (data.imageUrl) {
                   setCurrentGeneratedImage(data.imageUrl);
@@ -330,16 +388,100 @@ export default function TargetMarketingPage() {
 
     setIsSending(true);
     try {
-      const response = await fetch("/api/ai/send-mms", {
+      console.log("전송할 이미지 URL:", currentGeneratedImage); // 디버깅용 로그
+      
+      let fileId = null;
+      
+      // 이미지가 있는 경우 파일 업로드
+      if (currentGeneratedImage && currentGeneratedImage.startsWith("data:image/")) {
+        console.log("Base64 이미지를 파일로 업로드 중...");
+        
+        let processedImage = currentGeneratedImage;
+        
+        // 먼저 현재 이미지 크기 확인
+        const base64Data = currentGeneratedImage.split(",")[1];
+        const originalByteCharacters = atob(base64Data);
+        const originalSize = originalByteCharacters.length;
+                
+        // 300KB 초과 시 자동 리사이징
+        if (originalSize > 300 * 1024) {          
+          try {
+            // 품질을 점진적으로 낮춰가며 300KB 이하로 만들기
+            let quality = 0.8;
+            let resizedImage = processedImage;
+            let attempts = 0;
+            const maxAttempts = 5;
+            
+                         while (attempts < maxAttempts) {
+               resizedImage = await resizeBase64Image(processedImage, quality);
+               const resizedBase64Data = resizedImage.split(",")[1];
+               const resizedBytes = atob(resizedBase64Data);
+               const resizedSize = resizedBytes.length;
+              
+              
+              if (resizedSize <= 300 * 1024) {
+                processedImage = resizedImage;
+                break;
+              }
+              
+              quality -= 0.15; // 품질을 15%씩 낮춤
+              if (quality < 0.1) quality = 0.1; // 최소 품질 제한
+              attempts++;
+            }
+            
+            if (attempts >= maxAttempts) {
+              console.warn("최대 시도 횟수에 도달했지만 계속 진행합니다.");
+            }
+          } catch (error) {
+            console.error("이미지 리사이징 실패:", error);
+            alert("이미지 크기 조정 중 오류가 발생했습니다. 원본 이미지로 전송을 시도합니다.");
+          }
+        }
+        
+        // Base64 데이터에서 파일 정보 추출
+        const finalBase64Data = processedImage.split(",")[1];
+        const mimeType = processedImage.split(";")[0].split(":")[1];
+        
+        // Base64를 Blob으로 변환
+        const finalByteCharacters = atob(finalBase64Data);
+        const byteNumbers = new Array(finalByteCharacters.length);
+        for (let i = 0; i < finalByteCharacters.length; i++) {
+          byteNumbers[i] = finalByteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: "image/jpeg" }); // JPEG로 강제 변환
+        
+        // Blob을 File 객체로 변환
+        const file = new File([blob], `ai-generated-${Date.now()}.jpg`, { type: "image/jpeg" });
+                
+        // FormData로 파일 업로드
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const uploadResponse = await fetch("/api/message/upload-file", {
+          method: "POST",
+          body: formData,
+        });
+        
+        if (uploadResponse.ok) {
+          const uploadResult = await uploadResponse.json();
+          fileId = uploadResult.fileId;
+        } else {
+          const uploadError = await uploadResponse.json();
+          throw new Error(`파일 업로드 실패: ${uploadError.error}`);
+        }
+      }
+      
+      // 메시지 전송
+      const response = await fetch("/api/message/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          templateId: "direct-send",
-          recipients: [recipientNumber.trim()],
+          toNumbers: [recipientNumber.trim().replace(/-/g, "")], // 하이픈 제거
           message: smsTextContent,
-          imageUrl: currentGeneratedImage,
+          fileIds: fileId ? [fileId] : undefined,
         }),
       });
 
@@ -347,10 +489,10 @@ export default function TargetMarketingPage() {
 
       if (response.ok) {
         alert("MMS가 성공적으로 전송되었습니다!");
-        // 전송 후 입력 필드 초기화
+        // 전송 후 수신번호만 초기화 (내용과 이미지는 유지)
         setRecipientNumber("");
-        setSmsTextContent("");
-        setCurrentGeneratedImage(null);
+        // setSmsTextContent(""); // 제거: 내용 유지
+        // setCurrentGeneratedImage(null); // 제거: 이미지 유지
       } else {
         throw new Error(result.error || "MMS 전송에 실패했습니다.");
       }
@@ -593,13 +735,27 @@ export default function TargetMarketingPage() {
             </div>
 
             <div className="content-section">
-              <button 
-                className="send-button" 
-                onClick={handleDirectSendMMS}
-                disabled={!recipientNumber.trim() || !smsTextContent.trim() || isSending}
-              >
-                {isSending ? "전송 중..." : "전송"}
-              </button>
+              <div className="button-group">
+                <button 
+                  className="send-button" 
+                  onClick={handleDirectSendMMS}
+                  disabled={!recipientNumber.trim() || !smsTextContent.trim() || isSending}
+                >
+                  {isSending ? "전송 중..." : "전송"}
+                </button>
+                <button 
+                  className="clear-button" 
+                  onClick={() => {
+                    setRecipientNumber("");
+                    setSmsTextContent("");
+                    setCurrentGeneratedImage(null);
+                  }}
+                  disabled={isSending}
+                  title="모든 내용 초기화"
+                >
+                  초기화
+                </button>
+              </div>
             </div>
           </div>
         </div>
