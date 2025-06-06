@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Image as ImageIcon, MessageSquare, Target, Sparkles, Download, Trash2, X, Phone, Smartphone, Paperclip } from "lucide-react";
-import { resizeImage, isFileSizeExceeded } from "@/lib/imageUtils";
+import { Send, Image as ImageIcon, MessageSquare, Target, Sparkles, X, Phone, Smartphone } from "lucide-react";
 import "./styles.css";
 
 interface Message {
@@ -42,6 +41,7 @@ export default function TargetMarketingPage() {
   const [smsTextContent, setSmsTextContent] = useState("");
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState<string | null>(null);
   const [recipientNumber, setRecipientNumber] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([
     {
       id: "1",
@@ -355,25 +355,6 @@ export default function TargetMarketingPage() {
     }
   };
 
-  const handleTemplateAction = (templateId: string, action: "edit" | "delete" | "send") => {
-    switch (action) {
-      case "edit":
-        // TODO: 템플릿 편집 모달 열기
-        console.log("Edit template:", templateId);
-        break;
-      case "delete":
-        setTemplates(prev => prev.filter(t => t.id !== templateId));
-        break;
-      case "send":
-        const template = templates.find(t => t.id === templateId);
-        if (template) {
-          setSelectedTemplate(template);
-          setShowSendModal(true);
-        }
-        break;
-    }
-  };
-
   // 우측 발신 영역에서 직접 전송
   const handleDirectSendMMS = async () => {
     if (!recipientNumber.trim()) {
@@ -440,6 +421,7 @@ export default function TargetMarketingPage() {
         
         // Base64 데이터에서 파일 정보 추출
         const finalBase64Data = processedImage.split(",")[1];
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const mimeType = processedImage.split(";")[0].split(":")[1];
         
         // Base64를 Blob으로 변환
@@ -590,6 +572,7 @@ export default function TargetMarketingPage() {
                 <div className="message-content">
                   {message.imageUrl && (
                     <div className="message-image">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={message.imageUrl} alt="Generated content" />
                       {message.isImageLoading && (
                         <div className="image-loading-overlay">
@@ -713,6 +696,7 @@ export default function TargetMarketingPage() {
               <div className="file-attachment-section">
                 {currentGeneratedImage ? (
                   <div className="attached-image-preview">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={currentGeneratedImage} alt="AI 생성 이미지" />
                     <div className="image-info">
                       <span className="image-status">✓ AI 생성 이미지 첨부됨</span>
@@ -785,6 +769,7 @@ export default function TargetMarketingPage() {
                 <div className="preview-card">
                   {selectedTemplate.imageUrl && (
                     <div className="preview-image">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={selectedTemplate.imageUrl} alt={selectedTemplate.title} />
                     </div>
                   )}

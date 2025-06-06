@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
     if (imageUrl && imageUrl.startsWith("data:image/")) {
       // Base64 이미지를 파일로 업로드
       const base64Data = imageUrl.split(",")[1];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const imageBuffer = Buffer.from(base64Data, "base64");
       
       // 파일 업로드 API 호출

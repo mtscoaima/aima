@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 대화 히스토리 구성
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const conversationHistory = previousMessages.map((msg: any) => ({
       role: msg.role,
       content: msg.content,
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
           let fullText = "";
           let imageUrl = null;
           let templateData = null;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars, prefer-const
           let partialImages: string[] = [];
           let smsTextContent = "";
           let displayText = "";
@@ -61,6 +63,7 @@ export async function POST(request: NextRequest) {
 
           // 스트림 이벤트 처리
           for await (const event of response) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const eventAny = event as any;
             
             if (eventAny.type === "response.output_text.delta") {
@@ -98,6 +101,7 @@ export async function POST(request: NextRequest) {
                     controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
                   }
                 }
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               } catch (error) {
                 // JSON 파싱 실패 시 일반 텍스트로 처리
                 if (!isJsonParsed && !fullText.includes('"response"')) {
@@ -146,6 +150,7 @@ export async function POST(request: NextRequest) {
                     displayText = fullText;
                     smsTextContent = extractSMSContent(fullText);
                   }
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (error) {
                   console.log("JSON 파싱 실패, 전체 텍스트에서 SMS 내용 추출 시도");
                   displayText = fullText;
