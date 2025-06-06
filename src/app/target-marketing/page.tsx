@@ -39,6 +39,8 @@ export default function TargetMarketingPage() {
   const [recipients, setRecipients] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [smsTextContent, setSmsTextContent] = useState("");
+  const [currentGeneratedImage, setCurrentGeneratedImage] = useState<string | null>(null);
+  const [recipientNumber, setRecipientNumber] = useState("");
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([
     {
       id: "1",
@@ -218,6 +220,10 @@ export default function TargetMarketingPage() {
                       : msg
                   )
                 );
+                
+                // 생성된 이미지를 우측 첨부 영역에 표시
+                setCurrentGeneratedImage(data.imageUrl);
+                
                 // 최종 이미지 생성 완료 시 스크롤
                 setTimeout(() => scrollToBottom(), 100);
               } else if (data.type === "response_complete") {
@@ -238,6 +244,11 @@ export default function TargetMarketingPage() {
                 // SMS 텍스트 내용 업데이트
                 if (data.smsTextContent) {
                   setSmsTextContent(data.smsTextContent);
+                }
+
+                // 생성된 이미지를 우측 첨부 영역에 표시
+                if (data.imageUrl) {
+                  setCurrentGeneratedImage(data.imageUrl);
                 }
 
                 // 이미지가 생성된 경우 템플릿에 추가
@@ -302,6 +313,53 @@ export default function TargetMarketingPage() {
     }
   };
 
+  // 우측 발신 영역에서 직접 전송
+  const handleDirectSendMMS = async () => {
+    if (!recipientNumber.trim()) {
+      alert("수신번호를 입력해주세요.");
+      return;
+    }
+
+    if (!smsTextContent.trim()) {
+      alert("메시지 내용을 입력해주세요.");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await fetch("/api/ai/send-mms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          templateId: "direct-send",
+          recipients: [recipientNumber.trim()],
+          message: smsTextContent,
+          imageUrl: currentGeneratedImage,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert("MMS가 성공적으로 전송되었습니다!");
+        // 전송 후 입력 필드 초기화
+        setRecipientNumber("");
+        setSmsTextContent("");
+        setCurrentGeneratedImage(null);
+      } else {
+        throw new Error(result.error || "MMS 전송에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("MMS 전송 오류:", error);
+      alert(error instanceof Error ? error.message : "MMS 전송 중 오류가 발생했습니다.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // 템플릿 기반 전송 (모달용)
   const handleSendMMS = async () => {
     if (!selectedTemplate || !recipients.trim()) {
       alert("수신번호를 입력해주세요.");
@@ -473,6 +531,8 @@ export default function TargetMarketingPage() {
               <div className="recipient-input">
                 <input
                   type="text"
+                  value={recipientNumber}
+                  onChange={(e) => setRecipientNumber(e.target.value)}
                   placeholder="01012345678"
                   className="number-input"
                 />
@@ -503,19 +563,39 @@ export default function TargetMarketingPage() {
               <div className="section-header">
                 <ImageIcon size={16} />
                 <span>이미지 첨부</span>
-                <span className="file-info">(최대 300KB, JPG/JPEG)</span>
+                <span className="file-info">(AI 생성 이미지 자동 첨부)</span>
               </div>
               <div className="file-attachment-section">
-                <button type="button" className="file-select-button" disabled>
-                  <Paperclip size={16} />
-                  이미지 선택
-                </button>
+                {currentGeneratedImage ? (
+                  <div className="attached-image-preview">
+                    <img src={currentGeneratedImage} alt="AI 생성 이미지" />
+                    <div className="image-info">
+                      <span className="image-status">✓ AI 생성 이미지 첨부됨</span>
+                      <button 
+                        type="button" 
+                        className="remove-image-button"
+                        onClick={() => setCurrentGeneratedImage(null)}
+                      >
+                        제거
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="no-image-placeholder">
+                    <ImageIcon size={24} />
+                    <span>AI가 이미지를 생성하면 자동으로 첨부됩니다</span>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="content-section">
-              <button className="send-button" disabled>
-                전송
+              <button 
+                className="send-button" 
+                onClick={handleDirectSendMMS}
+                disabled={!recipientNumber.trim() || !smsTextContent.trim() || isSending}
+              >
+                {isSending ? "전송 중..." : "전송"}
               </button>
             </div>
           </div>
