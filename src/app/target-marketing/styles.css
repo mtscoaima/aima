@@ -155,15 +155,42 @@ body .main-content {
 }
 
 .message-image {
-  margin-top: 8px;
+  margin-bottom: 8px;
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
 }
 
 .message-image img {
   width: 100%;
   height: auto;
   display: block;
+}
+
+.image-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.image-loading-overlay .loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .message-time {

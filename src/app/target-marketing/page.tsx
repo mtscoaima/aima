@@ -10,6 +10,7 @@ interface Message {
   content: string;
   timestamp: Date;
   imageUrl?: string;
+  isImageLoading?: boolean;
 }
 
 interface GeneratedTemplate {
@@ -32,6 +33,7 @@ export default function TargetMarketingPage() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<GeneratedTemplate | null>(null);
   const [recipients, setRecipients] = useState("");
@@ -47,16 +49,35 @@ export default function TargetMarketingPage() {
     },
   ]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prevMessagesLengthRef = useRef(messages.length);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // 메시지가 변경될 때마다 스크롤 (초기 로드 제외)
+    if (messages.length > 0 && messages.length >= prevMessagesLengthRef.current) {
+      // 약간의 지연을 두어 DOM 업데이트 후 스크롤
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+    prevMessagesLengthRef.current = messages.length;
   }, [messages]);
+
+  // 로딩 상태 변경 시에도 스크롤
+  useEffect(() => {
+    if (showTypingIndicator) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [showTypingIndicator]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -71,9 +92,21 @@ export default function TargetMarketingPage() {
     setMessages(prev => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
+    setShowTypingIndicator(true);
+
+    // 스트리밍 응답을 위한 임시 메시지 생성
+    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      // OpenAI API 호출
+      // 스트리밍 API 호출
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: {
@@ -85,45 +118,131 @@ export default function TargetMarketingPage() {
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("API 요청에 실패했습니다.");
+      }
 
-      if (response.ok) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.message,
-          timestamp: new Date(),
-          imageUrl: data.imageUrl,
-        };
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("스트림을 읽을 수 없습니다.");
+      }
 
-        setMessages(prev => [...prev, assistantMessage]);
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-        // 이미지가 생성된 경우 템플릿에 추가
-        if (data.imageUrl && data.templateData) {
-          const newTemplate: GeneratedTemplate = {
-            id: Date.now().toString(),
-            title: data.templateData.title,
-            description: data.templateData.description,
-            imageUrl: data.imageUrl,
-            createdAt: new Date(),
-            status: "생성완료",
-          };
-          setTemplates(prev => [newTemplate, ...prev]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === "text_delta") {
+                // 첫 번째 텍스트 응답이 오면 타이핑 인디케이터 숨기기
+                setShowTypingIndicator(false);
+                
+                // 텍스트 스트리밍 업데이트
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { 
+                          ...msg, 
+                          content: msg.content + data.content,
+                          // 텍스트가 들어오면 이미지 로딩 상태 해제
+                          isImageLoading: false
+                        }
+                      : msg
+                  )
+                );
+                // 텍스트 스트리밍 중 스크롤
+                setTimeout(() => scrollToBottom(), 50);
+              } else if (data.type === "partial_image") {
+                // 첫 번째 이미지 응답이 오면 타이핑 인디케이터 숨기기
+                setShowTypingIndicator(false);
+                
+                // 부분 이미지 생성 중 (미리보기)
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { 
+                          ...msg, 
+                          imageUrl: data.imageUrl,
+                          isImageLoading: true
+                        }
+                      : msg
+                  )
+                );
+                // 이미지 생성 중 스크롤
+                setTimeout(() => scrollToBottom(), 100);
+              } else if (data.type === "image_generated") {
+                // 최종 이미지 생성 완료
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { 
+                          ...msg, 
+                          imageUrl: data.imageUrl,
+                          isImageLoading: false
+                        }
+                      : msg
+                  )
+                );
+                // 최종 이미지 생성 완료 시 스크롤
+                setTimeout(() => scrollToBottom(), 100);
+              } else if (data.type === "response_complete") {
+                // 응답 완료
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { 
+                          ...msg, 
+                          content: data.fullText,
+                          imageUrl: data.imageUrl || msg.imageUrl,
+                          isImageLoading: false
+                        }
+                      : msg
+                  )
+                );
+
+                // 이미지가 생성된 경우 템플릿에 추가
+                if (data.imageUrl && data.templateData) {
+                  const newTemplate: GeneratedTemplate = {
+                    id: Date.now().toString(),
+                    title: data.templateData.title,
+                    description: data.templateData.description,
+                    imageUrl: data.imageUrl,
+                    createdAt: new Date(),
+                    status: "생성완료",
+                  };
+                  setTemplates(prev => [newTemplate, ...prev]);
+                }
+              } else if (data.type === "error") {
+                throw new Error(data.error);
+              }
+            } catch (parseError) {
+              console.error("JSON 파싱 오류:", parseError);
+            }
+          }
         }
-      } else {
-        throw new Error(data.error || "AI 응답 생성에 실패했습니다.");
       }
     } catch (error) {
       console.error("AI 채팅 오류:", error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: "죄송합니다. 오류가 발생했습니다. 다시 시도해주세요." }
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false);
+      setShowTypingIndicator(false);
     }
   };
 
@@ -227,26 +346,34 @@ export default function TargetMarketingPage() {
             </div>
           </div>
 
-          <div className="chat-messages">
-            {messages.map((message) => (
+          <div className="chat-messages" ref={chatMessagesRef}>
+            {messages
+              .filter(message => message.content.trim() !== "" || message.imageUrl) // 빈 메시지 필터링
+              .map((message) => (
               <div
                 key={message.id}
                 className={`message ${message.role === "user" ? "user-message" : "assistant-message"}`}
               >
                 <div className="message-content">
-                  <p>{message.content}</p>
                   {message.imageUrl && (
                     <div className="message-image">
                       <img src={message.imageUrl} alt="Generated content" />
+                      {message.isImageLoading && (
+                        <div className="image-loading-overlay">
+                          <div className="loading-spinner"></div>
+                          <span>이미지 생성 중...</span>
+                        </div>
+                      )}
                     </div>
                   )}
+                  <p>{message.content}</p>
                 </div>
                 <div className="message-time">
                   {message.timestamp.toLocaleTimeString()}
                 </div>
               </div>
             ))}
-            {isLoading && (
+            {showTypingIndicator && (
               <div className="message assistant-message">
                 <div className="message-content">
                   <div className="typing-indicator">
@@ -257,7 +384,7 @@ export default function TargetMarketingPage() {
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
+
           </div>
 
           <div className="chat-input-section">
