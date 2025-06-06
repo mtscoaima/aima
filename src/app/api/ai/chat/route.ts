@@ -33,7 +33,14 @@ export async function POST(request: NextRequest) {
               ...conversationHistory,
               {
                 role: "user",
-                content: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요: ${message}`
+                content: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
+                응답은 다음 JSON 형식으로 포함해주세요:
+                {
+                  "response": "마케팅 조언 및 설명",
+                  "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내)"
+                }
+                
+                사용자 요청: ${message}`
               }
             ],
             tools: [{ 
@@ -48,6 +55,9 @@ export async function POST(request: NextRequest) {
           let imageUrl = null;
           let templateData = null;
           let partialImages: string[] = [];
+          let smsTextContent = "";
+          let displayText = "";
+          let isJsonParsed = false;
 
           // 스트림 이벤트 처리
           for await (const event of response) {
@@ -57,12 +67,48 @@ export async function POST(request: NextRequest) {
               const textDelta = eventAny.delta;
               fullText += textDelta;
               
-              // 텍스트 델타 전송
-              const data = JSON.stringify({
-                type: "text_delta",
-                content: textDelta,
-              });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+              // JSON 파싱 시도
+              try {
+                const jsonMatch = fullText.match(/\{[\s\S]*"response"[\s\S]*\}/);
+                if (jsonMatch && !isJsonParsed) {
+                  const jsonResponse = JSON.parse(jsonMatch[0]);
+                  if (jsonResponse.response) {
+                    // JSON이 완성되면 response 부분만 표시
+                    displayText = jsonResponse.response;
+                    smsTextContent = jsonResponse.sms_text_content || "";
+                    isJsonParsed = true;
+                    
+                    // 기존 텍스트를 지우고 새로운 텍스트로 교체
+                    const data = JSON.stringify({
+                      type: "text_replace",
+                      content: displayText,
+                      smsTextContent: smsTextContent,
+                    });
+                    controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+                  }
+                } else if (!isJsonParsed) {
+                  // JSON이 아직 완성되지 않았으면 델타 전송하지 않음
+                  // 또는 JSON이 아닌 일반 텍스트면 그대로 전송
+                  if (!fullText.includes('"response"') && !fullText.includes('"sms_text_content"')) {
+                    displayText += textDelta;
+                    const data = JSON.stringify({
+                      type: "text_delta",
+                      content: textDelta,
+                    });
+                    controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+                  }
+                }
+              } catch (error) {
+                // JSON 파싱 실패 시 일반 텍스트로 처리
+                if (!isJsonParsed && !fullText.includes('"response"')) {
+                  displayText += textDelta;
+                  const data = JSON.stringify({
+                    type: "text_delta",
+                    content: textDelta,
+                  });
+                  controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+                }
+              }
             } else if (eventAny.type === "response.image_generation_call.partial_image") {
               // 부분 이미지 생성 중
               const partialImageBase64 = eventAny.partial_image_b64;
@@ -87,19 +133,39 @@ export async function POST(request: NextRequest) {
               });
               controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
             } else if (eventAny.type === "response.done") {
-              // 응답 완료
+              // 응답 완료 - 이미 파싱된 데이터 사용 또는 재파싱
+              if (!isJsonParsed) {
+                try {
+                  // JSON 형식의 응답에서 sms_text_content 추출
+                  const jsonMatch = fullText.match(/\{[\s\S]*"sms_text_content"[\s\S]*\}/);
+                  if (jsonMatch) {
+                    const jsonResponse = JSON.parse(jsonMatch[0]);
+                    displayText = jsonResponse.response || fullText;
+                    smsTextContent = jsonResponse.sms_text_content || "";
+                  } else {
+                    displayText = fullText;
+                    smsTextContent = extractSMSContent(fullText);
+                  }
+                } catch (error) {
+                  console.log("JSON 파싱 실패, 전체 텍스트에서 SMS 내용 추출 시도");
+                  displayText = fullText;
+                  smsTextContent = extractSMSContent(fullText);
+                }
+              }
+
               if (imageUrl) {
                 templateData = {
                   title: extractTitle(message) || "AI 생성 마케팅 캠페인",
-                  description: extractDescription(fullText) || fullText.substring(0, 100) + "...",
+                  description: extractDescription(displayText) || displayText.substring(0, 100) + "...",
                 };
               }
 
               const data = JSON.stringify({
                 type: "response_complete",
-                fullText: fullText,
+                fullText: displayText,
                 imageUrl: imageUrl,
                 templateData: templateData,
+                smsTextContent: smsTextContent,
               });
               controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
               break;
@@ -174,4 +240,26 @@ function extractDescription(text: string): string {
   }
   
   return text.length > 100 ? text.substring(0, 100) + "..." : text;
+}
+
+// SMS 내용 추출 함수
+function extractSMSContent(text: string): string {
+  // 텍스트에서 SMS에 적합한 내용 추출 (90자 이내)
+  const sentences = text.split(/[.!?]/);
+  let smsContent = "";
+  
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (trimmed.length > 10 && trimmed.length <= 90) {
+      smsContent = trimmed;
+      break;
+    }
+  }
+  
+  // 적절한 문장을 찾지 못한 경우 전체 텍스트를 90자로 자르기
+  if (!smsContent) {
+    smsContent = text.substring(0, 87) + "...";
+  }
+  
+  return smsContent;
 } 

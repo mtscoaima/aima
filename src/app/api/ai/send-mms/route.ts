@@ -11,6 +11,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 환경변수에서 발신번호 확인
+    const fromNumber = process.env.TEST_CALLING_NUMBER;
+    if (!fromNumber) {
+      return NextResponse.json(
+        { error: "발신번호가 설정되지 않았습니다." },
+        { status: 500 }
+      );
+    }
+
     // 이미지 URL이 base64 데이터 URL인 경우 파일로 변환
     let fileId = null;
     if (imageUrl && imageUrl.startsWith("data:image/")) {
@@ -37,7 +46,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // MMS 전송 API 호출
+    // MMS 전송 API 호출 (발신번호는 서버에서 환경변수로 처리)
     const sendResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/message/send`, {
       method: "POST",
       headers: {

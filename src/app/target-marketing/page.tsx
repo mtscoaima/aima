@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Image as ImageIcon, MessageSquare, Target, Sparkles, Download, Edit, Trash2, X, Phone, Smartphone, Paperclip } from "lucide-react";
+import { Send, Image as ImageIcon, MessageSquare, Target, Sparkles, Download, Trash2, X, Phone, Smartphone, Paperclip } from "lucide-react";
 import "./styles.css";
 
 interface Message {
@@ -38,6 +38,7 @@ export default function TargetMarketingPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<GeneratedTemplate | null>(null);
   const [recipients, setRecipients] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [smsTextContent, setSmsTextContent] = useState("");
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([
     {
       id: "1",
@@ -162,6 +163,30 @@ export default function TargetMarketingPage() {
                 );
                 // 텍스트 스트리밍 중 스크롤
                 setTimeout(() => scrollToBottom(), 50);
+              } else if (data.type === "text_replace") {
+                // JSON 파싱 완료 후 텍스트 교체
+                setShowTypingIndicator(false);
+                
+                // 기존 텍스트를 새로운 텍스트로 교체
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { 
+                          ...msg, 
+                          content: data.content,
+                          isImageLoading: false
+                        }
+                      : msg
+                  )
+                );
+
+                // SMS 텍스트 내용 업데이트
+                if (data.smsTextContent) {
+                  setSmsTextContent(data.smsTextContent);
+                }
+
+                // 텍스트 교체 후 스크롤
+                setTimeout(() => scrollToBottom(), 50);
               } else if (data.type === "partial_image") {
                 // 첫 번째 이미지 응답이 오면 타이핑 인디케이터 숨기기
                 setShowTypingIndicator(false);
@@ -209,6 +234,11 @@ export default function TargetMarketingPage() {
                       : msg
                   )
                 );
+
+                // SMS 텍스트 내용 업데이트
+                if (data.smsTextContent) {
+                  setSmsTextContent(data.smsTextContent);
+                }
 
                 // 이미지가 생성된 경우 템플릿에 추가
                 if (data.imageUrl && data.templateData) {
@@ -429,12 +459,8 @@ export default function TargetMarketingPage() {
                       <Phone className="sender-icon" size={16} />
                       <span className="sender-title">메시지 발신번호</span>
                     </div>
-                    <div className="sender-number">010-1234-5678</div>
+                    <div className="sender-number">테스트 번호</div>
                   </div>
-                  <button className="change-button" disabled>
-                    <Edit size={14} />
-                    변경
-                  </button>
                 </div>
               </div>
             </div>
@@ -460,12 +486,14 @@ export default function TargetMarketingPage() {
               <div className="message-input-section">
                 <div className="form-group">
                   <textarea
+                    value={smsTextContent}
+                    onChange={(e) => setSmsTextContent(e.target.value)}
                     placeholder="문자 내용을 입력해주세요."
                     className="message-textarea"
                     maxLength={2000}
                   />
                   <div className="message-footer">
-                    <span className="char-count">0 / 2,000 bytes</span>
+                    <span className="char-count">{new Blob([smsTextContent]).size} / 2,000 bytes</span>
                   </div>
                 </div>
               </div>

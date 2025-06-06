@@ -388,28 +388,7 @@ body .main-content {
   margin: 0;
 }
 
-.change-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #f8f9fa;
-  color: #666;
-  border: 1px solid #e9ecef;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.change-button:hover:not(:disabled) {
-  background: #e9ecef;
-}
-
-.change-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* 변경 버튼 스타일 제거됨 - 발신번호는 환경변수로 고정 */
 
 /* 수신번호 입력 */
 .recipient-input {
