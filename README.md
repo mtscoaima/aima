@@ -189,6 +189,42 @@ WHERE agreement_info IS NULL;
 
 **중요:** 환경변수를 변경한 후에는 개발 서버를 재시작해야 합니다.
 
+## Vercel 배포 가이드
+
+### 1. 환경변수 설정
+
+Vercel 대시보드에서 다음 환경변수들을 설정해주세요:
+
+**필수 환경변수:**
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase 프로젝트 URL
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase 서비스 역할 키
+- `JWT_SECRET`: JWT 토큰 암호화 키
+- `NAVER_SENS_SERVICE_ID`: 네이버 SENS 서비스 ID
+- `NAVER_ACCESS_KEY_ID`: 네이버 클라우드 액세스 키
+- `NAVER_SECRET_KEY`: 네이버 클라우드 시크릿 키
+- `TEST_CALLING_NUMBER`: 테스트용 발신번호
+- `OPENAI_API_KEY`: OpenAI API 키
+
+**선택적 환경변수:**
+- `NEXT_PUBLIC_BASE_URL`: 베이스 URL (설정하지 않으면 자동으로 감지됨)
+
+### 2. 자동 URL 감지
+
+이 프로젝트는 Vercel 배포 시 다음과 같이 자동으로 URL을 감지합니다:
+
+1. `NEXT_PUBLIC_BASE_URL` 환경변수가 있으면 사용
+2. Vercel 환경에서는 `VERCEL_URL` 자동 사용
+3. 요청 헤더에서 호스트 정보 추출
+4. 개발 환경에서는 `localhost:3000` 사용
+
+따라서 `NEXT_PUBLIC_BASE_URL`을 설정하지 않아도 정상적으로 작동합니다.
+
+### 3. 배포 확인사항
+
+- 모든 필수 환경변수가 설정되었는지 확인
+- Supabase 데이터베이스와 Storage가 올바르게 설정되었는지 확인
+- 네이버 SENS와 OpenAI API 키가 유효한지 확인
+
 ### Running the Development Server
 
 First, run the development server:
