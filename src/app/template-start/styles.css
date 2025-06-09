@@ -224,6 +224,322 @@ body .main-content {
   margin: 0;
 }
 
+/* MMS 전송 모달 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.template-preview {
+  margin-bottom: 24px;
+}
+
+.template-preview h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 12px 0;
+}
+
+.preview-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.preview-image {
+  height: 200px;
+  overflow: hidden;
+}
+
+.preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview-content {
+  padding: 16px;
+}
+
+.preview-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.preview-content p {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* MMS 전송 폼 스타일 */
+.mms-send-content {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.content-section {
+  margin-bottom: 20px;
+}
+
+.content-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.file-info {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.selected-sender {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.sender-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sender-details {
+  flex: 1;
+}
+
+.sender-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sender-icon {
+  color: #6b7280;
+}
+
+.sender-title {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.sender-number {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.recipient-input {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.number-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #111827;
+}
+
+.number-input::placeholder {
+  color: #9ca3af;
+}
+
+.message-input-section {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.form-group {
+  width: 100%;
+}
+
+.message-textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: vertical;
+  min-height: 100px;
+  font-size: 14px;
+  color: #111827;
+  font-family: inherit;
+}
+
+.message-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.message-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.char-count {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.file-attachment-section {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.attached-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.attached-image-preview img {
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.image-info {
+  flex: 1;
+}
+
+.image-status {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 500;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.cancel-button {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.send-button.primary {
+  padding: 8px 16px;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.send-button.primary:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.send-button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 1400px) {
   .template-start-container .templates-grid {
@@ -265,6 +581,27 @@ body .main-content {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 15px !important;
   }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-content {
+    max-width: 100%;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer {
+    padding: 16px;
+  }
+
+  .attached-image-preview {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 600px) {
@@ -294,5 +631,23 @@ body .main-content {
 
   .header-text p {
     font-size: 12px;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  .modal-footer {
+    padding: 12px;
+    flex-direction: column;
+  }
+
+  .cancel-button,
+  .send-button.primary {
+    width: 100%;
   }
 }
