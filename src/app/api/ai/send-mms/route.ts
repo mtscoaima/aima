@@ -11,15 +11,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 환경변수에서 발신번호 확인
+    const fromNumber = process.env.TEST_CALLING_NUMBER;
+    if (!fromNumber) {
+      return NextResponse.json(
+        { error: "발신번호가 설정되지 않았습니다." },
+        { status: 500 }
+      );
+    }
+
+    // 동적 베이스 URL 생성 (Vercel 배포 환경 대응)
+    const getBaseUrl = () => {
+      // 환경변수가 있으면 사용
+      if (process.env.NEXT_PUBLIC_BASE_URL) {
+        return process.env.NEXT_PUBLIC_BASE_URL;
+      }
+      
+      // Vercel 환경에서는 VERCEL_URL 사용
+      if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+      }
+      
+      // 요청 헤더에서 호스트 정보 추출
+      const host = request.headers.get('host');
+      const protocol = request.headers.get('x-forwarded-proto') || 'http';
+      
+      if (host) {
+        return `${protocol}://${host}`;
+      }
+      
+      // 개발 환경 fallback
+      return 'http://localhost:3000';
+    };
+
+    const baseUrl = getBaseUrl();
+    console.log('🔗 Base URL detected:', baseUrl);
+
     // 이미지 URL이 base64 데이터 URL인 경우 파일로 변환
     let fileId = null;
     if (imageUrl && imageUrl.startsWith("data:image/")) {
       // Base64 이미지를 파일로 업로드
       const base64Data = imageUrl.split(",")[1];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const imageBuffer = Buffer.from(base64Data, "base64");
       
       // 파일 업로드 API 호출
-      const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/message/upload-file`, {
+      const uploadResponse = await fetch(`${baseUrl}/api/message/upload-file`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -37,8 +74,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // MMS 전송 API 호출
-    const sendResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/message/send`, {
+    // MMS 전송 API 호출 (발신번호는 서버에서 환경변수로 처리)
+    const sendResponse = await fetch(`${baseUrl}/api/message/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
