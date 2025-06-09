@@ -4,7 +4,14 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/SidebarContext";
-import { BarChart3, MessageSquare, Send, FileText, Target } from "lucide-react";
+import {
+  BarChart3,
+  MessageSquare,
+  Send,
+  FileText,
+  Target,
+  Layout,
+} from "lucide-react";
 import "./Sidebar.css";
 
 interface MenuItem {
@@ -51,6 +58,12 @@ const menuItems: MenuItem[] = [
         title: "AI타깃마케팅",
         icon: Target,
         path: "/target-marketing",
+      },
+      {
+        id: "template-start",
+        title: "템플릿으로 시작",
+        icon: Layout,
+        path: "/template-start",
       },
     ],
   },
