@@ -41,7 +41,7 @@ export async function PUT(
 
     const templateId = params.id;
     const body = await request.json();
-    const { name, content, image_url, category, is_private = false } = body;
+    const { name, content, image_url, category } = body;
 
     // 필수 필드 검증
     if (!name || !content || !category) {
@@ -70,7 +70,7 @@ export async function PUT(
       return NextResponse.json({ error: "Permission denied" }, { status: 403 });
     }
 
-    // 템플릿 업데이트
+    // 템플릿 업데이트 (is_private는 항상 true로 고정)
     const { data: updatedTemplate, error } = await supabase
       .from("message_templates")
       .update({
@@ -78,7 +78,7 @@ export async function PUT(
         content,
         image_url,
         category,
-        is_private,
+        is_private: true, // 템플릿 수정 시 항상 비공개로 설정
         updated_at: new Date().toISOString(),
       })
       .eq("id", parseInt(templateId))

@@ -161,7 +161,7 @@ export default function TemplateStartPage() {
         name: template.name,
         content: template.content,
         category: template.category,
-        is_private: template.is_private,
+        is_private: true, // 템플릿 수정 시 항상 비공개로 설정
       });
       // 이미지 관련 상태 초기화
       setSelectedImageFile(null);
@@ -177,7 +177,7 @@ export default function TemplateStartPage() {
       name: "",
       content: "",
       category: "",
-      is_private: false,
+      is_private: true, // 기본값을 true로 설정
     });
     setSelectedImageFile(null);
     setImagePreviewUrl(null);
@@ -321,7 +321,7 @@ export default function TemplateStartPage() {
       let response;
 
       if (isOwner) {
-        // 기존 템플릿 수정
+        // 기존 템플릿 수정 (is_private는 항상 true로 고정)
         response = await fetch(`/api/templates/${editingTemplate.id}`, {
           method: "PUT",
           headers: {
@@ -332,7 +332,7 @@ export default function TemplateStartPage() {
             name: editFormData.name,
             content: editFormData.content,
             category: editFormData.category,
-            is_private: editFormData.is_private,
+            is_private: true, // 템플릿 수정 시 항상 비공개로 설정
             image_url: imageUrl,
             user_id: currentUserId,
           }),
@@ -829,46 +829,6 @@ export default function TemplateStartPage() {
                       onChange={handleImageSelect}
                       style={{ display: "none" }}
                     />
-                  </div>
-                </div>
-
-                <div className="form-section">
-                  <div className="form-row">
-                    <div className="form-col">
-                      <label className="form-label">공개 설정</label>
-                      <div className="radio-group">
-                        <label className="radio-option">
-                          <input
-                            type="radio"
-                            name="privacy"
-                            value="private"
-                            checked={editFormData.is_private}
-                            onChange={(e) =>
-                              setEditFormData({
-                                ...editFormData,
-                                is_private: e.target.value === "private",
-                              })
-                            }
-                          />
-                          <span>비공개</span>
-                        </label>
-                        <label className="radio-option">
-                          <input
-                            type="radio"
-                            name="privacy"
-                            value="public"
-                            checked={!editFormData.is_private}
-                            onChange={(e) =>
-                              setEditFormData({
-                                ...editFormData,
-                                is_private: e.target.value === "private",
-                              })
-                            }
-                          />
-                          <span>공개</span>
-                        </label>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
