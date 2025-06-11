@@ -71,8 +71,14 @@ CREATE TABLE IF NOT EXISTS message_templates (
   category VARCHAR(100) NOT NULL,    -- 카테고리 (카페/식음료, 명원, 학원 등)
   usage_count INTEGER DEFAULT 0,    -- 사용 횟수 (인기도 측정용)
   is_active BOOLEAN DEFAULT true,    -- 활성화 상태
+  is_private BOOLEAN DEFAULT false,  -- 개인 템플릿 여부 (true: 개인용, false: 공개용)
+  user_id INTEGER,                   -- 템플릿 소유자 ID (개인 템플릿인 경우 필수)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),  -- 생성일 (yyyy.MM.dd 형식으로 표시)
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()   -- 수정일
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),  -- 수정일
+
+  -- 외래키 제약조건
+  CONSTRAINT fk_message_templates_user_id
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- 인덱스 생성
@@ -80,6 +86,8 @@ CREATE INDEX IF NOT EXISTS idx_message_templates_category ON message_templates(c
 CREATE INDEX IF NOT EXISTS idx_message_templates_usage_count ON message_templates(usage_count DESC);
 CREATE INDEX IF NOT EXISTS idx_message_templates_created_at ON message_templates(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_message_templates_is_active ON message_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_message_templates_is_private ON message_templates(is_private);
+CREATE INDEX IF NOT EXISTS idx_message_templates_user_id ON message_templates(user_id);
 
 -- updated_at 트리거 함수 생성
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -373,6 +381,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
   - 추천 카테고리: usage_count 기준 상위 10개
   - 일반 카테고리: created_at 기준 정렬
   - 자동 이미지 fallback 처리
+  - **개인 템플릿 필터링**: 로그인한 사용자는 공개 템플릿 + 자신의 개인 템플릿 조회 가능
+- Create Template API: `POST /api/templates` (새 템플릿 생성, 인증 필요)
+  - 공개/개인 템플릿 생성 지원
+  - 개인 템플릿은 생성자만 조회 가능
 
 ### Form Features
 
@@ -389,12 +401,17 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - **Dynamic Template Loading**: Supabase 데이터베이스에서 실시간 템플릿 로딩
 - **Category-based Filtering**: 카테고리별 템플릿 필터링 및 정렬
 - **Popular Templates**: 사용량 기반 인기 템플릿 추천 시스템
+- **Private Template System**:
+  - 개인 템플릿 생성 및 관리 기능
+  - 로그인한 사용자만 자신의 개인 템플릿 조회 가능
+  - 공개 템플릿은 모든 사용자가 조회 가능
 - **Image Fallback System**:
   - 다단계 이미지 로딩 실패 처리
   - SVG 기반 플레이스홀더 자동 생성
   - 외부 이미지 소스 다중 지원
 - **Date Formatting**: yyyy.MM.dd 형식의 한국식 날짜 표시
 - **Real-time Updates**: 카테고리 변경 시 즉시 템플릿 업데이트
+- **User Authentication Integration**: JWT 토큰 기반 사용자별 템플릿 접근 제어
 
 ### Advanced Features
 

@@ -13,6 +13,8 @@ interface Template {
   category: string;
   created_at: string;
   usage_count: number;
+  is_private: boolean;
+  is_owner: boolean;
   isPopular?: boolean;
 }
 
@@ -75,9 +77,27 @@ export default function TemplateStartPage() {
   const fetchTemplates = async (category: string) => {
     try {
       setIsLoading(true);
+
+      // 로컬 스토리지에서 토큰 가져오기
+      const token = localStorage.getItem("accessToken");
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      // 토큰이 있으면 Authorization 헤더 추가
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(
-        `/api/templates?category=${encodeURIComponent(category)}`
+        `/api/templates?category=${encodeURIComponent(category)}`,
+        {
+          method: "GET",
+          headers,
+        }
       );
+
       if (response.ok) {
         const data = await response.json();
         const templatesWithPopular = data.templates.map(
