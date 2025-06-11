@@ -28,6 +28,36 @@ body .main-content {
   margin: 0 auto;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.create-template-button {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(108, 92, 231, 0.2);
+}
+
+.create-template-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(108, 92, 231, 0.3);
+}
+
 .header-icon {
   width: 48px;
   height: 48px;
@@ -869,4 +899,81 @@ body .main-content {
   color: #9aa0a6;
   border-color: #dadce0;
   cursor: not-allowed;
+}
+
+/* 템플릿 작성 모달 스타일 */
+.create-modal {
+  max-width: 600px;
+  width: 90%;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.image-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  border: 2px dashed #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+  text-align: center;
+}
+
+.upload-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.upload-button:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.upload-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upload-hint {
+  margin: 10px 0 0 0;
+  font-size: 12px;
+  color: #999;
+}
+
+/* 반응형 스타일 추가 */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-left {
+    width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .create-template-button {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
 }

@@ -41,6 +41,7 @@ export default function TemplateStartPage() {
   const [selectedCategory, setSelectedCategory] = useState("추천");
   const [showSendModal, setShowSendModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     null
   );
@@ -50,6 +51,12 @@ export default function TemplateStartPage() {
     content: "",
     category: "",
     is_private: false,
+  });
+  const [createFormData, setCreateFormData] = useState({
+    name: "",
+    content: "",
+    category: "카페/식음료",
+    is_private: true,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [recipientNumber, setRecipientNumber] = useState("");
@@ -183,8 +190,103 @@ export default function TemplateStartPage() {
     setImagePreviewUrl(null);
   };
 
+  const handleCreateTemplate = () => {
+    setCreateFormData({
+      name: "",
+      content: "",
+      category: "카페/식음료",
+      is_private: true,
+    });
+    setSelectedImageFile(null);
+    setImagePreviewUrl(null);
+    setShowCreateModal(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setShowCreateModal(false);
+    setCreateFormData({
+      name: "",
+      content: "",
+      category: "카페/식음료",
+      is_private: true,
+    });
+    setSelectedImageFile(null);
+    setImagePreviewUrl(null);
+  };
+
+  // 이미지 압축 함수
+  const compressImage = (
+    file: File,
+    maxSizeKB: number = 300
+  ): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = document.createElement("img");
+
+      img.onload = () => {
+        // 원본 크기가 300KB 이하면 그대로 반환
+        if (file.size <= maxSizeKB * 1024) {
+          resolve(file);
+          return;
+        }
+
+        // 압축을 위한 초기 설정
+        let { width, height } = img;
+        const quality = 0.8;
+
+        // 이미지가 너무 크면 크기 조정
+        const maxDimension = 1200;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = (height * maxDimension) / width;
+            width = maxDimension;
+          } else {
+            width = (width * maxDimension) / height;
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // 이미지를 캔버스에 그리기
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // 압축 시도
+        const tryCompress = (currentQuality: number) => {
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                // 목표 크기에 도달했거나 품질이 너무 낮아지면 완료
+                if (blob.size <= maxSizeKB * 1024 || currentQuality <= 0.1) {
+                  const compressedFile = new File([blob], file.name, {
+                    type: file.type,
+                    lastModified: Date.now(),
+                  });
+                  resolve(compressedFile);
+                } else {
+                  // 품질을 낮춰서 다시 시도
+                  tryCompress(currentQuality - 0.1);
+                }
+              }
+            },
+            file.type,
+            currentQuality
+          );
+        };
+
+        tryCompress(quality);
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // 이미지 파일 선택 핸들러
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (file) {
       // 파일 타입 검증
@@ -199,11 +301,19 @@ export default function TemplateStartPage() {
         return;
       }
 
-      setSelectedImageFile(file);
+      try {
+        // 300KB 이상이면 압축 처리
+        const processedFile = await compressImage(file, 300);
 
-      // 미리보기 URL 생성
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreviewUrl(previewUrl);
+        setSelectedImageFile(processedFile);
+
+        // 미리보기 URL 생성
+        const previewUrl = URL.createObjectURL(processedFile);
+        setImagePreviewUrl(previewUrl);
+      } catch (error) {
+        console.error("이미지 처리 중 오류:", error);
+        alert("이미지 처리 중 오류가 발생했습니다.");
+      }
     }
   };
 
@@ -382,6 +492,67 @@ export default function TemplateStartPage() {
     }
   };
 
+  // MMS 전송용 이미지 최적화 함수
+  const optimizeImageForMMS = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = document.createElement("img");
+
+      img.onload = () => {
+        let { width, height } = img;
+
+        // MMS 권장 해상도: 1500x1440 이하로 조정
+        const maxWidth = 1500;
+        const maxHeight = 1440;
+
+        // 비율을 유지하면서 크기 조정
+        if (width > maxWidth || height > maxHeight) {
+          const widthRatio = maxWidth / width;
+          const heightRatio = maxHeight / height;
+          const ratio = Math.min(widthRatio, heightRatio);
+
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // 이미지를 캔버스에 그리기
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // 품질을 조정하여 파일 크기도 최적화 (300KB 이하)
+        const tryOptimize = (quality: number) => {
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                // 300KB 이하이거나 품질이 너무 낮아지면 완료
+                if (blob.size <= 300 * 1024 || quality <= 0.3) {
+                  const optimizedFile = new File([blob], file.name, {
+                    type: "image/jpeg",
+                    lastModified: Date.now(),
+                  });
+
+                  resolve(optimizedFile);
+                } else {
+                  // 품질을 낮춰서 다시 시도
+                  tryOptimize(quality - 0.1);
+                }
+              }
+            },
+            "image/jpeg",
+            quality
+          );
+        };
+
+        tryOptimize(0.8);
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleSendMMS = async () => {
     if (!recipientNumber.trim() || !smsTextContent.trim()) {
       alert("수신번호와 메시지 내용을 모두 입력해주세요.");
@@ -395,8 +566,6 @@ export default function TemplateStartPage() {
 
       // 템플릿 이미지가 있는 경우 파일 업로드
       if (selectedTemplate?.image_url) {
-        console.log("템플릿 이미지를 파일로 업로드 중...");
-
         // 외부 URL 이미지를 fetch하여 blob으로 변환
         const imageResponse = await fetch(selectedTemplate.image_url);
         if (!imageResponse.ok) {
@@ -406,13 +575,20 @@ export default function TemplateStartPage() {
         const imageBlob = await imageResponse.blob();
 
         // Blob을 File 객체로 변환
-        const file = new File(
+        let file = new File(
           [imageBlob],
           `template-${selectedTemplate.id}.jpg`,
           {
             type: "image/jpeg",
           }
         );
+
+        // MMS 전송을 위한 이미지 최적화
+        try {
+          file = await optimizeImageForMMS(file);
+        } catch (optimizeError) {
+          console.warn("이미지 최적화 실패, 원본 사용:", optimizeError);
+        }
 
         // FormData로 파일 업로드
         const formData = new FormData();
@@ -475,18 +651,113 @@ export default function TemplateStartPage() {
     setSelectedTemplate(null);
   };
 
+  const handleSaveNewTemplate = async () => {
+    setIsSaving(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      const userId = getCurrentUserId();
+      if (!userId) {
+        alert("사용자 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+      let imageUrl = "";
+
+      // 이미지가 선택된 경우 업로드
+      if (selectedImageFile) {
+        setIsUploadingImage(true);
+        const formData = new FormData();
+        formData.append("file", selectedImageFile);
+
+        const uploadResponse = await fetch("/api/templates/upload-image", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          imageUrl = uploadData.fileUrl;
+        } else {
+          throw new Error("이미지 업로드에 실패했습니다.");
+        }
+        setIsUploadingImage(false);
+      } else {
+        // 기본 이미지 URL 설정
+        imageUrl =
+          "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=300&h=200&fit=crop&crop=center&auto=format&q=60";
+      }
+
+      // 새 템플릿 생성
+      const templateData = {
+        name: createFormData.name,
+        content: createFormData.content,
+        category: createFormData.category,
+        image_url: imageUrl,
+        is_private: createFormData.is_private,
+        user_id: userId,
+      };
+
+      const response = await fetch("/api/templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(templateData),
+      });
+
+      if (response.ok) {
+        alert("새 템플릿이 성공적으로 생성되었습니다!");
+        handleCloseCreateModal();
+        // 커스텀 카테고리로 이동하여 새로 생성된 템플릿 확인
+        setSelectedCategory("커스텀");
+        fetchTemplates("커스텀");
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "템플릿 생성에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("Error creating template:", error);
+      alert(
+        error instanceof Error ? error.message : "템플릿 생성에 실패했습니다."
+      );
+    } finally {
+      setIsSaving(false);
+      setIsUploadingImage(false);
+    }
+  };
+
   return (
     <div className="template-start-container">
       <div className="template-start-header">
         <div className="header-content">
-          <div className="header-icon">
-            <Layout size={24} />
+          <div className="header-left">
+            <div className="header-icon">
+              <Layout size={24} />
+            </div>
+            <div className="header-text">
+              <h1>템플릿으로 시작</h1>
+              <p>
+                AI와 대화하며 맞춤형 마케팅 캠페인을 생성하고 MMS로 전송하세요
+              </p>
+            </div>
           </div>
-          <div className="header-text">
-            <h1>템플릿으로 시작</h1>
-            <p>
-              AI와 대화하며 맞춤형 마케팅 캠페인을 생성하고 MMS로 전송하세요
-            </p>
+          <div className="header-actions">
+            <button
+              onClick={handleCreateTemplate}
+              className="create-template-button"
+            >
+              템플릿 작성하기
+            </button>
           </div>
         </div>
       </div>
@@ -853,6 +1124,162 @@ export default function TemplateStartPage() {
                   : isUploadingImage
                   ? "이미지 업로드 중..."
                   : "저장"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 템플릿 작성 모달 */}
+      {showCreateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content create-modal">
+            <div className="modal-header">
+              <h2>새 템플릿 작성</h2>
+              <button onClick={handleCloseCreateModal} className="modal-close">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="create-form">
+                <div className="form-section">
+                  <label className="form-label">템플릿 이름</label>
+                  <input
+                    type="text"
+                    value={createFormData.name}
+                    onChange={(e) =>
+                      setCreateFormData({
+                        ...createFormData,
+                        name: e.target.value,
+                      })
+                    }
+                    className="form-input"
+                    placeholder="템플릿 이름을 입력하세요"
+                  />
+                </div>
+
+                <div className="form-section">
+                  <label className="form-label">카테고리</label>
+                  <select
+                    value={createFormData.category}
+                    onChange={(e) =>
+                      setCreateFormData({
+                        ...createFormData,
+                        category: e.target.value,
+                      })
+                    }
+                    className="form-select"
+                  >
+                    {categories
+                      .filter((cat) => cat !== "추천" && cat !== "커스텀")
+                      .map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="form-section">
+                  <label className="form-label">템플릿 내용</label>
+                  <textarea
+                    value={createFormData.content}
+                    onChange={(e) =>
+                      setCreateFormData({
+                        ...createFormData,
+                        content: e.target.value,
+                      })
+                    }
+                    className="form-textarea"
+                    placeholder="템플릿 내용을 입력하세요"
+                    rows={6}
+                  />
+                </div>
+
+                <div className="form-section">
+                  <label className="form-label">이미지 (선택사항)</label>
+                  <div className="image-upload-section">
+                    {imagePreviewUrl ? (
+                      <div className="current-image">
+                        <Image
+                          src={imagePreviewUrl}
+                          alt="미리보기"
+                          width={200}
+                          height={120}
+                          style={{ objectFit: "cover" }}
+                        />
+                        <div className="image-actions">
+                          <button
+                            type="button"
+                            onClick={handleImageChangeClick}
+                            className="image-action-btn"
+                            disabled={isUploadingImage}
+                          >
+                            <ImageIcon size={16} />
+                            {isUploadingImage ? "업로드 중..." : "이미지 변경"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleImageDelete}
+                            className="image-action-btn delete"
+                            disabled={isUploadingImage}
+                          >
+                            <X size={16} />
+                            이미지 삭제
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="image-upload-placeholder">
+                        <button
+                          type="button"
+                          onClick={handleImageChangeClick}
+                          className="upload-button"
+                          disabled={isUploadingImage}
+                        >
+                          <ImageIcon size={24} />
+                          <span>이미지 업로드</span>
+                        </button>
+                        <p className="upload-hint">
+                          이미지를 업로드하지 않으면 기본 이미지가 사용됩니다.
+                        </p>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      style={{ display: "none" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                onClick={handleCloseCreateModal}
+                className="cancel-button"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveNewTemplate}
+                className="save-button primary"
+                disabled={
+                  isSaving ||
+                  isUploadingImage ||
+                  !createFormData.name.trim() ||
+                  !createFormData.content.trim()
+                }
+              >
+                {isSaving
+                  ? "생성 중..."
+                  : isUploadingImage
+                  ? "이미지 업로드 중..."
+                  : "템플릿 생성"}
               </button>
             </div>
           </div>
