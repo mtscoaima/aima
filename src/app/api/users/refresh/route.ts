@@ -5,18 +5,12 @@ import { getKSTISOString } from "@/lib/utils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
-// 서버 사이드에서는 서비스 역할 키 우선 사용
+// 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// 서비스 키가 있으면 서비스 키 사용, 없으면 anon 키 사용
-const supabaseKey = supabaseServiceKey || "";
-
-if (!supabaseServiceKey) {
-  console.warn(
-    "⚠️ SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다. ANON_KEY를 사용합니다."
-  );
-}
+// 서비스 키 사용
+const supabaseKey = supabaseServiceKey;
 
 const supabase = createClient(supabaseUrl, supabaseKey, {
   db: {

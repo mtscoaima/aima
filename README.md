@@ -9,7 +9,6 @@ Create a `.env.local` file in the root directory and add your Supabase configura
 ```bash
 # Supabase 설정
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # JWT 토큰 시크릿 키 (로그인 시 사용)
@@ -21,7 +20,6 @@ JWT_SECRET=your_jwt_secret_key_here
 1. [Supabase](https://supabase.com)에서 새 프로젝트를 생성합니다
 2. 프로젝트 설정에서 API 키를 확인합니다:
    - `NEXT_PUBLIC_SUPABASE_URL`: 프로젝트 URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: anon/public 키
    - `SUPABASE_SERVICE_ROLE_KEY`: service_role 키 (서버 사이드 전용)
 
 ### Database Setup
@@ -176,6 +174,45 @@ CREATE POLICY "Authenticated users can access user-documents bucket" ON storage.
 FOR SELECT USING (
   auth.role() = 'authenticated'
   AND id = 'user-documents'
+);
+
+-- 4. templates 버킷 생성 (public 버킷)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'templates',
+  'templates',
+  true,  -- public 버킷 (이미지 공개 접근 가능)
+  5242880,  -- 5MB 제한
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+);
+
+-- 5. templates 버킷 정책 설정
+
+-- 업로드 정책: 인증된 사용자만 업로드 가능 (서버에서 service role key 사용)
+CREATE POLICY "Authenticated users can upload template images" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'templates'
+  AND auth.role() = 'service_role'
+);
+
+-- 조회 정책: 모든 사용자가 템플릿 이미지 조회 가능 (public 버킷)
+CREATE POLICY "Anyone can view template images" ON storage.objects
+FOR SELECT USING (
+  bucket_id = 'templates'
+);
+
+-- 업데이트 정책: 서비스 역할만 업데이트 가능
+CREATE POLICY "Service role can update template images" ON storage.objects
+FOR UPDATE USING (
+  bucket_id = 'templates'
+  AND auth.role() = 'service_role'
+);
+
+-- 삭제 정책: 서비스 역할만 삭제 가능
+CREATE POLICY "Service role can delete template images" ON storage.objects
+FOR DELETE USING (
+  bucket_id = 'templates'
+  AND auth.role() = 'service_role'
 );
 ```
 

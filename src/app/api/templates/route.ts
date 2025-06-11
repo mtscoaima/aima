@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         image_url,
         category,
         is_private,
-        user_id: is_private ? parseInt(userId) : null, // 개인 템플릿인 경우에만 user_id 설정
+        user_id: parseInt(userId), // 모든 템플릿에 user_id 설정
         usage_count: 0,
         is_active: true,
       })
