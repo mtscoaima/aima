@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Layout, Phone, Smartphone, ImageIcon, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import "./styles.css";
 
 interface Template {
@@ -30,9 +31,11 @@ const categories = [
   "의류/패션",
   "과일",
   "리뷰",
+  "커스텀",
 ];
 
 export default function TemplateStartPage() {
+  const { isAuthenticated } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("추천");
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
@@ -312,8 +315,22 @@ export default function TemplateStartPage() {
             {filteredTemplates.length === 0 && (
               <div className="empty-state">
                 <Layout size={48} />
-                <h3>해당 카테고리에 템플릿이 없습니다</h3>
-                <p>다른 카테고리를 선택해보세요</p>
+                {selectedCategory === "커스텀" && !isAuthenticated ? (
+                  <>
+                    <h3>로그인이 필요합니다</h3>
+                    <p>커스텀 템플릿을 보려면 로그인해주세요</p>
+                  </>
+                ) : selectedCategory === "커스텀" && isAuthenticated ? (
+                  <>
+                    <h3>생성한 템플릿이 없습니다</h3>
+                    <p>나만의 템플릿을 만들어보세요</p>
+                  </>
+                ) : (
+                  <>
+                    <h3>해당 카테고리에 템플릿이 없습니다</h3>
+                    <p>다른 카테고리를 선택해보세요</p>
+                  </>
+                )}
               </div>
             )}
           </>

@@ -55,7 +55,15 @@ export async function GET(request: NextRequest) {
     // 추천 카테고리인 경우 usage_count 높은 순으로 10개만
     if (category === "추천") {
       query = query.order("usage_count", { ascending: false }).limit(10);
-    } else if (category && category !== "추천") {
+    } else if (category === "커스텀") {
+      // 커스텀 카테고리인 경우 현재 로그인한 유저의 템플릿만 표시
+      if (!userId) {
+        // 로그인하지 않은 경우 빈 결과 반환
+        return NextResponse.json({ templates: [] });
+      }
+      // 현재 유저가 생성한 템플릿만 필터링 (공개/비공개 상관없이)
+      query = query.eq("user_id", parseInt(userId));
+    } else if (category && category !== "추천" && category !== "커스텀") {
       // 특정 카테고리 필터링
       query = query.eq("category", category);
     }
