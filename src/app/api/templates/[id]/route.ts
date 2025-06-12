@@ -27,7 +27,7 @@ function getUserIdFromToken(request: NextRequest): string | null {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // JWT 토큰에서 사용자 ID 추출 (필수)
@@ -39,7 +39,8 @@ export async function PUT(
       );
     }
 
-    const templateId = params.id;
+    const { id } = await params;
+    const templateId = id;
     const body = await request.json();
     const { name, content, image_url, category } = body;
 
