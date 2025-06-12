@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import {
   Send,
   Image as ImageIcon,
@@ -32,7 +32,7 @@ interface GeneratedTemplate {
   status: "생성완료" | "전송준비" | "전송완료";
 }
 
-export default function TargetMarketingPage() {
+function TargetMarketingContent() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -1115,5 +1115,13 @@ export default function TargetMarketingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TargetMarketingPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TargetMarketingContent />
+    </Suspense>
   );
 }
