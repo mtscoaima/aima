@@ -11,6 +11,7 @@ import {
   Phone,
   Smartphone,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import "./styles.css";
 
 interface Message {
@@ -32,15 +33,9 @@ interface GeneratedTemplate {
 }
 
 export default function TargetMarketingPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "안녕하세요! AI 타깃마케팅 도우미입니다. 어떤 마케팅 캠페인을 만들어드릴까요?",
-      timestamp: new Date(),
-    },
-  ]);
+  const searchParams = useSearchParams();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
@@ -54,22 +49,41 @@ export default function TargetMarketingPage() {
     string | null
   >(null);
   const [recipientNumber, setRecipientNumber] = useState("");
+  const [isFromTemplate, setIsFromTemplate] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [templates, setTemplates] = useState<GeneratedTemplate[]>([
-    {
-      id: "1",
-      title: "카페 아메리카노 20% 할인",
-      description:
-        "2025년 카페 탐방의 오픈 프로모션을 시작합니다 3월 11일 부터 6월 12일까지 아메리카노 20% 할인 혜택을 만나보세요.",
-      imageUrl: "/api/placeholder/300/200",
-      createdAt: new Date(),
-      status: "생성완료",
-    },
-  ]);
+  const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const prevMessagesLengthRef = useRef(messages.length);
+  const prevMessagesLengthRef = useRef(0);
+
+  // 클라이언트에서만 초기 데이터 설정
+  useEffect(() => {
+    if (!isInitialized) {
+      const initialMessage: Message = {
+        id: "initial-1",
+        role: "assistant",
+        content:
+          "안녕하세요! AI 타깃마케팅 도우미입니다. 어떤 마케팅 캠페인을 만들어드릴까요?",
+        timestamp: new Date(),
+      };
+
+      const initialTemplate: GeneratedTemplate = {
+        id: "1",
+        title: "카페 아메리카노 20% 할인",
+        description:
+          "2025년 카페 탐방의 오픈 프로모션을 시작합니다 3월 11일 부터 6월 12일까지 아메리카노 20% 할인 혜택을 만나보세요.",
+        imageUrl: "/api/placeholder/300/200",
+        createdAt: new Date(),
+        status: "생성완료",
+      };
+
+      setMessages([initialMessage]);
+      setTemplates([initialTemplate]);
+      setIsInitialized(true);
+      prevMessagesLengthRef.current = 1;
+    }
+  }, [isInitialized]);
 
   // Base64 이미지를 리사이징하는 함수
   const resizeBase64Image = async (
@@ -155,11 +169,65 @@ export default function TargetMarketingPage() {
     }
   }, [showTypingIndicator]);
 
+  // 템플릿 사용하기로 온 경우 처리
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const useTemplate = searchParams.get("useTemplate");
+    if (useTemplate === "true") {
+      const savedTemplateId = localStorage.getItem("selectedTemplateId");
+      if (savedTemplateId) {
+        // DB에서 템플릿 데이터 불러오기
+        fetchTemplateById(savedTemplateId);
+
+        // localStorage에서 템플릿 ID 제거
+        localStorage.removeItem("selectedTemplateId");
+      }
+    }
+  }, [searchParams, isInitialized]);
+
+  // 템플릿 ID로 DB에서 템플릿 데이터 불러오기
+  const fetchTemplateById = async (templateId: string) => {
+    try {
+      // 로컬 스토리지에서 토큰 가져오기
+      const token = localStorage.getItem("accessToken");
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      // 토큰이 있으면 Authorization 헤더 추가
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`/api/templates/${templateId}`, {
+        method: "GET",
+        headers,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const templateData = data.template;
+
+        // 우측 MMS 전송 섹션에 템플릿 데이터 설정 (모달 사용 안함)
+        setSmsTextContent(templateData.content);
+        setCurrentGeneratedImage(templateData.image_url);
+        setIsFromTemplate(true);
+      } else {
+        const errorData = await response.json();
+        console.error("템플릿 불러오기 실패:", errorData);
+      }
+    } catch (error) {
+      console.error("템플릿 불러오기 오류:", error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Math.random().toString(36).substr(2, 9)}`,
       role: "user",
       content: inputMessage,
       timestamp: new Date(),
@@ -171,7 +239,9 @@ export default function TargetMarketingPage() {
     setShowTypingIndicator(true);
 
     // 스트리밍 응답을 위한 임시 메시지 생성
-    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessageId = `assistant-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     const assistantMessage: Message = {
       id: assistantMessageId,
       role: "assistant",
@@ -335,7 +405,7 @@ export default function TargetMarketingPage() {
                 // 이미지가 생성된 경우 템플릿에 추가
                 if (data.imageUrl && data.templateData) {
                   const newTemplate: GeneratedTemplate = {
-                    id: Date.now().toString(),
+                    id: `template-${Math.random().toString(36).substr(2, 9)}`,
                     title: data.templateData.title,
                     description: data.templateData.description,
                     imageUrl: data.imageUrl,
@@ -392,76 +462,106 @@ export default function TargetMarketingPage() {
 
     setIsSending(true);
     try {
-      console.log("전송할 이미지 URL:", currentGeneratedImage); // 디버깅용 로그
-
       let fileId = null;
 
-      // 이미지가 있는 경우 파일 업로드
+      // 이미지가 있는 경우 파일 업로드 (Base64 또는 URL)
       if (
         currentGeneratedImage &&
-        currentGeneratedImage.startsWith("data:image/")
+        (currentGeneratedImage.startsWith("data:image/") ||
+          currentGeneratedImage.startsWith("http"))
       ) {
-        console.log("Base64 이미지를 파일로 업로드 중...");
+        let blob: Blob;
+        let fileName: string;
 
-        let processedImage = currentGeneratedImage;
+        if (currentGeneratedImage.startsWith("data:image/")) {
+          let processedImage = currentGeneratedImage;
 
-        // 먼저 현재 이미지 크기 확인
-        const base64Data = currentGeneratedImage.split(",")[1];
-        const originalByteCharacters = atob(base64Data);
-        const originalSize = originalByteCharacters.length;
+          // 먼저 현재 이미지 크기 확인
+          const base64Data = currentGeneratedImage.split(",")[1];
+          const originalByteCharacters = atob(base64Data);
+          const originalSize = originalByteCharacters.length;
 
-        // 300KB 초과 시 자동 리사이징
-        if (originalSize > 300 * 1024) {
-          try {
-            // 품질을 점진적으로 낮춰가며 300KB 이하로 만들기
-            let quality = 0.8;
-            let resizedImage = processedImage;
-            let attempts = 0;
-            const maxAttempts = 5;
+          // 300KB 초과 시 자동 리사이징
+          if (originalSize > 300 * 1024) {
+            try {
+              // 품질을 점진적으로 낮춰가며 300KB 이하로 만들기
+              let quality = 0.8;
+              let resizedImage = processedImage;
+              let attempts = 0;
+              const maxAttempts = 5;
 
-            while (attempts < maxAttempts) {
-              resizedImage = await resizeBase64Image(processedImage, quality);
-              const resizedBase64Data = resizedImage.split(",")[1];
-              const resizedBytes = atob(resizedBase64Data);
-              const resizedSize = resizedBytes.length;
+              while (attempts < maxAttempts) {
+                resizedImage = await resizeBase64Image(processedImage, quality);
+                const resizedBase64Data = resizedImage.split(",")[1];
+                const resizedBytes = atob(resizedBase64Data);
+                const resizedSize = resizedBytes.length;
 
-              if (resizedSize <= 300 * 1024) {
-                processedImage = resizedImage;
-                break;
+                if (resizedSize <= 300 * 1024) {
+                  processedImage = resizedImage;
+                  break;
+                }
+
+                quality -= 0.15; // 품질을 15%씩 낮춤
+                if (quality < 0.1) quality = 0.1; // 최소 품질 제한
+                attempts++;
               }
 
-              quality -= 0.15; // 품질을 15%씩 낮춤
-              if (quality < 0.1) quality = 0.1; // 최소 품질 제한
-              attempts++;
+              if (attempts >= maxAttempts) {
+                console.warn("최대 시도 횟수에 도달했지만 계속 진행합니다.");
+              }
+            } catch (error) {
+              console.error("이미지 리사이징 실패:", error);
+              alert(
+                "이미지 크기 조정 중 오류가 발생했습니다. 원본 이미지로 전송을 시도합니다."
+              );
             }
+          }
 
-            if (attempts >= maxAttempts) {
-              console.warn("최대 시도 횟수에 도달했지만 계속 진행합니다.");
-            }
-          } catch (error) {
-            console.error("이미지 리사이징 실패:", error);
-            alert(
-              "이미지 크기 조정 중 오류가 발생했습니다. 원본 이미지로 전송을 시도합니다."
+          // Base64 데이터에서 파일 정보 추출
+          const finalBase64Data = processedImage.split(",")[1];
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const mimeType = processedImage.split(";")[0].split(":")[1];
+
+          // Base64를 Blob으로 변환
+          const finalByteCharacters = atob(finalBase64Data);
+          const byteNumbers = new Array(finalByteCharacters.length);
+          for (let i = 0; i < finalByteCharacters.length; i++) {
+            byteNumbers[i] = finalByteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          blob = new Blob([byteArray], { type: "image/jpeg" }); // JPEG로 강제 변환
+          fileName = `ai-generated-${Math.random()
+            .toString(36)
+            .substr(2, 9)}.jpg`;
+        } else if (currentGeneratedImage.startsWith("http")) {
+          // URL에서 이미지 다운로드
+          const imageResponse = await fetch(currentGeneratedImage);
+          if (!imageResponse.ok) {
+            throw new Error(
+              `이미지 다운로드 실패: ${imageResponse.status} ${imageResponse.statusText}`
             );
           }
-        }
 
-        // Base64 데이터에서 파일 정보 추출
-        const finalBase64Data = processedImage.split(",")[1];
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const mimeType = processedImage.split(";")[0].split(":")[1];
+          blob = await imageResponse.blob();
 
-        // Base64를 Blob으로 변환
-        const finalByteCharacters = atob(finalBase64Data);
-        const byteNumbers = new Array(finalByteCharacters.length);
-        for (let i = 0; i < finalByteCharacters.length; i++) {
-          byteNumbers[i] = finalByteCharacters.charCodeAt(i);
+          // URL에서 파일명 추출 또는 기본 파일명 사용
+          const urlParts = currentGeneratedImage.split("/");
+          const originalFileName = urlParts[urlParts.length - 1];
+          fileName = originalFileName.includes(".")
+            ? originalFileName
+            : `template-${Math.random().toString(36).substr(2, 9)}.jpg`;
+
+          // JPEG가 아닌 경우 파일명과 타입을 JPEG로 변경
+          if (!blob.type.includes("jpeg") && !blob.type.includes("jpg")) {
+            fileName = fileName.replace(/\.[^/.]+$/, ".jpg");
+            blob = new Blob([blob], { type: "image/jpeg" });
+          }
+        } else {
+          throw new Error("지원하지 않는 이미지 형식입니다.");
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: "image/jpeg" }); // JPEG로 강제 변환
 
         // Blob을 File 객체로 변환
-        const file = new File([blob], `ai-generated-${Date.now()}.jpg`, {
+        const file = new File([blob], fileName, {
           type: "image/jpeg",
         });
 
@@ -484,16 +584,18 @@ export default function TargetMarketingPage() {
       }
 
       // 메시지 전송
+      const sendRequestBody = {
+        toNumbers: [recipientNumber.trim().replace(/-/g, "")], // 하이픈 제거
+        message: smsTextContent,
+        fileIds: fileId ? [fileId] : undefined,
+      };
+
       const response = await fetch("/api/message/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          toNumbers: [recipientNumber.trim().replace(/-/g, "")], // 하이픈 제거
-          message: smsTextContent,
-          fileIds: fileId ? [fileId] : undefined,
-        }),
+        body: JSON.stringify(sendRequestBody),
       });
 
       const result = await response.json();
@@ -502,8 +604,6 @@ export default function TargetMarketingPage() {
         alert("MMS가 성공적으로 전송되었습니다!");
         // 전송 후 수신번호만 초기화 (내용과 이미지는 유지)
         setRecipientNumber("");
-        // setSmsTextContent(""); // 제거: 내용 유지
-        // setCurrentGeneratedImage(null); // 제거: 이미지 유지
       } else {
         throw new Error(result.error || "MMS 전송에 실패했습니다.");
       }
@@ -521,24 +621,33 @@ export default function TargetMarketingPage() {
 
   // 템플릿 기반 전송 (모달용)
   const handleSendMMS = async () => {
-    if (!selectedTemplate || !recipients.trim()) {
+    if (!recipients.trim()) {
       alert("수신번호를 입력해주세요.");
+      return;
+    }
+
+    if (!smsTextContent.trim()) {
+      alert("메시지 내용을 입력해주세요.");
       return;
     }
 
     setIsSending(true);
     try {
+      const requestBody = {
+        templateId:
+          selectedTemplate?.id ||
+          `temp-${Math.random().toString(36).substr(2, 9)}`,
+        recipients: recipients.split(",").map((num) => num.trim()),
+        message: smsTextContent,
+        imageUrl: currentGeneratedImage,
+      };
+
       const response = await fetch("/api/ai/send-mms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          templateId: selectedTemplate.id,
-          recipients: recipients.split(",").map((num) => num.trim()),
-          message: selectedTemplate.description,
-          imageUrl: selectedTemplate.imageUrl,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
@@ -547,16 +656,17 @@ export default function TargetMarketingPage() {
         alert("MMS가 성공적으로 전송되었습니다!");
         setShowSendModal(false);
         setRecipients("");
-        setSelectedTemplate(null);
 
-        // 템플릿 상태 업데이트
-        setTemplates((prev) =>
-          prev.map((t) =>
-            t.id === selectedTemplate.id
-              ? { ...t, status: "전송완료" as const }
-              : t
-          )
-        );
+        // 템플릿 상태 업데이트 (selectedTemplate이 있는 경우에만)
+        if (selectedTemplate) {
+          setTemplates((prev) =>
+            prev.map((t) =>
+              t.id === selectedTemplate.id
+                ? { ...t, status: "전송완료" as const }
+                : t
+            )
+          );
+        }
       } else {
         throw new Error(result.error || "MMS 전송에 실패했습니다.");
       }
@@ -629,9 +739,11 @@ export default function TargetMarketingPage() {
                     )}
                     <p>{message.content}</p>
                   </div>
-                  <div className="message-time">
-                    {message.timestamp.toLocaleTimeString()}
-                  </div>
+                  {isInitialized && (
+                    <div className="message-time">
+                      {message.timestamp.toLocaleTimeString()}
+                    </div>
+                  )}
                 </div>
               ))}
             {showTypingIndicator && (
@@ -714,6 +826,9 @@ export default function TargetMarketingPage() {
             <div className="content-section">
               <div className="section-header">
                 <span>내용 입력</span>
+                {isFromTemplate && (
+                  <span className="template-badge">📋 템플릿에서 불러옴</span>
+                )}
               </div>
               <div className="message-input-section">
                 <div className="form-group">
@@ -737,7 +852,11 @@ export default function TargetMarketingPage() {
               <div className="section-header">
                 <ImageIcon size={16} />
                 <span>이미지 첨부</span>
-                <span className="file-info">(AI 생성 이미지 자동 첨부)</span>
+                <span className="file-info">
+                  {isFromTemplate
+                    ? "(템플릿 이미지 자동 첨부)"
+                    : "(AI 생성 이미지 자동 첨부)"}
+                </span>
               </div>
               <div className="file-attachment-section">
                 {currentGeneratedImage ? (
@@ -746,12 +865,17 @@ export default function TargetMarketingPage() {
                     <img src={currentGeneratedImage} alt="AI 생성 이미지" />
                     <div className="image-info">
                       <span className="image-status">
-                        ✓ AI 생성 이미지 첨부됨
+                        {isFromTemplate
+                          ? "✓ 템플릿 이미지 첨부됨"
+                          : "✓ AI 생성 이미지 첨부됨"}
                       </span>
                       <button
                         type="button"
                         className="remove-image-button"
-                        onClick={() => setCurrentGeneratedImage(null)}
+                        onClick={() => {
+                          setCurrentGeneratedImage(null);
+                          setIsFromTemplate(false);
+                        }}
                       >
                         제거
                       </button>
@@ -785,6 +909,7 @@ export default function TargetMarketingPage() {
                     setRecipientNumber("");
                     setSmsTextContent("");
                     setCurrentGeneratedImage(null);
+                    setIsFromTemplate(false);
                   }}
                   disabled={isSending}
                   title="모든 내용 초기화"
@@ -798,7 +923,7 @@ export default function TargetMarketingPage() {
       </div>
 
       {/* MMS 전송 모달 */}
-      {showSendModal && selectedTemplate && (
+      {showSendModal && (
         <div className="modal-overlay">
           <div className="modal-content send-modal">
             <div className="modal-header">
@@ -817,20 +942,17 @@ export default function TargetMarketingPage() {
 
             <div className="modal-body">
               <div className="template-preview">
-                <h3>전송할 템플릿</h3>
+                <h3>전송할 내용</h3>
                 <div className="preview-card">
-                  {selectedTemplate.imageUrl && (
+                  {currentGeneratedImage && (
                     <div className="preview-image">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={selectedTemplate.imageUrl}
-                        alt={selectedTemplate.title}
-                      />
+                      <img src={currentGeneratedImage} alt="전송할 이미지" />
                     </div>
                   )}
                   <div className="preview-content">
-                    <h4>{selectedTemplate.title}</h4>
-                    <p>{selectedTemplate.description}</p>
+                    <h4>{selectedTemplate?.title || "템플릿 내용"}</h4>
+                    <p>{smsTextContent}</p>
                   </div>
                 </div>
               </div>

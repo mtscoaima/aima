@@ -25,6 +25,61 @@ function getUserIdFromToken(request: NextRequest): string | null {
   }
 }
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const templateId = id;
+
+    // 템플릿 조회
+    const { data: template, error } = await supabase
+      .from("message_templates")
+      .select(
+        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, user_id"
+      )
+      .eq("id", parseInt(templateId))
+      .eq("is_active", true)
+      .single();
+
+    if (error || !template) {
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 }
+      );
+    }
+
+    // JWT 토큰에서 사용자 ID 추출 (선택적)
+    const userId = getUserIdFromToken(request);
+
+    // 비공개 템플릿인 경우 소유자만 접근 가능
+    if (
+      template.is_private &&
+      (!userId || template.user_id !== parseInt(userId))
+    ) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    // 응답 데이터 구성
+    const responseTemplate = {
+      ...template,
+      image_url:
+        template.image_url ||
+        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NjY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==",
+      is_owner: userId ? template.user_id === parseInt(userId) : false,
+    };
+
+    return NextResponse.json({ template: responseTemplate });
+  } catch (error) {
+    console.error("API error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
