@@ -9,7 +9,6 @@ Create a `.env.local` file in the root directory and add your Supabase configura
 ```bash
 # Supabase 설정
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # JWT 토큰 시크릿 키 (로그인 시 사용)
@@ -21,12 +20,13 @@ JWT_SECRET=your_jwt_secret_key_here
 1. [Supabase](https://supabase.com)에서 새 프로젝트를 생성합니다
 2. 프로젝트 설정에서 API 키를 확인합니다:
    - `NEXT_PUBLIC_SUPABASE_URL`: 프로젝트 URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: anon/public 키
    - `SUPABASE_SERVICE_ROLE_KEY`: service_role 키 (서버 사이드 전용)
 
 ### Database Setup
 
-3. SQL Editor에서 다음 테이블을 생성합니다:
+3. SQL Editor에서 다음 테이블들을 생성합니다:
+
+**사용자 테이블:**
 
 ```sql
 CREATE TABLE users (
@@ -57,9 +57,73 @@ CREATE INDEX idx_users_documents ON users USING GIN (documents);
 CREATE INDEX idx_users_agreement_info ON users USING GIN (agreement_info);
 ```
 
+**메시지 템플릿 테이블:**
+
+```sql
+-- message_templates 테이블 생성
+CREATE TABLE IF NOT EXISTS message_templates (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,        -- 템플릿 이름 (기존 title에서 변경)
+  content TEXT NOT NULL,             -- 템플릿 내용 (기존 description에서 변경)
+  image_url TEXT,                    -- 이미지 URL (NULL 허용, 자동 fallback 처리)
+  category VARCHAR(100) NOT NULL,    -- 카테고리 (카페/식음료, 명원, 학원 등)
+  usage_count INTEGER DEFAULT 0,    -- 사용 횟수 (인기도 측정용)
+  is_active BOOLEAN DEFAULT true,    -- 활성화 상태
+  is_private BOOLEAN DEFAULT false,  -- 개인 템플릿 여부 (true: 개인용, false: 공개용)
+  user_id INTEGER,                   -- 템플릿 소유자 ID (개인 템플릿인 경우 필수)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),  -- 생성일 (yyyy.MM.dd 형식으로 표시)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),  -- 수정일
+
+  -- 외래키 제약조건
+  CONSTRAINT fk_message_templates_user_id
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 인덱스 생성
+CREATE INDEX IF NOT EXISTS idx_message_templates_category ON message_templates(category);
+CREATE INDEX IF NOT EXISTS idx_message_templates_usage_count ON message_templates(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_message_templates_created_at ON message_templates(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_message_templates_is_active ON message_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_message_templates_is_private ON message_templates(is_private);
+CREATE INDEX IF NOT EXISTS idx_message_templates_user_id ON message_templates(user_id);
+
+-- updated_at 트리거 함수 생성
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- updated_at 트리거 생성
+CREATE TRIGGER update_message_templates_updated_at
+    BEFORE UPDATE ON message_templates
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+### Template System Setup
+
+4. 템플릿 시스템을 위한 추가 설정:
+
+**템플릿 이미지 처리:**
+
+- `image_url`이 `NULL`인 경우 자동으로 SVG 기반 "No Image" 플레이스홀더 표시
+- 이미지 로딩 실패 시 다단계 fallback 시스템 적용:
+  1. Unsplash 이미지 (여러 개)
+  2. Picsum 랜덤 이미지
+  3. SVG 플레이스홀더 (최종)
+
+**템플릿 카테고리 시스템:**
+
+- 추천 카테고리: `usage_count` 높은 순으로 상위 10개 템플릿 표시
+- 일반 카테고리: `created_at` 내림차순으로 정렬
+- 인기 템플릿에는 "POPULAR" 라벨 표시
+
 ### Storage Setup
 
-4. Storage 버킷과 정책을 설정합니다. SQL Editor에서 다음을 실행하세요:
+5. Storage 버킷과 정책을 설정합니다. SQL Editor에서 다음을 실행하세요:
 
 ```sql
 -- Supabase Storage 버킷 생성 및 정책 설정
@@ -110,6 +174,45 @@ CREATE POLICY "Authenticated users can access user-documents bucket" ON storage.
 FOR SELECT USING (
   auth.role() = 'authenticated'
   AND id = 'user-documents'
+);
+
+-- 4. templates 버킷 생성 (public 버킷)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'templates',
+  'templates',
+  true,  -- public 버킷 (이미지 공개 접근 가능)
+  5242880,  -- 5MB 제한
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+);
+
+-- 5. templates 버킷 정책 설정
+
+-- 업로드 정책: 인증된 사용자만 업로드 가능 (서버에서 service role key 사용)
+CREATE POLICY "Authenticated users can upload template images" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'templates'
+  AND auth.role() = 'service_role'
+);
+
+-- 조회 정책: 모든 사용자가 템플릿 이미지 조회 가능 (public 버킷)
+CREATE POLICY "Anyone can view template images" ON storage.objects
+FOR SELECT USING (
+  bucket_id = 'templates'
+);
+
+-- 업데이트 정책: 서비스 역할만 업데이트 가능
+CREATE POLICY "Service role can update template images" ON storage.objects
+FOR UPDATE USING (
+  bucket_id = 'templates'
+  AND auth.role() = 'service_role'
+);
+
+-- 삭제 정책: 서비스 역할만 삭제 가능
+CREATE POLICY "Service role can delete template images" ON storage.objects
+FOR DELETE USING (
+  bucket_id = 'templates'
+  AND auth.role() = 'service_role'
 );
 ```
 
@@ -196,6 +299,7 @@ WHERE agreement_info IS NULL;
 Vercel 대시보드에서 다음 환경변수들을 설정해주세요:
 
 **필수 환경변수:**
+
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase 프로젝트 URL
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase 서비스 역할 키
 - `JWT_SECRET`: JWT 토큰 암호화 키
@@ -206,6 +310,7 @@ Vercel 대시보드에서 다음 환경변수들을 설정해주세요:
 - `OPENAI_API_KEY`: OpenAI API 키
 
 **선택적 환경변수:**
+
 - `NEXT_PUBLIC_BASE_URL`: 베이스 URL (설정하지 않으면 자동으로 감지됨)
 
 ### 2. 자동 URL 감지
@@ -241,6 +346,29 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## 주요 변경사항 (Template System Update)
+
+### 데이터베이스 스키마 변경
+
+- `title` → `name`: 템플릿 제목 필드명 변경
+- `description` → `content`: 템플릿 내용 필드명 변경
+- `period` 필드 제거, `created_at` 사용 (yyyy.MM.dd 형식)
+- `isGrandOpening` 제거, `usage_count` 기반 인기도 시스템 도입
+
+### UI/UX 개선
+
+- "GRAND OPENING" → "POPULAR" 라벨 변경
+- 이미지 로딩 실패 시 자동 fallback 처리
+- 로딩 상태 표시 및 에러 처리 강화
+- 실시간 카테고리 필터링
+
+### API 개선
+
+- `/api/templates` 엔드포인트 추가
+- 카테고리별 동적 필터링 지원
+- 자동 이미지 fallback 처리
+- 인기도 기반 추천 시스템
+
 ## Features
 
 ### Authentication
@@ -274,12 +402,26 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### API Integration
 
+**사용자 관련 API:**
+
 - Login API: `POST /api/users/login`
 - Signup API: `POST /api/users/signup` (basic info only)
 - Signup with Files API: `POST /api/users/signup-with-files` (with file upload)
 - Upload Documents API: `POST /api/users/upload-documents` (requires authentication)
 - User Info API: `GET /api/users/me` (requires authentication)
 - **Token Refresh API: `POST /api/users/refresh`** (토큰 갱신)
+
+**템플릿 관련 API:**
+
+- Templates API: `GET /api/templates?category={category}` (템플릿 목록 조회)
+  - 카테고리별 필터링 지원
+  - 추천 카테고리: usage_count 기준 상위 10개
+  - 일반 카테고리: created_at 기준 정렬
+  - 자동 이미지 fallback 처리
+  - **개인 템플릿 필터링**: 로그인한 사용자는 공개 템플릿 + 자신의 개인 템플릿 조회 가능
+- Create Template API: `POST /api/templates` (새 템플릿 생성, 인증 필요)
+  - 공개/개인 템플릿 생성 지원
+  - 개인 템플릿은 생성자만 조회 가능
 
 ### Form Features
 
@@ -290,6 +432,23 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - Phone number verification
 - File upload with drag & drop support
 - Terms and conditions with bulk agreement option
+
+### Template Features
+
+- **Dynamic Template Loading**: Supabase 데이터베이스에서 실시간 템플릿 로딩
+- **Category-based Filtering**: 카테고리별 템플릿 필터링 및 정렬
+- **Popular Templates**: 사용량 기반 인기 템플릿 추천 시스템
+- **Private Template System**:
+  - 개인 템플릿 생성 및 관리 기능
+  - 로그인한 사용자만 자신의 개인 템플릿 조회 가능
+  - 공개 템플릿은 모든 사용자가 조회 가능
+- **Image Fallback System**:
+  - 다단계 이미지 로딩 실패 처리
+  - SVG 기반 플레이스홀더 자동 생성
+  - 외부 이미지 소스 다중 지원
+- **Date Formatting**: yyyy.MM.dd 형식의 한국식 날짜 표시
+- **Real-time Updates**: 카테고리 변경 시 즉시 템플릿 업데이트
+- **User Authentication Integration**: JWT 토큰 기반 사용자별 템플릿 접근 제어
 
 ### Advanced Features
 

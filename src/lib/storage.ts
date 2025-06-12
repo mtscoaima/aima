@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// 서버 측에서 service role key 사용
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export interface UploadedFile {
   fileName: string;
@@ -15,6 +16,8 @@ export interface DocumentsData {
   businessRegistration?: UploadedFile;
   employmentCertificate?: UploadedFile;
 }
+
+// 템플릿 이미지 업로드는 서버 API(/api/templates/upload-image)를 통해 처리됩니다.
 
 // 파일 업로드 함수
 export async function uploadFile(
