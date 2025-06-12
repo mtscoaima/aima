@@ -34,15 +34,8 @@ interface GeneratedTemplate {
 
 export default function TargetMarketingPage() {
   const searchParams = useSearchParams();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "안녕하세요! AI 타깃마케팅 도우미입니다. 어떤 마케팅 캠페인을 만들어드릴까요?",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
@@ -58,21 +51,39 @@ export default function TargetMarketingPage() {
   const [recipientNumber, setRecipientNumber] = useState("");
   const [isFromTemplate, setIsFromTemplate] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [templates, setTemplates] = useState<GeneratedTemplate[]>([
-    {
-      id: "1",
-      title: "카페 아메리카노 20% 할인",
-      description:
-        "2025년 카페 탐방의 오픈 프로모션을 시작합니다 3월 11일 부터 6월 12일까지 아메리카노 20% 할인 혜택을 만나보세요.",
-      imageUrl: "/api/placeholder/300/200",
-      createdAt: new Date(),
-      status: "생성완료",
-    },
-  ]);
+  const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const prevMessagesLengthRef = useRef(messages.length);
+  const prevMessagesLengthRef = useRef(0);
+
+  // 클라이언트에서만 초기 데이터 설정
+  useEffect(() => {
+    if (!isInitialized) {
+      const initialMessage: Message = {
+        id: "initial-1",
+        role: "assistant",
+        content:
+          "안녕하세요! AI 타깃마케팅 도우미입니다. 어떤 마케팅 캠페인을 만들어드릴까요?",
+        timestamp: new Date(),
+      };
+
+      const initialTemplate: GeneratedTemplate = {
+        id: "1",
+        title: "카페 아메리카노 20% 할인",
+        description:
+          "2025년 카페 탐방의 오픈 프로모션을 시작합니다 3월 11일 부터 6월 12일까지 아메리카노 20% 할인 혜택을 만나보세요.",
+        imageUrl: "/api/placeholder/300/200",
+        createdAt: new Date(),
+        status: "생성완료",
+      };
+
+      setMessages([initialMessage]);
+      setTemplates([initialTemplate]);
+      setIsInitialized(true);
+      prevMessagesLengthRef.current = 1;
+    }
+  }, [isInitialized]);
 
   // Base64 이미지를 리사이징하는 함수
   const resizeBase64Image = async (
@@ -160,6 +171,8 @@ export default function TargetMarketingPage() {
 
   // 템플릿 사용하기로 온 경우 처리
   useEffect(() => {
+    if (!isInitialized) return;
+
     const useTemplate = searchParams.get("useTemplate");
     if (useTemplate === "true") {
       const savedTemplateId = localStorage.getItem("selectedTemplateId");
@@ -171,7 +184,7 @@ export default function TargetMarketingPage() {
         localStorage.removeItem("selectedTemplateId");
       }
     }
-  }, [searchParams]);
+  }, [searchParams, isInitialized]);
 
   // 템플릿 ID로 DB에서 템플릿 데이터 불러오기
   const fetchTemplateById = async (templateId: string) => {
@@ -214,7 +227,7 @@ export default function TargetMarketingPage() {
     if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Math.random().toString(36).substr(2, 9)}`,
       role: "user",
       content: inputMessage,
       timestamp: new Date(),
@@ -226,7 +239,9 @@ export default function TargetMarketingPage() {
     setShowTypingIndicator(true);
 
     // 스트리밍 응답을 위한 임시 메시지 생성
-    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessageId = `assistant-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     const assistantMessage: Message = {
       id: assistantMessageId,
       role: "assistant",
@@ -390,7 +405,7 @@ export default function TargetMarketingPage() {
                 // 이미지가 생성된 경우 템플릿에 추가
                 if (data.imageUrl && data.templateData) {
                   const newTemplate: GeneratedTemplate = {
-                    id: Date.now().toString(),
+                    id: `template-${Math.random().toString(36).substr(2, 9)}`,
                     title: data.templateData.title,
                     description: data.templateData.description,
                     imageUrl: data.imageUrl,
@@ -515,7 +530,9 @@ export default function TargetMarketingPage() {
           }
           const byteArray = new Uint8Array(byteNumbers);
           blob = new Blob([byteArray], { type: "image/jpeg" }); // JPEG로 강제 변환
-          fileName = `ai-generated-${Date.now()}.jpg`;
+          fileName = `ai-generated-${Math.random()
+            .toString(36)
+            .substr(2, 9)}.jpg`;
         } else if (currentGeneratedImage.startsWith("http")) {
           // URL에서 이미지 다운로드
           const imageResponse = await fetch(currentGeneratedImage);
@@ -532,7 +549,7 @@ export default function TargetMarketingPage() {
           const originalFileName = urlParts[urlParts.length - 1];
           fileName = originalFileName.includes(".")
             ? originalFileName
-            : `template-${Date.now()}.jpg`;
+            : `template-${Math.random().toString(36).substr(2, 9)}.jpg`;
 
           // JPEG가 아닌 경우 파일명과 타입을 JPEG로 변경
           if (!blob.type.includes("jpeg") && !blob.type.includes("jpg")) {
@@ -617,7 +634,9 @@ export default function TargetMarketingPage() {
     setIsSending(true);
     try {
       const requestBody = {
-        templateId: selectedTemplate?.id || `temp-${Date.now()}`,
+        templateId:
+          selectedTemplate?.id ||
+          `temp-${Math.random().toString(36).substr(2, 9)}`,
         recipients: recipients.split(",").map((num) => num.trim()),
         message: smsTextContent,
         imageUrl: currentGeneratedImage,
@@ -720,9 +739,11 @@ export default function TargetMarketingPage() {
                     )}
                     <p>{message.content}</p>
                   </div>
-                  <div className="message-time">
-                    {message.timestamp.toLocaleTimeString()}
-                  </div>
+                  {isInitialized && (
+                    <div className="message-time">
+                      {message.timestamp.toLocaleTimeString()}
+                    </div>
+                  )}
                 </div>
               ))}
             {showTypingIndicator && (
