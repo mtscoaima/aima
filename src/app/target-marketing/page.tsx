@@ -226,6 +226,41 @@ export default function TargetMarketingPage() {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
+    // 이미지 수정 키워드 감지
+    const imageEditKeywords = [
+      "수정",
+      "편집",
+      "바꿔",
+      "변경",
+      "바꾸",
+      "바꿔줘",
+      "바꿔주세요",
+      "색깔",
+      "색상",
+      "배경",
+      "크기",
+      "위치",
+      "추가",
+      "제거",
+      "삭제",
+      "더 크게",
+      "더 작게",
+      "밝게",
+      "어둡게",
+      "다른 색",
+      "다른 배경",
+    ];
+
+    const hasImageEditKeyword = imageEditKeywords.some((keyword) =>
+      inputMessage.includes(keyword)
+    );
+
+    // 현재 이미지가 있고 이미지 수정 키워드가 포함된 경우
+    if (currentGeneratedImage && hasImageEditKeyword) {
+      await handleImageEdit(inputMessage);
+      return;
+    }
+
     const userMessage: Message = {
       id: `user-${Math.random().toString(36).substr(2, 9)}`,
       role: "user",
@@ -619,7 +654,77 @@ export default function TargetMarketingPage() {
     }
   };
 
-  // 템플릿 기반 전송 (모달용)
+  // 이미지 편집 처리
+  const handleImageEdit = async (prompt: string) => {
+    if (!currentGeneratedImage) return;
+
+    const userMessage: Message = {
+      id: `user-${Math.random().toString(36).substr(2, 9)}`,
+      role: "user",
+      content: prompt,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
+    setIsLoading(true);
+    setShowTypingIndicator(true);
+
+    try {
+      // 기본적으로 직접 편집 사용
+      const editType = "edit";
+
+      const response = await fetch("/api/ai/edit-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl: currentGeneratedImage,
+          prompt: prompt,
+          editType: editType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("이미지 편집에 실패했습니다.");
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.imageUrl) {
+        // 편집된 이미지로 교체
+        setCurrentGeneratedImage(data.imageUrl);
+
+        // 성공 메시지 추가
+        const successMessage: Message = {
+          id: `edit-success-${Math.random().toString(36).substr(2, 9)}`,
+          role: "assistant",
+          content: `🎉 이미지가 성공적으로 편집되었습니다!\n\n편집된 이미지가 우측 첨부 영역에 적용되었습니다.`,
+          timestamp: new Date(),
+          imageUrl: data.imageUrl,
+        };
+
+        setMessages((prev) => [...prev, successMessage]);
+      } else {
+        throw new Error(data.error || "이미지 편집에 실패했습니다.");
+      }
+    } catch (error) {
+      const errorMessage: Message = {
+        id: `edit-error-${Math.random().toString(36).substr(2, 9)}`,
+        role: "assistant",
+        content: `❌ 이미지 편집 중 오류가 발생했습니다: ${
+          error instanceof Error ? error.message : "알 수 없는 오류"
+        }`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setShowTypingIndicator(false);
+    }
+  };
+
   const handleSendMMS = async () => {
     if (!recipients.trim()) {
       alert("수신번호를 입력해주세요.");
@@ -766,7 +871,7 @@ export default function TargetMarketingPage() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="마케팅 캠페인에 대해 설명해주세요. 예: '카페 신메뉴 홍보용 이미지를 만들어주세요'"
+                placeholder="마케팅 캠페인에 대해 설명해주세요. 예: '카페 신메뉴 홍보용 이미지를 만들어주세요' 또는 '배경을 파란색으로 바꿔주세요'"
                 className="chat-input"
                 rows={3}
                 disabled={isLoading}
@@ -781,7 +886,7 @@ export default function TargetMarketingPage() {
             </div>
             <div className="input-help">
               <Sparkles size={14} />
-              <span>AI가 이미지 생성과 마케팅 문구를 도와드립니다</span>
+              <span>AI가 이미지 생성, 편집과 마케팅 문구를 도와드립니다</span>
             </div>
           </div>
         </div>
