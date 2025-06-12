@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import {
   Send,
   Image as ImageIcon,
@@ -32,7 +32,8 @@ interface GeneratedTemplate {
   status: "생성완료" | "전송준비" | "전송완료";
 }
 
-export default function TargetMarketingPage() {
+// useSearchParams를 사용하는 컴포넌트를 별도로 분리
+function TargetMarketingContent() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -1010,5 +1011,14 @@ export default function TargetMarketingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Suspense로 감싼 메인 컴포넌트
+export default function TargetMarketingPage() {
+  return (
+    <Suspense fallback={<div>로딩 중...</div>}>
+      <TargetMarketingContent />
+    </Suspense>
   );
 }
