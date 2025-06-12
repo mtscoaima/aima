@@ -32,6 +32,8 @@ interface GeneratedTemplate {
   status: "생성완료" | "전송준비" | "전송완료";
 }
 
+
+// useSearchParams를 사용하는 컴포넌트를 별도로 분리
 function TargetMarketingContent() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1118,9 +1120,10 @@ function TargetMarketingContent() {
   );
 }
 
+// Suspense로 감싼 메인 컴포넌트
 export default function TargetMarketingPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>로딩 중...</div>}>
       <TargetMarketingContent />
     </Suspense>
   );
