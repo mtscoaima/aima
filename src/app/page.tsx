@@ -1,95 +1,301 @@
-import React from 'react';
-import Link from 'next/link';
+import React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import Navigation from "@/components/Navigation";
 
 export default function Home() {
   return (
-    <div className="home-container">
-      {/* 메인 메시지 섹션 */}
-      <section className="hero-section">
-        <div className="hero-content">
-          <h1>실시간 타겟팅으로<br/>마케팅 효과 극대화</h1>
-          <p className="hero-subtitle">인공지능 기반 마케팅 솔루션으로 고객에게 딱 맞는 메시지를 전달하세요</p>
-          <div className="cta-buttons">
-            <Link href="/target-marketing/send/create-template" className="btn btn-primary">실시간 타겟 마케팅 시작하기</Link>
-            <Link href="/target-marketing/send/create-template" className="btn btn-secondary">자세히 알아보기</Link>
-          </div>
-        </div>
-        <div className="hero-image">
-          {/* 이미지 추가 예정 */}
-          <div className="placeholder-image"></div>
-        </div>
-      </section>
-
-      {/* 서비스 소개 섹션 */}
-      <section className="services-section">
-        <h2>MTS플러스이 제공하는 서비스</h2>
-        <div className="services-grid">
-          <div className="service-card card">
-            <div className="service-icon ai-icon"></div>
-            <h3>AI 간편 마케팅</h3>
-            <p>타겟 설정부터 메시지 작성까지 인공지능이 도와드립니다</p>
-          </div>
-          <div className="service-card card">
-            <div className="service-icon targeting-icon"></div>
-            <h3>정밀 타겟팅</h3>
-            <p>고객 데이터를 분석하여 효과적인 타겟 그룹을 생성합니다</p>
-          </div>
-          <div className="service-card card">
-            <div className="service-icon message-icon"></div>
-            <h3>문자 메시지</h3>
-            <p>SMS, MMS, 알림톡 등 다양한 메시지 발송 서비스를 제공합니다</p>
-          </div>
-          <div className="service-card card">
-            <div className="service-icon analytics-icon"></div>
-            <h3>마케팅 분석</h3>
-            <p>캠페인 성과를 실시간으로 분석하고 보고서를 생성합니다</p>
+    <div className="landing-root">
+      {/* Hero Section */}
+      <section className="landing-hero-section">
+        <Navigation />
+        <div className="landing-hero-bg">
+          <div className="landing-hero-inner">
+            <div className="landing-hero-title-group">
+              <h2 className="landing-hero-title">
+                마케팅의 새로운 기준
+                <br />
+                AI 간편 마케팅 도우미,{" "}
+                <span className="landing-hero-blue">에이마</span>
+              </h2>
+              <p className="landing-hero-desc">
+                클릭 한 번만으로 시작하는 쉽고 빠른 가게 홍보
+                <br />
+                에이마로 확실한 매출 효과를 경험하세요!
+              </p>
+              <Link
+                href="/target-marketing/send/create-template"
+                className="landing-hero-btn"
+              >
+                지금 바로 시작하기
+              </Link>
+            </div>
+            <div className="landing-hero-rocket" aria-hidden>
+              <Image
+                src="/images/rocket.svg"
+                alt="로켓 일러스트"
+                width={416}
+                height={416}
+                className="landing-hero-rocket-img"
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 혜택 소개 섹션 */}
-      <section className="benefits-section">
-        <h2>광고주 전용 혜택</h2>
-        <div className="benefits-container">
-          <div className="benefit-item">
-            <h3><span className="accent-text">포인트 적립</span> 혜택</h3>
-            <p>결제 금액의 최대 5%를 포인트로 적립해 드립니다</p>
+      {/* Why Section */}
+      <section className="landing-why-section">
+        <h3 className="landing-why-title">
+          마케팅 어렵고 비싸서 포기하셨나요?
+          <br />
+          절차는 간단하게, 효과는 확실하게!
+        </h3>
+        <p className="landing-why-desc">
+          에이마라면 복잡한 과정 없이
+          <br />내 주변 고객에게 바로, 저렴하게 홍보할 수 있어요.
+        </p>
+        <div className="landing-why-benefits">
+          <div className="landing-why-benefit-card">
+            <h4>광고비 최대 60% 절감</h4>
+            <p>
+              불특정 다수에게 뿌리는 비효율적인 홍보는 이제 그만
+              <br />
+              실제로 반응할 가능성이 높은 고객에게만 정확하게 도달하니까!
+              <br />
+              광고비는 줄이고, 효과는 상승
+            </p>
           </div>
-          <div className="benefit-item">
-            <h3><span className="accent-text">초기 광고비</span> 지원</h3>
-            <p>신규 가입 시 10만원 상당의 광고 크레딧을 제공합니다</p>
-          </div>
-        </div>
-      </section>
-
-      {/* 핵심기능 소개 섹션 */}
-      <section className="features-section">
-        <h2>핵심 기능</h2>
-        <div className="features-grid">
-          <div className="feature-card card">
-            <h3>AI 기반 타겟팅 기술</h3>
-            <p>고객의 행동 패턴과 선호도를 분석하여 최적의 타겟 그룹을 생성합니다</p>
-          </div>
-          <div className="feature-card card">
-            <h3>캠페인 자동화</h3>
-            <p>시간별, 이벤트별 자동화된 캠페인으로 효율적인 마케팅을 진행하세요</p>
-          </div>
-          <div className="feature-card card">
-            <h3>템플릿 추천</h3>
-            <p>AI가 목적에 맞는 최적의 메시지 템플릿을 추천해 드립니다</p>
-          </div>
-          <div className="feature-card card">
-            <h3>실시간 분석</h3>
-            <p>캠페인 성과를 실시간으로 확인하고 즉각적인 개선점을 파악하세요</p>
+          <div className="landing-why-benefit-card">
+            <h4>원하는 시간에, 바로 반응</h4>
+            <p>
+              가게 주변 고객에게 내가 정한 시간에 맞춰 직접 홍보문 발송
+              <br />
+              방문율은 물론, 단골로 이어질 확률까지 높아져요.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* CTA 섹션 */}
-      <section className="cta-section">
-        <h2>지금 바로 시작하세요</h2>
-        <p>가입 후 5분 만에 첫 캠페인을 시작할 수 있습니다</p>
-        <Link href="/target-marketing/send/create-template" className="btn btn-primary cta-button">실시간 타겟 마케팅 시작하기</Link>
+      {/* Use Case Section */}
+      <section className="landing-usecase-section">
+        <div className="landing-usecase-row">
+          <div className="landing-usecase-text">
+            <h4>
+              주변 직장인·가족 단위 고객에게
+              <br />
+              점심·저녁 시간 맞춤 홍보
+            </h4>
+            <p>
+              방문할 가능성이 높은 고객만 골라 보내니까
+              <br />
+              홍보비 부담은 줄고, 고기 굽는 테이블은 늘어나요
+            </p>
+          </div>
+          <div className="landing-usecase-img"></div>
+        </div>
+        <div className="landing-usecase-row landing-usecase-row-reverse">
+          <div className="landing-usecase-text">
+            <h4>예약 없는 시간대, 빈자리 채워보세요</h4>
+            <p>
+              정밀 현시간 시간대 근처 고객에게 딱 맞춰 할인 알림
+              <br />
+              단골 유입은 물론, 예약률도 자연스럽게 올라갑니다
+            </p>
+          </div>
+          <div className="landing-usecase-img">
+            <Image
+              src="/images/hairshop.png"
+              alt="미용실 예시"
+              width={340}
+              height={240}
+            />
+          </div>
+        </div>
+        <div className="landing-usecase-row">
+          <div className="landing-usecase-text">
+            <h4>
+              혼자 운영해도
+              <br />
+              마케팅은 자동으로 해결
+            </h4>
+            <p>
+              시간 여유가 없어도 AI가 고객 타겟부터 홍보까지 착착
+              <br />
+              적은 예산으로 필요한 고객에게 도달 가능
+            </p>
+          </div>
+          <div className="landing-usecase-img">
+            <Image
+              src="/images/flower.png"
+              alt="플라워샵 예시"
+              width={340}
+              height={240}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* AI Section */}
+      <section className="landing-ai-section">
+        <h3 className="landing-ai-title">
+          홍보 문구 고민 끝<br />
+          제작부터 설정까지, AI가 알아서
+        </h3>
+        <p className="landing-ai-desc">
+          마케팅 전문가가 아니어도 괜찮아요.
+          <br />
+          AI가 업종에 맞는 홍보문과 타겟 고객 설정까지 자동으로 만들어줍니다.
+        </p>
+        <div className="landing-ai-images">
+          <Image
+            src="/images/ai-1.png"
+            alt="AI 문구 생성 예시"
+            width={180}
+            height={180}
+          />
+          <Image
+            src="/images/ai-2.png"
+            alt="AI 아이콘"
+            width={180}
+            height={180}
+          />
+          <Image
+            src="/images/ai-3.png"
+            alt="AI 홍보 예시"
+            width={180}
+            height={180}
+          />
+          <Image
+            src="/images/ai-4.png"
+            alt="AI 타겟 예시"
+            width={180}
+            height={180}
+          />
+        </div>
+      </section>
+
+      {/* Smart Marketing Section */}
+      <section className="landing-smart-section">
+        <h3 className="landing-smart-title">
+          우리 가게를 바로 알리는 스마트 마케팅
+        </h3>
+        <p className="landing-smart-desc">
+          에이마는 국내 최대 카드사 빅데이터 분석을 통해
+          <br />
+          가게에 딱 맞는 고객에게 홍보 메시지를 즉시 전달해요.
+        </p>
+        <div className="landing-smart-images">
+          <Image
+            src="/images/store.png"
+            alt="가게 일러스트"
+            width={220}
+            height={220}
+          />
+          <Image
+            src="/images/sms-picture.png"
+            alt="홍보 메시지 그림"
+            width={220}
+            height={220}
+          />
+          <Image
+            src="/images/sms-examples.png"
+            alt="홍보 메시지 예시"
+            width={220}
+            height={220}
+          />
+        </div>
+        <p className="landing-smart-footer">
+          카드 승인 문자 또는 모바일 영수증에
+          <br />
+          우리 가게 홍보 문구를 실어 고객에게 즉시 전송해요.
+        </p>
+      </section>
+
+      {/* Testimonial Section */}
+      <section className="landing-testimonial-section">
+        <h3 className="landing-testimonial-title">
+          에이마로 우리 가게 홍보가 쉬워졌어요
+        </h3>
+        <div className="landing-testimonial-list">
+          <div className="landing-testimonial-item">
+            <div className="landing-testimonial-avatar landing-testimonial-avatar1"></div>
+            <div className="landing-testimonial-bubble">
+              <p>
+                &quot;예전엔 전단지 돌리거나 블로그 글 쓰는 데만 시간도 엄청
+                썼거든요.
+                <br />
+                에이마 쓰고 나서는 손님들이 바로 알아보고 와요.
+                <br />
+                진짜 필요할 때만 타겟된 홍보가 되니까 너무 편하고 효과도
+                좋아요.&quot;
+                <br />
+                <span className="landing-testimonial-name">
+                  ~ 송파구 미용실 사장님
+                </span>
+              </p>
+            </div>
+          </div>
+          <div className="landing-testimonial-item">
+            <div className="landing-testimonial-avatar landing-testimonial-avatar2"></div>
+            <div className="landing-testimonial-bubble">
+              <p>
+                &quot;카페 홍보는 늘 같은 방식...
+                <br />
+                이제는 AI가 알려주니까 정말 정확하게 다가갈 수 있더라고요.
+                <br />
+                에이마 덕분에 시간도 줄고, 단골도 늘었어요.&quot;
+                <br />
+                <span className="landing-testimonial-name">
+                  ~ 성수동 카페 사장님
+                </span>
+              </p>
+            </div>
+          </div>
+          <div className="landing-testimonial-item">
+            <div className="landing-testimonial-avatar landing-testimonial-avatar3"></div>
+            <div className="landing-testimonial-bubble">
+              <p>
+                &quot;혼자 가게 하면서 마케팅까지 하려니 너무 막막했어요.
+                <br />
+                에이마는 정말 간편해서 성과도 쉽고, 손님들한테 바로 홍보되니까
+                <br />
+                시간 아끼고 그만큼 더 많이 팔게 됐습니다.&quot;
+                <br />
+                <span className="landing-testimonial-name">
+                  ~ 노원구 고깃집 사장님
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 혜택 Section */}
+      <section className="landing-benefit-section">
+        <h3 className="landing-benefit-title">
+          신규 광고주님께 드리는 특별한 혜택
+        </h3>
+        <div className="landing-benefit-box">
+          <span className="landing-benefit-label">포인트 적립 혜택</span>
+          <span className="landing-benefit-desc">
+            결제 금액의 최대 5%를 포인트로 적립해 드립니다.
+          </span>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="landing-cta-section">
+        <h3 className="landing-cta-title">
+          매출을 높이는 단 하나의 솔루션
+          <br />
+          지금 에이마로 시작하세요!
+        </h3>
+        <Link
+          href="/target-marketing/send/create-template"
+          className="landing-cta-btn"
+        >
+          무료로 시작하기
+        </Link>
       </section>
     </div>
   );
