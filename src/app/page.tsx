@@ -1,9 +1,13 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
   return (
     <div className="landing-root">
       {/* Hero Section */}
@@ -24,7 +28,11 @@ export default function Home() {
                 에이마로 확실한 매출 효과를 경험하세요!
               </p>
               <Link
-                href="/target-marketing/send/create-template"
+                href={
+                  isAuthenticated
+                    ? "/target-marketing/send/create-template"
+                    : "/login"
+                }
                 className="landing-hero-btn"
               >
                 지금 바로 시작하기
@@ -303,7 +311,11 @@ export default function Home() {
           지금 에이마로 시작하세요!
         </h3>
         <Link
-          href="/target-marketing/send/create-template"
+          href={
+            isAuthenticated
+              ? "/target-marketing/send/create-template"
+              : "/login"
+          }
           className="landing-cta-btn"
         >
           무료로 시작하기

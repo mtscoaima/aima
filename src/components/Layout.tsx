@@ -27,8 +27,8 @@ export default function Layout({ children }: LayoutProps) {
   // 로그인한 사용자이고 인증 페이지가 아닌 경우 사이드바 표시
   const showSidebar = isAuthenticated && !isAuthPage;
 
-  // 홈페이지가 아닌 경우에만 Navigation 표시
-  const showNavigation = !isHomePage;
+  // 홈페이지가 아니고 로그인/회원가입 페이지가 아닌 경우에만 Navigation 표시
+  const showNavigation = !isHomePage && !isAuthPage;
 
   return (
     <div
