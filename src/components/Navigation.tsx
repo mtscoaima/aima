@@ -22,6 +22,15 @@ export default function Navigation() {
     setShowUserDropdown(!showUserDropdown);
   };
 
+  // 네비게이션 메뉴 클릭 핸들러
+  const handleNavClick = (href: string) => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    } else {
+      router.push(href);
+    }
+  };
+
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -95,18 +104,30 @@ export default function Navigation() {
 
         <div className="nav-center">
           <nav className="landing-nav-menu">
-            <Link href="/target-marketing" className="landing-nav-menu-item">
+            <button
+              onClick={() => handleNavClick("/target-marketing")}
+              className="landing-nav-menu-item landing-nav-menu-btn"
+            >
               AI 타겟마케팅
-            </Link>
-            <Link href="/send-status" className="landing-nav-menu-item">
+            </button>
+            <button
+              onClick={() => handleNavClick("/send-status")}
+              className="landing-nav-menu-item landing-nav-menu-btn"
+            >
               발송현황
-            </Link>
-            <Link href="/messages" className="landing-nav-menu-item">
+            </button>
+            <button
+              onClick={() => handleNavClick("/messages")}
+              className="landing-nav-menu-item landing-nav-menu-btn"
+            >
               문자
-            </Link>
-            <Link href="/support" className="landing-nav-menu-item">
+            </button>
+            <button
+              onClick={() => handleNavClick("/support")}
+              className="landing-nav-menu-item landing-nav-menu-btn"
+            >
               고객센터
-            </Link>
+            </button>
           </nav>
         </div>
 
