@@ -19,7 +19,7 @@ export default function Home() {
                 <span className="landing-hero-blue">에이마</span>
               </h2>
               <p className="landing-hero-desc">
-                클릭 한 번만으로 시작하는 쉽고 빠른 가게 홍보
+                클릭 한 번으로 시작하는 쉽고 빠른 가게 홍보
                 <br />
                 에이마로 확실한 매출 효과를 경험하세요!
               </p>
@@ -58,9 +58,9 @@ export default function Home() {
           <div className="landing-why-benefit-card">
             <h4>광고비 최대 60% 절감</h4>
             <p>
-              불특정 다수에게 뿌리는 비효율적인 홍보는 이제 그만
+              불특정 다수에게 보내는 비효율적인 홍보는 이제 그만
               <br />
-              실제로 반응할 가능성이 높은 고객에게만 정확하게 도달하니까!
+              실제로 반응할 가능성이 높은 고객에게만 정확하게 도달하니까
               <br />
               광고비는 줄이고, 효과는 상승
             </p>
@@ -68,7 +68,7 @@ export default function Home() {
           <div className="landing-why-benefit-card">
             <h4>원하는 시간에, 바로 반응</h4>
             <p>
-              가게 주변 고객에게 내가 정한 시간에 맞춰 직접 홍보문 발송
+              가게 주변 고객에게 내가 정한 시간에 맞춰 직접 홍보
               <br />
               방문율은 물론, 단골로 이어질 확률까지 높아져요.
             </p>
@@ -97,7 +97,7 @@ export default function Home() {
           <div className="landing-usecase-text">
             <h4>예약 없는 시간대, 빈자리 채워보세요</h4>
             <p>
-              정밀 현시간 시간대 근처 고객에게 딱 맞춰 할인 알림
+              평일 한산한 시간엔 근처 고객에게 딱 맞춰 할인 알림림
               <br />
               단골 유입은 물론, 예약률도 자연스럽게 올라갑니다
             </p>
@@ -119,9 +119,9 @@ export default function Home() {
               마케팅은 자동으로 해결
             </h4>
             <p>
-              시간 여유가 없어도 AI가 고객 타겟부터 홍보까지 착착
+              시간 들이지 않아도 AI가 고객 타깃부터 홍보까지 착착
               <br />
-              적은 예산으로 필요한 고객에게 도달 가능
+              적은 예산으로 꼭 필요한 고객에게 도달 가능
             </p>
           </div>
           <div className="landing-usecase-img">
@@ -144,7 +144,7 @@ export default function Home() {
         <p className="landing-ai-desc">
           마케팅 전문가가 아니어도 괜찮아요.
           <br />
-          AI가 업종에 맞는 홍보문과 타겟 고객 설정까지 자동으로 만들어줍니다.
+          AI가 업종에 맞는 템플릿과 타깃 고객 설정까지 자동으로 만들어줍니다.
         </p>
         <div className="landing-ai-images">
           <Image
@@ -221,12 +221,12 @@ export default function Home() {
             <div className="landing-testimonial-avatar landing-testimonial-avatar1"></div>
             <div className="landing-testimonial-bubble">
               <p>
-                &quot;예전엔 전단지 돌리거나 블로그 글 쓰는 데만 시간도 엄청
+                &quot;예전엔 전단지 돌리거나 블로그 글 쓰는 데만 시간을 엄청
                 썼거든요.
                 <br />
                 에이마 쓰고 나서는 손님들이 바로 알아보고 와요.
                 <br />
-                진짜 필요할 때만 타겟된 홍보가 되니까 너무 편하고 효과도
+                진짜 필요한 분들한테만 홍보가 되니까 너무 편하고 효과도
                 좋아요.&quot;
                 <br />
                 <span className="landing-testimonial-name">
@@ -239,7 +239,7 @@ export default function Home() {
             <div className="landing-testimonial-avatar landing-testimonial-avatar2"></div>
             <div className="landing-testimonial-bubble">
               <p>
-                &quot;카페 홍보는 늘 같은 방식...
+                &quot;카페 홍보는 늘 감으로 했는데,
                 <br />
                 이제는 AI가 알려주니까 정말 정확하게 다가갈 수 있더라고요.
                 <br />
@@ -257,9 +257,9 @@ export default function Home() {
               <p>
                 &quot;혼자 가게 하면서 마케팅까지 하려니 너무 막막했어요.
                 <br />
-                에이마는 정말 간편해서 성과도 쉽고, 손님들한테 바로 홍보되니까
+                에이마는 정말 간편해서 설정도 쉽고, 손님들한테 바로 홍보되니까
                 <br />
-                시간 아끼고 그만큼 더 많이 팔게 됐습니다.&quot;
+                시간 아끼고 고기도 더 많이 팔게 됐습니다.&quot;
                 <br />
                 <span className="landing-testimonial-name">
                   - 노원구 고깃집 사장님

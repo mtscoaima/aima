@@ -27,9 +27,9 @@ export default function Footer() {
           </div>
           <div className="footer-landing-company-info">
             (주)엠티에스컴퍼니 | 주소: 서울특별시 강남구 삼성로 434, 8층(대치동,
-            크레타타워8차)
+            크레타나인대치)
             <br />
-            대표이사: 정일재 | 사업자등록번호: 513-88-00391 | help@mtsco.co.kr
+            대표이사: 정일희원 | 사업자등록번호: 513-88-00391 | help@mtsco.co.kr
           </div>
           <div className="footer-landing-copyright">
             Copyright © MTS Company CO., LTD. All rights reserved.

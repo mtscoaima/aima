@@ -155,7 +155,7 @@ h3 {
 .landing-nav-menu {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 50px;
 }
 
 .landing-nav-menu-item {
