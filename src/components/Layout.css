@@ -20,11 +20,7 @@
 
 .main-content {
   flex: 1;
-  padding: 2rem;
-  padding-top: calc(
-    70px + 2rem
-  ); /* 네비게이션 바 높이(70px) + 기존 패딩(2rem) */
-  max-width: 1200px;
+  padding-top: 0; /* 헤더가 배너 위에 위치하므로 패딩 제거 */
   margin: 0 auto;
   width: 100%;
 }
@@ -37,6 +33,6 @@
 
   .main-content {
     padding: 16px;
-    padding-top: calc(70px + 16px);
+    padding-top: 0;
   }
 }

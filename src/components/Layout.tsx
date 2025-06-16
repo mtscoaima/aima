@@ -21,8 +21,14 @@ export default function Layout({ children }: LayoutProps) {
   // 로그인/회원가입 페이지에서는 사이드바를 표시하지 않음
   const isAuthPage = pathname === "/login" || pathname === "/signup";
 
+  // 홈페이지인지 확인
+  const isHomePage = pathname === "/";
+
   // 로그인한 사용자이고 인증 페이지가 아닌 경우 사이드바 표시
   const showSidebar = isAuthenticated && !isAuthPage;
+
+  // 홈페이지가 아니고 로그인/회원가입 페이지가 아닌 경우에만 Navigation 표시
+  const showNavigation = !isHomePage && !isAuthPage;
 
   return (
     <div
@@ -32,7 +38,7 @@ export default function Layout({ children }: LayoutProps) {
     >
       {showSidebar && <Sidebar />}
       <div className="main-layout">
-        <Navigation />
+        {showNavigation && <Navigation />}
         <main className="main-content">{children}</main>
         <Footer />
       </div>
