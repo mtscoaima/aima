@@ -150,26 +150,26 @@ export default function Home() {
           <Image
             src="/images/ai-1.png"
             alt="AI 문구 생성 예시"
-            width={180}
-            height={180}
+            width={348}
+            height={361}
           />
           <Image
             src="/images/ai-2.png"
             alt="AI 아이콘"
-            width={180}
-            height={180}
+            width={187}
+            height={241}
           />
           <Image
             src="/images/ai-3.png"
             alt="AI 홍보 예시"
-            width={180}
-            height={180}
+            width={205}
+            height={460}
           />
           <Image
             src="/images/ai-4.png"
             alt="AI 타겟 예시"
-            width={180}
-            height={180}
+            width={373}
+            height={248}
           />
         </div>
       </section>
@@ -188,20 +188,20 @@ export default function Home() {
           <Image
             src="/images/store.png"
             alt="가게 일러스트"
-            width={220}
-            height={220}
+            width={391}
+            height={359}
           />
           <Image
             src="/images/sms-picture.png"
             alt="홍보 메시지 그림"
-            width={220}
-            height={220}
+            width={410}
+            height={273}
           />
           <Image
             src="/images/sms-examples.png"
             alt="홍보 메시지 예시"
-            width={220}
-            height={220}
+            width={630}
+            height={335}
           />
         </div>
         <p className="landing-smart-footer">
@@ -230,7 +230,7 @@ export default function Home() {
                 좋아요.&quot;
                 <br />
                 <span className="landing-testimonial-name">
-                  ~ 송파구 미용실 사장님
+                  - 송파구 미용실 사장님
                 </span>
               </p>
             </div>
@@ -246,7 +246,7 @@ export default function Home() {
                 에이마 덕분에 시간도 줄고, 단골도 늘었어요.&quot;
                 <br />
                 <span className="landing-testimonial-name">
-                  ~ 성수동 카페 사장님
+                  - 성수동 카페 사장님
                 </span>
               </p>
             </div>
@@ -262,7 +262,7 @@ export default function Home() {
                 시간 아끼고 그만큼 더 많이 팔게 됐습니다.&quot;
                 <br />
                 <span className="landing-testimonial-name">
-                  ~ 노원구 고깃집 사장님
+                  - 노원구 고깃집 사장님
                 </span>
               </p>
             </div>
@@ -273,13 +273,25 @@ export default function Home() {
       {/* 혜택 Section */}
       <section className="landing-benefit-section">
         <h3 className="landing-benefit-title">
-          신규 광고주님께 드리는 특별한 혜택
+          신규 광고주님께 드리는
+          <br /> 특별한 혜택
         </h3>
         <div className="landing-benefit-box">
-          <span className="landing-benefit-label">포인트 적립 혜택</span>
-          <span className="landing-benefit-desc">
-            결제 금액의 최대 5%를 포인트로 적립해 드립니다.
-          </span>
+          <div className="landing-benefit-content">
+            <span className="landing-benefit-label">포인트 적립 혜택</span>
+            <span className="landing-benefit-desc">
+              결제 금액의 최대 5%를
+              <br /> 포인트로 적립해 드립니다.
+            </span>
+          </div>
+          <div className="landing-benefit-image">
+            <Image
+              src="/images/gift.png"
+              alt="선물 이미지"
+              width={290}
+              height={210}
+            />
+          </div>
         </div>
       </section>
 
