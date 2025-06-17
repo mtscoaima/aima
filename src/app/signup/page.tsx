@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,11 +51,18 @@ export default function SignupPage() {
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
+  // 이미 로그인된 사용자는 루트 페이지로 리다이렉트
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/");
+    }
+  }, [isAuthenticated, router]);
+
   // 타이머 효과
-  React.useEffect(() => {
+  useEffect(() => {
     let interval: NodeJS.Timeout;
     if (verificationTimer > 0) {
       interval = setInterval(() => {
@@ -66,7 +73,7 @@ export default function SignupPage() {
   }, [verificationTimer]);
 
   // 이메일 실시간 유효성 검사 (디바운스)
-  React.useEffect(() => {
+  useEffect(() => {
     const checkEmail = async () => {
       if (formData.email && /\S+@\S+\.\S+/.test(formData.email)) {
         try {
@@ -97,6 +104,27 @@ export default function SignupPage() {
     const timeoutId = setTimeout(checkEmail, 1000); // 1초 디바운스
     return () => clearTimeout(timeoutId);
   }, [formData.email]);
+
+  // 로그인된 사용자에게는 로딩 화면 표시
+  if (isAuthenticated) {
+    return (
+      <div className={styles.signupContainer}>
+        <div className={styles.signupWrapper}>
+          <div className={styles.signupCard}>
+            <div className={styles.signupHeader}>
+              <div className={styles.logoSection}>
+                <h1 className={styles.logoText}>MTS플러스</h1>
+                <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
+              </div>
+            </div>
+            <div style={{ textAlign: "center", padding: "2rem" }}>
+              <p>이미 로그인되어 있습니다. 메인 페이지로 이동합니다...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;

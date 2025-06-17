@@ -10,6 +10,7 @@ export default function Navigation() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const isHomePage = pathname === "/";
 
@@ -25,6 +26,10 @@ export default function Navigation() {
 
   const toggleUserDropdown = () => {
     setShowUserDropdown(!showUserDropdown);
+  };
+
+  const toggleNotifications = () => {
+    setShowNotifications(!showNotifications);
   };
 
   // 네비게이션 메뉴 클릭 핸들러
@@ -43,16 +48,19 @@ export default function Navigation() {
       if (!target.closest(".user-dropdown-container")) {
         setShowUserDropdown(false);
       }
+      if (!target.closest(".notification-dropdown-container")) {
+        setShowNotifications(false);
+      }
     };
 
-    if (showUserDropdown) {
+    if (showUserDropdown || showNotifications) {
       document.addEventListener("click", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [showUserDropdown]);
+  }, [showUserDropdown, showNotifications]);
 
   return (
     <nav className={navClassName}>
@@ -117,125 +125,180 @@ export default function Navigation() {
 
         <div className="landing-nav-auth">
           {isAuthenticated ? (
-            <div className="user-dropdown-container">
-              <button
-                onClick={toggleUserDropdown}
-                className="user-info-button landing-user-info-btn"
-              >
-                <span className="user-name">{user?.name || user?.email}</span>
-                <span className="user-greeting">님</span>
-                <svg
-                  className={`dropdown-arrow ${
-                    showUserDropdown ? "rotated" : ""
-                  }`}
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="none"
+            <div className="nav-right-buttons">
+              {/* 사용자가이드 버튼 */}
+              <button className="nav-guide-btn">사용자가이드</button>
+
+              {/* 알림 버튼 */}
+              <div className="notification-dropdown-container">
+                <button
+                  onClick={toggleNotifications}
+                  className="nav-notification-btn"
                 >
-                  <path
-                    d="M3 4.5L6 7.5L9 4.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              {showUserDropdown && (
-                <div className="user-dropdown">
-                  <div className="user-dropdown-header">
-                    <div className="user-avatar">
-                      {(user?.name || user?.email || "")
-                        .charAt(0)
-                        .toUpperCase()}
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M15 6.5C15 5.11929 14.4732 3.79539 13.5355 2.85786C12.5979 1.92034 11.2741 1.39355 9.89355 1.39355C8.51282 1.39355 7.18892 1.92034 6.25139 2.85786C5.31387 3.79539 4.78708 5.11929 4.78708 6.5C4.78708 12.0645 2.5 13.3548 2.5 13.3548H17.2871C17.2871 13.3548 15 12.0645 15 6.5Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M11.3025 16.9355C11.1069 17.2771 10.8316 17.5669 10.5016 17.7807C10.1716 17.9946 9.79665 18.1261 9.40323 18.1645C9.00982 18.2029 8.61374 18.1472 8.24613 18.0021C7.87852 17.857 7.55086 17.6267 7.28708 17.3306"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="notification-badge">3</span>
+                </button>
+                {showNotifications && (
+                  <div className="notification-dropdown">
+                    <div className="notification-header">
+                      <h4>알림</h4>
+                      <button className="mark-all-read">모두 읽음</button>
                     </div>
-                    <div className="user-details">
-                      <div className="user-name-full">
-                        {user?.name || user?.email}
+                    <div className="notification-list">
+                      <div className="notification-item unread">
+                        <div className="notification-content">
+                          <p>새로운 메시지가 발송되었습니다.</p>
+                          <span className="notification-time">5분 전</span>
+                        </div>
                       </div>
-                      <div className="user-email">{user?.email}</div>
+                      <div className="notification-item unread">
+                        <div className="notification-content">
+                          <p>캠페인이 성공적으로 완료되었습니다.</p>
+                          <span className="notification-time">1시간 전</span>
+                        </div>
+                      </div>
+                      <div className="notification-item">
+                        <div className="notification-content">
+                          <p>월간 리포트가 준비되었습니다.</p>
+                          <span className="notification-time">2시간 전</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="notification-footer">
+                      <button className="view-all-notifications">
+                        모든 알림 보기
+                      </button>
                     </div>
                   </div>
-                  <div className="user-dropdown-divider"></div>
-                  <div className="user-dropdown-menu">
-                    <Link
-                      href="/my-site/advertiser/profile"
-                      className="dropdown-menu-item"
-                      onClick={() => setShowUserDropdown(false)}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
-                        <path
-                          d="M8 8C10.2091 8 12 6.20914 12 4C12 1.79086 10.2091 0 8 0C5.79086 0 4 1.79086 4 4C4 6.20914 5.79086 8 8 8Z"
-                          fill="currentColor"
-                        />
-                        <path
-                          d="M8 10C3.58172 10 0 13.5817 0 18H16C16 13.5817 12.4183 10 8 10Z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                      프로필 관리
-                    </Link>
-                    <Link
-                      href="/my-site/advertiser/dashboard"
-                      className="dropdown-menu-item"
-                      onClick={() => setShowUserDropdown(false)}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
-                        <path d="M2 2H6V6H2V2Z" fill="currentColor" />
-                        <path d="M10 2H14V6H10V2Z" fill="currentColor" />
-                        <path d="M2 10H6V14H2V10Z" fill="currentColor" />
-                        <path d="M10 10H14V14H10V10Z" fill="currentColor" />
-                      </svg>
-                      대시보드
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="dropdown-menu-item logout-item"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
-                        <path
-                          d="M6 2H2V14H6"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M10 12L14 8L10 4"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M14 8H6"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      로그아웃
-                    </button>
+                )}
+              </div>
+
+              {/* 프로필 버튼 */}
+              <div className="user-dropdown-container">
+                <button
+                  onClick={toggleUserDropdown}
+                  className="user-profile-btn"
+                >
+                  <div className="user-avatar-circle">
+                    {(user?.name || user?.email || "").charAt(0).toUpperCase()}
                   </div>
-                </div>
-              )}
+                </button>
+                {showUserDropdown && (
+                  <div className="user-dropdown">
+                    <div className="user-dropdown-header">
+                      <div className="user-avatar">
+                        {(user?.name || user?.email || "")
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+                      <div className="user-details">
+                        <div className="user-name-full">
+                          {user?.name || user?.email}
+                        </div>
+                        <div className="user-email">{user?.email}</div>
+                      </div>
+                    </div>
+                    <div className="user-dropdown-divider"></div>
+                    <div className="user-dropdown-menu">
+                      <Link
+                        href="/my-site/advertiser/profile"
+                        className="dropdown-menu-item"
+                        onClick={() => setShowUserDropdown(false)}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                        >
+                          <path
+                            d="M8 8C10.2091 8 12 6.20914 12 4C12 1.79086 10.2091 0 8 0C5.79086 0 4 1.79086 4 4C4 6.20914 5.79086 8 8 8Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M8 10C3.58172 10 0 13.5817 0 18H16C16 13.5817 12.4183 10 8 10Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                        프로필 관리
+                      </Link>
+                      <Link
+                        href="/my-site/advertiser/dashboard"
+                        className="dropdown-menu-item"
+                        onClick={() => setShowUserDropdown(false)}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                        >
+                          <path d="M2 2H6V6H2V2Z" fill="currentColor" />
+                          <path d="M10 2H14V6H10V2Z" fill="currentColor" />
+                          <path d="M2 10H6V14H2V10Z" fill="currentColor" />
+                          <path d="M10 10H14V14H10V10Z" fill="currentColor" />
+                        </svg>
+                        대시보드
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="dropdown-menu-item logout-item"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                        >
+                          <path
+                            d="M6 2H2V14H6"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M10 12L14 8L10 4"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M14 8H6"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        로그아웃
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <>
