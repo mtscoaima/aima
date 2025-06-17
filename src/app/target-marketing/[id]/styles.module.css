@@ -6,7 +6,7 @@ body .main-content {
   margin: 0 !important;
 }
 
-.target-marketing-container {
+.targetMarketingContainer {
   min-height: calc(100vh - 140px);
   background-color: white;
   display: flex;
@@ -14,7 +14,7 @@ body .main-content {
 }
 
 /* Header */
-.target-marketing-header {
+.targetMarketingHeader {
   background: white;
   padding: 20px 30px;
   width: 100%;
@@ -22,13 +22,13 @@ body .main-content {
   margin: 0 auto;
 }
 
-.landing-header {
+.landingHeader {
   margin-bottom: 0;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-.landing-header h1 {
+.landingHeader h1 {
   color: #1681ff;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
@@ -41,7 +41,7 @@ body .main-content {
 }
 
 /* Main Content */
-.target-marketing-content {
+.targetMarketingContent {
   flex: 1;
   display: grid;
   grid-template-columns: 1.5fr 1fr;
@@ -54,7 +54,7 @@ body .main-content {
 }
 
 /* Chat Section */
-.chat-section {
+.chatSection {
   background: transparent;
   display: flex;
   flex-direction: column;
@@ -62,7 +62,7 @@ body .main-content {
   min-height: 500px;
 }
 
-.chat-messages {
+.chatMessages {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
@@ -77,11 +77,11 @@ body .main-content {
   max-width: 80%;
 }
 
-.user-message {
+.userMessage {
   align-self: flex-end;
 }
 
-.user-message .message-content {
+.userMessage .messageContent {
   border-radius: 30px;
   background: #e0e0e0;
   color: #000;
@@ -94,7 +94,7 @@ body .main-content {
   letter-spacing: -0.32px;
 }
 
-.assistant-message .message-content {
+.assistantMessage .messageContent {
   background: transparent;
   color: #000;
   font-feature-settings: "liga" off, "clig" off;
@@ -106,30 +106,30 @@ body .main-content {
   letter-spacing: -0.32px;
 }
 
-.message-content {
+.messageContent {
   padding: 12px 16px;
   word-wrap: break-word;
 }
 
-.message-content p {
+.messageContent p {
   margin: 0;
   line-height: 1.5;
 }
 
-.message-image {
+.messageImage {
   margin-bottom: 8px;
   border-radius: 8px;
   overflow: hidden;
   position: relative;
 }
 
-.message-image img {
+.messageImage img {
   width: 100%;
   height: auto;
   display: block;
 }
 
-.image-loading-overlay {
+.imageLoadingOverlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -146,7 +146,7 @@ body .main-content {
   font-weight: 500;
 }
 
-.image-loading-overlay .loading-spinner {
+.imageLoadingOverlay .loadingSpinner {
   width: 24px;
   height: 24px;
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -156,13 +156,13 @@ body .main-content {
 }
 
 /* Typing Indicator */
-.typing-indicator {
+.typingIndicator {
   display: flex;
   gap: 4px;
   padding: 8px 0;
 }
 
-.typing-indicator span {
+.typingIndicator span {
   width: 8px;
   height: 8px;
   background: #718096;
@@ -170,10 +170,10 @@ body .main-content {
   animation: typing 1.4s infinite ease-in-out;
 }
 
-.typing-indicator span:nth-child(1) {
+.typingIndicator span:nth-child(1) {
   animation-delay: -0.32s;
 }
-.typing-indicator span:nth-child(2) {
+.typingIndicator span:nth-child(2) {
   animation-delay: -0.16s;
 }
 
@@ -189,13 +189,13 @@ body .main-content {
 }
 
 /* Chat Input */
-.chat-input-section {
+.chatInputSection {
   width: 100%;
   margin: 0 20px;
   padding: 20px;
 }
 
-.input-wrapper {
+.inputWrapper {
   width: 100%;
   border-radius: 15px;
   background: #fff;
@@ -206,7 +206,7 @@ body .main-content {
   gap: 16px;
 }
 
-.chat-input {
+.chatInput {
   width: 100%;
   font-size: 16px;
   resize: none;
@@ -217,16 +217,16 @@ body .main-content {
   outline: none;
 }
 
-.chat-input:focus {
+.chatInput:focus {
   outline: none;
 }
 
-.chat-input:disabled {
+.chatInput:disabled {
   background: transparent;
   cursor: not-allowed;
 }
 
-.chat-input::placeholder {
+.chatInput::placeholder {
   color: #7d7d7d;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
@@ -238,7 +238,7 @@ body .main-content {
   white-space: pre-line;
 }
 
-.send-button {
+.sendButton {
   align-self: flex-end;
   padding: 12px 32px;
   border-radius: 60px;
@@ -261,16 +261,16 @@ body .main-content {
   min-width: 100px;
 }
 
-.send-button:hover:not(:disabled) {
+.sendButton:hover:not(:disabled) {
   background: #1d4ed8;
 }
 
-.send-button:disabled {
+.sendButton:disabled {
   background: #9ca3af;
   cursor: not-allowed;
 }
 
-.input-help {
+.inputHelp {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -280,7 +280,7 @@ body .main-content {
 }
 
 /* MMS Send Container */
-.mms-send-container {
+.mmsSendContainer {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 280px);
@@ -288,7 +288,7 @@ body .main-content {
 }
 
 /* MMS Send Section */
-.mms-send-section {
+.mmsSendSection {
   background: #f4f6f8;
   display: flex;
   flex-direction: column;
@@ -298,13 +298,13 @@ body .main-content {
 }
 
 /* 템플릿 미리보기 카드 */
-.template-preview-card {
+.templatePreviewCard {
   background: transparent;
   overflow: hidden;
   border-bottom: 7px solid #e6e6e6;
 }
 
-.template-badge {
+.templateBadge {
   color: #000;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
@@ -315,11 +315,11 @@ body .main-content {
   letter-spacing: -0.4px;
 }
 
-.template-card-content {
+.templateCardContent {
   padding-top: 20px;
 }
 
-.template-image {
+.templateImage {
   width: 100%;
   height: 200px;
   border-radius: 18px 18px 0px 0px;
@@ -327,13 +327,13 @@ body .main-content {
   background: #f8f9fa;
 }
 
-.template-image img {
+.templateImage img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.template-image-placeholder {
+.templateImagePlaceholder {
   width: 100%;
   height: 200px;
   border-radius: 8px;
@@ -345,7 +345,7 @@ body .main-content {
   border: 2px dashed #d1d5db;
 }
 
-.placeholder-content {
+.placeholderContent {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -354,17 +354,17 @@ body .main-content {
   text-align: center;
 }
 
-.placeholder-content svg {
+.placeholderContent svg {
   color: #d1d5db;
 }
 
-.placeholder-content span {
+.placeholderContent span {
   font-size: 14px;
   font-weight: 400;
   font-family: "Noto Sans KR";
 }
 
-.template-info {
+.templateInfo {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -373,7 +373,7 @@ body .main-content {
   border-radius: 0px 0px 18px 18px;
 }
 
-.template-title {
+.templateTitle {
   border-radius: 10px;
   border: 1px solid #c7c7c7;
   color: #000;
@@ -388,7 +388,7 @@ body .main-content {
   margin: 0;
 }
 
-.template-description {
+.templateDescription {
   border-radius: 15px;
   border: 1px solid #c7c7c7;
   color: #000;
@@ -404,7 +404,7 @@ body .main-content {
   position: relative;
 }
 
-.template-description-textarea {
+.templateDescriptionTextarea {
   width: 100%;
   border: none;
   outline: none;
@@ -423,7 +423,7 @@ body .main-content {
   box-sizing: border-box;
 }
 
-.template-description-textarea::placeholder {
+.templateDescriptionTextarea::placeholder {
   color: #9ca3af;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
@@ -434,13 +434,13 @@ body .main-content {
   letter-spacing: -0.32px;
 }
 
-.template-meta {
+.templateMeta {
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
 }
 
-.template-description .char-count {
+.templateDescription .charCount {
   position: absolute;
   bottom: 8px;
   right: 12px;
@@ -452,14 +452,14 @@ body .main-content {
   border-radius: 4px;
 }
 
-.template-meta .char-count {
+.templateMeta .charCount {
   color: #9ca3af;
   font-size: 12px;
   font-weight: 400;
 }
 
 /* 템플릿 액션 버튼들 */
-.template-actions {
+.templateActions {
   display: flex;
   gap: 8px;
   margin-top: 16px;
@@ -469,7 +469,7 @@ body .main-content {
   justify-content: center;
 }
 
-.template-action-button {
+.templateActionButton {
   padding: 8px 16px;
   color: #1681ff;
   text-align: center;
@@ -488,27 +488,27 @@ body .main-content {
   white-space: nowrap;
 }
 
-.template-action-button:hover {
+.templateActionButton:hover {
   background: #1681ff;
   color: white;
 }
 
-.template-action-button:active {
+.templateActionButton:active {
   transform: scale(0.98);
 }
 
 /* 발송 정보 카드 */
-.send-info-card {
+.sendInfoCard {
   padding-top: 30px;
 }
 
 /* 전송 버튼 섹션 */
-.send-button-section {
+.sendButtonSection {
   padding: 20px 30px;
   border-top: 1px solid #e6e6e6;
 }
 
-.send-button.primary {
+.sendButton.primary {
   width: 100%;
   padding: 16px 24px;
   border-radius: 8px;
@@ -528,13 +528,46 @@ body .main-content {
   gap: 8px;
 }
 
-.send-button.primary:hover:not(:disabled) {
+.sendButton.primary:hover:not(:disabled) {
   background: #1d4ed8;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(22, 129, 255, 0.3);
 }
 
-.send-button.primary:disabled {
+.sendButton.primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.primary {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 8px;
+  background: #1681ff;
+  color: white;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.32px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 129, 255, 0.3);
+}
+
+.primary:disabled {
   background: #9ca3af;
   cursor: not-allowed;
   transform: none;
@@ -542,14 +575,14 @@ body .main-content {
 }
 
 /* Content Section Styles */
-.content-section {
+.contentSection {
   background: transparent;
   border-radius: 0;
   padding: 16px;
   border: none;
 }
 
-.section-header {
+.sectionHeader {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -559,48 +592,48 @@ body .main-content {
   font-size: 14px;
 }
 
-.section-header svg {
+.sectionHeader svg {
   width: 16px;
   height: 16px;
   color: #666;
 }
 
 /* 발신번호 선택 */
-.selected-sender {
+.selectedSender {
   background: white;
   border: 1px solid #e9ecef;
   border-radius: 6px;
   padding: 16px;
 }
 
-.sender-info-row {
+.senderInfoRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
 }
 
-.sender-details {
+.senderDetails {
   flex: 1;
 }
 
-.sender-display {
+.senderDisplay {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.sender-icon {
+.senderIcon {
   color: #666;
 }
 
-.sender-title {
+.senderTitle {
   font-size: 14px;
   color: #666;
 }
 
-.sender-number {
+.senderNumber {
   font-size: 18px;
   font-weight: 600;
   color: #333;
@@ -610,13 +643,13 @@ body .main-content {
 /* 변경 버튼 스타일 제거됨 - 발신번호는 환경변수로 고정 */
 
 /* 수신번호 입력 */
-.recipient-input {
+.recipientInput {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.number-input {
+.numberInput {
   flex: 1;
   padding: 12px;
   background: #fff;
@@ -626,22 +659,22 @@ body .main-content {
   transition: border-color 0.2s ease;
 }
 
-.number-input:focus {
+.numberInput:focus {
   outline: none;
   border-color: #6c5ce7;
   box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
 }
 
 /* 메시지 입력 */
-.message-input-section {
+.messageInputSection {
   width: 100%;
 }
 
-.form-group {
+.formGroup {
   width: 100%;
 }
 
-.message-textarea {
+.messageTextarea {
   width: 100%;
   min-height: 120px;
   padding: 12px;
@@ -654,38 +687,38 @@ body .main-content {
   box-sizing: border-box;
 }
 
-.message-textarea:focus {
+.messageTextarea:focus {
   outline: none;
   border-color: #6c5ce7;
   box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
 }
 
-.message-footer {
+.messageFooter {
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
 }
 
-.char-count {
+.charCount {
   font-size: 12px;
   color: #666;
 }
 
 /* 파일 첨부 */
-.file-info {
+.fileInfo {
   font-size: 12px;
   color: #666;
   margin-left: auto;
 }
 
-.file-attachment-section {
+.fileAttachmentSection {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 /* 첨부된 이미지 미리보기 */
-.attached-image-preview {
+.attachedImagePreview {
   border: 1px solid #e9ecef;
   border-radius: 8px;
   overflow: hidden;
@@ -696,14 +729,14 @@ body .main-content {
   justify-content: center;
 }
 
-.attached-image-preview img {
+.attachedImagePreview img {
   width: 100%;
   height: 200px;
   object-fit: cover;
   display: block;
 }
 
-.image-info {
+.imageInfo {
   width: 100%;
   padding: 12px;
   display: flex;
@@ -712,13 +745,13 @@ body .main-content {
   background: white;
 }
 
-.image-status {
+.imageStatus {
   font-size: 14px;
   color: #28a745;
   font-weight: 500;
 }
 
-.remove-image-button {
+.removeImageButton {
   background: #dc3545;
   color: white;
   border: none;
@@ -729,12 +762,12 @@ body .main-content {
   transition: all 0.2s ease;
 }
 
-.remove-image-button:hover {
+.removeImageButton:hover {
   background: #c82333;
 }
 
 /* 이미지 없을 때 플레이스홀더 */
-.no-image-placeholder {
+.noImagePlaceholder {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -747,17 +780,17 @@ body .main-content {
   background: #e9ecef;
 }
 
-.no-image-placeholder svg {
+.noImagePlaceholder svg {
   margin-bottom: 8px;
   opacity: 0.5;
 }
 
-.no-image-placeholder span {
+.noImagePlaceholder span {
   font-size: 14px;
 }
 
 /* MMS 전송 버튼 */
-.mms-send-section .send-button {
+.mmsSendSection .sendButton {
   flex: 1;
   min-width: 120px;
   background: #6c5ce7;
@@ -772,18 +805,18 @@ body .main-content {
   flex-shrink: 0;
 }
 
-.mms-send-section .send-button:hover:not(:disabled) {
+.mmsSendSection .sendButton:hover:not(:disabled) {
   background: #5a4fcf;
 }
 
-.mms-send-section .send-button:disabled {
+.mmsSendSection .sendButton:disabled {
   background: #e9ecef;
   color: #adb5bd;
   cursor: not-allowed;
 }
 
 /* Empty State */
-.empty-state {
+.emptyState {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -793,25 +826,25 @@ body .main-content {
   color: #718096;
 }
 
-.empty-state svg {
+.emptyState svg {
   margin-bottom: 16px;
   opacity: 0.5;
 }
 
-.empty-state h3 {
+.emptyState h3 {
   font-size: 18px;
   font-weight: 600;
   margin: 0 0 8px 0;
   color: #4a5568;
 }
 
-.empty-state p {
+.emptyState p {
   font-size: 14px;
   margin: 0;
 }
 
 /* Modal Styles */
-.modal-overlay {
+.modalOverlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -822,7 +855,7 @@ body .main-content {
   padding: 20px;
 }
 
-.modal-content {
+.modalContent {
   background: white;
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
@@ -834,11 +867,11 @@ body .main-content {
   flex-direction: column;
 }
 
-.send-modal {
+.sendModal {
   max-width: 600px;
 }
 
-.modal-header {
+.modalHeader {
   padding: 20px 24px;
   border-bottom: 1px solid #e9ecef;
   display: flex;
@@ -847,14 +880,14 @@ body .main-content {
   background: #e9ecef;
 }
 
-.modal-header h2 {
+.modalHeader h2 {
   font-size: 18px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
 }
 
-.modal-close {
+.modalClose {
   width: 32px;
   height: 32px;
   background: none;
@@ -868,58 +901,58 @@ body .main-content {
   transition: all 0.2s;
 }
 
-.modal-close:hover {
+.modalClose:hover {
   background: #e2e8f0;
   color: #2d3748;
 }
 
-.modal-body {
+.modalBody {
   padding: 24px;
   flex: 1;
   overflow-y: auto;
 }
 
-.template-preview {
+.templatePreview {
   margin-bottom: 24px;
 }
 
-.template-preview h3 {
+.templatePreview h3 {
   font-size: 16px;
   font-weight: 600;
   color: #2d3748;
   margin: 0 0 12px 0;
 }
 
-.preview-card {
+.previewCard {
   border: none;
   border-radius: 0;
   overflow: hidden;
   background: transparent;
 }
 
-.preview-image {
+.previewImage {
   aspect-ratio: 16/9;
   overflow: hidden;
 }
 
-.preview-image img {
+.previewImage img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.preview-content {
+.previewContent {
   padding: 16px;
 }
 
-.preview-content h4 {
+.previewContent h4 {
   font-size: 14px;
   font-weight: 600;
   color: #2d3748;
   margin: 0 0 8px 0;
 }
 
-.preview-content p {
+.previewContent p {
   font-size: 13px;
   color: #4a5568;
   line-height: 1.5;
@@ -930,7 +963,7 @@ body .main-content {
   overflow: hidden;
 }
 
-.recipient-section label {
+.recipientSection label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -940,7 +973,7 @@ body .main-content {
   margin-bottom: 8px;
 }
 
-.recipients-input {
+.recipientsInput {
   width: 100%;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -953,12 +986,12 @@ body .main-content {
   box-sizing: border-box;
 }
 
-.recipients-input:focus {
+.recipientsInput:focus {
   border-color: #6c5ce7;
   box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
 }
 
-.modal-footer {
+.modalFooter {
   padding: 20px 24px;
   border-top: 1px solid #e9ecef;
   display: flex;
@@ -967,7 +1000,7 @@ body .main-content {
   background: #e9ecef;
 }
 
-.cancel-button {
+.cancelButton {
   padding: 8px 16px;
   border: 1px solid #e2e8f0;
   background: white;
@@ -979,17 +1012,17 @@ body .main-content {
   transition: all 0.2s;
 }
 
-.cancel-button:hover:not(:disabled) {
+.cancelButton:hover:not(:disabled) {
   background: #f7fafc;
   border-color: #cbd5e0;
 }
 
-.cancel-button:disabled {
+.cancelButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.loading-spinner {
+.loadingSpinner {
   width: 16px;
   height: 16px;
   border: 2px solid transparent;
@@ -1005,7 +1038,7 @@ body .main-content {
 }
 
 /* 버튼 그룹 스타일 */
-.button-group {
+.buttonGroup {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -1014,7 +1047,7 @@ body .main-content {
   max-width: 100%;
 }
 
-.clear-button {
+.clearButton {
   padding: 12px 20px;
   background: #e9ecef;
   color: #6c757d;
@@ -1028,54 +1061,54 @@ body .main-content {
   flex-shrink: 0;
 }
 
-.clear-button:hover:not(:disabled) {
+.clearButton:hover:not(:disabled) {
   background: #e9ecef;
   color: #495057;
   border-color: #dee2e6;
 }
 
-.clear-button:disabled {
+.clearButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .target-marketing-content {
+  .targetMarketingContent {
     grid-template-columns: 1fr;
     gap: 16px;
   }
 
-  .chat-section,
-  .mms-send-section {
+  .chatSection,
+  .mmsSendSection {
     height: auto;
     min-height: 400px;
   }
 
-  .template-image,
-  .template-image-placeholder {
+  .templateImage,
+  .templateImagePlaceholder {
     height: 160px;
   }
 
-  .template-title {
+  .templateTitle {
     font-size: 16px;
   }
 
-  .template-description {
+  .templateDescription {
     font-size: 13px;
   }
 }
 
 @media (max-width: 768px) {
-  .target-marketing-header {
+  .targetMarketingHeader {
     padding: 16px 20px;
   }
 
-  .target-marketing-content {
+  .targetMarketingContent {
     padding: 16px 20px;
   }
 
-  .landing-header h1 {
+  .landingHeader h1 {
     font-size: 20px;
   }
 
@@ -1083,78 +1116,78 @@ body .main-content {
     max-width: 90%;
   }
 
-  .mms-send-section {
+  .mmsSendSection {
     padding: 15px;
   }
 
-  .mms-send-content {
+  .mmsSendContent {
     gap: 15px;
   }
 
-  .template-preview-card {
+  .templatePreviewCard {
     margin-bottom: 15px;
   }
 
-  .template-card-content {
+  .templateCardContent {
     padding: 15px;
   }
 
-  .template-image,
-  .template-image-placeholder {
+  .templateImage,
+  .templateImagePlaceholder {
     height: 140px;
     margin-bottom: 12px;
   }
 
-  .template-title {
+  .templateTitle {
     font-size: 15px;
   }
 
-  .template-description {
+  .templateDescription {
     font-size: 12px;
     -webkit-line-clamp: 2;
   }
 
-  .content-section {
+  .contentSection {
     padding: 12px;
   }
 
-  .section-header {
+  .sectionHeader {
     font-size: 13px;
     margin-bottom: 8px;
   }
 
-  .number-input {
+  .numberInput {
     font-size: 14px;
     padding: 10px 12px;
   }
 
-  .send-button.primary {
+  .sendButton.primary {
     padding: 14px 20px;
     font-size: 15px;
   }
 
-  .modal-overlay {
+  .modalOverlay {
     padding: 16px;
   }
 
-  .modal-content {
+  .modalContent {
     max-height: 95vh;
   }
 
-  .modal-header {
+  .modalHeader {
     padding: 16px 20px;
   }
 
-  .modal-body {
+  .modalBody {
     padding: 20px;
   }
 
-  .modal-footer {
+  .modalFooter {
     padding: 16px 20px;
     flex-direction: column;
   }
 
-  .modal-footer button {
+  .modalFooter button {
     width: 100%;
   }
 }

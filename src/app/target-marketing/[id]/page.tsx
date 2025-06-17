@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { Send, Sparkles, X, Phone, Smartphone } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import "./styles.css";
+import styles from "./styles.module.css";
 
 interface Message {
   id: string;
@@ -806,32 +806,34 @@ function TargetMarketingContent() {
   };
 
   return (
-    <div className="target-marketing-container">
-      <div className="target-marketing-header">
-        <div className="landing-header">
+    <div className={styles.targetMarketingContainer}>
+      <div className={styles.targetMarketingHeader}>
+        <div className={styles.landingHeader}>
           <h1>AI타겟마케팅</h1>
         </div>
       </div>
 
-      <div className="target-marketing-content">
+      <div className={styles.targetMarketingContent}>
         {/* 좌측: AI 채팅 영역 */}
-        <div className="chat-section">
-          <div className="chat-messages" ref={chatMessagesRef}>
+        <div className={styles.chatSection}>
+          <div className={styles.chatMessages} ref={chatMessagesRef}>
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`message ${
-                  message.role === "user" ? "user-message" : "assistant-message"
+                className={`${styles.message} ${
+                  message.role === "user"
+                    ? styles.userMessage
+                    : styles.assistantMessage
                 }`}
               >
-                <div className="message-content">
+                <div className={styles.messageContent}>
                   {message.imageUrl && (
-                    <div className="message-image">
+                    <div className={styles.messageImage}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={message.imageUrl} alt="Generated content" />
                       {message.isImageLoading && (
-                        <div className="image-loading-overlay">
-                          <div className="loading-spinner"></div>
+                        <div className={styles.imageLoadingOverlay}>
+                          <div className={styles.loadingSpinner}></div>
                           <span>이미지 생성 중...</span>
                         </div>
                       )}
@@ -842,9 +844,9 @@ function TargetMarketingContent() {
               </div>
             ))}
             {showTypingIndicator && (
-              <div className="message assistant-message">
-                <div className="message-content">
-                  <div className="typing-indicator">
+              <div className={`${styles.message} ${styles.assistantMessage}`}>
+                <div className={styles.messageContent}>
+                  <div className={styles.typingIndicator}>
                     <span></span>
                     <span></span>
                     <span></span>
@@ -854,27 +856,27 @@ function TargetMarketingContent() {
             )}
           </div>
 
-          <div className="chat-input-section">
-            <div className="input-wrapper">
+          <div className={styles.chatInputSection}>
+            <div className={styles.inputWrapper}>
               <textarea
                 ref={textareaRef}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="어떤 광고를 만들고 싶나요?"
-                className="chat-input"
+                className={styles.chatInput}
                 rows={3}
                 disabled={isLoading}
               />
               <button
                 onClick={handleSendMessage}
                 disabled={!inputMessage.trim() || isLoading}
-                className="send-button"
+                className={styles.sendButton}
               >
                 입력
               </button>
             </div>
-            <div className="input-help">
+            <div className={styles.inputHelp}>
               <Sparkles size={14} />
               <span>AI가 이미지 생성, 편집과 마케팅 문구를 도와드립니다</span>
             </div>
@@ -882,14 +884,14 @@ function TargetMarketingContent() {
         </div>
 
         {/* 우측: MMS 전송 영역 */}
-        <div className="mms-send-container">
-          <div className="mms-send-section">
+        <div className={styles.mmsSendContainer}>
+          <div className={styles.mmsSendSection}>
             {/* 템플릿 미리보기 카드 */}
-            <div className="template-preview-card">
-              <div className="template-badge">템플릿 생성결과</div>
-              <div className="template-card-content">
+            <div className={styles.templatePreviewCard}>
+              <div className={styles.templateBadge}>템플릿 생성결과</div>
+              <div className={styles.templateCardContent}>
                 {currentGeneratedImage ? (
-                  <div className="template-image">
+                  <div className={styles.templateImage}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={currentGeneratedImage}
@@ -897,39 +899,39 @@ function TargetMarketingContent() {
                     />
                   </div>
                 ) : (
-                  <div className="template-image-placeholder">
-                    <div className="placeholder-content">
+                  <div className={styles.templateImagePlaceholder}>
+                    <div className={styles.placeholderContent}>
                       <Sparkles size={32} />
                       <span>AI가 이미지를 생성하면 여기에 표시됩니다</span>
                     </div>
                   </div>
                 )}
-                <div className="template-info">
-                  <h3 className="template-title">
+                <div className={styles.templateInfo}>
+                  <h3 className={styles.templateTitle}>
                     {isFromTemplate
                       ? "템플릿에서 불러온 내용"
                       : currentGeneratedImage
                       ? "AI 생성 콘텐츠"
                       : "AI 생성 대기 중"}
                   </h3>
-                  <div className="template-description">
+                  <div className={styles.templateDescription}>
                     <textarea
                       value={smsTextContent || ""}
                       onChange={(e) => setSmsTextContent(e.target.value)}
                       placeholder="AI가 생성한 마케팅 콘텐츠가 여기에 표시됩니다."
-                      className="template-description-textarea"
+                      className={styles.templateDescriptionTextarea}
                       rows={4}
                     />
-                    <span className="char-count">
+                    <span className={styles.charCount}>
                       {new Blob([smsTextContent]).size} / 2,000 bytes
                     </span>
                   </div>
                 </div>
 
                 {/* 템플릿 액션 버튼들 */}
-                <div className="template-actions">
+                <div className={styles.templateActions}>
                   <button
-                    className="template-action-button"
+                    className={styles.templateActionButton}
                     onClick={() => {
                       // 템플릿 불러오기 기능
                       if (currentGeneratedImage || smsTextContent) {
@@ -946,7 +948,7 @@ function TargetMarketingContent() {
                     템플릿 불러오기
                   </button>
                   <button
-                    className="template-action-button"
+                    className={styles.templateActionButton}
                     onClick={() => {
                       // 이미지 편집 모드 활성화
                       if (currentGeneratedImage) {
@@ -962,7 +964,7 @@ function TargetMarketingContent() {
                     이미지 편집
                   </button>
                   <button
-                    className="template-action-button"
+                    className={styles.templateActionButton}
                     onClick={() => {
                       // 템플릿 저장 기능
                       if (currentGeneratedImage && smsTextContent) {
@@ -1000,42 +1002,44 @@ function TargetMarketingContent() {
             </div>
 
             {/* 발송 정보 카드 */}
-            <div className="send-info-card">
+            <div className={styles.sendInfoCard}>
               {/* 발송 정보 */}
-              <div className="template-badge">발송 정보</div>
+              <div className={styles.templateBadge}>발송 정보</div>
 
               {/* 발신번호 입력 */}
-              <div className="content-section">
-                <div className="section-header">
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
                   <Phone size={16} />
                   <span>발신번호</span>
                 </div>
-                <div className="selected-sender">
-                  <div className="sender-info-row">
-                    <div className="sender-details">
-                      <div className="sender-display">
-                        <Phone className="sender-icon" size={16} />
-                        <span className="sender-title">메시지 발신번호</span>
+                <div className={styles.selectedSender}>
+                  <div className={styles.senderInfoRow}>
+                    <div className={styles.senderDetails}>
+                      <div className={styles.senderDisplay}>
+                        <Phone className={styles.senderIcon} size={16} />
+                        <span className={styles.senderTitle}>
+                          메시지 발신번호
+                        </span>
                       </div>
-                      <div className="sender-number">테스트 번호</div>
+                      <div className={styles.senderNumber}>테스트 번호</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* 수신번호 입력 */}
-              <div className="content-section">
-                <div className="section-header">
+              <div className={styles.contentSection}>
+                <div className={styles.sectionHeader}>
                   <Smartphone size={16} />
                   <span>수신번호</span>
                 </div>
-                <div className="recipient-input">
+                <div className={styles.recipientInput}>
                   <input
                     type="text"
                     value={recipientNumber}
                     onChange={(e) => setRecipientNumber(e.target.value)}
                     placeholder="수신번호를 입력하세요 (예: 01012345678)"
-                    className="number-input"
+                    className={styles.numberInput}
                   />
                 </div>
               </div>
@@ -1043,9 +1047,9 @@ function TargetMarketingContent() {
           </div>
 
           {/* 전송 버튼 */}
-          <div className="send-button-section">
+          <div className={styles.sendButtonSection}>
             <button
-              className="send-button primary"
+              className={`${styles.sendButton} ${styles.primary}`}
               onClick={handleDirectSendMMS}
               disabled={
                 !recipientNumber.trim() ||
@@ -1062,9 +1066,9 @@ function TargetMarketingContent() {
 
       {/* MMS 전송 모달 */}
       {showSendModal && (
-        <div className="modal-overlay">
-          <div className="modal-content send-modal">
-            <div className="modal-header">
+        <div className={styles.modalOverlay}>
+          <div className={`${styles.modalContent} ${styles.sendModal}`}>
+            <div className={styles.modalHeader}>
               <h2>MMS 전송</h2>
               <button
                 onClick={() => {
@@ -1072,30 +1076,30 @@ function TargetMarketingContent() {
                   setRecipients("");
                   setSelectedTemplate(null);
                 }}
-                className="modal-close"
+                className={styles.modalClose}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="modal-body">
-              <div className="template-preview">
+            <div className={styles.modalBody}>
+              <div className={styles.templatePreview}>
                 <h3>전송할 내용</h3>
-                <div className="preview-card">
+                <div className={styles.previewCard}>
                   {currentGeneratedImage && (
-                    <div className="preview-image">
+                    <div className={styles.previewImage}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={currentGeneratedImage} alt="전송할 이미지" />
                     </div>
                   )}
-                  <div className="preview-content">
+                  <div className={styles.previewContent}>
                     <h4>{selectedTemplate?.title || "템플릿 내용"}</h4>
                     <p>{smsTextContent}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="recipient-section">
+              <div className={styles.recipientSection}>
                 <label htmlFor="recipients">
                   <Phone size={16} />
                   수신번호
@@ -1105,35 +1109,35 @@ function TargetMarketingContent() {
                   value={recipients}
                   onChange={(e) => setRecipients(e.target.value)}
                   placeholder="수신번호를 입력하세요. 여러 번호는 쉼표(,)로 구분해주세요.&#10;예: 010-1234-5678, 010-9876-5432"
-                  className="recipients-input"
+                  className={styles.recipientsInput}
                   rows={3}
                 />
-                <div className="input-help">
+                <div className={styles.inputHelp}>
                   여러 번호를 입력할 때는 쉼표(,)로 구분해주세요.
                 </div>
               </div>
             </div>
 
-            <div className="modal-footer">
+            <div className={styles.modalFooter}>
               <button
                 onClick={() => {
                   setShowSendModal(false);
                   setRecipients("");
                   setSelectedTemplate(null);
                 }}
-                className="cancel-button"
+                className={styles.cancelButton}
                 disabled={isSending}
               >
                 취소
               </button>
               <button
                 onClick={handleSendMMS}
-                className="send-button primary"
+                className={`${styles.sendButton} ${styles.primary}`}
                 disabled={!recipients.trim() || isSending}
               >
                 {isSending ? (
                   <>
-                    <div className="loading-spinner"></div>
+                    <div className={styles.loadingSpinner}></div>
                     전송 중...
                   </>
                 ) : (
