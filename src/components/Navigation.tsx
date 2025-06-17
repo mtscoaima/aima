@@ -4,18 +4,14 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSidebar } from "@/contexts/SidebarContext";
 
 export default function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
-  const { toggle: toggleSidebar, isOpen: sidebarOpen } = useSidebar();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const isHomePage = pathname === "/";
-  const isAuthPage = pathname === "/login" || pathname === "/signup";
-  const showSidebarToggle = isAuthenticated && !isAuthPage && !isHomePage;
 
   const navClassName = isHomePage
     ? "navigation"
@@ -59,36 +55,9 @@ export default function Navigation() {
   }, [showUserDropdown]);
 
   return (
-    <nav
-      className={`${navClassName} ${
-        isAuthenticated && sidebarOpen ? "sidebar-open" : ""
-      }`}
-    >
+    <nav className={navClassName}>
       <div className="nav-container">
         <div className="nav-left">
-          {showSidebarToggle && (
-            <button
-              onClick={toggleSidebar}
-              className="sidebar-toggle-btn"
-              aria-label="사이드바 토글"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
-          )}
-
           <Link href="/">
             <svg
               width="106"

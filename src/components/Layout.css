@@ -14,10 +14,6 @@
   width: 100%;
 }
 
-.app-layout.sidebar-open .main-layout {
-  margin-left: 250px;
-}
-
 .main-content {
   flex: 1;
   padding-top: 0; /* 헤더가 배너 위에 위치하므로 패딩 제거 */
@@ -27,10 +23,6 @@
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
-  .app-layout.sidebar-open .main-layout {
-    margin-left: 0;
-  }
-
   .main-content {
     padding: 16px;
     padding-top: 0;
