@@ -111,13 +111,13 @@ export default function Navigation() {
               AI 타겟마케팅
             </button>
             <button
-              onClick={() => handleNavClick("/send-status")}
+              onClick={() => handleNavClick("/messages/history")}
               className="landing-nav-menu-item landing-nav-menu-btn"
             >
               발송현황
             </button>
             <button
-              onClick={() => handleNavClick("/messages")}
+              onClick={() => handleNavClick("/messages/send")}
               className="landing-nav-menu-item landing-nav-menu-btn"
             >
               문자
