@@ -1,16 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import {
-  Send,
-  Image as ImageIcon,
-  MessageSquare,
-  Target,
-  Sparkles,
-  X,
-  Phone,
-  Smartphone,
-} from "lucide-react";
+import { Send, Sparkles, X, Phone, Smartphone } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import "./styles.css";
 
@@ -817,31 +808,14 @@ function TargetMarketingContent() {
   return (
     <div className="target-marketing-container">
       <div className="target-marketing-header">
-        <div className="header-content">
-          <div className="header-icon">
-            <Target size={24} />
-          </div>
-          <div className="header-text">
-            <h1>AI 타깃마케팅</h1>
-            <p>
-              AI와 대화하며 맞춤형 마케팅 캠페인을 생성하고 MMS로 전송하세요
-            </p>
-          </div>
+        <div className="landing-header">
+          <h1>AI타겟마케팅</h1>
         </div>
       </div>
 
       <div className="target-marketing-content">
         {/* 좌측: AI 채팅 영역 */}
         <div className="chat-section">
-          <div className="chat-header">
-            <MessageSquare size={20} />
-            <span>AI 마케팅 어시스턴트</span>
-            <div className="chat-status">
-              <div className="status-dot"></div>
-              온라인
-            </div>
-          </div>
-
           <div className="chat-messages" ref={chatMessagesRef}>
             {messages.map((message) => (
               <div
@@ -865,11 +839,6 @@ function TargetMarketingContent() {
                   )}
                   <p>{message.content}</p>
                 </div>
-                {isInitialized && (
-                  <div className="message-time">
-                    {message.timestamp.toLocaleTimeString()}
-                  </div>
-                )}
               </div>
             ))}
             {showTypingIndicator && (
@@ -892,7 +861,7 @@ function TargetMarketingContent() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="마케팅 캠페인에 대해 설명해주세요. 예: '카페 신메뉴 홍보용 이미지를 만들어주세요' 또는 '배경을 파란색으로 바꿔주세요'"
+                placeholder="어떤 광고를 만들고 싶나요?"
                 className="chat-input"
                 rows={3}
                 disabled={isLoading}
@@ -902,7 +871,7 @@ function TargetMarketingContent() {
                 disabled={!inputMessage.trim() || isLoading}
                 className="send-button"
               >
-                <Send size={20} />
+                입력
               </button>
             </div>
             <div className="input-help">
@@ -913,137 +882,180 @@ function TargetMarketingContent() {
         </div>
 
         {/* 우측: MMS 전송 영역 */}
-        <div className="mms-send-section">
-          <div className="mms-send-content">
-            <div className="content-section">
-              <div className="section-header">
-                <Smartphone size={16} />
-                <span>메시지 발신번호</span>
-              </div>
-              <div className="selected-sender">
-                <div className="sender-info-row">
-                  <div className="sender-details">
-                    <div className="sender-display">
-                      <Phone className="sender-icon" size={16} />
-                      <span className="sender-title">메시지 발신번호</span>
-                    </div>
-                    <div className="sender-number">테스트 번호</div>
+        <div className="mms-send-container">
+          <div className="mms-send-section">
+            {/* 템플릿 미리보기 카드 */}
+            <div className="template-preview-card">
+              <div className="template-badge">템플릿 생성결과</div>
+              <div className="template-card-content">
+                {currentGeneratedImage ? (
+                  <div className="template-image">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={currentGeneratedImage}
+                      alt="생성된 템플릿 이미지"
+                    />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="content-section">
-              <div className="section-header">
-                <Phone size={16} />
-                <span>메시지 수신번호</span>
-              </div>
-              <div className="recipient-input">
-                <input
-                  type="text"
-                  value={recipientNumber}
-                  onChange={(e) => setRecipientNumber(e.target.value)}
-                  placeholder="01012345678"
-                  className="number-input"
-                />
-              </div>
-            </div>
-
-            <div className="content-section">
-              <div className="section-header">
-                <span>내용 입력</span>
-                {isFromTemplate && (
-                  <span className="template-badge">📋 템플릿에서 불러옴</span>
+                ) : (
+                  <div className="template-image-placeholder">
+                    <div className="placeholder-content">
+                      <Sparkles size={32} />
+                      <span>AI가 이미지를 생성하면 여기에 표시됩니다</span>
+                    </div>
+                  </div>
                 )}
-              </div>
-              <div className="message-input-section">
-                <div className="form-group">
-                  <textarea
-                    value={smsTextContent}
-                    onChange={(e) => setSmsTextContent(e.target.value)}
-                    placeholder="문자 내용을 입력해주세요."
-                    className="message-textarea"
-                    maxLength={2000}
-                  />
-                  <div className="message-footer">
+                <div className="template-info">
+                  <h3 className="template-title">
+                    {isFromTemplate
+                      ? "템플릿에서 불러온 내용"
+                      : currentGeneratedImage
+                      ? "AI 생성 콘텐츠"
+                      : "AI 생성 대기 중"}
+                  </h3>
+                  <div className="template-description">
+                    <textarea
+                      value={smsTextContent || ""}
+                      onChange={(e) => setSmsTextContent(e.target.value)}
+                      placeholder="AI가 생성한 마케팅 콘텐츠가 여기에 표시됩니다."
+                      className="template-description-textarea"
+                      rows={4}
+                    />
                     <span className="char-count">
                       {new Blob([smsTextContent]).size} / 2,000 bytes
                     </span>
                   </div>
                 </div>
+
+                {/* 템플릿 액션 버튼들 */}
+                <div className="template-actions">
+                  <button
+                    className="template-action-button"
+                    onClick={() => {
+                      // 템플릿 불러오기 기능
+                      if (currentGeneratedImage || smsTextContent) {
+                        const confirmed = confirm(
+                          "현재 내용을 템플릿으로 불러오시겠습니까?"
+                        );
+                        if (confirmed) {
+                          // 템플릿 불러오기 로직
+                          console.log("템플릿 불러오기");
+                        }
+                      }
+                    }}
+                  >
+                    템플릿 불러오기
+                  </button>
+                  <button
+                    className="template-action-button"
+                    onClick={() => {
+                      // 이미지 편집 모드 활성화
+                      if (currentGeneratedImage) {
+                        setInputMessage("이미지를 수정해주세요");
+                        textareaRef.current?.focus();
+                      } else {
+                        alert(
+                          "편집할 이미지가 없습니다. 먼저 이미지를 생성해주세요."
+                        );
+                      }
+                    }}
+                  >
+                    이미지 편집
+                  </button>
+                  <button
+                    className="template-action-button"
+                    onClick={() => {
+                      // 템플릿 저장 기능
+                      if (currentGeneratedImage && smsTextContent) {
+                        const templateData = {
+                          id: `saved-${Date.now()}`,
+                          title: isFromTemplate
+                            ? "템플릿에서 불러온 내용"
+                            : "AI 생성 콘텐츠",
+                          description: smsTextContent,
+                          imageUrl: currentGeneratedImage,
+                          createdAt: new Date(),
+                          status: "생성완료" as const,
+                        };
+
+                        // 로컬 스토리지에 저장
+                        const savedTemplates = JSON.parse(
+                          localStorage.getItem("savedTemplates") || "[]"
+                        );
+                        savedTemplates.push(templateData);
+                        localStorage.setItem(
+                          "savedTemplates",
+                          JSON.stringify(savedTemplates)
+                        );
+
+                        alert("템플릿이 저장되었습니다!");
+                      } else {
+                        alert("저장할 템플릿 내용이 없습니다.");
+                      }
+                    }}
+                  >
+                    템플릿 저장
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="content-section">
-              <div className="section-header">
-                <ImageIcon size={16} />
-                <span>이미지 첨부</span>
-                <span className="file-info">
-                  {isFromTemplate
-                    ? "(템플릿 이미지 자동 첨부)"
-                    : "(AI 생성 이미지 자동 첨부)"}
-                </span>
-              </div>
-              <div className="file-attachment-section">
-                {currentGeneratedImage ? (
-                  <div className="attached-image-preview">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={currentGeneratedImage} alt="AI 생성 이미지" />
-                    <div className="image-info">
-                      <span className="image-status">
-                        {isFromTemplate
-                          ? "✓ 템플릿 이미지 첨부됨"
-                          : "✓ AI 생성 이미지 첨부됨"}
-                      </span>
-                      <button
-                        type="button"
-                        className="remove-image-button"
-                        onClick={() => {
-                          setCurrentGeneratedImage(null);
-                          setIsFromTemplate(false);
-                        }}
-                      >
-                        제거
-                      </button>
+            {/* 발송 정보 카드 */}
+            <div className="send-info-card">
+              {/* 발송 정보 */}
+              <div className="template-badge">발송 정보</div>
+
+              {/* 발신번호 입력 */}
+              <div className="content-section">
+                <div className="section-header">
+                  <Phone size={16} />
+                  <span>발신번호</span>
+                </div>
+                <div className="selected-sender">
+                  <div className="sender-info-row">
+                    <div className="sender-details">
+                      <div className="sender-display">
+                        <Phone className="sender-icon" size={16} />
+                        <span className="sender-title">메시지 발신번호</span>
+                      </div>
+                      <div className="sender-number">테스트 번호</div>
                     </div>
                   </div>
-                ) : (
-                  <div className="no-image-placeholder">
-                    <ImageIcon size={24} />
-                    <span>AI가 이미지를 생성하면 자동으로 첨부됩니다</span>
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
 
-            <div className="content-section">
-              <div className="button-group">
-                <button
-                  className="send-button"
-                  onClick={handleDirectSendMMS}
-                  disabled={
-                    !recipientNumber.trim() ||
-                    !smsTextContent.trim() ||
-                    isSending
-                  }
-                >
-                  {isSending ? "전송 중..." : "전송"}
-                </button>
-                <button
-                  className="clear-button"
-                  onClick={() => {
-                    setRecipientNumber("");
-                    setSmsTextContent("");
-                    setCurrentGeneratedImage(null);
-                    setIsFromTemplate(false);
-                  }}
-                  disabled={isSending}
-                  title="모든 내용 초기화"
-                >
-                  초기화
-                </button>
+              {/* 수신번호 입력 */}
+              <div className="content-section">
+                <div className="section-header">
+                  <Smartphone size={16} />
+                  <span>수신번호</span>
+                </div>
+                <div className="recipient-input">
+                  <input
+                    type="text"
+                    value={recipientNumber}
+                    onChange={(e) => setRecipientNumber(e.target.value)}
+                    placeholder="수신번호를 입력하세요 (예: 01012345678)"
+                    className="number-input"
+                  />
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* 전송 버튼 */}
+          <div className="send-button-section">
+            <button
+              className="send-button primary"
+              onClick={handleDirectSendMMS}
+              disabled={
+                !recipientNumber.trim() ||
+                !smsTextContent.trim() ||
+                !currentGeneratedImage ||
+                isSending
+              }
+            >
+              {isSending ? "전송 중..." : "전송"}
+            </button>
           </div>
         </div>
       </div>
