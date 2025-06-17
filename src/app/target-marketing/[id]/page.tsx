@@ -231,53 +231,24 @@ function TargetMarketingContent() {
 
     const useTemplate = searchParams.get("useTemplate");
     if (useTemplate === "true") {
-      const savedTemplateId = localStorage.getItem("selectedTemplateId");
-      if (savedTemplateId) {
-        // DB에서 템플릿 데이터 불러오기
-        fetchTemplateById(savedTemplateId);
+      const savedTemplate = localStorage.getItem("selectedTemplate");
+      if (savedTemplate) {
+        try {
+          const templateData = JSON.parse(savedTemplate);
 
-        // localStorage에서 템플릿 ID 제거
-        localStorage.removeItem("selectedTemplateId");
+          // 우측 MMS 전송 섹션에 템플릿 데이터 설정
+          setSmsTextContent(templateData.content);
+          setCurrentGeneratedImage(templateData.image_url);
+          setIsFromTemplate(true);
+
+          // localStorage에서 템플릿 데이터 제거
+          localStorage.removeItem("selectedTemplate");
+        } catch (error) {
+          console.error("템플릿 데이터 파싱 오류:", error);
+        }
       }
     }
   }, [searchParams, isInitialized]);
-
-  // 템플릿 ID로 DB에서 템플릿 데이터 불러오기
-  const fetchTemplateById = async (templateId: string) => {
-    try {
-      // 로컬 스토리지에서 토큰 가져오기
-      const token = localStorage.getItem("accessToken");
-
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-
-      // 토큰이 있으면 Authorization 헤더 추가
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`/api/templates/${templateId}`, {
-        method: "GET",
-        headers,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const templateData = data.template;
-
-        // 우측 MMS 전송 섹션에 템플릿 데이터 설정 (모달 사용 안함)
-        setSmsTextContent(templateData.content);
-        setCurrentGeneratedImage(templateData.image_url);
-        setIsFromTemplate(true);
-      } else {
-        const errorData = await response.json();
-        console.error("템플릿 불러오기 실패:", errorData);
-      }
-    } catch (error) {
-      console.error("템플릿 불러오기 오류:", error);
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
