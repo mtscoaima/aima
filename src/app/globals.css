@@ -123,14 +123,6 @@ h3 {
   transition: all 0.3s ease;
 }
 
-.navigation.sidebar-open {
-  left: calc(50% + 125px);
-  transform: translateX(-50%);
-  width: calc(100% - 290px);
-  max-width: calc(1200px - 250px);
-  transition: all 0.3s ease;
-}
-
 .nav-container {
   display: flex;
   align-items: center;
@@ -165,10 +157,17 @@ h3 {
   font-size: 0.95rem;
   padding: 0.5rem 0;
   transition: color 0.2s ease;
+  cursor: pointer;
 }
 
 .landing-nav-menu-item:hover {
   color: #1681ff;
+}
+
+.landing-nav-menu-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 .nav-right {
@@ -177,24 +176,218 @@ h3 {
   gap: 1rem;
 }
 
-.sidebar-toggle-btn {
+/* 네비게이션 우측 버튼들 */
+.nav-right-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 사용자가이드 버튼 */
+.nav-guide-btn {
+  background: #1681ff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-guide-btn:hover {
+  background: #0066cc;
+  transform: translateY(-1px);
+}
+
+/* 알림 버튼 */
+.notification-dropdown-container {
+  position: relative;
+}
+
+.nav-notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: none;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  color: #333;
-  transition: all 0.2s ease;
-  margin-right: 4px;
 }
 
-.sidebar-toggle-btn:hover {
-  background-color: #f5f5f5;
+.nav-notification-btn:hover {
+  background: #f5f7fa;
   color: #1681ff;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #ff4444;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* 알림 드롭다운 */
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e5e8ec;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e8ec;
+}
+
+.notification-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.mark-all-read {
+  background: none;
+  border: none;
+  color: #1681ff;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.mark-all-read:hover {
+  background: #f0f7ff;
+}
+
+.notification-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f5f7fa;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.notification-item:hover {
+  background: #f9fafb;
+}
+
+.notification-item.unread {
+  background: #f0f7ff;
+}
+
+.notification-item.unread::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: #1681ff;
+  border-radius: 50%;
+}
+
+.notification-item.unread .notification-content {
+  margin-left: 12px;
+}
+
+.notification-content p {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.notification-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #e5e8ec;
+  text-align: center;
+}
+
+.view-all-notifications {
+  background: none;
+  border: none;
+  color: #1681ff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.view-all-notifications:hover {
+  background: #f0f7ff;
+}
+
+/* 프로필 버튼 */
+.user-profile-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-profile-btn:hover {
+  transform: scale(1.05);
+}
+
+.user-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1681ff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid #e5e8ec;
+  transition: all 0.2s ease;
+}
+
+.user-profile-btn:hover .user-avatar-circle {
+  border-color: #1681ff;
+  box-shadow: 0 2px 8px rgba(22, 129, 255, 0.2);
 }
 
 /* 데스크톱 메뉴 */
@@ -221,6 +414,7 @@ h3 {
   position: relative;
   z-index: 120;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .menu-item.active {
@@ -266,7 +460,7 @@ h3 {
   background-color: white;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   z-index: 999;
-  max-height: calc(100vh - 70px);
+  max-height: calc(100vh);
   overflow-y: auto;
 }
 
@@ -295,7 +489,7 @@ h3 {
 }
 
 .mobile-menu-item:hover {
-  background-color: #f8f9fa;
+  background-color: #e9ecef;
   color: #1681ff;
 }
 
@@ -309,7 +503,7 @@ h3 {
 }
 
 .mobile-submenu {
-  background-color: #f8f9fa;
+  background-color: #e9ecef;
   border-top: 1px solid #e9ecef;
 }
 
@@ -377,6 +571,7 @@ h3 {
   font-weight: 500;
   transition: all 0.2s ease;
   border-left: 3px solid transparent;
+  cursor: pointer;
 }
 
 .mobile-submenu-item:hover {
@@ -396,6 +591,7 @@ h3 {
   text-decoration: none;
   font-size: 0.9rem;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .mobile-subsubmenu-item:hover {
@@ -406,7 +602,7 @@ h3 {
 /* 메가메뉴 스타일 */
 .submenu {
   position: absolute;
-  top: 70px; /* 네비게이션 바 높이와 같게 설정 */
+  top: 0px; /* 네비게이션 바 높이와 같게 설정 */
   left: 0;
   right: 0;
   transform: none;
@@ -451,6 +647,7 @@ h3 {
   display: block;
   transition: color 0.2s ease;
   width: 100%;
+  cursor: pointer;
 }
 
 .submenu-item:hover {
@@ -480,6 +677,7 @@ h3 {
   transition: all 0.2s ease;
   display: block;
   font-weight: normal;
+  cursor: pointer;
 }
 
 .subsubmenu-item:hover {
@@ -945,12 +1143,6 @@ h3 {
     transform: translateX(-50%);
   }
 
-  .navigation.sidebar-open {
-    left: 50%;
-    transform: translateX(-50%);
-    width: calc(100% - 20px);
-  }
-
   .nav-center {
     display: none;
   }
@@ -967,6 +1159,31 @@ h3 {
     padding: 0.4rem 1rem;
     font-size: 0.85rem;
     min-width: 50px;
+  }
+
+  /* 모바일에서 네비게이션 우측 버튼들 */
+  .nav-right-buttons {
+    gap: 8px;
+  }
+
+  .nav-guide-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .nav-notification-btn {
+    padding: 6px;
+  }
+
+  .user-avatar-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .notification-dropdown {
+    width: 280px;
+    right: -20px;
   }
 }
 
@@ -1052,11 +1269,6 @@ h3 {
     font-size: 1.25rem;
   }
 
-  .sidebar-toggle-btn {
-    width: 36px;
-    height: 36px;
-  }
-
   .user-info-button {
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
@@ -1070,12 +1282,47 @@ h3 {
     padding: 0.4rem 0.8rem;
     font-size: 0.85rem;
   }
+
+  /* 작은 모바일에서 네비게이션 우측 버튼들 */
+  .nav-right-buttons {
+    gap: 6px;
+  }
+
+  .nav-guide-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .nav-notification-btn {
+    padding: 4px;
+  }
+
+  .user-avatar-circle {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .notification-dropdown {
+    width: 260px;
+    right: -30px;
+  }
 }
 
 /* --- Landing Page & Navigation Custom Styles --- */
 .landing-root {
   width: 100%;
   background: #fff;
+}
+
+/* 랜딩 페이지에서는 상단 여백 제거 - 더 강력한 선택자 사용 */
+.home-page .main-content,
+.home-page .home-main-content,
+.landing-root .main-content,
+body .home-page .main-content,
+body .landing-root .main-content {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 .landing-hero-section {
@@ -1203,7 +1450,7 @@ h3 {
   border: 1px solid #1681ff;
 }
 .landing-signup-btn:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
   color: #333;
   border-color: #1681ff;
 }
@@ -1438,7 +1685,7 @@ h3 {
   left: 290px;
 }
 .landing-ai-images img:nth-child(3) {
-  top: 70px;
+  top: 0px;
   left: 450px;
   z-index: 2;
   border-radius: 16px;

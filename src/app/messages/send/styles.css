@@ -1,7 +1,7 @@
 /* Layout 오버라이드 - 더 구체적인 선택자 사용 */
 body .main-content {
   padding: 0 !important;
-  padding-top: 70px !important;
+  padding-top: 140px !important;
   max-width: none !important;
   margin: 0 !important;
 }
@@ -65,8 +65,8 @@ body .main-content {
   max-width: none;
   margin: 0;
   padding: 20px;
-  background-color: #f8f9fa;
-  min-height: calc(100vh - 70px);
+  background-color: white;
+  min-height: calc(100vh - 140px);
   box-sizing: border-box;
   position: relative;
 }
@@ -130,7 +130,7 @@ body .main-content {
 
 /* 발신번호 선택 */
 .sender-selection {
-  background: #f8f9fa;
+  background: #f1f3f4;
   border-radius: 6px;
   padding: 12px;
 }
@@ -364,7 +364,7 @@ body .main-content {
 @media (max-width: 768px) {
   body .main-content {
     padding: 16px !important;
-    padding-top: calc(70px + 16px) !important;
+    padding-top: calc(140px + 16px) !important;
   }
 
   .message-send-container {
@@ -431,7 +431,7 @@ body .main-content {
 }
 
 .modal-close:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .modal-search {
@@ -483,7 +483,7 @@ body .main-content {
 }
 
 .sender-item:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .sender-item:last-child {
@@ -588,7 +588,7 @@ body .main-content {
 }
 
 .menu-item:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .menu-item:not(:last-child) {
@@ -676,7 +676,7 @@ body .main-content {
   align-items: center;
   padding: 16px 24px;
   border-top: 1px solid #e9ecef;
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .alias-footer-left {
@@ -716,7 +716,7 @@ body .main-content {
   align-items: center;
   padding: 20px 24px;
   border-top: 1px solid #e9ecef;
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .manage-btn {
@@ -779,7 +779,7 @@ body .main-content {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f8f9fa;
+  background: #e9ecef;
   border: 2px dashed #dee2e6;
   color: #6c757d;
   padding: 12px 16px;
@@ -814,7 +814,7 @@ body .main-content {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: #f8f9fa;
+  background: #e9ecef;
   border: 1px solid #dee2e6;
   border-radius: 8px;
   transition: background-color 0.2s ease;

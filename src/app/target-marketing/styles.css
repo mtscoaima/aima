@@ -1,14 +1,14 @@
 /* Layout 오버라이드 */
 body .main-content {
   padding: 0 !important;
-  padding-top: 70px !important;
+  padding-top: 140px !important;
   max-width: none !important;
   margin: 0 !important;
 }
 
 .target-marketing-container {
-  min-height: calc(100vh - 70px);
-  background-color: #f8f9fa;
+  min-height: calc(100vh - 140px);
+  background-color: white;
   display: flex;
   flex-direction: column;
 }
@@ -82,7 +82,7 @@ body .main-content {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #f8f9fa;
+  background: #e9ecef;
   border-radius: 12px 12px 0 0;
 }
 
@@ -484,7 +484,7 @@ body .main-content {
   border: 1px solid #e9ecef;
   border-radius: 8px;
   overflow: hidden;
-  background: #f8f9fa;
+  background: #e9ecef;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -539,7 +539,7 @@ body .main-content {
   border-radius: 8px;
   color: #6c757d;
   text-align: center;
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .no-image-placeholder svg {
@@ -637,7 +637,7 @@ body .main-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .modal-header h2 {
@@ -687,7 +687,7 @@ body .main-content {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .preview-image {
@@ -757,7 +757,7 @@ body .main-content {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  background: #f8f9fa;
+  background: #e9ecef;
 }
 
 .cancel-button {
@@ -830,7 +830,7 @@ body .main-content {
 
 .clear-button {
   padding: 12px 20px;
-  background: #f8f9fa;
+  background: #e9ecef;
   color: #6c757d;
   border: 1px solid #e9ecef;
   border-radius: 8px;

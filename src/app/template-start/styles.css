@@ -1,14 +1,14 @@
 /* Layout 오버라이드 */
 body .main-content {
   padding: 0 !important;
-  padding-top: 70px !important;
+  padding-top: 140px !important;
   max-width: none !important;
   margin: 0 !important;
 }
 
 .template-start-container {
-  min-height: calc(100vh - 70px);
-  background-color: #f8f9fa;
+  min-height: calc(100vh - 140px);
+  background-color: white;
   display: flex;
   flex-direction: column;
 }
@@ -226,12 +226,12 @@ body .main-content {
 }
 
 .action-button:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
   border-color: #1a73e8;
 }
 
 .action-button.secondary {
-  background: #f8f9fa;
+  background: #e9ecef;
   color: #5f6368;
   border-color: #dadce0;
 }
@@ -817,7 +817,7 @@ body .main-content {
 }
 
 .image-action-btn:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
   border-color: #1a73e8;
   color: #1a73e8;
 }

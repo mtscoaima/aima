@@ -1,7 +1,7 @@
 /* Layout 오버라이드 - 더 구체적인 선택자 사용 */
 body .main-content {
   padding: 0 !important;
-  padding-top: 70px !important;
+  padding-top: 140px !important;
   max-width: none !important;
   margin: 0 !important;
 }
@@ -11,8 +11,8 @@ body .main-content {
   max-width: none;
   margin: 0;
   padding: 20px;
-  background-color: #f8f9fa;
-  min-height: calc(100vh - 70px);
+  background-color: white;
+  min-height: calc(100vh - 140px);
   box-sizing: border-box;
 }
 
@@ -64,14 +64,14 @@ body .main-content {
 }
 
 .tab-button:hover:not(.active) {
-  background: #f8f9fa;
+  background: #e9ecef;
   color: #333;
 }
 
 /* 필터 섹션 */
 .filter-section {
   padding: 16px 20px;
-  background: #f8f9fa;
+  background: white;
   border-bottom: 1px solid #e9ecef;
 }
 
@@ -173,7 +173,7 @@ body .main-content {
 }
 
 .action-btn:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
   border-color: #bbb;
 }
 
@@ -242,7 +242,7 @@ body .main-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f8f9fa;
+  background: white;
   border-bottom: 1px solid #e9ecef;
   font-size: 14px;
   gap: 16px;
@@ -283,7 +283,7 @@ body .main-content {
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background: #f8f9fa;
+  background: #e9ecef;
   border-color: #bbb;
 }
 
@@ -302,7 +302,7 @@ body .main-content {
   grid-template-columns: 1fr 1fr 1fr 1fr 1.5fr;
   gap: 16px;
   padding: 16px 20px;
-  background-color: #f8f9fa;
+  background-color: #e9ecef;
   font-weight: 600;
   color: #333;
   font-size: 14px;
@@ -336,7 +336,7 @@ body .main-content {
 }
 
 .table-row:hover {
-  background-color: #f8f9fa;
+  background-color: #e9ecef;
 }
 
 .table-cell {
@@ -392,7 +392,7 @@ body .main-content {
 
 /* 하단 페이지네이션 */
 .bottom-pagination {
-  background: #f8f9fa;
+  background: white;
   border-top: 1px solid #e9ecef;
 }
 
@@ -418,7 +418,7 @@ body .main-content {
 
 @media (max-width: 768px) {
   body .main-content {
-    padding-top: 60px !important;
+    padding-top: 140px !important;
   }
 
   .message-history-container {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,8 +13,36 @@ export default function LoginPage() {
     rememberMe: false,
   });
 
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, isAuthenticated } = useAuth();
   const router = useRouter();
+
+  // 이미 로그인된 사용자는 루트 페이지로 리다이렉트
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/");
+    }
+  }, [isAuthenticated, router]);
+
+  // 로그인된 사용자에게는 로딩 화면 표시
+  if (isAuthenticated) {
+    return (
+      <div className={styles.loginContainer}>
+        <div className={styles.loginWrapper}>
+          <div className={styles.loginCard}>
+            <div className={styles.loginHeader}>
+              <div className={styles.logoSection}>
+                <h1 className={styles.logoText}>MTS플러스</h1>
+                <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
+              </div>
+            </div>
+            <div style={{ textAlign: "center", padding: "2rem" }}>
+              <p>이미 로그인되어 있습니다. 메인 페이지로 이동합니다...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
