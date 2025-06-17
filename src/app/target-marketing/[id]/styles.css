@@ -6,168 +6,6 @@ body .main-content {
   margin: 0 !important;
 }
 
-/* Landing Page Styles */
-.target-marketing-landing {
-  min-height: calc(100vh - 140px);
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  position: relative;
-}
-
-.landing-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.landing-header {
-  margin-bottom: 60px;
-}
-
-.landing-header h1 {
-  color: #1681ff;
-  font-feature-settings: "liga" off, "clig" off;
-  font-family: "Noto Sans KR";
-  font-size: 24px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 120%; /* 28.8px */
-  letter-spacing: -0.48px;
-  margin: 0;
-}
-
-.landing-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.chat-bot-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.robot-image {
-  border-radius: 12px;
-}
-
-.landing-content h2 {
-  color: #000;
-  font-feature-settings: "liga" off, "clig" off;
-  font-family: "Noto Sans KR";
-  font-size: 24px;
-  font-style: normal;
-  font-weight: 500;
-  line-height: 120%; /* 28.8px */
-  letter-spacing: -0.48px;
-  margin-bottom: 38px;
-}
-
-.input-section {
-  width: 100%;
-  max-width: 600px;
-}
-
-.chat-input-container {
-  border-radius: 15px;
-  background: #fff;
-  box-shadow: 0px 4px 13px 0px rgba(0, 0, 0, 0.25);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.chat-input-field {
-  width: 100%;
-  font-size: 16px;
-  resize: none;
-  min-height: 100px;
-  transition: border-color 0.2s ease;
-  font-family: inherit;
-}
-
-.chat-input-field:focus {
-  outline: none;
-}
-
-.chat-input-field::placeholder {
-  color: #9ca3af;
-  white-space: pre-line;
-}
-
-.start-chat-btn {
-  align-self: flex-end;
-  padding: 12px 32px;
-  border-radius: 60px;
-  background: #1681ff;
-  color: #fff;
-  text-align: center;
-  font-feature-settings: "liga" off, "clig" off;
-  font-family: "Noto Sans KR";
-  font-size: 18px;
-  font-style: normal;
-  font-weight: 500;
-  line-height: 120%; /* 21.6px */
-  letter-spacing: -0.36px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 100px;
-}
-
-.start-chat-btn:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.start-chat-btn:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-
-.loading-spinner-small {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@media (max-width: 768px) {
-  .landing-container {
-    padding: 40px 24px;
-    margin: 20px;
-  }
-
-  .landing-header h1 {
-    font-size: 20px;
-  }
-
-  .landing-content h2 {
-    font-size: 24px;
-  }
-
-  .robot-image {
-    width: 100px !important;
-    height: 100px !important;
-  }
-
-  .chat-input-field {
-    min-height: 80px;
-  }
-}
-
 .target-marketing-container {
   min-height: calc(100vh - 140px);
   background-color: white;
@@ -234,8 +72,8 @@ body .main-content {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 200px);
-  min-height: 600px;
+  height: calc(100vh - 280px);
+  min-height: 500px;
 }
 
 .chat-header {
@@ -485,8 +323,8 @@ body .main-content {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 200px);
-  min-height: 600px;
+  height: calc(100vh - 280px);
+  min-height: 500px;
 }
 
 .mms-send-content {
@@ -715,7 +553,8 @@ body .main-content {
 
 /* MMS 전송 버튼 */
 .mms-send-section .send-button {
-  width: 100%;
+  flex: 1;
+  min-width: 120px;
   background: #6c5ce7;
   color: white;
   border: none;
@@ -725,6 +564,7 @@ body .main-content {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .mms-send-section .send-button:hover:not(:disabled) {
@@ -988,6 +828,9 @@ body .main-content {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  max-width: 100%;
 }
 
 .clear-button {
@@ -1001,6 +844,7 @@ body .main-content {
   cursor: pointer;
   transition: all 0.2s;
   min-width: 80px;
+  flex-shrink: 0;
 }
 
 .clear-button:hover:not(:disabled) {
@@ -1094,9 +938,11 @@ body .main-content {
   .button-group {
     flex-direction: column;
     gap: 8px;
+    width: 100%;
   }
 
   .button-group button {
     width: 100%;
+    min-width: auto;
   }
 }
