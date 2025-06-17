@@ -4,7 +4,6 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
-import Navigation from "@/components/Navigation";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -12,7 +11,6 @@ export default function Home() {
     <div className="landing-root">
       {/* Hero Section */}
       <section className="landing-hero-section">
-        <Navigation />
         <div className="landing-hero-bg">
           <div className="landing-hero-inner">
             <div className="landing-hero-title-group">

@@ -2,15 +2,24 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 
 export default function Navigation() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const { toggle: toggleSidebar, isOpen: sidebarOpen } = useSidebar();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+
+  const isHomePage = pathname === "/";
+  const isAuthPage = pathname === "/login" || pathname === "/signup";
+  const showSidebarToggle = isAuthenticated && !isAuthPage && !isHomePage;
+
+  const navClassName = isHomePage
+    ? "navigation"
+    : "navigation navigation-solid";
 
   const handleLogout = () => {
     logout();
@@ -51,13 +60,13 @@ export default function Navigation() {
 
   return (
     <nav
-      className={`navigation ${
+      className={`${navClassName} ${
         isAuthenticated && sidebarOpen ? "sidebar-open" : ""
       }`}
     >
       <div className="nav-container">
         <div className="nav-left">
-          {isAuthenticated && (
+          {showSidebarToggle && (
             <button
               onClick={toggleSidebar}
               className="sidebar-toggle-btn"
@@ -121,6 +130,12 @@ export default function Navigation() {
               className="landing-nav-menu-item landing-nav-menu-btn"
             >
               문자
+            </button>
+            <button
+              onClick={() => handleNavClick("/template-start")}
+              className="landing-nav-menu-item landing-nav-menu-btn"
+            >
+              템플릿
             </button>
             <button
               onClick={() => handleNavClick("/support")}

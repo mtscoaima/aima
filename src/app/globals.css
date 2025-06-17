@@ -266,7 +266,7 @@ h3 {
   background-color: white;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   z-index: 999;
-  max-height: calc(100vh - 70px);
+  max-height: calc(100vh);
   overflow-y: auto;
 }
 
@@ -295,7 +295,7 @@ h3 {
 }
 
 .mobile-menu-item:hover {
-  background-color: #f8f9fa;
+  background-color: #e9ecef;
   color: #1681ff;
 }
 
@@ -309,7 +309,7 @@ h3 {
 }
 
 .mobile-submenu {
-  background-color: #f8f9fa;
+  background-color: #e9ecef;
   border-top: 1px solid #e9ecef;
 }
 
@@ -406,7 +406,7 @@ h3 {
 /* 메가메뉴 스타일 */
 .submenu {
   position: absolute;
-  top: 70px; /* 네비게이션 바 높이와 같게 설정 */
+  top: 0px; /* 네비게이션 바 높이와 같게 설정 */
   left: 0;
   right: 0;
   transform: none;
@@ -1078,6 +1078,16 @@ h3 {
   background: #fff;
 }
 
+/* 랜딩 페이지에서는 상단 여백 제거 - 더 강력한 선택자 사용 */
+.home-page .main-content,
+.home-page .home-main-content,
+.landing-root .main-content,
+body .home-page .main-content,
+body .landing-root .main-content {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
 .landing-hero-section {
   background: linear-gradient(1deg, #3692ff 0.96%, #7eeaff 99.04%);
   padding: 0;
@@ -1203,7 +1213,7 @@ h3 {
   border: 1px solid #1681ff;
 }
 .landing-signup-btn:hover {
-  background: #f8f9fa;
+  background: #e9ecef;
   color: #333;
   border-color: #1681ff;
 }
@@ -1438,7 +1448,7 @@ h3 {
   left: 290px;
 }
 .landing-ai-images img:nth-child(3) {
-  top: 70px;
+  top: 0px;
   left: 450px;
   z-index: 2;
   border-radius: 16px;
