@@ -109,12 +109,6 @@ export default function Navigation() {
               문자
             </button>
             <button
-              onClick={() => handleNavClick("/template-start")}
-              className="landing-nav-menu-item landing-nav-menu-btn"
-            >
-              템플릿
-            </button>
-            <button
               onClick={() => handleNavClick("/support")}
               className="landing-nav-menu-item landing-nav-menu-btn"
             >
