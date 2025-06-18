@@ -21,10 +21,19 @@
   width: 100%;
 }
 
+/* 헤더 아래 여백이 필요한 페이지들을 위한 스타일 */
+.main-content.with-header-padding {
+  padding-top: 140px;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .main-content {
     padding: 16px;
     padding-top: 0;
+  }
+
+  .main-content.with-header-padding {
+    padding-top: 120px; /* 모바일에서는 헤더 높이가 약간 작음 */
   }
 }

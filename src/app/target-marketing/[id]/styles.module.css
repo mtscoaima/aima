@@ -1,7 +1,6 @@
 /* Layout 오버라이드 */
 body .main-content {
   padding: 0 !important;
-  padding-top: 140px !important;
   max-width: none !important;
   margin: 0 !important;
   min-height: calc(100vh - 140px) !important;
