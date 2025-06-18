@@ -18,8 +18,9 @@ const SupportPage = () => {
             <div className="faq-item">
               <h3>MMS 발송은 어떻게 하나요?</h3>
               <p>
-                '문자' 메뉴에서 'MMS' 탭을 선택하고, 수신자를 추가한 후 메시지와
-                이미지를 첨부하여 발송할 수 있습니다.
+                &quot;문자&quot; 메뉴에서 &quot;MMS&quot; 탭을 선택하고,
+                수신자를 추가한 후 메시지와 이미지를 첨부하여 발송할 수
+                있습니다.
               </p>
             </div>
             <div className="faq-item">
@@ -32,8 +33,8 @@ const SupportPage = () => {
             <div className="faq-item">
               <h3>발송 비용은 어떻게 결제되나요?</h3>
               <p>
-                '요금제' 메뉴에서 원하시는 플랜을 선택하여 결제할 수 있습니다.
-                충전형 또는 월정액 요금제를 제공합니다.
+                &quot;요금제&quot; 메뉴에서 원하시는 플랜을 선택하여 결제할 수
+                있습니다. 충전형 또는 월정액 요금제를 제공합니다.
               </p>
             </div>
             <div className="faq-item">
