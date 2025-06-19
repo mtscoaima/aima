@@ -11,6 +11,7 @@ export default function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const isHomePage = pathname === "/";
 
@@ -32,6 +33,10 @@ export default function Navigation() {
     setShowNotifications(!showNotifications);
   };
 
+  const toggleMobileMenu = () => {
+    setShowMobileMenu(!showMobileMenu);
+  };
+
   // 네비게이션 메뉴 클릭 핸들러
   const handleNavClick = (href: string) => {
     if (!isAuthenticated) {
@@ -39,6 +44,7 @@ export default function Navigation() {
     } else {
       router.push(href);
     }
+    setShowMobileMenu(false); // 모바일 메뉴 닫기
   };
 
   // 드롭다운 외부 클릭 시 닫기
@@ -51,21 +57,44 @@ export default function Navigation() {
       if (!target.closest(".notification-dropdown-container")) {
         setShowNotifications(false);
       }
+      if (
+        !target.closest(".mobile-menu-container") &&
+        !target.closest(".hamburger-btn")
+      ) {
+        setShowMobileMenu(false);
+      }
     };
 
-    if (showUserDropdown || showNotifications) {
+    if (showUserDropdown || showNotifications || showMobileMenu) {
       document.addEventListener("click", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [showUserDropdown, showNotifications]);
+  }, [showUserDropdown, showNotifications, showMobileMenu]);
 
   return (
     <nav className={navClassName}>
       <div className="nav-container">
         <div className="nav-left">
+          {/* 햄버거 버튼 */}
+          <button
+            className="hamburger-btn"
+            onClick={toggleMobileMenu}
+            aria-label="메뉴 열기/닫기"
+          >
+            <span
+              className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
+            ></span>
+            <span
+              className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
+            ></span>
+            <span
+              className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
+            ></span>
+          </button>
+
           <Link href="/">
             <svg
               width="106"
@@ -149,6 +178,80 @@ export default function Navigation() {
               </>
             )}
           </nav>
+        </div>
+
+        {/* 모바일 드롭다운 메뉴 */}
+        <div
+          className={`mobile-menu-container ${showMobileMenu ? "active" : ""}`}
+        >
+          <div className="mobile-menu-dropdown">
+            {user?.role === "SALESPERSON" ? (
+              <>
+                <Link
+                  href="/"
+                  className="mobile-menu-item"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  대시보드
+                </Link>
+                <Link
+                  href="/salesperson/invite"
+                  className="mobile-menu-item"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  추천 관리
+                </Link>
+                <Link
+                  href="/salesperson/referrals"
+                  className="mobile-menu-item"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  리워드 관리
+                </Link>
+                <Link
+                  href="/salesperson/organization"
+                  className="mobile-menu-item"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  조직도 보기
+                </Link>
+                <Link
+                  href="/salesperson/profile"
+                  className="mobile-menu-item"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  마이페이지
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleNavClick("/target-marketing")}
+                  className="mobile-menu-item mobile-menu-btn"
+                >
+                  AI 타겟마케팅
+                </button>
+                <button
+                  onClick={() => handleNavClick("/messages/history")}
+                  className="mobile-menu-item mobile-menu-btn"
+                >
+                  발송현황
+                </button>
+                <button
+                  onClick={() => handleNavClick("/messages/send")}
+                  className="mobile-menu-item mobile-menu-btn"
+                >
+                  문자
+                </button>
+                <button
+                  onClick={() => handleNavClick("/support")}
+                  className="mobile-menu-item mobile-menu-btn"
+                >
+                  고객센터
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="landing-nav-auth">
