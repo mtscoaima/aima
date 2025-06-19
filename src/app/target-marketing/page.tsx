@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Layout, ImageIcon, X } from "lucide-react";
+import { AdvertiserGuard } from "@/components/RoleGuard";
 import "./styles.css";
 
 interface Template {
@@ -550,352 +551,227 @@ export default function TargetMarketingPage() {
   };
 
   return (
-    <div className="target-marketing-landing">
-      <div className="landing-container">
-        {/* Header */}
-        <div className="landing-header">
-          <h1>AI타겟마케팅</h1>
-        </div>
-
-        {/* Main Content */}
-        <div className="landing-content">
-          <div className="chat-bot-icon">
-            <Image
-              src="/images/ChatGPT.png"
-              alt="AI 챗봇"
-              width={120}
-              height={120}
-              className="robot-image"
-            />
+    <AdvertiserGuard>
+      <div className="target-marketing-landing">
+        <div className="landing-container">
+          {/* Header */}
+          <div className="landing-header">
+            <h1>AI타겟마케팅</h1>
           </div>
 
-          <h2>어떤 광고를 만들고 싶나요?</h2>
+          {/* Main Content */}
+          <div className="landing-content">
+            <div className="chat-bot-icon">
+              <Image
+                src="/images/ChatGPT.png"
+                alt="AI 챗봇"
+                width={120}
+                height={120}
+                className="robot-image"
+              />
+            </div>
 
-          {/* Input Section */}
-          <div className="input-section">
-            <div className="chat-input-container">
-              <textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={`Ex) 서울 홍대 헤어샵 오픈 행사 카드 50%할인 이벤트 홍보
+            <h2>어떤 광고를 만들고 싶나요?</h2>
+
+            {/* Input Section */}
+            <div className="input-section">
+              <div className="chat-input-container">
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder={`Ex) 서울 홍대 헤어샵 오픈 행사 카드 50%할인 이벤트 홍보
 여름 맞이 최대 50% 할인 이벤트 홍보
 카페 시즌 음료 무료 시음 업 이벤트 안내`}
-                className="chat-input-field"
-                rows={3}
-                disabled={isLoading}
-              />
-              <button
-                onClick={handleStartChat}
-                disabled={!inputValue.trim() || isLoading}
-                className="start-chat-btn"
-              >
-                {isLoading ? <div className="loading-spinner-small" /> : "생성"}
-              </button>
+                  className="chat-input-field"
+                  rows={3}
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={handleStartChat}
+                  disabled={!inputValue.trim() || isLoading}
+                  className="start-chat-btn"
+                >
+                  {isLoading ? (
+                    <div className="loading-spinner-small" />
+                  ) : (
+                    "생성"
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* 템플릿으로 시작 섹션 */}
+          <div className="template-section">
+            <div className="template-header">
+              <h2>템플릿으로 시작</h2>
+            </div>
+
+            {/* 카테고리 탭 */}
+            <div className="category-tabs">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  className={`category-tab ${
+                    selectedCategory === category ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    fetchTemplates(category);
+                  }}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+
+            {/* 템플릿 그리드 */}
+            {isTemplatesLoading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <div className="loading-text">
+                  <p>템플릿을 불러오는 중...</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="templates-grid">
+                  {currentTemplates.map((template) => (
+                    <div key={template.id} className="template-card">
+                      {template.isPopular && (
+                        <div className="grand-opening-badge">GRAND OPENING</div>
+                      )}
+
+                      <div className="template-image">
+                        <Image
+                          src={template.image_url}
+                          alt={template.name}
+                          width={300}
+                          height={160}
+                          style={{ objectFit: "cover" }}
+                          onError={handleImageError}
+                        />
+                      </div>
+
+                      <div className="template-content">
+                        <h3 className="template-title">{template.name}</h3>
+                        <p className="template-description">
+                          {template.content}
+                        </p>
+
+                        <div className="template-actions">
+                          <button
+                            onClick={() => handleEditTemplate(template.id)}
+                            className="action-button secondary"
+                          >
+                            템플릿 수정하기
+                          </button>
+                          <button
+                            onClick={() => handleUseTemplate(template.id)}
+                            className="action-button primary"
+                          >
+                            템플릿 사용하기
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 페이지네이션 */}
+                {renderPagination()}
+
+                {currentTemplates.length === 0 && (
+                  <div className="empty-state">
+                    <Layout size={48} />
+                    <h3>해당 카테고리에 템플릿이 없습니다</h3>
+                    <p>다른 카테고리를 선택해보세요</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
-        {/* 템플릿으로 시작 섹션 */}
-        <div className="template-section">
-          <div className="template-header">
-            <h2>템플릿으로 시작</h2>
-          </div>
-
-          {/* 카테고리 탭 */}
-          <div className="category-tabs">
-            {categories.map((category) => (
-              <button
-                key={category}
-                className={`category-tab ${
-                  selectedCategory === category ? "active" : ""
-                }`}
-                onClick={() => {
-                  setSelectedCategory(category);
-                  fetchTemplates(category);
-                }}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          {/* 템플릿 그리드 */}
-          {isTemplatesLoading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>템플릿을 불러오는 중...</p>
-            </div>
-          ) : (
-            <>
-              <div className="templates-grid">
-                {currentTemplates.map((template) => (
-                  <div key={template.id} className="template-card">
-                    {template.isPopular && (
-                      <div className="grand-opening-badge">GRAND OPENING</div>
-                    )}
-
-                    <div className="template-image">
-                      <Image
-                        src={template.image_url}
-                        alt={template.name}
-                        width={300}
-                        height={160}
-                        style={{ objectFit: "cover" }}
-                        onError={handleImageError}
-                      />
-                    </div>
-
-                    <div className="template-content">
-                      <h3 className="template-title">{template.name}</h3>
-                      <p className="template-description">{template.content}</p>
-
-                      <div className="template-actions">
-                        <button
-                          onClick={() => handleEditTemplate(template.id)}
-                          className="action-button secondary"
-                        >
-                          템플릿 수정하기
-                        </button>
-                        <button
-                          onClick={() => handleUseTemplate(template.id)}
-                          className="action-button primary"
-                        >
-                          템플릿 사용하기
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+        {/* 템플릿 수정 모달 */}
+        {showEditModal && editingTemplate && (
+          <div className="modal-overlay">
+            <div className="modal-content edit-modal">
+              <div className="modal-header">
+                <h2>템플릿 수정</h2>
+                <button onClick={handleCloseEditModal} className="modal-close">
+                  <X size={20} />
+                </button>
               </div>
 
-              {/* 페이지네이션 */}
-              {renderPagination()}
-
-              {currentTemplates.length === 0 && (
-                <div className="empty-state">
-                  <Layout size={48} />
-                  <h3>해당 카테고리에 템플릿이 없습니다</h3>
-                  <p>다른 카테고리를 선택해보세요</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* 템플릿 수정 모달 */}
-      {showEditModal && editingTemplate && (
-        <div className="modal-overlay">
-          <div className="modal-content edit-modal">
-            <div className="modal-header">
-              <h2>템플릿 수정</h2>
-              <button onClick={handleCloseEditModal} className="modal-close">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="edit-form">
-                <div className="form-section">
-                  <label className="form-label">템플릿 이름</label>
-                  <input
-                    type="text"
-                    value={editFormData.name}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, name: e.target.value })
-                    }
-                    className="form-input"
-                    placeholder="템플릿 이름을 입력하세요"
-                  />
-                </div>
-
-                <div className="form-section">
-                  <label className="form-label">카테고리</label>
-                  <select
-                    value={editFormData.category}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        category: e.target.value,
-                      })
-                    }
-                    className="form-select"
-                  >
-                    {categories
-                      .filter((cat) => cat !== "추천")
-                      .map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="form-section">
-                  <label className="form-label">템플릿 내용</label>
-                  <textarea
-                    value={editFormData.content}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        content: e.target.value,
-                      })
-                    }
-                    className="form-textarea"
-                    placeholder="템플릿 내용을 입력하세요"
-                    rows={6}
-                  />
-                </div>
-
-                <div className="form-section">
-                  <label className="form-label">이미지</label>
-                  <div className="image-upload-section">
-                    <div className="current-image">
-                      <Image
-                        src={imagePreviewUrl || editingTemplate.image_url}
-                        alt={editingTemplate.name}
-                        width={200}
-                        height={120}
-                        style={{ objectFit: "cover" }}
-                        onError={handleImageError}
-                      />
-                      <div className="image-actions">
-                        <button
-                          type="button"
-                          onClick={handleImageChangeClick}
-                          className="image-action-btn"
-                          disabled={isUploadingImage}
-                        >
-                          <ImageIcon size={16} />
-                          {isUploadingImage ? "업로드 중..." : "이미지 변경"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleImageDelete}
-                          className="image-action-btn delete"
-                          disabled={isUploadingImage}
-                        >
-                          <X size={16} />
-                          이미지 삭제
-                        </button>
-                      </div>
-                    </div>
+              <div className="modal-body">
+                <div className="edit-form">
+                  <div className="form-section">
+                    <label className="form-label">템플릿 이름</label>
                     <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      style={{ display: "none" }}
+                      type="text"
+                      value={editFormData.name}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="form-input"
+                      placeholder="템플릿 이름을 입력하세요"
                     />
                   </div>
-                </div>
-              </div>
-            </div>
 
-            <div className="modal-footer">
-              <button onClick={handleCloseEditModal} className="cancel-button">
-                취소
-              </button>
-              <button
-                onClick={handleSaveTemplate}
-                className="save-button primary"
-                disabled={
-                  isSaving ||
-                  isUploadingImage ||
-                  !editFormData.name.trim() ||
-                  !editFormData.content.trim()
-                }
-              >
-                {isSaving
-                  ? "저장 중..."
-                  : isUploadingImage
-                  ? "이미지 업로드 중..."
-                  : "저장"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                  <div className="form-section">
+                    <label className="form-label">카테고리</label>
+                    <select
+                      value={editFormData.category}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          category: e.target.value,
+                        })
+                      }
+                      className="form-select"
+                    >
+                      {categories
+                        .filter((cat) => cat !== "추천")
+                        .map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
 
-      {/* 템플릿 작성 모달 */}
-      {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content create-modal">
-            <div className="modal-header">
-              <h2>새 템플릿 작성</h2>
-              <button onClick={handleCloseCreateModal} className="modal-close">
-                <X size={20} />
-              </button>
-            </div>
+                  <div className="form-section">
+                    <label className="form-label">템플릿 내용</label>
+                    <textarea
+                      value={editFormData.content}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          content: e.target.value,
+                        })
+                      }
+                      className="form-textarea"
+                      placeholder="템플릿 내용을 입력하세요"
+                      rows={6}
+                    />
+                  </div>
 
-            <div className="modal-body">
-              <div className="create-form">
-                <div className="form-section">
-                  <label className="form-label">템플릿 이름</label>
-                  <input
-                    type="text"
-                    value={createFormData.name}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        name: e.target.value,
-                      })
-                    }
-                    className="form-input"
-                    placeholder="템플릿 이름을 입력하세요"
-                  />
-                </div>
-
-                <div className="form-section">
-                  <label className="form-label">카테고리</label>
-                  <select
-                    value={createFormData.category}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        category: e.target.value,
-                      })
-                    }
-                    className="form-select"
-                  >
-                    {categories
-                      .filter((cat) => cat !== "추천")
-                      .map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="form-section">
-                  <label className="form-label">템플릿 내용</label>
-                  <textarea
-                    value={createFormData.content}
-                    onChange={(e) =>
-                      setCreateFormData({
-                        ...createFormData,
-                        content: e.target.value,
-                      })
-                    }
-                    className="form-textarea"
-                    placeholder="템플릿 내용을 입력하세요"
-                    rows={6}
-                  />
-                </div>
-
-                <div className="form-section">
-                  <label className="form-label">이미지 (선택사항)</label>
-                  <div className="image-upload-section">
-                    {imagePreviewUrl ? (
+                  <div className="form-section">
+                    <label className="form-label">이미지</label>
+                    <div className="image-upload-section">
                       <div className="current-image">
                         <Image
-                          src={imagePreviewUrl}
-                          alt="미리보기"
+                          src={imagePreviewUrl || editingTemplate.image_url}
+                          alt={editingTemplate.name}
                           width={200}
                           height={120}
                           style={{ objectFit: "cover" }}
+                          onError={handleImageError}
                         />
                         <div className="image-actions">
                           <button
@@ -918,61 +794,207 @@ export default function TargetMarketingPage() {
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <div className="image-upload-placeholder">
-                        <button
-                          type="button"
-                          onClick={handleImageChangeClick}
-                          className="upload-button"
-                          disabled={isUploadingImage}
-                        >
-                          <ImageIcon size={24} />
-                          <span>이미지 업로드</span>
-                        </button>
-                        <p className="upload-hint">
-                          이미지를 업로드하지 않으면 기본 이미지가 사용됩니다.
-                        </p>
-                      </div>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      style={{ display: "none" }}
-                    />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        style={{ display: "none" }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="modal-footer">
-              <button
-                onClick={handleCloseCreateModal}
-                className="cancel-button"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSaveNewTemplate}
-                className="save-button primary"
-                disabled={
-                  isSaving ||
-                  isUploadingImage ||
-                  !createFormData.name.trim() ||
-                  !createFormData.content.trim()
-                }
-              >
-                {isSaving
-                  ? "생성 중..."
-                  : isUploadingImage
-                  ? "이미지 업로드 중..."
-                  : "템플릿 생성"}
-              </button>
+              <div className="modal-footer">
+                <button
+                  onClick={handleCloseEditModal}
+                  className="cancel-button"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveTemplate}
+                  className="save-button primary"
+                  disabled={
+                    isSaving ||
+                    isUploadingImage ||
+                    !editFormData.name.trim() ||
+                    !editFormData.content.trim()
+                  }
+                >
+                  {isSaving
+                    ? "저장 중..."
+                    : isUploadingImage
+                    ? "이미지 업로드 중..."
+                    : "저장"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* 템플릿 작성 모달 */}
+        {showCreateModal && (
+          <div className="modal-overlay">
+            <div className="modal-content create-modal">
+              <div className="modal-header">
+                <h2>새 템플릿 작성</h2>
+                <button
+                  onClick={handleCloseCreateModal}
+                  className="modal-close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div className="create-form">
+                  <div className="form-section">
+                    <label className="form-label">템플릿 이름</label>
+                    <input
+                      type="text"
+                      value={createFormData.name}
+                      onChange={(e) =>
+                        setCreateFormData({
+                          ...createFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="form-input"
+                      placeholder="템플릿 이름을 입력하세요"
+                    />
+                  </div>
+
+                  <div className="form-section">
+                    <label className="form-label">카테고리</label>
+                    <select
+                      value={createFormData.category}
+                      onChange={(e) =>
+                        setCreateFormData({
+                          ...createFormData,
+                          category: e.target.value,
+                        })
+                      }
+                      className="form-select"
+                    >
+                      {categories
+                        .filter((cat) => cat !== "추천")
+                        .map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="form-section">
+                    <label className="form-label">템플릿 내용</label>
+                    <textarea
+                      value={createFormData.content}
+                      onChange={(e) =>
+                        setCreateFormData({
+                          ...createFormData,
+                          content: e.target.value,
+                        })
+                      }
+                      className="form-textarea"
+                      placeholder="템플릿 내용을 입력하세요"
+                      rows={6}
+                    />
+                  </div>
+
+                  <div className="form-section">
+                    <label className="form-label">이미지 (선택사항)</label>
+                    <div className="image-upload-section">
+                      {imagePreviewUrl ? (
+                        <div className="current-image">
+                          <Image
+                            src={imagePreviewUrl}
+                            alt="미리보기"
+                            width={200}
+                            height={120}
+                            style={{ objectFit: "cover" }}
+                          />
+                          <div className="image-actions">
+                            <button
+                              type="button"
+                              onClick={handleImageChangeClick}
+                              className="image-action-btn"
+                              disabled={isUploadingImage}
+                            >
+                              <ImageIcon size={16} />
+                              {isUploadingImage
+                                ? "업로드 중..."
+                                : "이미지 변경"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleImageDelete}
+                              className="image-action-btn delete"
+                              disabled={isUploadingImage}
+                            >
+                              <X size={16} />
+                              이미지 삭제
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="image-upload-placeholder">
+                          <button
+                            type="button"
+                            onClick={handleImageChangeClick}
+                            className="upload-button"
+                            disabled={isUploadingImage}
+                          >
+                            <ImageIcon size={24} />
+                            <span>이미지 업로드</span>
+                          </button>
+                          <p className="upload-hint">
+                            이미지를 업로드하지 않으면 기본 이미지가 사용됩니다.
+                          </p>
+                        </div>
+                      )}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        style={{ display: "none" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  onClick={handleCloseCreateModal}
+                  className="cancel-button"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveNewTemplate}
+                  className="save-button primary"
+                  disabled={
+                    isSaving ||
+                    isUploadingImage ||
+                    !createFormData.name.trim() ||
+                    !createFormData.content.trim()
+                  }
+                >
+                  {isSaving
+                    ? "생성 중..."
+                    : isUploadingImage
+                    ? "이미지 업로드 중..."
+                    : "템플릿 생성"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AdvertiserGuard>
   );
 }

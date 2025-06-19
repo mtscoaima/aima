@@ -333,25 +333,39 @@ export async function updateUserInfo(
 
 // 토큰 저장/관리 함수들
 export const tokenManager = {
+  // localStorage 사용 가능 여부 체크
+  isLocalStorageAvailable: (): boolean => {
+    try {
+      return typeof window !== "undefined" && window.localStorage !== undefined;
+    } catch {
+      return false;
+    }
+  },
+
   setTokens: (accessToken: string, refreshToken: string) => {
+    if (!tokenManager.isLocalStorageAvailable()) return;
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
   },
 
   getAccessToken: (): string | null => {
+    if (!tokenManager.isLocalStorageAvailable()) return null;
     return localStorage.getItem("accessToken");
   },
 
   getRefreshToken: (): string | null => {
+    if (!tokenManager.isLocalStorageAvailable()) return null;
     return localStorage.getItem("refreshToken");
   },
 
   clearTokens: () => {
+    if (!tokenManager.isLocalStorageAvailable()) return;
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
   },
 
   isLoggedIn: (): boolean => {
+    if (!tokenManager.isLocalStorageAvailable()) return false;
     return !!localStorage.getItem("accessToken");
   },
 };

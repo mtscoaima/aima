@@ -43,6 +43,7 @@ interface SuccessResponse {
   email: string;
   name: string;
   phoneNumber: string;
+  userType: string;
   role: string;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     // 기본 정보 추출
+    const userType = formData.get("userType") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const name = formData.get("name") as string;
@@ -113,6 +115,7 @@ export async function POST(request: NextRequest) {
     ) as File | null;
 
     console.log("Signup with files request received:", {
+      userType,
       email,
       name,
       phoneNumber,
@@ -124,6 +127,13 @@ export async function POST(request: NextRequest) {
 
     // 입력 값 검증
     const fieldErrors: Array<{ field: string; message: string }> = [];
+
+    if (!userType || (userType !== "general" && userType !== "salesperson")) {
+      fieldErrors.push({
+        field: "userType",
+        message: "회원 유형을 선택해주세요.",
+      });
+    }
 
     if (!email || !email.includes("@")) {
       fieldErrors.push({
@@ -179,13 +189,26 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // 파일 유형 및 크기 검증
-    if (businessRegistration) {
-      validateFile(businessRegistration, "businessRegistration");
+    // 일반회원인 경우에만 파일 검증
+    if (userType === "general") {
+      // 필수 파일 검증
+      if (!businessRegistration) {
+        fieldErrors.push({
+          field: "businessRegistration",
+          message: "사업자등록증을 업로드해주세요.",
+        });
+      }
     }
 
-    if (employmentCertificate) {
-      validateFile(employmentCertificate, "employmentCertificate");
+    // 일반회원인 경우에만 파일 유형 및 크기 검증
+    if (userType === "general") {
+      if (businessRegistration) {
+        validateFile(businessRegistration, "businessRegistration");
+      }
+
+      if (employmentCertificate) {
+        validateFile(employmentCertificate, "employmentCertificate");
+      }
     }
 
     if (fieldErrors.length > 0) {
@@ -245,28 +268,30 @@ export async function POST(request: NextRequest) {
     console.log("Creating new user...");
     const now = getKSTISOString();
 
-    // 기업 정보 JSON 객체 생성
-    const companyInfo = companyName
-      ? {
-          companyName,
-          ceoName,
-          businessNumber,
-          companyAddress,
-          companyAddressDetail,
-          companyPhone,
-          toll080Number,
-          customerServiceNumber,
-        }
-      : null;
+    // 기업 정보 JSON 객체 생성 (일반회원인 경우에만)
+    const companyInfo =
+      userType === "general" && companyName
+        ? {
+            companyName,
+            ceoName,
+            businessNumber,
+            companyAddress,
+            companyAddressDetail,
+            companyPhone,
+            toll080Number,
+            customerServiceNumber,
+          }
+        : null;
 
-    // 세금계산서 정보 JSON 객체 생성
-    const taxInvoiceInfo = taxInvoiceEmail
-      ? {
-          email: taxInvoiceEmail,
-          manager: taxInvoiceManager,
-          contact: taxInvoiceContact,
-        }
-      : null;
+    // 세금계산서 정보 JSON 객체 생성 (일반회원인 경우에만)
+    const taxInvoiceInfo =
+      userType === "general" && taxInvoiceEmail
+        ? {
+            email: taxInvoiceEmail,
+            manager: taxInvoiceManager,
+            contact: taxInvoiceContact,
+          }
+        : null;
 
     // 약관 동의 정보 JSON 객체 생성
     const agreementInfo = {
@@ -276,6 +301,9 @@ export async function POST(request: NextRequest) {
       agreedAt: getKSTISOString(),
     };
 
+    // userType에 따른 role 설정
+    const userRole = userType === "salesperson" ? "SALESPERSON" : "USER";
+
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
@@ -283,7 +311,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         phone_number: phoneNumber,
-        role: "USER",
+        role: userRole,
         is_active: true,
         created_at: now,
         updated_at: now,
@@ -313,91 +341,93 @@ export async function POST(request: NextRequest) {
 
     console.log("User created successfully:", newUser.id);
 
-    // 파일 업로드 처리
+    // 파일 업로드 처리 (일반회원인 경우에만)
     const documents: { [key: string]: UploadedFile } = {};
 
-    try {
-      // 사업자등록증 업로드
-      if (businessRegistration) {
-        const fileExt = businessRegistration.name.split(".").pop();
-        const fileName = `business_registration_${Date.now()}.${fileExt}`;
-        const filePath = `documents/${newUser.id}/${fileName}`;
+    if (userType === "general") {
+      try {
+        // 사업자등록증 업로드
+        if (businessRegistration) {
+          const fileExt = businessRegistration.name.split(".").pop();
+          const fileName = `business_registration_${Date.now()}.${fileExt}`;
+          const filePath = `documents/${newUser.id}/${fileName}`;
 
-        // 파일을 ArrayBuffer로 변환
-        const fileBuffer = await businessRegistration.arrayBuffer();
+          // 파일을 ArrayBuffer로 변환
+          const fileBuffer = await businessRegistration.arrayBuffer();
 
-        const { error: uploadError } = await supabase.storage
-          .from("user-documents")
-          .upload(filePath, fileBuffer, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: businessRegistration.type,
-          });
-
-        if (uploadError) {
-          console.error("사업자등록증 업로드 실패:", uploadError);
-        } else {
-          const { data: urlData } = supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from("user-documents")
-            .getPublicUrl(filePath);
+            .upload(filePath, fileBuffer, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: businessRegistration.type,
+            });
 
-          documents.businessRegistration = {
-            fileName: businessRegistration.name,
-            fileUrl: urlData.publicUrl,
-            uploadedAt: getKSTISOString(),
-          };
+          if (uploadError) {
+            console.error("사업자등록증 업로드 실패:", uploadError);
+          } else {
+            const { data: urlData } = supabase.storage
+              .from("user-documents")
+              .getPublicUrl(filePath);
+
+            documents.businessRegistration = {
+              fileName: businessRegistration.name,
+              fileUrl: urlData.publicUrl,
+              uploadedAt: getKSTISOString(),
+            };
+          }
         }
-      }
 
-      // 재직증명서 업로드
-      if (employmentCertificate) {
-        const fileExt = employmentCertificate.name.split(".").pop();
-        const fileName = `employment_certificate_${Date.now()}.${fileExt}`;
-        const filePath = `documents/${newUser.id}/${fileName}`;
+        // 재직증명서 업로드
+        if (employmentCertificate) {
+          const fileExt = employmentCertificate.name.split(".").pop();
+          const fileName = `employment_certificate_${Date.now()}.${fileExt}`;
+          const filePath = `documents/${newUser.id}/${fileName}`;
 
-        // 파일을 ArrayBuffer로 변환
-        const fileBuffer = await employmentCertificate.arrayBuffer();
+          // 파일을 ArrayBuffer로 변환
+          const fileBuffer = await employmentCertificate.arrayBuffer();
 
-        const { error: uploadError } = await supabase.storage
-          .from("user-documents")
-          .upload(filePath, fileBuffer, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: employmentCertificate.type,
-          });
-
-        if (uploadError) {
-          console.error("재직증명서 업로드 실패:", uploadError);
-        } else {
-          const { data: urlData } = supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from("user-documents")
-            .getPublicUrl(filePath);
+            .upload(filePath, fileBuffer, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: employmentCertificate.type,
+            });
 
-          documents.employmentCertificate = {
-            fileName: employmentCertificate.name,
-            fileUrl: urlData.publicUrl,
-            uploadedAt: getKSTISOString(),
-          };
+          if (uploadError) {
+            console.error("재직증명서 업로드 실패:", uploadError);
+          } else {
+            const { data: urlData } = supabase.storage
+              .from("user-documents")
+              .getPublicUrl(filePath);
+
+            documents.employmentCertificate = {
+              fileName: employmentCertificate.name,
+              fileUrl: urlData.publicUrl,
+              uploadedAt: getKSTISOString(),
+            };
+          }
         }
-      }
 
-      // 문서 정보가 있으면 사용자 레코드 업데이트
-      if (Object.keys(documents).length > 0) {
-        const { error: updateError } = await supabase
-          .from("users")
-          .update({
-            documents: documents,
-            updated_at: getKSTISOString(),
-          })
-          .eq("id", newUser.id);
+        // 문서 정보가 있으면 사용자 레코드 업데이트
+        if (Object.keys(documents).length > 0) {
+          const { error: updateError } = await supabase
+            .from("users")
+            .update({
+              documents: documents,
+              updated_at: getKSTISOString(),
+            })
+            .eq("id", newUser.id);
 
-        if (updateError) {
-          console.error("문서 정보 업데이트 실패:", updateError);
+          if (updateError) {
+            console.error("문서 정보 업데이트 실패:", updateError);
+          }
         }
+      } catch (fileError) {
+        console.error("파일 업로드 중 오류:", fileError);
+        // 파일 업로드 실패해도 회원가입은 성공으로 처리
       }
-    } catch (fileError) {
-      console.error("파일 업로드 중 오류:", fileError);
-      // 파일 업로드 실패해도 회원가입은 성공으로 처리
     }
 
     // 성공 응답
@@ -406,6 +436,7 @@ export async function POST(request: NextRequest) {
       email: newUser.email,
       name: newUser.name,
       phoneNumber: newUser.phone_number,
+      userType: userType,
       role: newUser.role,
       createdAt: newUser.created_at,
       updatedAt: newUser.updated_at,

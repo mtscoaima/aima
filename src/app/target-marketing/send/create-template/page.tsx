@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { AdvertiserGuard } from "@/components/RoleGuard";
 import "./styles.css";
 
 // GPT API 키
@@ -487,72 +488,366 @@ export default function TemplateCreatePage() {
   };
 
   return (
-    <div className="template-page-container">
-      <div className="template-page-header">
-        <h1>템플릿 제작</h1>
-        <p>효과적인 마케팅 템플릿을 쉽게 제작하고 관리하세요</p>
-      </div>
+    <AdvertiserGuard>
+      <div className="template-page-container">
+        <div className="template-page-header">
+          <h1>템플릿 제작</h1>
+          <p>효과적인 마케팅 템플릿을 쉽게 제작하고 관리하세요</p>
+        </div>
 
-      <div className="template-content">
-        <div className="template-editor">
-          <div className="editor-modes">
-            <button
-              className={`mode-btn ${mode === "basic" ? "active" : ""}`}
-              onClick={() => handleModeChange("basic")}
-            >
-              <span className="mode-icon">📝</span>
-              기본형
-            </button>
-            <button
-              className={`mode-btn ${mode === "ai" ? "active" : ""}`}
-              onClick={() => handleModeChange("ai")}
-            >
-              <span className="mode-icon">🤖</span>
-              AI 도우미
-            </button>
+        <div className="template-content">
+          <div className="template-editor">
+            <div className="editor-modes">
+              <button
+                className={`mode-btn ${mode === "basic" ? "active" : ""}`}
+                onClick={() => handleModeChange("basic")}
+              >
+                <span className="mode-icon">📝</span>
+                기본형
+              </button>
+              <button
+                className={`mode-btn ${mode === "ai" ? "active" : ""}`}
+                onClick={() => handleModeChange("ai")}
+              >
+                <span className="mode-icon">🤖</span>
+                AI 도우미
+              </button>
+            </div>
+
+            {mode === "basic" ? (
+              <div className="editor-section">
+                <h2>템플릿 만들기</h2>
+
+                <div className="input-group">
+                  <label>템플릿 이름</label>
+                  <input
+                    type="text"
+                    placeholder="템플릿 이름을 입력하세요."
+                    value={templateTitle}
+                    onChange={(e) => setTemplateTitle(e.target.value)}
+                    maxLength={50}
+                  />
+                  <div className="char-count">{templateTitle.length}/50자</div>
+                </div>
+
+                <div className="input-group">
+                  <label>이미지</label>
+                  <div className="image-upload-container">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      ref={fileInputRef}
+                      style={{ display: "none" }}
+                    />
+                    <div
+                      className={`image-upload-box ${
+                        imagePreview ? "has-image" : ""
+                      }`}
+                      onClick={handleImageClick}
+                    >
+                      {imagePreview && (
+                        <div className="preview-container">
+                          {isUsingImageUrl ? (
+                            // 외부 URL인 경우 eslint-disable 사용
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={imagePreview}
+                              alt="업로드 이미지"
+                              className="upload-preview"
+                              style={{
+                                width: "100%",
+                                maxHeight: "200px",
+                                objectFit: "contain",
+                              }}
+                            />
+                          ) : (
+                            // 로컬 이미지인 경우 Next.js Image 컴포넌트 사용
+                            <Image
+                              src={imagePreview}
+                              alt="업로드 이미지"
+                              width={300}
+                              height={200}
+                              className="upload-preview"
+                              style={{ objectFit: "contain" }}
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setImagePreview("")}
+                            className="remove-image-btn"
+                          >
+                            이미지 제거
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>서브 타이틀</label>
+                  <input
+                    type="text"
+                    placeholder="서브 타이틀을 입력해주세요."
+                    value={subTitleText}
+                    onChange={(e) => setSubTitleText(e.target.value)}
+                    maxLength={30}
+                  />
+                  <div className="char-count">{subTitleText.length}/30자</div>
+                </div>
+
+                <div className="input-group">
+                  <label>타이틀</label>
+                  <textarea
+                    placeholder="타이틀을 입력해주세요."
+                    value={titleText}
+                    onChange={(e) => setTitleText(e.target.value)}
+                    maxLength={15}
+                  />
+                  <div className="char-count">{titleText.length}/15자</div>
+                </div>
+
+                <div className="input-group">
+                  <label>본문 내용을 입력해주세요.</label>
+                  <textarea
+                    placeholder="본문 내용을 입력해주세요."
+                    value={bodyText}
+                    onChange={(e) => setBodyText(e.target.value)}
+                    maxLength={200}
+                    className="body-textarea"
+                  />
+                  <div className="char-count">{bodyText.length}/200자</div>
+                </div>
+
+                <div className="input-group">
+                  <label>부가 정보 내용</label>
+                  <textarea
+                    placeholder="부가 정보 내용을 입력해주세요."
+                    value={additionalText}
+                    onChange={(e) => setAdditionalText(e.target.value)}
+                    maxLength={200}
+                  />
+                  <div className="char-count">
+                    {additionalText.length}/200자
+                  </div>
+                </div>
+
+                <div className="button-inputs">
+                  <div className="input-group">
+                    <label>버튼1</label>
+                    <input
+                      type="text"
+                      placeholder="링크 주소를 입력해주세요."
+                      value={button1Text}
+                      onChange={(e) => setButton1Text(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label>버튼2</label>
+                    <input
+                      type="text"
+                      placeholder="링크 주소를 입력해주세요."
+                      value={button2Text}
+                      onChange={(e) => setButton2Text(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {!chatVisible ? (
+                  <div className="editor-section">
+                    <h2>AI 도우미</h2>
+
+                    <div className="ai-helper-container">
+                      <div className="input-group">
+                        <label>무엇을 홍보하고 싶으신가요?</label>
+                        <textarea
+                          placeholder="홍보하고자 하는 상품, 서비스, 이벤트 등에 대해 설명해주세요. AI가 자동으로 템플릿을 만들어 드립니다."
+                          className="ai-input-textarea"
+                          value={promptDescription}
+                          onChange={(e) => setPromptDescription(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <label>타겟 고객</label>
+                        <input
+                          type="text"
+                          placeholder="타겟 고객층을 입력해주세요. (예: 20-30대 여성, 자녀가 있는 부모 등)"
+                          value={targetAudience}
+                          onChange={(e) => setTargetAudience(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <label>템플릿 톤앤매너 (최대 2개 선택)</label>
+                        <div className="tone-tags">
+                          {[
+                            { value: "friendly", label: "친근한" },
+                            { value: "professional", label: "전문적인" },
+                            { value: "casual", label: "캐주얼한" },
+                            { value: "formal", label: "격식있는" },
+                            { value: "funny", label: "유머러스한" },
+                            { value: "luxury", label: "고급스러운" },
+                            { value: "simple", label: "심플한" },
+                            { value: "creative", label: "창의적인" },
+                            { value: "elegant", label: "우아한" },
+                            { value: "bold", label: "대담한" },
+                          ].map((tone) => (
+                            <button
+                              key={tone.value}
+                              type="button"
+                              className={`tone-tag ${
+                                selectedTones.includes(tone.value)
+                                  ? "selected"
+                                  : ""
+                              }`}
+                              onClick={() => handleToneSelection(tone.value)}
+                            >
+                              {tone.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        className="generate-btn"
+                        onClick={startChat}
+                        disabled={!promptDescription.trim()}
+                      >
+                        <span className="ai-icon">🤖</span>
+                        AI로 템플릿 생성하기
+                      </button>
+
+                      <div className="ai-tips">
+                        <h3>💡 AI 도우미 사용 팁</h3>
+                        <ul>
+                          <li>
+                            구체적인 설명을 제공할수록 더 좋은 결과를 얻을 수
+                            있습니다.
+                          </li>
+                          <li>
+                            특별한 프로모션이나 할인 정보를 포함하면 전환율이
+                            높아집니다.
+                          </li>
+                          <li>생성된 결과는 언제든지 수정할 수 있습니다.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="chat-container">
+                    <div className="chat-header">
+                      <h2>AI 도우미와 대화</h2>
+                      <button
+                        className="close-chat-btn"
+                        onClick={() => setChatVisible(false)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="chat-messages" ref={chatContainerRef}>
+                      {messages.map((message, index) => (
+                        <div
+                          key={index}
+                          className={`chat-message ${
+                            message.role === "user"
+                              ? "user-message"
+                              : "assistant-message"
+                          }`}
+                        >
+                          <div className="message-avatar">
+                            {message.role === "user" ? "👤" : "🤖"}
+                          </div>
+                          <div className="message-content">
+                            {message.content}
+                          </div>
+                        </div>
+                      ))}
+
+                      {isLoading && (
+                        <div className="chat-message assistant-message">
+                          <div className="message-avatar">🤖</div>
+                          <div className="message-content typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="chat-actions">
+                      {imagePrompt && (
+                        <button
+                          className="generate-image-btn"
+                          onClick={generateImage}
+                          disabled={isGeneratingImage}
+                        >
+                          {isGeneratingImage
+                            ? "이미지 생성중..."
+                            : "🖼️ AI 이미지 생성하기"}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="chat-input-container">
+                      <input
+                        type="text"
+                        className="chat-input"
+                        placeholder="메시지를 입력하세요..."
+                        value={inputMessage}
+                        onChange={(e) => setInputMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                        disabled={isLoading}
+                      />
+                      <button
+                        className="send-btn"
+                        onClick={sendMessage}
+                        disabled={isLoading || !inputMessage.trim()}
+                      >
+                        <span className="send-icon">➤</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="submit-section">
+              <button className="cancel-btn">취소</button>
+              <button className="save-btn" onClick={handleSave}>
+                저장
+              </button>
+            </div>
           </div>
 
-          {mode === "basic" ? (
-            <div className="editor-section">
-              <h2>템플릿 만들기</h2>
+          <div className="template-preview">
+            <div className="preview-header">
+              <h3>미리보기</h3>
+            </div>
 
-              <div className="input-group">
-                <label>템플릿 이름</label>
-                <input
-                  type="text"
-                  placeholder="템플릿 이름을 입력하세요."
-                  value={templateTitle}
-                  onChange={(e) => setTemplateTitle(e.target.value)}
-                  maxLength={50}
-                />
-                <div className="char-count">{templateTitle.length}/50자</div>
-              </div>
+            <div className="mobile-preview">
+              <div className="mobile-frame">
+                <div className="mobile-header">
+                  <div className="status-bar"></div>
+                </div>
 
-              <div className="input-group">
-                <label>이미지</label>
-                <div className="image-upload-container">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    ref={fileInputRef}
-                    style={{ display: "none" }}
-                  />
-                  <div
-                    className={`image-upload-box ${
-                      imagePreview ? "has-image" : ""
-                    }`}
-                    onClick={handleImageClick}
-                  >
+                <div className="message-content">
+                  <div className="message-bubble">
                     {imagePreview && (
-                      <div className="preview-container">
+                      <div className="message-image-container">
                         {isUsingImageUrl ? (
                           // 외부 URL인 경우 eslint-disable 사용
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={imagePreview}
-                            alt="업로드 이미지"
-                            className="upload-preview"
+                            alt="템플릿 이미지"
+                            className="message-image"
                             style={{
                               width: "100%",
                               maxHeight: "200px",
@@ -563,331 +858,43 @@ export default function TemplateCreatePage() {
                           // 로컬 이미지인 경우 Next.js Image 컴포넌트 사용
                           <Image
                             src={imagePreview}
-                            alt="업로드 이미지"
+                            alt="템플릿 이미지"
                             width={300}
                             height={200}
-                            className="upload-preview"
+                            className="message-image"
                             style={{ objectFit: "contain" }}
                           />
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setImagePreview("")}
-                          className="remove-image-btn"
-                        >
-                          이미지 제거
-                        </button>
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
 
-              <div className="input-group">
-                <label>서브 타이틀</label>
-                <input
-                  type="text"
-                  placeholder="서브 타이틀을 입력해주세요."
-                  value={subTitleText}
-                  onChange={(e) => setSubTitleText(e.target.value)}
-                  maxLength={30}
-                />
-                <div className="char-count">{subTitleText.length}/30자</div>
-              </div>
-
-              <div className="input-group">
-                <label>타이틀</label>
-                <textarea
-                  placeholder="타이틀을 입력해주세요."
-                  value={titleText}
-                  onChange={(e) => setTitleText(e.target.value)}
-                  maxLength={15}
-                />
-                <div className="char-count">{titleText.length}/15자</div>
-              </div>
-
-              <div className="input-group">
-                <label>본문 내용을 입력해주세요.</label>
-                <textarea
-                  placeholder="본문 내용을 입력해주세요."
-                  value={bodyText}
-                  onChange={(e) => setBodyText(e.target.value)}
-                  maxLength={200}
-                  className="body-textarea"
-                />
-                <div className="char-count">{bodyText.length}/200자</div>
-              </div>
-
-              <div className="input-group">
-                <label>부가 정보 내용</label>
-                <textarea
-                  placeholder="부가 정보 내용을 입력해주세요."
-                  value={additionalText}
-                  onChange={(e) => setAdditionalText(e.target.value)}
-                  maxLength={200}
-                />
-                <div className="char-count">{additionalText.length}/200자</div>
-              </div>
-
-              <div className="button-inputs">
-                <div className="input-group">
-                  <label>버튼1</label>
-                  <input
-                    type="text"
-                    placeholder="링크 주소를 입력해주세요."
-                    value={button1Text}
-                    onChange={(e) => setButton1Text(e.target.value)}
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>버튼2</label>
-                  <input
-                    type="text"
-                    placeholder="링크 주소를 입력해주세요."
-                    value={button2Text}
-                    onChange={(e) => setButton2Text(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {!chatVisible ? (
-                <div className="editor-section">
-                  <h2>AI 도우미</h2>
-
-                  <div className="ai-helper-container">
-                    <div className="input-group">
-                      <label>무엇을 홍보하고 싶으신가요?</label>
-                      <textarea
-                        placeholder="홍보하고자 하는 상품, 서비스, 이벤트 등에 대해 설명해주세요. AI가 자동으로 템플릿을 만들어 드립니다."
-                        className="ai-input-textarea"
-                        value={promptDescription}
-                        onChange={(e) => setPromptDescription(e.target.value)}
-                      />
+                    <div className="message-subtitle">
+                      {subTitleText || "서브 타이틀을 입력해주세요."}
                     </div>
 
-                    <div className="input-group">
-                      <label>타겟 고객</label>
-                      <input
-                        type="text"
-                        placeholder="타겟 고객층을 입력해주세요. (예: 20-30대 여성, 자녀가 있는 부모 등)"
-                        value={targetAudience}
-                        onChange={(e) => setTargetAudience(e.target.value)}
-                      />
+                    <div className="message-title">
+                      {titleText || "타이틀을 입력해주세요."}
                     </div>
 
-                    <div className="input-group">
-                      <label>템플릿 톤앤매너 (최대 2개 선택)</label>
-                      <div className="tone-tags">
-                        {[
-                          { value: "friendly", label: "친근한" },
-                          { value: "professional", label: "전문적인" },
-                          { value: "casual", label: "캐주얼한" },
-                          { value: "formal", label: "격식있는" },
-                          { value: "funny", label: "유머러스한" },
-                          { value: "luxury", label: "고급스러운" },
-                          { value: "simple", label: "심플한" },
-                          { value: "creative", label: "창의적인" },
-                          { value: "elegant", label: "우아한" },
-                          { value: "bold", label: "대담한" },
-                        ].map((tone) => (
-                          <button
-                            key={tone.value}
-                            type="button"
-                            className={`tone-tag ${
-                              selectedTones.includes(tone.value)
-                                ? "selected"
-                                : ""
-                            }`}
-                            onClick={() => handleToneSelection(tone.value)}
-                          >
-                            {tone.label}
-                          </button>
-                        ))}
-                      </div>
+                    <div className="message-body">
+                      {bodyText || "본문 내용을 입력해주세요."}
                     </div>
 
-                    <button
-                      className="generate-btn"
-                      onClick={startChat}
-                      disabled={!promptDescription.trim()}
-                    >
-                      <span className="ai-icon">🤖</span>
-                      AI로 템플릿 생성하기
-                    </button>
-
-                    <div className="ai-tips">
-                      <h3>💡 AI 도우미 사용 팁</h3>
-                      <ul>
-                        <li>
-                          구체적인 설명을 제공할수록 더 좋은 결과를 얻을 수
-                          있습니다.
-                        </li>
-                        <li>
-                          특별한 프로모션이나 할인 정보를 포함하면 전환율이
-                          높아집니다.
-                        </li>
-                        <li>생성된 결과는 언제든지 수정할 수 있습니다.</li>
-                      </ul>
+                    <div className="message-additional">
+                      {additionalText || "부가 정보 내용을 입력해주세요."}
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="chat-container">
-                  <div className="chat-header">
-                    <h2>AI 도우미와 대화</h2>
-                    <button
-                      className="close-chat-btn"
-                      onClick={() => setChatVisible(false)}
-                    >
-                      ✕
-                    </button>
+
+                  <div className="message-buttons">
+                    <button className="preview-button">{button1Text}</button>
+                    <button className="preview-button">{button2Text}</button>
                   </div>
-
-                  <div className="chat-messages" ref={chatContainerRef}>
-                    {messages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`chat-message ${
-                          message.role === "user"
-                            ? "user-message"
-                            : "assistant-message"
-                        }`}
-                      >
-                        <div className="message-avatar">
-                          {message.role === "user" ? "👤" : "🤖"}
-                        </div>
-                        <div className="message-content">{message.content}</div>
-                      </div>
-                    ))}
-
-                    {isLoading && (
-                      <div className="chat-message assistant-message">
-                        <div className="message-avatar">🤖</div>
-                        <div className="message-content typing-indicator">
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="chat-actions">
-                    {imagePrompt && (
-                      <button
-                        className="generate-image-btn"
-                        onClick={generateImage}
-                        disabled={isGeneratingImage}
-                      >
-                        {isGeneratingImage
-                          ? "이미지 생성중..."
-                          : "🖼️ AI 이미지 생성하기"}
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="chat-input-container">
-                    <input
-                      type="text"
-                      className="chat-input"
-                      placeholder="메시지를 입력하세요..."
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                      disabled={isLoading}
-                    />
-                    <button
-                      className="send-btn"
-                      onClick={sendMessage}
-                      disabled={isLoading || !inputMessage.trim()}
-                    >
-                      <span className="send-icon">➤</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="submit-section">
-            <button className="cancel-btn">취소</button>
-            <button className="save-btn" onClick={handleSave}>
-              저장
-            </button>
-          </div>
-        </div>
-
-        <div className="template-preview">
-          <div className="preview-header">
-            <h3>미리보기</h3>
-          </div>
-
-          <div className="mobile-preview">
-            <div className="mobile-frame">
-              <div className="mobile-header">
-                <div className="status-bar"></div>
-              </div>
-
-              <div className="message-content">
-                <div className="message-bubble">
-                  {imagePreview && (
-                    <div className="message-image-container">
-                      {isUsingImageUrl ? (
-                        // 외부 URL인 경우 eslint-disable 사용
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={imagePreview}
-                          alt="템플릿 이미지"
-                          className="message-image"
-                          style={{
-                            width: "100%",
-                            maxHeight: "200px",
-                            objectFit: "contain",
-                          }}
-                        />
-                      ) : (
-                        // 로컬 이미지인 경우 Next.js Image 컴포넌트 사용
-                        <Image
-                          src={imagePreview}
-                          alt="템플릿 이미지"
-                          width={300}
-                          height={200}
-                          className="message-image"
-                          style={{ objectFit: "contain" }}
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  <div className="message-subtitle">
-                    {subTitleText || "서브 타이틀을 입력해주세요."}
-                  </div>
-
-                  <div className="message-title">
-                    {titleText || "타이틀을 입력해주세요."}
-                  </div>
-
-                  <div className="message-body">
-                    {bodyText || "본문 내용을 입력해주세요."}
-                  </div>
-
-                  <div className="message-additional">
-                    {additionalText || "부가 정보 내용을 입력해주세요."}
-                  </div>
-                </div>
-
-                <div className="message-buttons">
-                  <button className="preview-button">{button1Text}</button>
-                  <button className="preview-button">{button2Text}</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </AdvertiserGuard>
   );
 }

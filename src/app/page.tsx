@@ -4,9 +4,16 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import SalespersonDashboard from "../components/SalespersonDashboard";
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  // 영업사원으로 로그인한 경우 전용 대시보드 표시
+  if (isAuthenticated && user?.role === "SALESPERSON") {
+    return <SalespersonDashboard />;
+  }
+
   return (
     <div className="landing-root">
       {/* Hero Section */}

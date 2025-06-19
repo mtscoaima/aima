@@ -5,6 +5,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import {
@@ -45,6 +46,38 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// 사용자 정보 캐시 관리
+const userCacheManager = {
+  // localStorage 사용 가능 여부 체크
+  isLocalStorageAvailable: (): boolean => {
+    try {
+      return typeof window !== "undefined" && window.localStorage !== undefined;
+    } catch {
+      return false;
+    }
+  },
+
+  setUser: (user: User) => {
+    if (!userCacheManager.isLocalStorageAvailable()) return;
+    localStorage.setItem("cachedUser", JSON.stringify(user));
+  },
+
+  getUser: (): User | null => {
+    if (!userCacheManager.isLocalStorageAvailable()) return null;
+    try {
+      const cachedUser = localStorage.getItem("cachedUser");
+      return cachedUser ? JSON.parse(cachedUser) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  clearUser: () => {
+    if (!userCacheManager.isLocalStorageAvailable()) return;
+    localStorage.removeItem("cachedUser");
+  },
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,8 +85,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user;
 
+  // 사용자 정보 업데이트 함수 (캐시도 함께 업데이트)
+  const updateUser = useCallback((userData: User | null) => {
+    setUser(userData);
+    if (userData) {
+      userCacheManager.setUser(userData);
+    } else {
+      userCacheManager.clearUser();
+    }
+  }, []);
+
   // 토큰 갱신 함수
-  const refreshAccessToken = async (): Promise<boolean> => {
+  const refreshAccessToken = useCallback(async (): Promise<boolean> => {
     const refreshTokenValue = tokenManager.getRefreshToken();
     if (!refreshTokenValue) {
       return false;
@@ -71,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokenManager.setTokens(response.accessToken, refreshTokenValue);
 
       // 사용자 정보 업데이트
-      setUser(response.user);
+      updateUser(response.user);
       setError(null);
 
       console.log("토큰 갱신 성공");
@@ -81,23 +124,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 리프레시 토큰도 만료된 경우 로그아웃 처리
       tokenManager.clearTokens();
-      setUser(null);
+      updateUser(null);
       setError(null);
       return false;
     }
-  };
+  }, [updateUser]);
 
   // 사용자 정보 확인 함수 (토큰 갱신 로직 포함)
   const checkAuth = async () => {
+    // 토큰이 없으면 즉시 로딩 완료
     if (!tokenManager.isLoggedIn()) {
       setIsLoading(false);
       return;
     }
 
+    // 캐시된 사용자 정보가 있으면 먼저 설정 (빠른 초기 렌더링)
+    const cachedUser = userCacheManager.getUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setIsLoading(false);
+    }
+
     try {
-      setIsLoading(true);
+      // 서버에서 최신 사용자 정보 조회
       const userInfo = await getUserInfo();
-      setUser(userInfo);
+      updateUser(userInfo);
       setError(null);
     } catch (err) {
       console.error("사용자 정보 조회 실패:", err);
@@ -111,12 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // 토큰 갱신 성공 시 다시 사용자 정보 조회 시도
           try {
             const userInfo = await getUserInfo();
-            setUser(userInfo);
+            updateUser(userInfo);
             setError(null);
           } catch (retryErr) {
             console.error("토큰 갱신 후 사용자 정보 조회 실패:", retryErr);
             tokenManager.clearTokens();
-            setUser(null);
+            updateUser(null);
             setError(null);
           }
         }
@@ -132,15 +183,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ) {
             // 토큰이 유효하지 않은 경우 로그아웃 처리
             tokenManager.clearTokens();
-            setUser(null);
+            updateUser(null);
             setError(null);
           } else {
-            // 다른 에러의 경우 에러 메시지 설정
-            setError("사용자 정보를 불러올 수 없습니다.");
+            // 다른 에러의 경우 에러 메시지 설정 (캐시된 사용자 정보는 유지)
+            if (!cachedUser) {
+              setError("사용자 정보를 불러올 수 없습니다.");
+            }
           }
         } else {
           tokenManager.clearTokens();
-          setUser(null);
+          updateUser(null);
           setError(null);
         }
       }
@@ -165,7 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 55 * 60 * 1000); // 55분
 
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshAccessToken]);
 
   const login = async (loginData: LoginRequest) => {
     try {
@@ -177,8 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 토큰 저장
       tokenManager.setTokens(response.accessToken, response.refreshToken);
 
-      // 사용자 정보 설정
-      setUser(response.user);
+      // 사용자 정보 설정 (캐시도 함께 업데이트)
+      updateUser(response.user);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "로그인에 실패했습니다.";
@@ -211,7 +264,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     tokenManager.clearTokens();
-    setUser(null);
+    updateUser(null);
     setError(null);
   };
 

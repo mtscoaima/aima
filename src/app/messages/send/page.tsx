@@ -23,6 +23,7 @@ import {
   isFileSizeExceeded,
   ImageDimensions,
 } from "@/lib/imageUtils";
+import { AdvertiserGuard } from "@/components/RoleGuard";
 import "./styles.css";
 
 export default function MessageSendPage() {
@@ -344,336 +345,341 @@ export default function MessageSendPage() {
   };
 
   return (
-    <div className="message-send-container">
-      <div className="message-content">
-        {/* 단일 카드 레이아웃 */}
-        <div className="single-content">
-          <div className="content-section">
-            <div className="section-header">
-              <Smartphone className="icon" size={16} />
-              <span>메시지 발신번호</span>
-            </div>
-            {selectedSender ? (
-              <div className="selected-sender">
-                <div className="sender-info-row">
-                  <div className="sender-details">
-                    <div className="sender-display">
-                      <Phone className="sender-icon" size={16} />
-                      <span className="sender-title">메시지 발신번호</span>
+    <AdvertiserGuard>
+      <div className="message-send-container">
+        <div className="message-content">
+          {/* 단일 카드 레이아웃 */}
+          <div className="single-content">
+            <div className="content-section">
+              <div className="section-header">
+                <Smartphone className="icon" size={16} />
+                <span>메시지 발신번호</span>
+              </div>
+              {selectedSender ? (
+                <div className="selected-sender">
+                  <div className="sender-info-row">
+                    <div className="sender-details">
+                      <div className="sender-display">
+                        <Phone className="sender-icon" size={16} />
+                        <span className="sender-title">메시지 발신번호</span>
+                      </div>
+                      <div className="sender-number">{selectedSender}</div>
                     </div>
-                    <div className="sender-number">{selectedSender}</div>
+                    <button
+                      className="change-button"
+                      onClick={() => setShowSenderModal(true)}
+                      disabled
+                      style={{ opacity: 0.5, cursor: "not-allowed" }}
+                    >
+                      <ArrowLeftRight size={14} />
+                      변경
+                    </button>
                   </div>
-                  <button
-                    className="change-button"
-                    onClick={() => setShowSenderModal(true)}
-                    disabled
-                    style={{ opacity: 0.5, cursor: "not-allowed" }}
-                  >
-                    <ArrowLeftRight size={14} />
-                    변경
-                  </button>
                 </div>
-              </div>
-            ) : (
-              <div className="sender-selection">
-                <div className="sender-info">
-                  <span className="sender-label">선택된 발신번호 없음</span>
-                  <button
-                    className="select-button"
-                    onClick={() => setShowSenderModal(true)}
-                    disabled
-                    style={{ opacity: 0.5, cursor: "not-allowed" }}
-                  >
-                    선택
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="content-section">
-            <div className="section-header">
-              <Phone className="icon" size={16} />
-              <span>메시지 수신번호</span>
-            </div>
-            <div className="recipient-input">
-              <input
-                type="text"
-                value={recipientNumbers}
-                onChange={(e) => setRecipientNumbers(e.target.value)}
-                placeholder="01012345678"
-                className="number-input"
-              />
-              <div className="input-help">
-                <HelpCircle className="help-icon" size={14} />
-              </div>
-            </div>
-          </div>
-
-          <div className="content-section">
-            <div className="section-header">
-              <span>내용 입력</span>
-            </div>
-            <div className="message-input-section">
-              <div className="form-group">
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="문자 내용을 입력해주세요."
-                  className="message-textarea"
-                  maxLength={2000}
-                />
-                <div className="message-footer">
-                  <span className="char-count">
-                    {message.length} / 2,000 bytes
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="content-section">
-            <div className="section-header">
-              <ImageIcon className="icon" size={16} />
-              <span>이미지 첨부</span>
-              <span className="file-info">(최대 300KB, JPG/JPEG)</span>
-            </div>
-            <div className="file-attachment-section">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                accept="image/jpeg,image/jpg"
-                multiple
-                style={{ display: "none" }}
-              />
-
-              <button
-                type="button"
-                className="file-select-button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-              >
-                <Paperclip size={16} />
-                이미지 선택
-              </button>
-
-              {attachedFiles.length > 0 && (
-                <div className="attached-files">
-                  {attachedFiles.map((fileData, index) => (
-                    <div key={index} className="file-item">
-                      <div className="file-preview">
-                        <Image
-                          src={fileData.preview}
-                          alt={fileData.file.name}
-                          className="preview-image"
-                          width={100}
-                          height={100}
-                          style={{ objectFit: "cover" }}
-                        />
-                      </div>
-                      <div className="file-info-detail">
-                        <div className="file-name">{fileData.file.name}</div>
-                        <div className="file-size">
-                          {Math.round(fileData.file.size / 1024)}KB
-                        </div>
-                        {fileData.uploading && (
-                          <div className="upload-status uploading">
-                            업로드 중...
-                          </div>
-                        )}
-                        {fileData.fileId && (
-                          <div className="upload-status uploaded">
-                            업로드 완료
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="remove-file-button"
-                        onClick={() => removeFile(index)}
-                        disabled={fileData.uploading || isLoading}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
+              ) : (
+                <div className="sender-selection">
+                  <div className="sender-info">
+                    <span className="sender-label">선택된 발신번호 없음</span>
+                    <button
+                      className="select-button"
+                      onClick={() => setShowSenderModal(true)}
+                      disabled
+                      style={{ opacity: 0.5, cursor: "not-allowed" }}
+                    >
+                      선택
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
 
-          <div className="content-section">
-            <button
-              className="send-button"
-              onClick={handleSend}
-              disabled={isLoading || !message}
-            >
-              {isLoading ? "전송 중..." : "전송"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 발신번호 선택 모달 */}
-      {showSenderModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowSenderModal(false)}
-        >
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>발신번호 선택</h2>
-              <button
-                className="modal-close"
-                onClick={() => setShowSenderModal(false)}
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="modal-search">
-              <div className="search-input-wrapper">
+            <div className="content-section">
+              <div className="section-header">
+                <Phone className="icon" size={16} />
+                <span>메시지 수신번호</span>
+              </div>
+              <div className="recipient-input">
                 <input
                   type="text"
-                  placeholder="번호, 별칭으로 검색"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
+                  value={recipientNumbers}
+                  onChange={(e) => setRecipientNumbers(e.target.value)}
+                  placeholder="01012345678"
+                  className="number-input"
                 />
-                <Search className="search-icon" size={20} />
+                <div className="input-help">
+                  <HelpCircle className="help-icon" size={14} />
+                </div>
               </div>
             </div>
 
-            <div className="modal-body">
-              {filteredNumbers.map((sender, index) => (
-                <div
-                  key={index}
-                  className="sender-item"
-                  onClick={() => handleSenderSelect(sender.number)}
-                >
-                  <div className="sender-info-modal">
-                    <div className="sender-number-large">{sender.number}</div>
-                    <div className="sender-status">({sender.status})</div>
-                  </div>
-                  {selectedSender === sender.number ? (
-                    <button className="deselect-btn">선택해제</button>
-                  ) : (
-                    <button className="select-btn">선택</button>
-                  )}
-                  <div
-                    className="more-menu-container"
-                    ref={showMoreMenu === sender.number ? moreMenuRef : null}
-                  >
-                    <button
-                      className="more-btn"
-                      onClick={(e) => handleMoreClick(sender.number, e)}
-                    >
-                      <span>⋮</span>
-                    </button>
-                    {showMoreMenu === sender.number && (
-                      <div className="more-menu">
-                        <button
-                          className="menu-item"
-                          onClick={() => handleDefaultSet(sender.number)}
-                        >
-                          기본으로 설정
-                        </button>
-                        <button
-                          className="menu-item"
-                          onClick={() => handleAliasEdit(sender.number)}
-                        >
-                          별칭 변경
-                        </button>
-                      </div>
-                    )}
+            <div className="content-section">
+              <div className="section-header">
+                <span>내용 입력</span>
+              </div>
+              <div className="message-input-section">
+                <div className="form-group">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="문자 내용을 입력해주세요."
+                    className="message-textarea"
+                    maxLength={2000}
+                  />
+                  <div className="message-footer">
+                    <span className="char-count">
+                      {message.length} / 2,000 bytes
+                    </span>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
 
-            <div className="modal-footer">
-              <button className="manage-btn">
-                <Settings size={16} />
-                발신번호 관리
-              </button>
-              <button
-                className="close-btn"
-                onClick={() => setShowSenderModal(false)}
-              >
-                닫기 <span className="esc-text">ESC</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 별칭 변경 모달 */}
-      {showAliasModal && (
-        <div className="modal-overlay" onClick={() => setShowAliasModal(false)}>
-          <div
-            className="alias-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="alias-modal-header">
-              <h3>[{editingNumber}] 발신번호 별칭</h3>
-              <button
-                className="modal-close"
-                onClick={() => setShowAliasModal(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="alias-modal-body">
-              <div className="alias-form-group">
-                <label className="alias-label">발신번호 별칭</label>
+            <div className="content-section">
+              <div className="section-header">
+                <ImageIcon className="icon" size={16} />
+                <span>이미지 첨부</span>
+                <span className="file-info">(최대 300KB, JPG/JPEG)</span>
+              </div>
+              <div className="file-attachment-section">
                 <input
-                  type="text"
-                  value={aliasValue}
-                  onChange={(e) => setAliasValue(e.target.value)}
-                  className="alias-input"
-                  placeholder="별칭을 입력하세요"
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/jpeg,image/jpg"
+                  multiple
+                  style={{ display: "none" }}
                 />
-              </div>
 
-              <button className="alias-save-btn" onClick={handleAliasSave}>
-                별칭 입력 완료
-              </button>
+                <button
+                  type="button"
+                  className="file-select-button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                >
+                  <Paperclip size={16} />
+                  이미지 선택
+                </button>
+
+                {attachedFiles.length > 0 && (
+                  <div className="attached-files">
+                    {attachedFiles.map((fileData, index) => (
+                      <div key={index} className="file-item">
+                        <div className="file-preview">
+                          <Image
+                            src={fileData.preview}
+                            alt={fileData.file.name}
+                            className="preview-image"
+                            width={100}
+                            height={100}
+                            style={{ objectFit: "cover" }}
+                          />
+                        </div>
+                        <div className="file-info-detail">
+                          <div className="file-name">{fileData.file.name}</div>
+                          <div className="file-size">
+                            {Math.round(fileData.file.size / 1024)}KB
+                          </div>
+                          {fileData.uploading && (
+                            <div className="upload-status uploading">
+                              업로드 중...
+                            </div>
+                          )}
+                          {fileData.fileId && (
+                            <div className="upload-status uploaded">
+                              업로드 완료
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="remove-file-button"
+                          onClick={() => removeFile(index)}
+                          disabled={fileData.uploading || isLoading}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="alias-modal-footer">
-              <div className="alias-footer-left">
-                <RefreshCw size={16} />
-                <span>채팅 문의</span>
-                <span className="red-dot">●</span>
-              </div>
+            <div className="content-section">
               <button
-                className="alias-close-btn"
-                onClick={() => setShowAliasModal(false)}
+                className="send-button"
+                onClick={handleSend}
+                disabled={isLoading || !message}
               >
-                닫기 <span className="esc-text">ESC</span>
+                {isLoading ? "전송 중..." : "전송"}
               </button>
             </div>
           </div>
         </div>
-      )}
 
-      {/* 해상도 초과 확인 다이얼로그 */}
-      <ConfirmDialog
-        isOpen={showResolutionDialog}
-        onClose={handleResolutionCancel}
-        onConfirm={handleResolutionConfirm}
-        title="이미지 해상도 초과"
-        message={
-          pendingFile
-            ? `선택한 이미지의 해상도가 제한을 초과합니다.\n\n현재 해상도: ${pendingFile.dimensions.width}×${pendingFile.dimensions.height}\n최대 허용: 1500×1440\n\n이미지 해상도를 자동으로 낮춰서 업로드하시겠습니까?`
-            : ""
-        }
-        confirmText="예, 해상도를 낮춰서 업로드"
-        cancelText="아니오, 취소"
-        type="warning"
-      />
-    </div>
+        {/* 발신번호 선택 모달 */}
+        {showSenderModal && (
+          <div
+            className="modal-overlay"
+            onClick={() => setShowSenderModal(false)}
+          >
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>발신번호 선택</h2>
+                <button
+                  className="modal-close"
+                  onClick={() => setShowSenderModal(false)}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="modal-search">
+                <div className="search-input-wrapper">
+                  <input
+                    type="text"
+                    placeholder="번호, 별칭으로 검색"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="search-input"
+                  />
+                  <Search className="search-icon" size={20} />
+                </div>
+              </div>
+
+              <div className="modal-body">
+                {filteredNumbers.map((sender, index) => (
+                  <div
+                    key={index}
+                    className="sender-item"
+                    onClick={() => handleSenderSelect(sender.number)}
+                  >
+                    <div className="sender-info-modal">
+                      <div className="sender-number-large">{sender.number}</div>
+                      <div className="sender-status">({sender.status})</div>
+                    </div>
+                    {selectedSender === sender.number ? (
+                      <button className="deselect-btn">선택해제</button>
+                    ) : (
+                      <button className="select-btn">선택</button>
+                    )}
+                    <div
+                      className="more-menu-container"
+                      ref={showMoreMenu === sender.number ? moreMenuRef : null}
+                    >
+                      <button
+                        className="more-btn"
+                        onClick={(e) => handleMoreClick(sender.number, e)}
+                      >
+                        <span>⋮</span>
+                      </button>
+                      {showMoreMenu === sender.number && (
+                        <div className="more-menu">
+                          <button
+                            className="menu-item"
+                            onClick={() => handleDefaultSet(sender.number)}
+                          >
+                            기본으로 설정
+                          </button>
+                          <button
+                            className="menu-item"
+                            onClick={() => handleAliasEdit(sender.number)}
+                          >
+                            별칭 변경
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="modal-footer">
+                <button className="manage-btn">
+                  <Settings size={16} />
+                  발신번호 관리
+                </button>
+                <button
+                  className="close-btn"
+                  onClick={() => setShowSenderModal(false)}
+                >
+                  닫기 <span className="esc-text">ESC</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 별칭 변경 모달 */}
+        {showAliasModal && (
+          <div
+            className="modal-overlay"
+            onClick={() => setShowAliasModal(false)}
+          >
+            <div
+              className="alias-modal-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="alias-modal-header">
+                <h3>[{editingNumber}] 발신번호 별칭</h3>
+                <button
+                  className="modal-close"
+                  onClick={() => setShowAliasModal(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="alias-modal-body">
+                <div className="alias-form-group">
+                  <label className="alias-label">발신번호 별칭</label>
+                  <input
+                    type="text"
+                    value={aliasValue}
+                    onChange={(e) => setAliasValue(e.target.value)}
+                    className="alias-input"
+                    placeholder="별칭을 입력하세요"
+                  />
+                </div>
+
+                <button className="alias-save-btn" onClick={handleAliasSave}>
+                  별칭 입력 완료
+                </button>
+              </div>
+
+              <div className="alias-modal-footer">
+                <div className="alias-footer-left">
+                  <RefreshCw size={16} />
+                  <span>채팅 문의</span>
+                  <span className="red-dot">●</span>
+                </div>
+                <button
+                  className="alias-close-btn"
+                  onClick={() => setShowAliasModal(false)}
+                >
+                  닫기 <span className="esc-text">ESC</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 해상도 초과 확인 다이얼로그 */}
+        <ConfirmDialog
+          isOpen={showResolutionDialog}
+          onClose={handleResolutionCancel}
+          onConfirm={handleResolutionConfirm}
+          title="이미지 해상도 초과"
+          message={
+            pendingFile
+              ? `선택한 이미지의 해상도가 제한을 초과합니다.\n\n현재 해상도: ${pendingFile.dimensions.width}×${pendingFile.dimensions.height}\n최대 허용: 1500×1440\n\n이미지 해상도를 자동으로 낮춰서 업로드하시겠습니까?`
+              : ""
+          }
+          confirmText="예, 해상도를 낮춰서 업로드"
+          cancelText="아니오, 취소"
+          type="warning"
+        />
+      </div>
+    </AdvertiserGuard>
   );
 }
