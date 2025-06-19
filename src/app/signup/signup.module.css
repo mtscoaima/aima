@@ -1,9 +1,12 @@
 .signupContainer {
-  min-height: 100vh;
+  min-height: calc(100vh - 120px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  padding-top: max(140px, calc(100vh * 0.15)); /* 동적 상단 여백 */
+  z-index: 1;
+  position: relative;
 }
 
 .signupWrapper {
@@ -17,8 +20,10 @@
   border: 1px solid #e2e8f0;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  padding: 40px;
-  margin: 40px 0;
+  padding: 32px;
+  margin: 20px 0; /* 상하 여백 추가 */
+  position: relative;
+  z-index: 2;
 }
 
 .signupHeader {
@@ -288,7 +293,10 @@
 .userTypeFeatures {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: 100%;
+  text-align: left;
 }
 
 .userTypeFeatures li {
@@ -296,7 +304,9 @@
   color: #374151;
   padding: 4px 0;
   position: relative;
-  padding-left: 16px;
+  padding-left: 12px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .userTypeFeatures li::before {
@@ -304,7 +314,7 @@
   color: #0070f3;
   font-weight: bold;
   position: absolute;
-  left: 0;
+  left: 2px;
 }
 
 .signupButton {
@@ -639,9 +649,19 @@
   box-shadow: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .signupContainer {
+    min-height: calc(100vh - 100px);
+    padding: 16px;
+    padding-top: max(
+      120px,
+      calc(100vh * 0.18)
+    ); /* 모바일에서 줄어든 navigation 높이 + 여백 */
+  }
+
   .signupCard {
     padding: 24px;
+    margin: 16px 0;
   }
 
   .logoText {
@@ -681,5 +701,678 @@
 
   .userTypeFeatures li {
     font-size: 12px;
+    padding-left: 12px;
+    width: fit-content;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .signupContainer {
+    min-height: calc(100vh - 80px);
+    padding: 12px;
+    padding-top: max(100px, calc(100vh * 0.2)); /* 더 큰 비율 */
+  }
+
+  .signupCard {
+    padding: 20px;
+    margin: 12px 0;
+  }
+
+  .logoText {
+    font-size: 24px;
+  }
+
+  .signupTitle {
+    font-size: 20px;
+  }
+
+  .formInput {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 14px;
+    font-size: 15px;
+  }
+
+  .userTypeCard {
+    padding: 16px;
+  }
+
+  .userTypeIcon {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+
+  .userTypeTitle {
+    font-size: 15px;
+  }
+
+  .userTypeDescription {
+    font-size: 12px;
+  }
+
+  .userTypeFeatures li {
+    font-size: 11px;
+    padding-left: 12px;
+    width: fit-content;
+    max-width: 100%;
+  }
+}
+
+/* 확대 시에도 안정적인 레이아웃 */
+@media (min-width: 1200px) {
+  .signupContainer {
+    padding-top: max(160px, calc(100vh * 0.15));
+  }
+
+  .signupWrapper {
+    max-width: 520px;
+  }
+}
+
+/* 높이가 작은 화면에서의 최적화 */
+@media (max-height: 700px) {
+  .signupContainer {
+    padding-top: max(120px, calc(100vh * 0.18)); /* 높이 비례 증가 */
+    min-height: calc(100vh - 100px);
+  }
+
+  .signupCard {
+    padding: 24px;
+    margin: 16px 0;
+  }
+
+  .logoSection {
+    margin-bottom: 16px;
+  }
+
+  .signupHeader {
+    margin-bottom: 24px;
+  }
+}
+
+@media (max-height: 600px) {
+  .signupContainer {
+    padding-top: max(100px, calc(100vh * 0.2)); /* 더 큰 비율 */
+    min-height: calc(100vh - 80px);
+  }
+
+  .signupCard {
+    padding: 20px;
+    margin: 12px 0;
+  }
+
+  .logoText {
+    font-size: 24px;
+  }
+
+  .signupTitle {
+    font-size: 20px;
+  }
+
+  .progressBar {
+    margin-bottom: 16px;
+  }
+
+  .sectionTitle {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+}
+
+@media (max-height: 500px) {
+  .signupContainer {
+    padding-top: max(80px, calc(100vh * 0.22)); /* 최대 비율 */
+    min-height: calc(100vh - 60px);
+  }
+
+  .signupCard {
+    padding: 16px;
+    margin: 8px 0;
+  }
+
+  .logoText {
+    font-size: 20px;
+  }
+
+  .signupTitle {
+    font-size: 18px;
+  }
+
+  .progressBar {
+    margin-bottom: 12px;
+  }
+
+  .sectionTitle {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .formInput {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .userTypeCard {
+    padding: 12px;
+    min-height: 120px;
+  }
+
+  .userTypeIcon {
+    font-size: 30px;
+    margin-bottom: 6px;
+  }
+
+  .userTypeTitle {
+    font-size: 13px;
+  }
+
+  .userTypeDescription {
+    font-size: 10px;
+  }
+}
+
+@media (max-height: 400px) {
+  .signupContainer {
+    padding-top: max(60px, calc(100vh * 0.25)); /* 극소 높이 대응 */
+    min-height: calc(100vh - 40px);
+  }
+
+  .signupCard {
+    padding: 12px;
+    margin: 4px 0;
+  }
+
+  .logoSection {
+    margin-bottom: 8px;
+  }
+
+  .signupHeader {
+    margin-bottom: 12px;
+  }
+
+  .logoText {
+    font-size: 18px;
+  }
+
+  .signupTitle {
+    font-size: 16px;
+  }
+
+  .progressBar {
+    margin-bottom: 8px;
+  }
+
+  .sectionTitle {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .formGroup {
+    margin-bottom: 8px;
+  }
+
+  .formInput {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .userTypeCard {
+    padding: 8px;
+    min-height: 100px;
+  }
+
+  .userTypeIcon {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .userTypeTitle {
+    font-size: 11px;
+  }
+
+  .userTypeDescription {
+    font-size: 9px;
+  }
+
+  .stepNumber {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+  }
+
+  .stepLabel {
+    font-size: 10px;
+  }
+}
+
+/* 가로 화면 모드에서 높이 최적화 */
+@media (orientation: landscape) and (max-height: 600px) {
+  .signupContainer {
+    padding-top: max(50px, calc(100vh * 0.12));
+    padding-bottom: 20px;
+    min-height: auto;
+  }
+
+  .signupCard {
+    padding: 12px;
+    margin: 4px 0;
+  }
+
+  .logoSection {
+    margin-bottom: 6px;
+  }
+
+  .signupHeader {
+    margin-bottom: 10px;
+  }
+
+  .logoText {
+    font-size: 16px;
+  }
+
+  .signupTitle {
+    font-size: 14px;
+  }
+
+  .progressBar {
+    margin-bottom: 8px;
+  }
+
+  .sectionTitle {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .userTypeCard {
+    padding: 8px;
+    min-height: 80px;
+  }
+
+  .userTypeIcon {
+    font-size: 20px;
+    margin-bottom: 3px;
+  }
+
+  .userTypeTitle {
+    font-size: 10px;
+  }
+
+  .userTypeDescription {
+    font-size: 8px;
+  }
+
+  .userTypeFeatures {
+    font-size: 8px;
+  }
+
+  .userTypeFeatures li {
+    padding-left: 10px;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .formSection {
+    margin-bottom: 12px;
+  }
+
+  .buttonGroup {
+    margin-top: 12px;
+  }
+
+  .stepNumber {
+    width: 24px;
+    height: 24px;
+    font-size: 9px;
+  }
+
+  .stepLabel {
+    font-size: 9px;
+  }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  .formInput {
+    padding: 16px;
+    font-size: 16px; /* iOS 줌 방지 */
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 18px;
+    font-size: 16px;
+  }
+
+  .checkboxInput {
+    transform: scale(1.3);
+    margin-right: 12px;
+  }
+
+  .verifyButton {
+    padding: 16px 20px;
+    font-size: 16px;
+  }
+
+  .userTypeCard {
+    padding: 20px;
+    min-height: 160px; /* 터치 타겟 크기 보장 */
+  }
+}
+
+/* 매우 큰 화면에서의 최적화 */
+@media (min-width: 1600px) {
+  .signupContainer {
+    padding-top: max(200px, calc(100vh * 0.15));
+  }
+
+  .signupWrapper {
+    max-width: 600px;
+  }
+}
+
+/* 접근성 개선 - 고대비 모드 */
+@media (prefers-contrast: high) {
+  .userTypeCard {
+    border-width: 3px;
+  }
+
+  .userTypeCard.selected {
+    border-width: 4px;
+  }
+
+  .formInput {
+    border-width: 2px;
+  }
+
+  .formInput:focus {
+    border-width: 3px;
+  }
+}
+
+/* 움직임 감소 설정 */
+@media (prefers-reduced-motion: reduce) {
+  .userTypeCard {
+    transition: none;
+  }
+
+  .userTypeCard:hover {
+    transform: none;
+  }
+
+  .signupButton:hover,
+  .nextButton:hover {
+    transform: none;
+  }
+
+  .passwordStrength .strengthFill {
+    transition: none;
+  }
+}
+
+/* 매우 작은 화면에서의 추가 최적화 */
+@media (max-width: 360px) {
+  .signupContainer {
+    min-height: calc(100vh - 60px);
+    padding: 8px;
+    padding-top: max(80px, calc(100vh * 0.2)); /* 더 큰 비율 */
+  }
+
+  .signupCard {
+    padding: 16px;
+    margin: 4px 0;
+  }
+
+  .logoText {
+    font-size: 22px;
+  }
+
+  .signupTitle {
+    font-size: 18px;
+  }
+
+  .formInput {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .userTypeCard {
+    padding: 12px;
+    min-height: 120px;
+  }
+
+  .userTypeIcon {
+    font-size: 30px;
+    margin-bottom: 6px;
+  }
+
+  .userTypeTitle {
+    font-size: 13px;
+  }
+
+  .userTypeDescription {
+    font-size: 10px;
+  }
+
+  .progressBar {
+    margin-bottom: 16px;
+  }
+
+  .stepNumber {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .stepLabel {
+    font-size: 10px;
+  }
+}
+
+/* 화면 확대/축소 대응 강화 */
+@media (min-zoom: 150%) {
+  .signupContainer {
+    padding-top: max(100px, calc(100vh * 0.15));
+    min-height: calc(100vh - 80px);
+  }
+
+  .signupCard {
+    padding: 20px;
+  }
+
+  .userTypeCard {
+    padding: 16px;
+  }
+}
+
+@media (min-zoom: 200%) {
+  .signupContainer {
+    padding-top: max(80px, calc(100vh * 0.15));
+    min-height: calc(100vh - 60px);
+  }
+
+  .signupCard {
+    padding: 16px;
+  }
+
+  .logoText {
+    font-size: 20px;
+  }
+
+  .signupTitle {
+    font-size: 16px;
+  }
+
+  .userTypeCard {
+    padding: 12px;
+  }
+
+  .userTypeIcon {
+    font-size: 28px;
+  }
+
+  .userTypeTitle {
+    font-size: 12px;
+  }
+
+  .userTypeDescription {
+    font-size: 10px;
+  }
+
+  .userTypeFeatures {
+    display: none;
+  }
+}
+
+/* 모바일 Safari 뷰포트 버그 대응 */
+@supports (-webkit-touch-callout: none) {
+  .signupContainer {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* 화면 비율에 따른 최적화 */
+@media (max-aspect-ratio: 1/2) {
+  .signupContainer {
+    padding-top: max(60px, calc(100vh * 0.15));
+    padding-bottom: 20px;
+  }
+
+  .signupCard {
+    padding: 16px;
+  }
+
+  .logoSection {
+    margin-bottom: 8px;
+  }
+
+  .signupHeader {
+    margin-bottom: 16px;
+  }
+
+  .userTypeSelection {
+    gap: 12px;
+  }
+
+  .userTypeCard {
+    padding: 12px;
+    min-height: 100px;
+  }
+
+  .userTypeIcon {
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+
+  .userTypeTitle {
+    font-size: 12px;
+  }
+
+  .userTypeDescription {
+    font-size: 10px;
+  }
+
+  .userTypeFeatures {
+    display: none;
+  }
+}
+
+/* 폴드폰 등 좁은 화면 대응 */
+@media (max-width: 280px) {
+  .signupContainer {
+    padding: 4px;
+    padding-top: max(60px, calc(100vh * 0.15));
+  }
+
+  .signupCard {
+    padding: 12px;
+    margin: 2px 0;
+  }
+
+  .logoText {
+    font-size: 18px;
+  }
+
+  .signupTitle {
+    font-size: 16px;
+  }
+
+  .userTypeSelection {
+    gap: 8px;
+  }
+
+  .userTypeCard {
+    padding: 8px;
+    min-height: 80px;
+  }
+
+  .userTypeIcon {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .userTypeTitle {
+    font-size: 11px;
+  }
+
+  .userTypeDescription {
+    display: none;
+  }
+
+  .userTypeFeatures {
+    display: none;
+  }
+
+  .formInput {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .progressBar {
+    margin-bottom: 12px;
+  }
+
+  .stepNumber {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .stepLabel {
+    font-size: 9px;
   }
 }

@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+* {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
   /* 기본 색상 */
   --background: #ffffff;
@@ -37,6 +49,12 @@ body {
   font-family: "Noto Sans KR", Arial, Helvetica, sans-serif;
   line-height: 1.5;
   font-size: 16px;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden; /* 가로 스크롤 방지 */
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 /* 컴포넌트 스타일 */
@@ -109,14 +127,16 @@ h3 {
 
 /* 네비게이션 스타일 */
 .navigation {
-  position: absolute;
+  position: fixed;
   top: 55px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 40px);
   max-width: 1200px;
-  background-color: rgba(255, 255, 255, 0.95);
+  min-width: 320px; /* 최소 너비 설정 */
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 50px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   z-index: 1000;
@@ -127,9 +147,10 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 36px;
-  width: 100%;
-  position: relative;
+  padding: 0 1.5rem;
+  height: 80px;
+  min-height: 70px; /* 최소 높이 보장 */
+  max-width: 100%; /* 컨테이너 너비 제한 */
 }
 
 .nav-left {
@@ -142,6 +163,8 @@ h3 {
   align-items: center;
   flex: 1;
   justify-content: center;
+  max-width: 60%; /* 중앙 메뉴 영역 최대 너비 제한 */
+  overflow: visible; /* 드롭다운이 보이도록 */
 }
 
 .landing-nav-menu {
@@ -194,6 +217,8 @@ h3 {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap; /* 줄바꿈 방지 */
+  flex-shrink: 0; /* 버튼 축소 방지 */
 }
 
 .nav-guide-btn:hover {
@@ -1139,12 +1164,31 @@ h3 {
   .navigation {
     top: 55px;
     width: calc(100% - 20px);
+    max-width: calc(100vw - 20px); /* 뷰포트 너비 초과 방지 */
+    min-width: 320px; /* 모바일에서도 최소 너비 보장 */
     left: 50%;
     transform: translateX(-50%);
   }
 
+  .nav-container {
+    padding: 0 1rem;
+    height: 70px;
+    min-height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .nav-left {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
   .nav-center {
-    display: none;
+    display: none; /* 메뉴 숨김 */
   }
 
   .landing-nav-menu {
@@ -1152,16 +1196,42 @@ h3 {
   }
 
   .landing-nav-auth {
-    gap: 0.5rem;
+    gap: 8px; /* 버튼 간격 줄임 */
+    flex-shrink: 0;
+    min-width: 140px; /* 모바일에서 최소 너비 */
+    max-width: 180px; /* 최대 너비 제한 */
+    margin-left: auto; /* 오른쪽 정렬 */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
   }
 
   .landing-nav-btn {
     padding: 0.4rem 1rem;
     font-size: 0.85rem;
-    min-width: 50px;
+    width: auto;
+    min-width: 60px; /* 모바일에서 최소 너비 */
+    height: 36px;
+    flex-shrink: 0;
   }
 
-  /* 모바일에서 네비게이션 우측 버튼들 */
+  /* 로고 크기 조정 */
+  .nav-left svg {
+    width: 90px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  /* 메인 컨텐츠 정렬 */
+  .home-page .main-content,
+  .landing-root {
+    width: 100%;
+    max-width: 100vw;
+    margin: 0 auto;
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+
   .nav-right-buttons {
     gap: 8px;
   }
@@ -1169,6 +1239,8 @@ h3 {
   .nav-guide-btn {
     padding: 6px 12px;
     font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .nav-notification-btn {
@@ -1187,86 +1259,46 @@ h3 {
   }
 }
 
-.nav-container {
-  padding: 0 1rem;
-  height: 60px;
-}
-
-.auth-buttons {
-  gap: 0.5rem;
-}
-
-.auth-buttons .btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-}
-
-/* 모바일에서 유저 드롭다운 스타일 */
-.user-dropdown {
-  right: 0;
-  left: auto;
-  min-width: 280px;
-  max-width: calc(100vw - 2rem);
-  margin: 8px 1rem 0 0;
-}
-
-.user-info-button {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-}
-
-.user-name {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-dropdown-header {
-  padding: 16px;
-}
-
-.dropdown-menu-item {
-  padding: 12px 16px;
-  font-size: 14px;
-}
-
-.footer-top,
-.footer-bottom {
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.footer-links {
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.contact-info {
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.hero-section {
-  padding: 2rem 1rem;
-}
-
-.hero-content h1 {
-  font-size: 2rem;
-}
-
-.cta-section {
-  padding: 2rem 1rem;
-}
-
-/* 작은 모바일 화면 */
 @media (max-width: 480px) {
-  .nav-container {
-    padding: 0 0.75rem;
-    height: 55px;
+  .navigation {
+    width: calc(100% - 16px);
+    max-width: calc(100vw - 16px); /* 뷰포트 너비 초과 방지 */
+    min-width: 280px; /* 더 작은 화면에서 최소 너비 */
   }
 
-  .logo {
-    font-size: 1.25rem;
+  .nav-container {
+    padding: 0 0.75rem;
+    height: 65px;
+    min-height: 60px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .nav-left {
+    flex-shrink: 0;
+  }
+
+  .landing-nav-auth {
+    gap: 6px; /* 더 작은 간격 */
+    min-width: 120px;
+    max-width: 160px; /* 최대 너비 제한 */
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  .landing-nav-btn {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8rem;
+    min-width: 55px; /* 더 작은 최소 너비 */
+    height: 32px;
+    flex-shrink: 0;
+  }
+
+  /* 로고 더 작게 */
+  .nav-left svg {
+    width: 80px;
+    height: 22px;
+    flex-shrink: 0;
   }
 
   .user-info-button {
@@ -1291,6 +1323,8 @@ h3 {
   .nav-guide-btn {
     padding: 4px 8px;
     font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .nav-notification-btn {
@@ -1306,6 +1340,147 @@ h3 {
   .notification-dropdown {
     width: 260px;
     right: -30px;
+  }
+}
+
+/* 매우 작은 화면 (360px 이하) */
+@media (max-width: 360px) {
+  .navigation {
+    width: calc(100% - 12px);
+    max-width: calc(100vw - 12px); /* 뷰포트 너비 초과 방지 */
+    min-width: 260px; /* 극소 화면에서 최소 너비 */
+  }
+
+  .nav-container {
+    padding: 0 0.5rem;
+    height: 60px;
+    min-height: 55px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .nav-left {
+    flex-shrink: 0;
+  }
+
+  .landing-nav-auth {
+    gap: 4px;
+    min-width: 100px;
+    max-width: 140px; /* 최대 너비 제한 */
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  .landing-nav-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    min-width: 45px;
+    height: 30px;
+    border-radius: 15px;
+    flex-shrink: 0;
+  }
+
+  /* 로고 최소 크기 */
+  .nav-left svg {
+    width: 70px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .nav-guide-btn {
+    display: none; /* 매우 작은 화면에서는 숨김 */
+  }
+
+  .nav-notification-btn {
+    padding: 3px;
+  }
+
+  .user-avatar-circle {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+  }
+}
+
+/* 화면 높이가 작을 때 모달과 navigation 간격 보장 */
+@media (max-height: 600px) {
+  .navigation {
+    top: 40px; /* navigation 위치 조정 */
+  }
+}
+
+@media (max-height: 500px) {
+  .navigation {
+    top: 30px;
+    height: 60px; /* navigation 높이 조정 */
+  }
+
+  .nav-container {
+    height: 60px;
+    min-height: 55px;
+    padding: 0 1rem;
+  }
+
+  .landing-nav-btn {
+    height: 32px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  /* 로고 크기 조정 */
+  .nav-left svg {
+    width: 80px;
+    height: 22px;
+  }
+}
+
+@media (max-height: 400px) {
+  .navigation {
+    top: 20px;
+    height: 55px;
+  }
+
+  .nav-container {
+    height: 55px;
+    min-height: 50px;
+    padding: 0 0.8rem;
+  }
+
+  .landing-nav-btn {
+    height: 28px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .nav-left svg {
+    width: 70px;
+    height: 20px;
+  }
+}
+
+/* 가로 화면 모드에서 높이가 작을 때 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .navigation {
+    top: 15px;
+    height: 50px;
+  }
+
+  .nav-container {
+    height: 50px;
+    min-height: 45px;
+    padding: 0 0.75rem;
+  }
+
+  .landing-nav-btn {
+    height: 26px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
+    min-width: 40px;
+  }
+
+  .nav-left svg {
+    width: 65px;
+    height: 18px;
   }
 }
 
@@ -1416,8 +1591,11 @@ body .landing-root .main-content {
 .landing-nav-auth {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-left: auto;
+  flex-shrink: 0; /* 버튼들이 축소되지 않도록 */
+  min-width: 160px; /* 최소 너비 보장 */
+  max-width: 200px; /* 최대 너비 제한 */
 }
 .landing-nav-btn {
   border-radius: 20px;
@@ -1431,9 +1609,12 @@ body .landing-root .main-content {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 93px;
+  width: auto;
+  min-width: 70px; /* 최소 너비 보장 */
   height: 38px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* 버튼이 축소되지 않도록 */
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+  box-sizing: border-box;
 }
 .landing-login-btn {
   background: #1681ff;

@@ -411,44 +411,48 @@ export default function SignupPage() {
         } else if (formData.password !== formData.confirmPassword) {
           newErrors.confirmPassword = "비밀번호가 일치하지 않습니다.";
         }
+
         break;
 
       case 3:
-        // 기업 정보 검증
-        if (!formData.companyName.trim()) {
-          newErrors.companyName = "기업명을 입력해주세요.";
-        }
-        if (!formData.ceoName.trim()) {
-          newErrors.ceoName = "대표자명을 입력해주세요.";
-        }
-        if (!formData.businessNumber.trim()) {
-          newErrors.businessNumber = "사업자등록번호를 입력해주세요.";
-        }
-        if (!formData.companyAddress.trim()) {
-          newErrors.companyAddress = "회사 주소를 입력해주세요.";
-        }
-        if (!formData.companyPhone.trim()) {
-          newErrors.companyPhone = "대표번호를 입력해주세요.";
+        // 영업사원의 경우 약관 동의 검증, 일반회원의 경우 기업 정보 검증
+        if ((formData.userType as string) === "salesperson") {
+          // 약관 동의 검증
+          if (!formData.agreeTerms) {
+            newErrors.agreeTerms = "서비스 이용약관에 동의해주세요.";
+          }
+          if (!formData.agreePrivacy) {
+            newErrors.agreePrivacy = "개인정보 수집 및 이용에 동의해주세요.";
+          }
+        } else {
+          // 기업 정보 검증
+          if (!formData.companyName.trim()) {
+            newErrors.companyName = "기업명을 입력해주세요.";
+          }
+          if (!formData.ceoName.trim()) {
+            newErrors.ceoName = "대표자명을 입력해주세요.";
+          }
+          if (!formData.businessNumber.trim()) {
+            newErrors.businessNumber = "사업자등록번호를 입력해주세요.";
+          }
+          if (!formData.companyAddress.trim()) {
+            newErrors.companyAddress = "회사 주소를 입력해주세요.";
+          }
+          if (!formData.companyPhone.trim()) {
+            newErrors.companyPhone = "대표번호를 입력해주세요.";
+          }
         }
         break;
 
       case 4:
-        // 제출 서류 검증
+        // 제출 서류 검증 (일반회원만)
         if (!formData.businessRegistration) {
           newErrors.businessRegistration = "사업자등록증을 업로드해주세요.";
-        }
-        // 영업사원인 경우 재직증명서 필수
-        if (
-          formData.userType === "salesperson" &&
-          !formData.employmentCertificate
-        ) {
-          newErrors.employmentCertificate =
-            "영업사원은 재직증명서를 업로드해주세요.";
         }
         break;
 
       case 5:
-        // 세금계산서 정보 검증
+        // 세금계산서 정보 검증 (일반회원만)
         if (!formData.taxInvoiceEmail.trim()) {
           newErrors.taxInvoiceEmail = "세금계산서 수신 이메일을 입력해주세요.";
         }
@@ -461,7 +465,7 @@ export default function SignupPage() {
         break;
 
       case 6:
-        // 약관 동의 검증
+        // 약관 동의 검증 (일반회원만)
         if (!formData.agreeTerms) {
           newErrors.agreeTerms = "서비스 이용약관에 동의해주세요.";
         }

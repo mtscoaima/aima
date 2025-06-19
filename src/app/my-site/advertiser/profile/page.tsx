@@ -1048,7 +1048,8 @@ export default function ProfilePage() {
         {/* 비밀번호 확인 모달 */}
         {showPasswordModal.show && (
           <div
-            className="fixed inset-0 z-10 overflow-y-auto"
+            className="fixed inset-0 overflow-y-auto"
+            style={{ zIndex: 1001 }}
             aria-labelledby="modal-title"
             role="dialog"
             aria-modal="true"

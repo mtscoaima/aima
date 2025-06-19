@@ -43,7 +43,8 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-50"
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ zIndex: 1001, backgroundColor: "rgba(0, 0, 0, 0.5)" }}
       onClick={handleBackdropClick}
     >
       <div
