@@ -894,10 +894,257 @@ body .main-content {
   cursor: not-allowed;
 }
 
+/* 추가 반응형 스타일 */
+@media (max-width: 1200px) {
+  .modal-content {
+    width: 85%;
+    max-width: 550px;
+  }
+}
+
+@media (max-width: 900px) {
+  .message-send-container {
+    padding: 12px;
+  }
+
+  .single-content {
+    padding: 16px;
+  }
+
+  .sender-info-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .sender-number {
+    font-size: 16px;
+  }
+
+  .modal-content {
+    width: 90%;
+    max-width: none;
+  }
+
+  .modal-header {
+    padding: 20px;
+  }
+
+  .modal-search {
+    padding: 16px 20px;
+  }
+
+  .sender-item {
+    padding: 14px 20px;
+  }
+}
+
 @media (max-width: 768px) {
+  .message-send-container {
+    padding: 8px;
+  }
+
+  .single-content {
+    padding: 14px;
+    border-radius: 6px;
+  }
+
+  .section-header {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .content-section {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+  }
+
+  .sender-title {
+    font-size: 12px;
+  }
+
+  .sender-number {
+    font-size: 15px;
+  }
+
+  .number-input,
+  .message-textarea {
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  .message-textarea {
+    min-height: 100px;
+  }
+
+  .send-button {
+    font-size: 15px;
+    padding: 12px;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+    border-radius: 8px;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 18px;
+  }
+
+  .modal-search {
+    padding: 12px 16px;
+  }
+
+  .modal-body {
+    max-height: 50vh;
+  }
+
+  .sender-item {
+    padding: 12px 16px;
+  }
+
+  .sender-number-large {
+    font-size: 15px;
+  }
+
+  .sender-status {
+    font-size: 13px;
+  }
+
+  .select-btn,
+  .deselect-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
   .file-item {
     padding: 8px;
     gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .file-preview {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 0;
+  }
+
+  .file-name {
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+
+  .file-size {
+    font-size: 12px;
+  }
+
+  .file-select-button {
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-send-container {
+    padding: 5px;
+  }
+
+  .single-content {
+    padding: 12px;
+    margin: 0 2px;
+  }
+
+  .section-header {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .content-section {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .sender-title {
+    font-size: 11px;
+  }
+
+  .sender-number {
+    font-size: 14px;
+  }
+
+  .change-button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .number-input,
+  .message-textarea {
+    font-size: 16px;
+    padding: 10px;
+  }
+
+  .message-textarea {
+    min-height: 90px;
+  }
+
+  .send-button {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .char-count {
+    font-size: 11px;
+  }
+
+  .modal-content {
+    width: 98%;
+    margin: 5px;
+  }
+
+  .modal-header {
+    padding: 12px;
+  }
+
+  .modal-header h2 {
+    font-size: 16px;
+  }
+
+  .modal-search {
+    padding: 10px 12px;
+  }
+
+  .search-input {
+    padding: 10px 12px 10px 40px;
+    font-size: 14px;
+  }
+
+  .sender-item {
+    padding: 10px 12px;
+  }
+
+  .sender-number-large {
+    font-size: 14px;
+  }
+
+  .sender-status {
+    font-size: 12px;
+  }
+
+  .select-btn,
+  .deselect-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .file-item {
+    padding: 6px;
+    gap: 6px;
   }
 
   .file-preview {
@@ -911,5 +1158,64 @@ body .main-content {
 
   .file-size {
     font-size: 11px;
+  }
+
+  .file-select-button {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .remove-file-button {
+    padding: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .message-send-container {
+    padding: 3px;
+  }
+
+  .single-content {
+    padding: 10px;
+    margin: 0 1px;
+  }
+
+  .sender-number {
+    font-size: 13px;
+  }
+
+  .number-input,
+  .message-textarea {
+    padding: 8px;
+    font-size: 15px;
+  }
+
+  .send-button {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .modal-content {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    height: 100vh;
+  }
+
+  .modal-body {
+    max-height: 60vh;
+  }
+
+  .file-preview {
+    width: 35px;
+    height: 35px;
+  }
+
+  .file-name {
+    font-size: 12px;
+  }
+
+  .file-size {
+    font-size: 10px;
   }
 }

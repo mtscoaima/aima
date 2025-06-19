@@ -1376,3 +1376,339 @@
     font-size: 9px;
   }
 }
+
+/* 추가 반응형 개선 */
+@media (max-width: 1024px) {
+  .signupContainer {
+    padding: 15px;
+    padding-top: max(120px, calc(100vh * 0.12));
+  }
+
+  .signupCard {
+    max-width: 460px;
+    padding: 28px;
+  }
+
+  .userTypeCard {
+    padding: 16px;
+  }
+
+  .userTypeIcon {
+    font-size: 2rem;
+  }
+
+  .userTypeTitle {
+    font-size: 16px;
+  }
+
+  .userTypeDescription {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 900px) {
+  .signupContainer {
+    padding-top: max(110px, calc(100vh * 0.1));
+  }
+
+  .signupCard {
+    max-width: 440px;
+    padding: 24px;
+  }
+
+  .userTypeSelection {
+    gap: 12px;
+  }
+
+  .userTypeCard {
+    padding: 14px;
+  }
+
+  .userTypeIcon {
+    font-size: 1.8rem;
+  }
+
+  .userTypeTitle {
+    font-size: 15px;
+  }
+
+  .userTypeDescription {
+    font-size: 12px;
+  }
+
+  .formInput {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 14px;
+    font-size: 15px;
+  }
+}
+
+/* 추가 개선 사항 */
+@media (max-width: 320px) {
+  .signupContainer {
+    padding: 8px;
+    padding-top: max(100px, calc(100vh * 0.08));
+  }
+
+  .signupCard {
+    padding: 16px;
+    margin: 10px 0;
+    border-radius: 12px;
+  }
+
+  .logoText {
+    font-size: 24px;
+  }
+
+  .signupTitle {
+    font-size: 20px;
+  }
+
+  .userTypeSelection {
+    gap: 8px;
+  }
+
+  .userTypeCard {
+    padding: 12px;
+  }
+
+  .userTypeIcon {
+    font-size: 1.5rem;
+  }
+
+  .userTypeTitle {
+    font-size: 13px;
+  }
+
+  .userTypeDescription {
+    font-size: 11px;
+  }
+
+  .userTypeFeatures {
+    display: none; /* 매우 작은 화면에서는 기능 목록 숨김 */
+  }
+
+  .formInput {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .progressBar {
+    height: 4px;
+  }
+
+  .stepNumber {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  .stepLabel {
+    font-size: 10px;
+  }
+
+  .checkboxText {
+    font-size: 12px;
+  }
+
+  .formLabel {
+    font-size: 12px;
+  }
+
+  .formHelp,
+  .formError {
+    font-size: 10px;
+  }
+}
+
+/* 가로 모드 최적화 */
+@media (max-width: 900px) and (orientation: landscape) {
+  .signupContainer {
+    padding-top: 80px;
+    min-height: calc(100vh - 80px);
+  }
+
+  .signupCard {
+    max-width: 500px;
+    padding: 20px;
+  }
+
+  .signupHeader {
+    margin-bottom: 20px;
+  }
+
+  .logoSection {
+    margin-bottom: 16px;
+  }
+
+  .userTypeSelection {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .userTypeCard {
+    flex: 1;
+    min-height: auto;
+  }
+
+  .userTypeFeatures {
+    display: none; /* 가로 모드에서는 기능 목록 숨김 */
+  }
+
+  .formSection {
+    margin-bottom: 16px;
+  }
+
+  .buttonGroup {
+    margin-top: 16px;
+  }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  .formInput {
+    font-size: 16px; /* iOS 줌 방지 */
+    min-height: 44px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .userTypeCard {
+    min-height: 60px;
+    transition: none;
+  }
+
+  .userTypeCard:hover {
+    transform: none;
+  }
+
+  .checkboxInput {
+    min-width: 20px;
+    min-height: 20px;
+  }
+
+  .verifyButton {
+    min-height: 44px;
+  }
+
+  .fileInput {
+    min-height: 44px;
+  }
+}
+
+/* 고해상도 디스플레이 */
+@media (min-width: 1400px) {
+  .signupContainer {
+    padding-top: max(160px, calc(100vh * 0.18));
+  }
+
+  .signupCard {
+    max-width: 520px;
+    padding: 40px;
+  }
+
+  .logoText {
+    font-size: 36px;
+  }
+
+  .signupTitle {
+    font-size: 32px;
+  }
+
+  .userTypeCard {
+    padding: 24px;
+  }
+
+  .userTypeIcon {
+    font-size: 2.5rem;
+  }
+
+  .userTypeTitle {
+    font-size: 18px;
+  }
+
+  .userTypeDescription {
+    font-size: 15px;
+  }
+
+  .formInput {
+    padding: 16px 18px;
+    font-size: 17px;
+  }
+
+  .signupButton,
+  .nextButton,
+  .prevButton {
+    padding: 18px;
+    font-size: 17px;
+  }
+}
+
+/* 단계별 반응형 최적화 */
+@media (max-width: 480px) {
+  .progressStep {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stepNumber {
+    margin-bottom: 0;
+  }
+
+  .phoneInputGroup {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .verifyButton {
+    width: 100%;
+  }
+
+  .passwordStrength {
+    margin-top: 8px;
+  }
+
+  .strengthBar {
+    height: 4px;
+  }
+
+  .buttonGroup {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .nextButton,
+  .prevButton {
+    width: 100%;
+  }
+
+  .termsGroup {
+    gap: 8px;
+  }
+
+  .agreeAllLabel {
+    padding: 12px;
+  }
+
+  .checkboxLabel {
+    padding: 8px 0;
+  }
+}
