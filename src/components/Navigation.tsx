@@ -90,30 +90,64 @@ export default function Navigation() {
 
         <div className="nav-center">
           <nav className="landing-nav-menu">
-            <button
-              onClick={() => handleNavClick("/target-marketing")}
-              className="landing-nav-menu-item landing-nav-menu-btn"
-            >
-              AI 타겟마케팅
-            </button>
-            <button
-              onClick={() => handleNavClick("/messages/history")}
-              className="landing-nav-menu-item landing-nav-menu-btn"
-            >
-              발송현황
-            </button>
-            <button
-              onClick={() => handleNavClick("/messages/send")}
-              className="landing-nav-menu-item landing-nav-menu-btn"
-            >
-              문자
-            </button>
-            <button
-              onClick={() => handleNavClick("/support")}
-              className="landing-nav-menu-item landing-nav-menu-btn"
-            >
-              고객센터
-            </button>
+            {user?.role === "SALESPERSON" ? (
+              <>
+                <Link href="/" className="landing-nav-menu-item">
+                  대시보드
+                </Link>
+                <Link
+                  href="/salesperson/invite"
+                  className="landing-nav-menu-item"
+                >
+                  추천 관리
+                </Link>
+                <Link
+                  href="/salesperson/referrals"
+                  className="landing-nav-menu-item"
+                >
+                  리워드 관리
+                </Link>
+                <Link
+                  href="/salesperson/organization"
+                  className="landing-nav-menu-item"
+                >
+                  조직도 보기
+                </Link>
+                <Link
+                  href="/salesperson/profile"
+                  className="landing-nav-menu-item"
+                >
+                  마이페이지
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleNavClick("/target-marketing")}
+                  className="landing-nav-menu-item landing-nav-menu-btn"
+                >
+                  AI 타겟마케팅
+                </button>
+                <button
+                  onClick={() => handleNavClick("/messages/history")}
+                  className="landing-nav-menu-item landing-nav-menu-btn"
+                >
+                  발송현황
+                </button>
+                <button
+                  onClick={() => handleNavClick("/messages/send")}
+                  className="landing-nav-menu-item landing-nav-menu-btn"
+                >
+                  문자
+                </button>
+                <button
+                  onClick={() => handleNavClick("/support")}
+                  className="landing-nav-menu-item landing-nav-menu-btn"
+                >
+                  고객센터
+                </button>
+              </>
+            )}
           </nav>
         </div>
 
@@ -215,46 +249,53 @@ export default function Navigation() {
                     </div>
                     <div className="user-dropdown-divider"></div>
                     <div className="user-dropdown-menu">
-                      <Link
-                        href="/my-site/advertiser/profile"
-                        className="dropdown-menu-item"
-                        onClick={() => setShowUserDropdown(false)}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                        >
-                          <path
-                            d="M8 8C10.2091 8 12 6.20914 12 4C12 1.79086 10.2091 0 8 0C5.79086 0 4 1.79086 4 4C4 6.20914 5.79086 8 8 8Z"
-                            fill="currentColor"
-                          />
-                          <path
-                            d="M8 10C3.58172 10 0 13.5817 0 18H16C16 13.5817 12.4183 10 8 10Z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                        프로필 관리
-                      </Link>
-                      <Link
-                        href="/my-site/advertiser/dashboard"
-                        className="dropdown-menu-item"
-                        onClick={() => setShowUserDropdown(false)}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                        >
-                          <path d="M2 2H6V6H2V2Z" fill="currentColor" />
-                          <path d="M10 2H14V6H10V2Z" fill="currentColor" />
-                          <path d="M2 10H6V14H2V10Z" fill="currentColor" />
-                          <path d="M10 10H14V14H10V10Z" fill="currentColor" />
-                        </svg>
-                        대시보드
-                      </Link>
+                      {user?.role !== "SALESPERSON" && (
+                        <>
+                          <Link
+                            href="/my-site/advertiser/profile"
+                            className="dropdown-menu-item"
+                            onClick={() => setShowUserDropdown(false)}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                            >
+                              <path
+                                d="M8 8C10.2091 8 12 6.20914 12 4C12 1.79086 10.2091 0 8 0C5.79086 0 4 1.79086 4 4C4 6.20914 5.79086 8 8 8Z"
+                                fill="currentColor"
+                              />
+                              <path
+                                d="M8 10C3.58172 10 0 13.5817 0 18H16C16 13.5817 12.4183 10 8 10Z"
+                                fill="currentColor"
+                              />
+                            </svg>
+                            프로필 관리
+                          </Link>
+                          <Link
+                            href="/my-site/advertiser/dashboard"
+                            className="dropdown-menu-item"
+                            onClick={() => setShowUserDropdown(false)}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                            >
+                              <path d="M2 2H6V6H2V2Z" fill="currentColor" />
+                              <path d="M10 2H14V6H10V2Z" fill="currentColor" />
+                              <path d="M2 10H6V14H2V10Z" fill="currentColor" />
+                              <path
+                                d="M10 10H14V14H10V10Z"
+                                fill="currentColor"
+                              />
+                            </svg>
+                            대시보드
+                          </Link>
+                        </>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="dropdown-menu-item logout-item"
