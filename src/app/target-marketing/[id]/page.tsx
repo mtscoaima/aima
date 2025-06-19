@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { Send, Sparkles, X, Phone, Smartphone } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { AdvertiserGuard } from "@/components/RoleGuard";
 import styles from "./styles.module.css";
 
 interface Message {
@@ -1158,8 +1159,10 @@ function TargetMarketingContent() {
 // Suspense로 감싼 메인 컴포넌트
 export default function TargetMarketingPage() {
   return (
-    <Suspense fallback={<div>로딩 중...</div>}>
-      <TargetMarketingContent />
-    </Suspense>
+    <AdvertiserGuard>
+      <Suspense fallback={<div>Loading...</div>}>
+        <TargetMarketingContent />
+      </Suspense>
+    </AdvertiserGuard>
   );
 }

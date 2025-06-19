@@ -15,8 +15,8 @@ interface LayoutProps {
 function LoadingSpinner() {
   return (
     <div className="loading-container">
-      <div className="loading-spinner">
-        <div className="spinner"></div>
+      <div className="loading-spinner"></div>
+      <div className="loading-text">
         <p>로딩 중...</p>
       </div>
     </div>
