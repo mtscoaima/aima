@@ -40,6 +40,19 @@ export default function RoleGuard({
     );
   }
 
+  // 로그인하지 않은 사용자인 경우
+  if (!isAuthenticated) {
+    return (
+      <div className="access-denied">
+        <h2>로그인이 필요합니다</h2>
+        <p>이 페이지에 접근하려면 로그인이 필요합니다.</p>
+        <button onClick={() => router.push("/login")} className="btn-primary">
+          로그인하기
+        </button>
+      </div>
+    );
+  }
+
   // 로그인된 사용자의 권한이 없는 경우
   if (isAuthenticated && user && !allowedRoles.includes(user.role)) {
     return (
