@@ -43,6 +43,7 @@ interface SuccessResponse {
   email: string;
   name: string;
   phoneNumber: string;
+  userType: string;
   role: string;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     // 기본 정보 추출
+    const userType = formData.get("userType") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const name = formData.get("name") as string;
@@ -113,6 +115,7 @@ export async function POST(request: NextRequest) {
     ) as File | null;
 
     console.log("Signup with files request received:", {
+      userType,
       email,
       name,
       phoneNumber,
@@ -124,6 +127,13 @@ export async function POST(request: NextRequest) {
 
     // 입력 값 검증
     const fieldErrors: Array<{ field: string; message: string }> = [];
+
+    if (!userType || (userType !== "general" && userType !== "salesperson")) {
+      fieldErrors.push({
+        field: "userType",
+        message: "회원 유형을 선택해주세요.",
+      });
+    }
 
     if (!email || !email.includes("@")) {
       fieldErrors.push({
@@ -178,6 +188,22 @@ export async function POST(request: NextRequest) {
         });
       }
     };
+
+    // 필수 파일 검증
+    if (!businessRegistration) {
+      fieldErrors.push({
+        field: "businessRegistration",
+        message: "사업자등록증을 업로드해주세요.",
+      });
+    }
+
+    // 영업사원인 경우 재직증명서 필수
+    if (userType === "salesperson" && !employmentCertificate) {
+      fieldErrors.push({
+        field: "employmentCertificate",
+        message: "영업사원은 재직증명서를 업로드해주세요.",
+      });
+    }
 
     // 파일 유형 및 크기 검증
     if (businessRegistration) {
@@ -276,6 +302,9 @@ export async function POST(request: NextRequest) {
       agreedAt: getKSTISOString(),
     };
 
+    // userType에 따른 role 설정
+    const userRole = userType === "salesperson" ? "SALESPERSON" : "USER";
+
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
@@ -283,7 +312,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         phone_number: phoneNumber,
-        role: "USER",
+        role: userRole,
         is_active: true,
         created_at: now,
         updated_at: now,
@@ -406,6 +435,7 @@ export async function POST(request: NextRequest) {
       email: newUser.email,
       name: newUser.name,
       phoneNumber: newUser.phone_number,
+      userType: userType,
       role: newUser.role,
       createdAt: newUser.created_at,
       updatedAt: newUser.updated_at,
