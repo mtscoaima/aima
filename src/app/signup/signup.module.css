@@ -308,17 +308,8 @@
 }
 
 .signupButton {
-  width: 100%;
   background: #0070f3;
   color: white;
-  border: none;
-  padding: 16px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 8px;
 }
 
 .signupButton:hover {
@@ -608,7 +599,8 @@
 }
 
 .prevButton,
-.nextButton {
+.nextButton,
+.signupButton {
   flex: 1;
   padding: 16px;
   border: none;

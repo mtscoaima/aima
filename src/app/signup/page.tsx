@@ -479,7 +479,13 @@ export default function SignupPage() {
     setIsValidating(true);
     try {
       if (await validateStep(currentStep)) {
-        setCurrentStep(currentStep + 1);
+        if ((formData.userType as string) === "salesperson") {
+          // 영업사원의 경우: 1(회원유형) -> 2(기본정보) -> 3(약관동의)
+          setCurrentStep(currentStep + 1);
+        } else {
+          // 일반회원의 경우: 1(회원유형) -> 2(기본정보) -> 3(기업정보) -> 4(제출서류) -> 5(세금계산서) -> 6(약관동의)
+          setCurrentStep(currentStep + 1);
+        }
       }
     } finally {
       setIsValidating(false);
@@ -642,6 +648,55 @@ export default function SignupPage() {
   const isAllAgreed =
     formData.agreeTerms && formData.agreePrivacy && formData.agreeMarketing;
 
+  // 진행바에 표시할 총 단계 수 (기본정보 -> 약관동의)
+  const getTotalSteps = () => {
+    return (formData.userType as string) === "salesperson" ? 2 : 5;
+  };
+
+  // 실제 총 단계 수 (회원유형 포함)
+  const getActualTotalSteps = () => {
+    return (formData.userType as string) === "salesperson" ? 3 : 6;
+  };
+
+  // 진행바에 표시할 단계 번호를 실제 currentStep에서 계산
+  const getProgressStep = () => {
+    if ((formData.userType as string) === "salesperson") {
+      // 영업사원: currentStep 2 -> 진행바 1, currentStep 3 -> 진행바 2
+      return currentStep - 1;
+    } else {
+      // 일반회원: currentStep 2 -> 진행바 1, currentStep 3 -> 진행바 2, ...
+      return currentStep - 1;
+    }
+  };
+
+  const getStepLabel = (step: number) => {
+    if ((formData.userType as string) === "salesperson") {
+      switch (step) {
+        case 1:
+          return "기본정보";
+        case 2:
+          return "약관동의";
+        default:
+          return "";
+      }
+    } else {
+      switch (step) {
+        case 1:
+          return "기본정보";
+        case 2:
+          return "기업정보";
+        case 3:
+          return "제출서류";
+        case 4:
+          return "세금계산서";
+        case 5:
+          return "약관동의";
+        default:
+          return "";
+      }
+    }
+  };
+
   // 회원가입 성공 화면
   if (isSuccess) {
     return (
@@ -675,57 +730,28 @@ export default function SignupPage() {
             <h2 className={styles.signupTitle}>회원가입</h2>
           </div>
 
-          {/* 진행 상태 표시 */}
-          <div className={styles.progressBar}>
-            <div
-              className={`${styles.progressStep} ${
-                currentStep >= 1 ? styles.active : ""
-              }`}
-            >
-              <span className={styles.stepNumber}>1</span>
-              <span className={styles.stepLabel}>회원유형</span>
+          {/* 진행 상태 표시 - 회원 유형 선택 시에는 숨김 */}
+          {currentStep > 1 && (
+            <div className={styles.progressBar}>
+              {Array.from({ length: getTotalSteps() }, (_, index) => {
+                const step = index + 1;
+                const progressStep = getProgressStep();
+                return (
+                  <div
+                    key={step}
+                    className={`${styles.progressStep} ${
+                      progressStep >= step ? styles.active : ""
+                    }`}
+                  >
+                    <span className={styles.stepNumber}>{step}</span>
+                    <span className={styles.stepLabel}>
+                      {getStepLabel(step)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <div
-              className={`${styles.progressStep} ${
-                currentStep >= 2 ? styles.active : ""
-              }`}
-            >
-              <span className={styles.stepNumber}>2</span>
-              <span className={styles.stepLabel}>기본정보</span>
-            </div>
-            <div
-              className={`${styles.progressStep} ${
-                currentStep >= 3 ? styles.active : ""
-              }`}
-            >
-              <span className={styles.stepNumber}>3</span>
-              <span className={styles.stepLabel}>기업정보</span>
-            </div>
-            <div
-              className={`${styles.progressStep} ${
-                currentStep >= 4 ? styles.active : ""
-              }`}
-            >
-              <span className={styles.stepNumber}>4</span>
-              <span className={styles.stepLabel}>제출서류</span>
-            </div>
-            <div
-              className={`${styles.progressStep} ${
-                currentStep >= 5 ? styles.active : ""
-              }`}
-            >
-              <span className={styles.stepNumber}>5</span>
-              <span className={styles.stepLabel}>세금계산서</span>
-            </div>
-            <div
-              className={`${styles.progressStep} ${
-                currentStep >= 6 ? styles.active : ""
-              }`}
-            >
-              <span className={styles.stepNumber}>6</span>
-              <span className={styles.stepLabel}>약관동의</span>
-            </div>
-          </div>
+          )}
 
           {/* 에러 메시지 */}
           {error && <div className={styles.errorMessage}>{error}</div>}
@@ -1035,469 +1061,578 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* Step 3: 기업 정보 */}
-            {currentStep === 3 && (
-              <div className={styles.formSection}>
-                <h3 className={styles.sectionTitle}>기업 정보</h3>
+            {/* Step 3: 기업 정보 - 영업사원인 경우 약관동의로 변경 */}
+            {currentStep === 3 &&
+              (formData.userType as string) === "salesperson" && (
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>약관 동의</h3>
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
+                  <div className={styles.termsGroup}>
+                    {/* 전체 동의 */}
                     <label
-                      htmlFor="companyName"
-                      className={`${styles.formLabel} ${styles.required}`}
+                      className={`${styles.checkboxLabel} ${styles.agreeAllLabel}`}
                     >
-                      기업명
+                      <input
+                        type="checkbox"
+                        checked={isAllAgreed}
+                        onChange={(e) => handleAgreeAll(e.target.checked)}
+                        className={styles.checkboxInput}
+                        disabled={isLoading}
+                      />
+                      <span
+                        className={`${styles.checkboxText} ${styles.agreeAllText}`}
+                      >
+                        <strong>전체 동의</strong>
+                      </span>
                     </label>
-                    <input
-                      type="text"
-                      id="companyName"
-                      name="companyName"
-                      value={formData.companyName}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.companyName ? styles.error : ""
-                      }`}
-                      placeholder="(주)회사명"
-                      required
-                    />
-                    {errors.companyName && (
-                      <p className={styles.formError}>{errors.companyName}</p>
+
+                    <div className={styles.termsDivider}></div>
+
+                    <label
+                      className={`${styles.checkboxLabel} ${
+                        styles.requiredTerm
+                      } ${errors.agreeTerms ? styles.error : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="agreeTerms"
+                        checked={formData.agreeTerms}
+                        onChange={(e) => handleInputChange(e)}
+                        className={styles.checkboxInput}
+                        required
+                        disabled={isLoading}
+                      />
+                      <span className={styles.checkboxText}>
+                        <strong>서비스 이용약관</strong>에 동의합니다 (필수)
+                      </span>
+                      <Link href="/terms" className={styles.termsLink}>
+                        보기
+                      </Link>
+                    </label>
+                    {errors.agreeTerms && (
+                      <p className={styles.formError}>{errors.agreeTerms}</p>
                     )}
+
+                    <label
+                      className={`${styles.checkboxLabel} ${
+                        styles.requiredTerm
+                      } ${errors.agreePrivacy ? styles.error : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="agreePrivacy"
+                        checked={formData.agreePrivacy}
+                        onChange={(e) => handleInputChange(e)}
+                        className={styles.checkboxInput}
+                        required
+                        disabled={isLoading}
+                      />
+                      <span className={styles.checkboxText}>
+                        <strong>개인정보 수집 및 이용</strong>에 동의합니다
+                        (필수)
+                      </span>
+                      <Link href="/privacy" className={styles.termsLink}>
+                        보기
+                      </Link>
+                    </label>
+                    {errors.agreePrivacy && (
+                      <p className={styles.formError}>{errors.agreePrivacy}</p>
+                    )}
+
+                    <label className={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        name="agreeMarketing"
+                        checked={formData.agreeMarketing}
+                        onChange={(e) => handleInputChange(e)}
+                        className={styles.checkboxInput}
+                        disabled={isLoading}
+                      />
+                      <span className={styles.checkboxText}>
+                        <strong>마케팅 정보 수집 및 활용</strong>에 동의합니다
+                        (선택)
+                      </span>
+                      <Link href="/marketing" className={styles.termsLink}>
+                        보기
+                      </Link>
+                    </label>
                   </div>
                 </div>
+              )}
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="ceoName"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      대표자명
-                    </label>
-                    <input
-                      type="text"
-                      id="ceoName"
-                      name="ceoName"
-                      value={formData.ceoName}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.ceoName ? styles.error : ""
-                      }`}
-                      placeholder="대표자명"
-                      required
-                    />
-                    {errors.ceoName && (
-                      <p className={styles.formError}>{errors.ceoName}</p>
-                    )}
+            {/* Step 3: 기업 정보 - 일반회원인 경우만 표시 */}
+            {currentStep === 3 &&
+              (formData.userType as string) === "general" && (
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>기업 정보</h3>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="companyName"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        기업명
+                      </label>
+                      <input
+                        type="text"
+                        id="companyName"
+                        name="companyName"
+                        value={formData.companyName}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.companyName ? styles.error : ""
+                        }`}
+                        placeholder="(주)회사명"
+                        required
+                      />
+                      {errors.companyName && (
+                        <p className={styles.formError}>{errors.companyName}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="ceoName"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        대표자명
+                      </label>
+                      <input
+                        type="text"
+                        id="ceoName"
+                        name="ceoName"
+                        value={formData.ceoName}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.ceoName ? styles.error : ""
+                        }`}
+                        placeholder="대표자명"
+                        required
+                      />
+                      {errors.ceoName && (
+                        <p className={styles.formError}>{errors.ceoName}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="businessNumber"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        사업자등록번호
+                      </label>
+                      <input
+                        type="text"
+                        id="businessNumber"
+                        name="businessNumber"
+                        value={formData.businessNumber}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.businessNumber ? styles.error : ""
+                        }`}
+                        placeholder="123-45-67890"
+                        required
+                      />
+                      {errors.businessNumber && (
+                        <p className={styles.formError}>
+                          {errors.businessNumber}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="companyAddress"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        회사 주소
+                      </label>
+                      <input
+                        type="text"
+                        id="companyAddress"
+                        name="companyAddress"
+                        value={formData.companyAddress}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.companyAddress ? styles.error : ""
+                        }`}
+                        placeholder="주소를 입력하세요"
+                        required
+                      />
+                      {errors.companyAddress && (
+                        <p className={styles.formError}>
+                          {errors.companyAddress}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="companyAddressDetail"
+                        className={styles.formLabel}
+                      >
+                        상세 주소
+                      </label>
+                      <input
+                        type="text"
+                        id="companyAddressDetail"
+                        name="companyAddressDetail"
+                        value={formData.companyAddressDetail}
+                        onChange={handleInputChange}
+                        className={styles.formInput}
+                        placeholder="상세 주소를 입력하세요"
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="companyPhone"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        대표번호
+                      </label>
+                      <input
+                        type="tel"
+                        id="companyPhone"
+                        name="companyPhone"
+                        value={formData.companyPhone}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.companyPhone ? styles.error : ""
+                        }`}
+                        placeholder="02-1234-5678"
+                        required
+                      />
+                      {errors.companyPhone && (
+                        <p className={styles.formError}>
+                          {errors.companyPhone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="toll080Number"
+                        className={styles.formLabel}
+                      >
+                        080 수신거부 번호
+                      </label>
+                      <input
+                        type="tel"
+                        id="toll080Number"
+                        name="toll080Number"
+                        value={formData.toll080Number}
+                        onChange={handleInputChange}
+                        className={styles.formInput}
+                        placeholder="080-123-4567"
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="customerServiceNumber"
+                        className={styles.formLabel}
+                      >
+                        고객센터 번호
+                      </label>
+                      <input
+                        type="tel"
+                        id="customerServiceNumber"
+                        name="customerServiceNumber"
+                        value={formData.customerServiceNumber}
+                        onChange={handleInputChange}
+                        className={styles.formInput}
+                        placeholder="1588-1234"
+                      />
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="businessNumber"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      사업자등록번호
-                    </label>
-                    <input
-                      type="text"
-                      id="businessNumber"
-                      name="businessNumber"
-                      value={formData.businessNumber}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.businessNumber ? styles.error : ""
-                      }`}
-                      placeholder="123-45-67890"
-                      required
-                    />
-                    {errors.businessNumber && (
-                      <p className={styles.formError}>
-                        {errors.businessNumber}
+            {/* Step 4: 제출 서류 - 일반회원인 경우만 표시 */}
+            {currentStep === 4 &&
+              (formData.userType as string) === "general" && (
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>제출 서류</h3>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="businessRegistration"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        사업자등록증
+                      </label>
+                      <input
+                        type="file"
+                        id="businessRegistration"
+                        name="businessRegistration"
+                        onChange={handleFileChange}
+                        className={`${styles.fileInput} ${
+                          errors.businessRegistration ? styles.error : ""
+                        }`}
+                        accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/*"
+                        required
+                      />
+                      <p className={styles.fileHelp}>
+                        PDF 또는 이미지 파일(JPG, PNG, GIF, WEBP)만 업로드
+                        가능합니다. (최대 10MB)
                       </p>
-                    )}
+                      {errors.businessRegistration && (
+                        <p className={styles.formError}>
+                          {errors.businessRegistration}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="companyAddress"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      회사 주소
-                    </label>
-                    <input
-                      type="text"
-                      id="companyAddress"
-                      name="companyAddress"
-                      value={formData.companyAddress}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.companyAddress ? styles.error : ""
-                      }`}
-                      placeholder="주소를 입력하세요"
-                      required
-                    />
-                    {errors.companyAddress && (
-                      <p className={styles.formError}>
-                        {errors.companyAddress}
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="employmentCertificate"
+                        className={`${styles.formLabel} ${
+                          formData.userType === "salesperson"
+                            ? styles.required
+                            : ""
+                        }`}
+                      >
+                        재직증명서{" "}
+                        {formData.userType === "salesperson"
+                          ? "(필수)"
+                          : "(선택)"}
+                      </label>
+                      <input
+                        type="file"
+                        id="employmentCertificate"
+                        name="employmentCertificate"
+                        onChange={handleFileChange}
+                        className={`${styles.fileInput} ${
+                          errors.employmentCertificate ? styles.error : ""
+                        }`}
+                        accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/*"
+                        required={formData.userType === "salesperson"}
+                      />
+                      <p className={styles.fileHelp}>
+                        {formData.userType === "salesperson"
+                          ? "영업사원은 재직증명서를 반드시 업로드해주세요."
+                          : "영업사원인 경우 재직증명서를 업로드해주세요."}{" "}
+                        PDF 또는 이미지 파일만 가능합니다. (최대 10MB)
                       </p>
+                      {errors.employmentCertificate && (
+                        <p className={styles.formError}>
+                          {errors.employmentCertificate}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Step 5: 세금계산서 정보 - 일반회원인 경우만 표시 */}
+            {currentStep === 5 &&
+              (formData.userType as string) === "general" && (
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>세금계산서 수령 정보</h3>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="taxInvoiceEmail"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        수신 이메일
+                      </label>
+                      <input
+                        type="email"
+                        id="taxInvoiceEmail"
+                        name="taxInvoiceEmail"
+                        value={formData.taxInvoiceEmail}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.taxInvoiceEmail ? styles.error : ""
+                        }`}
+                        placeholder="tax@company.com"
+                        required
+                      />
+                      {errors.taxInvoiceEmail && (
+                        <p className={styles.formError}>
+                          {errors.taxInvoiceEmail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="taxInvoiceManager"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        담당자명
+                      </label>
+                      <input
+                        type="text"
+                        id="taxInvoiceManager"
+                        name="taxInvoiceManager"
+                        value={formData.taxInvoiceManager}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.taxInvoiceManager ? styles.error : ""
+                        }`}
+                        placeholder="담당자명"
+                        required
+                      />
+                      {errors.taxInvoiceManager && (
+                        <p className={styles.formError}>
+                          {errors.taxInvoiceManager}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="taxInvoiceContact"
+                        className={`${styles.formLabel} ${styles.required}`}
+                      >
+                        담당자 연락처
+                      </label>
+                      <input
+                        type="tel"
+                        id="taxInvoiceContact"
+                        name="taxInvoiceContact"
+                        value={formData.taxInvoiceContact}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.taxInvoiceContact ? styles.error : ""
+                        }`}
+                        placeholder="010-1234-5678"
+                        required
+                      />
+                      {errors.taxInvoiceContact && (
+                        <p className={styles.formError}>
+                          {errors.taxInvoiceContact}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Step 6: 약관 동의 - 일반회원인 경우만 표시 */}
+            {currentStep === 6 &&
+              (formData.userType as string) === "general" && (
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>약관 동의</h3>
+
+                  <div className={styles.termsGroup}>
+                    {/* 전체 동의 */}
+                    <label
+                      className={`${styles.checkboxLabel} ${styles.agreeAllLabel}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isAllAgreed}
+                        onChange={(e) => handleAgreeAll(e.target.checked)}
+                        className={styles.checkboxInput}
+                        disabled={isLoading}
+                      />
+                      <span
+                        className={`${styles.checkboxText} ${styles.agreeAllText}`}
+                      >
+                        <strong>전체 동의</strong>
+                      </span>
+                    </label>
+
+                    <div className={styles.termsDivider}></div>
+
+                    <label
+                      className={`${styles.checkboxLabel} ${
+                        styles.requiredTerm
+                      } ${errors.agreeTerms ? styles.error : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="agreeTerms"
+                        checked={formData.agreeTerms}
+                        onChange={(e) => handleInputChange(e)}
+                        className={styles.checkboxInput}
+                        required
+                        disabled={isLoading}
+                      />
+                      <span className={styles.checkboxText}>
+                        <strong>서비스 이용약관</strong>에 동의합니다 (필수)
+                      </span>
+                      <Link href="/terms" className={styles.termsLink}>
+                        보기
+                      </Link>
+                    </label>
+                    {errors.agreeTerms && (
+                      <p className={styles.formError}>{errors.agreeTerms}</p>
                     )}
-                  </div>
-                </div>
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
                     <label
-                      htmlFor="companyAddressDetail"
-                      className={styles.formLabel}
+                      className={`${styles.checkboxLabel} ${
+                        styles.requiredTerm
+                      } ${errors.agreePrivacy ? styles.error : ""}`}
                     >
-                      상세 주소
+                      <input
+                        type="checkbox"
+                        name="agreePrivacy"
+                        checked={formData.agreePrivacy}
+                        onChange={(e) => handleInputChange(e)}
+                        className={styles.checkboxInput}
+                        required
+                        disabled={isLoading}
+                      />
+                      <span className={styles.checkboxText}>
+                        <strong>개인정보 수집 및 이용</strong>에 동의합니다
+                        (필수)
+                      </span>
+                      <Link href="/privacy" className={styles.termsLink}>
+                        보기
+                      </Link>
                     </label>
-                    <input
-                      type="text"
-                      id="companyAddressDetail"
-                      name="companyAddressDetail"
-                      value={formData.companyAddressDetail}
-                      onChange={handleInputChange}
-                      className={styles.formInput}
-                      placeholder="상세 주소를 입력하세요"
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="companyPhone"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      대표번호
-                    </label>
-                    <input
-                      type="tel"
-                      id="companyPhone"
-                      name="companyPhone"
-                      value={formData.companyPhone}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.companyPhone ? styles.error : ""
-                      }`}
-                      placeholder="02-1234-5678"
-                      required
-                    />
-                    {errors.companyPhone && (
-                      <p className={styles.formError}>{errors.companyPhone}</p>
+                    {errors.agreePrivacy && (
+                      <p className={styles.formError}>{errors.agreePrivacy}</p>
                     )}
-                  </div>
-                </div>
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label htmlFor="toll080Number" className={styles.formLabel}>
-                      080 수신거부 번호
+                    <label className={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        name="agreeMarketing"
+                        checked={formData.agreeMarketing}
+                        onChange={(e) => handleInputChange(e)}
+                        className={styles.checkboxInput}
+                        disabled={isLoading}
+                      />
+                      <span className={styles.checkboxText}>
+                        <strong>마케팅 정보 수집 및 활용</strong>에 동의합니다
+                        (선택)
+                      </span>
+                      <Link href="/marketing" className={styles.termsLink}>
+                        보기
+                      </Link>
                     </label>
-                    <input
-                      type="tel"
-                      id="toll080Number"
-                      name="toll080Number"
-                      value={formData.toll080Number}
-                      onChange={handleInputChange}
-                      className={styles.formInput}
-                      placeholder="080-123-4567"
-                    />
                   </div>
                 </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="customerServiceNumber"
-                      className={styles.formLabel}
-                    >
-                      고객센터 번호
-                    </label>
-                    <input
-                      type="tel"
-                      id="customerServiceNumber"
-                      name="customerServiceNumber"
-                      value={formData.customerServiceNumber}
-                      onChange={handleInputChange}
-                      className={styles.formInput}
-                      placeholder="1588-1234"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: 제출 서류 */}
-            {currentStep === 4 && (
-              <div className={styles.formSection}>
-                <h3 className={styles.sectionTitle}>제출 서류</h3>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="businessRegistration"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      사업자등록증
-                    </label>
-                    <input
-                      type="file"
-                      id="businessRegistration"
-                      name="businessRegistration"
-                      onChange={handleFileChange}
-                      className={`${styles.fileInput} ${
-                        errors.businessRegistration ? styles.error : ""
-                      }`}
-                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/*"
-                      required
-                    />
-                    <p className={styles.fileHelp}>
-                      PDF 또는 이미지 파일(JPG, PNG, GIF, WEBP)만 업로드
-                      가능합니다. (최대 10MB)
-                    </p>
-                    {errors.businessRegistration && (
-                      <p className={styles.formError}>
-                        {errors.businessRegistration}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="employmentCertificate"
-                      className={`${styles.formLabel} ${
-                        formData.userType === "salesperson"
-                          ? styles.required
-                          : ""
-                      }`}
-                    >
-                      재직증명서{" "}
-                      {formData.userType === "salesperson"
-                        ? "(필수)"
-                        : "(선택)"}
-                    </label>
-                    <input
-                      type="file"
-                      id="employmentCertificate"
-                      name="employmentCertificate"
-                      onChange={handleFileChange}
-                      className={`${styles.fileInput} ${
-                        errors.employmentCertificate ? styles.error : ""
-                      }`}
-                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/*"
-                      required={formData.userType === "salesperson"}
-                    />
-                    <p className={styles.fileHelp}>
-                      {formData.userType === "salesperson"
-                        ? "영업사원은 재직증명서를 반드시 업로드해주세요."
-                        : "영업사원인 경우 재직증명서를 업로드해주세요."}{" "}
-                      PDF 또는 이미지 파일만 가능합니다. (최대 10MB)
-                    </p>
-                    {errors.employmentCertificate && (
-                      <p className={styles.formError}>
-                        {errors.employmentCertificate}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: 세금계산서 정보 */}
-            {currentStep === 5 && (
-              <div className={styles.formSection}>
-                <h3 className={styles.sectionTitle}>세금계산서 수령 정보</h3>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="taxInvoiceEmail"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      수신 이메일
-                    </label>
-                    <input
-                      type="email"
-                      id="taxInvoiceEmail"
-                      name="taxInvoiceEmail"
-                      value={formData.taxInvoiceEmail}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.taxInvoiceEmail ? styles.error : ""
-                      }`}
-                      placeholder="tax@company.com"
-                      required
-                    />
-                    {errors.taxInvoiceEmail && (
-                      <p className={styles.formError}>
-                        {errors.taxInvoiceEmail}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="taxInvoiceManager"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      담당자명
-                    </label>
-                    <input
-                      type="text"
-                      id="taxInvoiceManager"
-                      name="taxInvoiceManager"
-                      value={formData.taxInvoiceManager}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.taxInvoiceManager ? styles.error : ""
-                      }`}
-                      placeholder="담당자명"
-                      required
-                    />
-                    {errors.taxInvoiceManager && (
-                      <p className={styles.formError}>
-                        {errors.taxInvoiceManager}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="taxInvoiceContact"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      담당자 연락처
-                    </label>
-                    <input
-                      type="tel"
-                      id="taxInvoiceContact"
-                      name="taxInvoiceContact"
-                      value={formData.taxInvoiceContact}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.taxInvoiceContact ? styles.error : ""
-                      }`}
-                      placeholder="010-1234-5678"
-                      required
-                    />
-                    {errors.taxInvoiceContact && (
-                      <p className={styles.formError}>
-                        {errors.taxInvoiceContact}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 6: 약관 동의 */}
-            {currentStep === 6 && (
-              <div className={styles.formSection}>
-                <h3 className={styles.sectionTitle}>약관 동의</h3>
-
-                <div className={styles.termsGroup}>
-                  {/* 전체 동의 */}
-                  <label
-                    className={`${styles.checkboxLabel} ${styles.agreeAllLabel}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isAllAgreed}
-                      onChange={(e) => handleAgreeAll(e.target.checked)}
-                      className={styles.checkboxInput}
-                      disabled={isLoading}
-                    />
-                    <span
-                      className={`${styles.checkboxText} ${styles.agreeAllText}`}
-                    >
-                      <strong>전체 동의</strong>
-                    </span>
-                  </label>
-
-                  <div className={styles.termsDivider}></div>
-
-                  <label
-                    className={`${styles.checkboxLabel} ${
-                      styles.requiredTerm
-                    } ${errors.agreeTerms ? styles.error : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      name="agreeTerms"
-                      checked={formData.agreeTerms}
-                      onChange={(e) => handleInputChange(e)}
-                      className={styles.checkboxInput}
-                      required
-                      disabled={isLoading}
-                    />
-                    <span className={styles.checkboxText}>
-                      <strong>서비스 이용약관</strong>에 동의합니다 (필수)
-                    </span>
-                    <Link href="/terms" className={styles.termsLink}>
-                      보기
-                    </Link>
-                  </label>
-                  {errors.agreeTerms && (
-                    <p className={styles.formError}>{errors.agreeTerms}</p>
-                  )}
-
-                  <label
-                    className={`${styles.checkboxLabel} ${
-                      styles.requiredTerm
-                    } ${errors.agreePrivacy ? styles.error : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      name="agreePrivacy"
-                      checked={formData.agreePrivacy}
-                      onChange={(e) => handleInputChange(e)}
-                      className={styles.checkboxInput}
-                      required
-                      disabled={isLoading}
-                    />
-                    <span className={styles.checkboxText}>
-                      <strong>개인정보 수집 및 이용</strong>에 동의합니다 (필수)
-                    </span>
-                    <Link href="/privacy" className={styles.termsLink}>
-                      보기
-                    </Link>
-                  </label>
-                  {errors.agreePrivacy && (
-                    <p className={styles.formError}>{errors.agreePrivacy}</p>
-                  )}
-
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      name="agreeMarketing"
-                      checked={formData.agreeMarketing}
-                      onChange={(e) => handleInputChange(e)}
-                      className={styles.checkboxInput}
-                      disabled={isLoading}
-                    />
-                    <span className={styles.checkboxText}>
-                      <strong>마케팅 정보 수집 및 활용</strong>에 동의합니다
-                      (선택)
-                    </span>
-                    <Link href="/marketing" className={styles.termsLink}>
-                      보기
-                    </Link>
-                  </label>
-                </div>
-              </div>
-            )}
+              )}
 
             {/* 버튼 영역 */}
             <div className={styles.buttonGroup}>
@@ -1512,7 +1647,7 @@ export default function SignupPage() {
                 </button>
               )}
 
-              {currentStep < 6 ? (
+              {currentStep < getActualTotalSteps() ? (
                 <button
                   type="button"
                   onClick={handleNextStep}
