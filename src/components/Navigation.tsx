@@ -39,11 +39,7 @@ export default function Navigation() {
 
   // 네비게이션 메뉴 클릭 핸들러
   const handleNavClick = (href: string) => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    } else {
-      router.push(href);
-    }
+    router.push(href);
     setShowMobileMenu(false); // 모바일 메뉴 닫기
   };
 

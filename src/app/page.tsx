@@ -32,14 +32,7 @@ export default function Home() {
                 <br />
                 에이마로 확실한 매출 효과를 경험하세요!
               </p>
-              <Link
-                href={
-                  isAuthenticated
-                    ? "/target-marketing/send/create-template"
-                    : "/login"
-                }
-                className="landing-hero-btn"
-              >
+              <Link href="/target-marketing" className="landing-hero-btn">
                 지금 바로 시작하기
               </Link>
             </div>
@@ -315,14 +308,7 @@ export default function Home() {
           <br />
           지금 에이마로 시작하세요!
         </h3>
-        <Link
-          href={
-            isAuthenticated
-              ? "/target-marketing/send/create-template"
-              : "/login"
-          }
-          className="landing-cta-btn"
-        >
+        <Link href="/target-marketing" className="landing-cta-btn">
           무료로 시작하기
         </Link>
       </section>

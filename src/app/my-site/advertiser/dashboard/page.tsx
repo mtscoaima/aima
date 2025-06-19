@@ -224,7 +224,7 @@ export default function AdvertiserDashboard() {
               </Link>
 
               <Link
-                href="/target-marketing/send/create-template"
+                href="/target-marketing"
                 className="flex flex-col items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mb-2">
