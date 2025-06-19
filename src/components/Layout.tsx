@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
+import { useAuth } from "../contexts/AuthContext";
 import Navigation from "./Navigation";
 import Footer from "./Footer";
 import "./Layout.css";
@@ -10,8 +11,21 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+// 로딩 스피너 컴포넌트
+function LoadingSpinner() {
+  return (
+    <div className="loading-container">
+      <div className="loading-spinner">
+        <div className="spinner"></div>
+        <p>로딩 중...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
+  const { isLoading } = useAuth();
 
   // 홈페이지인지 확인
   const isHomePage = pathname === "/";
@@ -22,6 +36,11 @@ export default function Layout({ children }: LayoutProps) {
     pathname.startsWith("/target-marketing/") ||
     pathname === "/my-site/advertiser/profile" ||
     pathname === "/my-site/advertiser/dashboard";
+
+  // 로딩 중일 때 스피너 표시
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className={`app-layout ${isHomePage ? "home-page" : ""}`}>
