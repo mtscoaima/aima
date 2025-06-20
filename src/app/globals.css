@@ -4839,8 +4839,6 @@ body .landing-root .main-content {
   position: relative;
   pointer-events: none;
   user-select: none;
-  opacity: 0.6;
-  filter: grayscale(20%);
 }
 
 .page-content-disabled::after {
