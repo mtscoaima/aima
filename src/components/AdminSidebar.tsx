@@ -62,8 +62,8 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     if (window.innerWidth <= 768) {
       onClose();
     }
-    // 대시보드 페이지만 실제로 이동 가능
-    if (href === "/admin/dashboard") {
+    // 대시보드와 메시지 관리 페이지는 실제로 이동 가능
+    if (href === "/admin/dashboard" || href === "/admin/messages") {
       window.location.href = href;
     }
     // 다른 페이지들은 추후 구현 예정
