@@ -62,14 +62,15 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     if (window.innerWidth <= 768) {
       onClose();
     }
-    // 대시보드, 메시지 관리, 템플릿 관리, 수신자 관리, 캠페인 관리, 사용자 관리 페이지는 실제로 이동 가능
+    // 대시보드, 메시지 관리, 템플릿 관리, 수신자 관리, 캠페인 관리, 사용자 관리, 시스템 설정 페이지는 실제로 이동 가능
     if (
       href === "/admin/dashboard" ||
       href === "/admin/messages" ||
       href === "/admin/templates" ||
       href === "/admin/recipients" ||
       href === "/admin/campaigns" ||
-      href === "/admin/user-management"
+      href === "/admin/user-management" ||
+      href === "/admin/system-settings"
     ) {
       window.location.href = href;
     }

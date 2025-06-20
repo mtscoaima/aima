@@ -1,0 +1,343 @@
+/* System Settings Page Styles */
+.admin-dashboard {
+  display: flex;
+  min-height: calc(100vh - 64px);
+  margin-top: 64px;
+  background-color: #f5f7fa;
+  color: #333333;
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+.admin-main {
+  flex: 1;
+  margin-left: 250px;
+  padding: 24px;
+  background-color: #f5f7fa;
+  transition: margin-left 0.3s ease;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: #333333;
+}
+
+/* Settings Container */
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Settings Section */
+.settings-section {
+  background-color: white;
+  border: 1px solid #e5e8ec;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.section-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.section-header p {
+  margin: 0;
+  color: #666666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Setting Items */
+.setting-item {
+  margin-bottom: 24px;
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333333;
+}
+
+.setting-description {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.4;
+}
+
+/* Form Controls */
+.setting-input,
+.setting-select {
+  width: 100%;
+  max-width: 400px;
+  padding: 12px 16px;
+  border: 1px solid #e5e8ec;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333333;
+  background-color: white;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.setting-input:focus,
+.setting-select:focus {
+  outline: none;
+  border-color: #0066ff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.setting-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* Toggle Switch */
+.setting-toggle-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.setting-toggle-info {
+  flex: 1;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-label {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #e5e8ec;
+  border-radius: 24px;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-label:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-input:checked + .toggle-label {
+  background-color: #0066ff;
+}
+
+.toggle-input:checked + .toggle-label:before {
+  transform: translateX(24px);
+}
+
+/* API Key Container */
+.api-key-container {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.api-key-input {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.btn-generate-key {
+  background-color: #666666;
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-generate-key:hover {
+  background-color: #555555;
+}
+
+.btn-new-api-key {
+  background-color: white;
+  color: #0066ff;
+  border: 1px solid #0066ff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-new-api-key:hover {
+  background-color: #0066ff;
+  color: white;
+}
+
+/* Settings Actions */
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 24px;
+}
+
+.btn-save-settings {
+  background-color: #0066ff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-save-settings:hover {
+  background-color: #0052cc;
+}
+
+.settings-notice {
+  margin: 0;
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.4;
+  font-style: italic;
+  text-align: center;
+  width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .admin-main {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .settings-container {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-header h1 {
+    font-size: 24px;
+  }
+
+  .settings-section {
+    padding: 20px;
+  }
+
+  .setting-toggle-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .api-key-container {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .api-key-input {
+    max-width: 100%;
+  }
+
+  .btn-generate-key {
+    align-self: flex-start;
+  }
+
+  .settings-actions {
+    padding: 20px;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-main {
+    padding: 12px;
+  }
+
+  .settings-section {
+    padding: 16px;
+  }
+
+  .section-header {
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+  }
+
+  .section-header h2 {
+    font-size: 18px;
+  }
+
+  .setting-item {
+    margin-bottom: 20px;
+  }
+
+  .settings-actions {
+    padding: 16px;
+    align-items: flex-start;
+  }
+}
