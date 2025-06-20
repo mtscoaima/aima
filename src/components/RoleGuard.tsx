@@ -75,6 +75,29 @@ export default function RoleGuard({
   return <>{children}</>;
 }
 
+// 관리자 전용 가드
+export function AdminGuard({ children }: { children: ReactNode }) {
+  const router = useRouter();
+
+  return (
+    <RoleGuard
+      allowedRoles={["ADMIN"]}
+      redirectTo="/"
+      fallback={
+        <div className="access-denied">
+          <h2>관리자 전용 페이지</h2>
+          <p>이 페이지는 관리자만 접근할 수 있습니다.</p>
+          <button onClick={() => router.push("/")} className="btn-primary">
+            홈으로 돌아가기
+          </button>
+        </div>
+      }
+    >
+      {children}
+    </RoleGuard>
+  );
+}
+
 // 영업사원 전용 가드
 export function SalespersonGuard({ children }: { children: ReactNode }) {
   const router = useRouter();

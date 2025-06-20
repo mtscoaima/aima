@@ -30,6 +30,9 @@ export default function Layout({ children }: LayoutProps) {
   // 홈페이지인지 확인
   const isHomePage = pathname === "/";
 
+  // 관리자 페이지인지 확인
+  const isAdminPage = pathname.startsWith("/admin");
+
   // 헤더 아래 여백이 필요한 페이지들 확인
   const needsHeaderPadding =
     pathname === "/support" ||
@@ -40,6 +43,11 @@ export default function Layout({ children }: LayoutProps) {
   // 로딩 중일 때 스피너 표시
   if (isLoading) {
     return <LoadingSpinner />;
+  }
+
+  // 관리자 페이지인 경우 별도 레이아웃
+  if (isAdminPage) {
+    return <div className="admin-layout">{children}</div>;
   }
 
   return (

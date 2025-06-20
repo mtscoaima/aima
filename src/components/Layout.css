@@ -5,6 +5,12 @@
   transition: all 0.3s ease;
 }
 
+/* 관리자 레이아웃 */
+.admin-layout {
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
 .main-layout {
   flex: 1;
   display: flex;

@@ -14,6 +14,7 @@ export default function Navigation() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const isHomePage = pathname === "/";
+  const isAdminPage = pathname.startsWith("/admin");
 
   const navClassName = isHomePage
     ? "navigation"
@@ -75,21 +76,23 @@ export default function Navigation() {
       <div className="nav-container">
         <div className="nav-left">
           {/* 햄버거 버튼 */}
-          <button
-            className="hamburger-btn"
-            onClick={toggleMobileMenu}
-            aria-label="메뉴 열기/닫기"
-          >
-            <span
-              className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
-            ></span>
-            <span
-              className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
-            ></span>
-            <span
-              className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
-            ></span>
-          </button>
+          {!isAdminPage && (
+            <button
+              className="hamburger-btn"
+              onClick={toggleMobileMenu}
+              aria-label="메뉴 열기/닫기"
+            >
+              <span
+                className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
+              ></span>
+              <span
+                className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
+              ></span>
+              <span
+                className={`hamburger-line ${showMobileMenu ? "active" : ""}`}
+              ></span>
+            </button>
+          )}
 
           <Link href="/">
             <svg
@@ -113,149 +116,152 @@ export default function Navigation() {
           </Link>
         </div>
 
-        <div className="nav-center">
-          <nav className="landing-nav-menu">
-            {user?.role === "SALESPERSON" ? (
-              <>
-                <Link href="/" className="landing-nav-menu-item">
-                  대시보드
-                </Link>
-                <Link
-                  href="/salesperson/invite"
-                  className="landing-nav-menu-item"
-                >
-                  추천 관리
-                </Link>
-                <Link
-                  href="/salesperson/referrals"
-                  className="landing-nav-menu-item"
-                >
-                  리워드 관리
-                </Link>
-                <Link
-                  href="/salesperson/organization"
-                  className="landing-nav-menu-item"
-                >
-                  조직도 보기
-                </Link>
-                <Link
-                  href="/salesperson/profile"
-                  className="landing-nav-menu-item"
-                >
-                  마이페이지
-                </Link>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => handleNavClick("/target-marketing")}
-                  className="landing-nav-menu-item landing-nav-menu-btn"
-                >
-                  AI 타겟마케팅
-                </button>
-                <button
-                  onClick={() => handleNavClick("/messages/history")}
-                  className="landing-nav-menu-item landing-nav-menu-btn"
-                >
-                  발송현황
-                </button>
-                <button
-                  onClick={() => handleNavClick("/messages/send")}
-                  className="landing-nav-menu-item landing-nav-menu-btn"
-                >
-                  문자
-                </button>
-                <button
-                  onClick={() => handleNavClick("/support")}
-                  className="landing-nav-menu-item landing-nav-menu-btn"
-                >
-                  고객센터
-                </button>
-              </>
-            )}
-          </nav>
-        </div>
+        {!isAdminPage && (
+          <div className="nav-center">
+            <nav className="landing-nav-menu">
+              {user?.role === "SALESPERSON" ? (
+                <>
+                  <Link href="/" className="landing-nav-menu-item">
+                    대시보드
+                  </Link>
+                  <Link
+                    href="/salesperson/invite"
+                    className="landing-nav-menu-item"
+                  >
+                    추천 관리
+                  </Link>
+                  <Link
+                    href="/salesperson/referrals"
+                    className="landing-nav-menu-item"
+                  >
+                    리워드 관리
+                  </Link>
+                  <Link
+                    href="/salesperson/organization"
+                    className="landing-nav-menu-item"
+                  >
+                    조직도 보기
+                  </Link>
+                  <Link
+                    href="/salesperson/profile"
+                    className="landing-nav-menu-item"
+                  >
+                    마이페이지
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleNavClick("/target-marketing")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
+                  >
+                    AI 타겟마케팅
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/messages/history")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
+                  >
+                    발송현황
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/messages/send")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
+                  >
+                    문자
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/support")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
+                  >
+                    고객센터
+                  </button>
+                </>
+              )}
+            </nav>
+          </div>
+        )}
 
         {/* 모바일 드롭다운 메뉴 */}
-        <div
-          className={`mobile-menu-container ${showMobileMenu ? "active" : ""}`}
-        >
-          <div className="mobile-menu-dropdown">
-            {user?.role === "SALESPERSON" ? (
-              <>
-                <Link
-                  href="/"
-                  className="mobile-menu-item"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  대시보드
-                </Link>
-                <Link
-                  href="/salesperson/invite"
-                  className="mobile-menu-item"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  추천 관리
-                </Link>
-                <Link
-                  href="/salesperson/referrals"
-                  className="mobile-menu-item"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  리워드 관리
-                </Link>
-                <Link
-                  href="/salesperson/organization"
-                  className="mobile-menu-item"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  조직도 보기
-                </Link>
-                <Link
-                  href="/salesperson/profile"
-                  className="mobile-menu-item"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  마이페이지
-                </Link>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => handleNavClick("/target-marketing")}
-                  className="mobile-menu-item mobile-menu-btn"
-                >
-                  AI 타겟마케팅
-                </button>
-                <button
-                  onClick={() => handleNavClick("/messages/history")}
-                  className="mobile-menu-item mobile-menu-btn"
-                >
-                  발송현황
-                </button>
-                <button
-                  onClick={() => handleNavClick("/messages/send")}
-                  className="mobile-menu-item mobile-menu-btn"
-                >
-                  문자
-                </button>
-                <button
-                  onClick={() => handleNavClick("/support")}
-                  className="mobile-menu-item mobile-menu-btn"
-                >
-                  고객센터
-                </button>
-              </>
-            )}
+        {!isAdminPage && (
+          <div
+            className={`mobile-menu-container ${
+              showMobileMenu ? "active" : ""
+            }`}
+          >
+            <div className="mobile-menu-dropdown">
+              {user?.role === "SALESPERSON" ? (
+                <>
+                  <Link
+                    href="/"
+                    className="mobile-menu-item"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    대시보드
+                  </Link>
+                  <Link
+                    href="/salesperson/invite"
+                    className="mobile-menu-item"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    추천 관리
+                  </Link>
+                  <Link
+                    href="/salesperson/referrals"
+                    className="mobile-menu-item"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    리워드 관리
+                  </Link>
+                  <Link
+                    href="/salesperson/organization"
+                    className="mobile-menu-item"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    조직도 보기
+                  </Link>
+                  <Link
+                    href="/salesperson/profile"
+                    className="mobile-menu-item"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    마이페이지
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleNavClick("/target-marketing")}
+                    className="mobile-menu-item mobile-menu-btn"
+                  >
+                    AI 타겟마케팅
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/messages/history")}
+                    className="mobile-menu-item mobile-menu-btn"
+                  >
+                    발송현황
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/messages/send")}
+                    className="mobile-menu-item mobile-menu-btn"
+                  >
+                    문자
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/support")}
+                    className="mobile-menu-item mobile-menu-btn"
+                  >
+                    고객센터
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="landing-nav-auth">
           {isAuthenticated ? (
             <div className="nav-right-buttons">
-              {/* 사용자가이드 버튼 */}
-              <button className="nav-guide-btn">사용자가이드</button>
-
               {/* 알림 버튼 */}
               <div className="notification-dropdown-container">
                 <button

@@ -3914,6 +3914,7 @@ body .landing-root .main-content {
   min-height: 60vh;
   text-align: center;
   padding: 2rem;
+  background-color: var(--background);
 }
 
 .loading-container {
@@ -3930,7 +3931,7 @@ body .landing-root .main-content {
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
+  border: 4px solid var(--secondary);
   border-top: 4px solid var(--primary);
   border-radius: 50%;
   animation: spin 1s linear infinite !important;
@@ -3996,22 +3997,23 @@ body .landing-root .main-content {
 
 .access-denied .btn-primary {
   margin-top: 0.5rem;
-  background: #1681ff;
+  background: var(--primary);
   color: #fff;
-  border: 1px solid #1681ff;
-  border-radius: 8px;
+  border: 1px solid var(--primary);
+  border-radius: var(--border-radius-sm);
   padding: 12px 24px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
 .access-denied .btn-primary:hover {
-  background: #0066cc;
-  border-color: #0066cc;
+  background: #0052cc;
+  border-color: #0052cc;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(22, 129, 255, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 /* 랜딩 페이지 반응형 개선 */
@@ -4788,10 +4790,10 @@ body .landing-root .main-content {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: linear-gradient(135deg, #1681ff 0%, #0066cc 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #0052cc 100%);
   color: white;
   padding: 16px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .login-prompt-content {
@@ -4818,21 +4820,21 @@ body .landing-root .main-content {
 
 .login-prompt-btn {
   background: white;
-  color: #1681ff;
+  color: var(--primary);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--border-radius-sm);
   padding: 10px 20px;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
   white-space: nowrap;
 }
 
 .login-prompt-btn:hover {
-  background: #f8f9fa;
+  background: var(--secondary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .page-content-disabled {
