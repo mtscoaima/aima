@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/AdminHeader";
 import AdminSidebar from "@/components/AdminSidebar";
 import "./styles.css";
@@ -158,215 +159,223 @@ export default function MessageManagementPage() {
   };
 
   return (
-    <div className="admin-layout">
-      <AdminHeader onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <AdminSidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+    <AdminGuard>
+      <div className="admin-layout">
+        <AdminHeader onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        <AdminSidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
 
-      <main className="admin-main-content">
-        <div className="message-management-page">
-          <div className="page-header">
-            <h1>메시지 관리</h1>
-          </div>
-
-          {/* 검색 및 필터 섹션 */}
-          <div className="filter-section">
-            <div className="filter-header">
-              <h3>검색 및 필터</h3>
-              <p>기간, 채널, 상태, 키워드로 메시지를 검색하고 필터링합니다.</p>
+        <main className="admin-main-content">
+          <div className="message-management-page">
+            <div className="page-header">
+              <h1>메시지 관리</h1>
             </div>
 
-            <div className="filter-controls">
-              <div className="filter-row">
-                <div className="date-range">
-                  <div className="date-input-group">
-                    <label>시작일-종료일</label>
-                    <input
-                      type="date"
-                      value={filters.startDate}
+            {/* 검색 및 필터 섹션 */}
+            <div className="filter-section">
+              <div className="filter-header">
+                <h3>검색 및 필터</h3>
+                <p>
+                  기간, 채널, 상태, 키워드로 메시지를 검색하고 필터링합니다.
+                </p>
+              </div>
+
+              <div className="filter-controls">
+                <div className="filter-row">
+                  <div className="date-range">
+                    <div className="date-input-group">
+                      <label>시작일-종료일</label>
+                      <input
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) =>
+                          handleFilterChange("startDate", e.target.value)
+                        }
+                      />
+                    </div>
+                    <span className="date-separator">-</span>
+                    <div className="date-input-group">
+                      <label>시작일-종료일</label>
+                      <input
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) =>
+                          handleFilterChange("endDate", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="select-group">
+                    <label>채널 선택</label>
+                    <select
+                      value={filters.type}
                       onChange={(e) =>
-                        handleFilterChange("startDate", e.target.value)
+                        handleFilterChange("type", e.target.value)
                       }
+                    >
+                      <option value="">전체</option>
+                      <option value="SMS">SMS</option>
+                      <option value="Email">Email</option>
+                      <option value="Kakao">Kakao</option>
+                    </select>
+                  </div>
+
+                  <div className="select-group">
+                    <label>상태 선택</label>
+                    <select
+                      value={filters.status}
+                      onChange={(e) =>
+                        handleFilterChange("status", e.target.value)
+                      }
+                    >
+                      <option value="">전체</option>
+                      <option value="성공">성공</option>
+                      <option value="실패">실패</option>
+                      <option value="대기">대기</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="search-row">
+                  <div className="search-input-wrapper">
+                    <input
+                      type="text"
+                      placeholder="키워드 검색 (내용, 수신자 등)"
+                      value={filters.searchTerm}
+                      onChange={(e) =>
+                        handleFilterChange("searchTerm", e.target.value)
+                      }
+                      className="search-input"
                     />
                   </div>
-                  <span className="date-separator">-</span>
-                  <div className="date-input-group">
-                    <label>시작일-종료일</label>
-                    <input
-                      type="date"
-                      value={filters.endDate}
-                      onChange={(e) =>
-                        handleFilterChange("endDate", e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="select-group">
-                  <label>채널 선택</label>
-                  <select
-                    value={filters.type}
-                    onChange={(e) => handleFilterChange("type", e.target.value)}
-                  >
-                    <option value="">전체</option>
-                    <option value="SMS">SMS</option>
-                    <option value="Email">Email</option>
-                    <option value="Kakao">Kakao</option>
-                  </select>
-                </div>
-
-                <div className="select-group">
-                  <label>상태 선택</label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) =>
-                      handleFilterChange("status", e.target.value)
-                    }
-                  >
-                    <option value="">전체</option>
-                    <option value="성공">성공</option>
-                    <option value="실패">실패</option>
-                    <option value="대기">대기</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="search-row">
-                <div className="search-input-wrapper">
-                  <input
-                    type="text"
-                    placeholder="키워드 검색 (내용, 수신자 등)"
-                    value={filters.searchTerm}
-                    onChange={(e) =>
-                      handleFilterChange("searchTerm", e.target.value)
-                    }
-                    className="search-input"
-                  />
-                </div>
-                <button className="search-btn" onClick={handleSearch}>
-                  검색
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 메시지 목록 섹션 */}
-          <div className="message-list-section">
-            <div className="list-header">
-              <h3>메시지 목록</h3>
-              <div className="list-actions">
-                <button
-                  className="action-btn resend-btn"
-                  onClick={handleResend}
-                >
-                  재발송
-                </button>
-                <button
-                  className="action-btn delete-btn"
-                  onClick={handleDelete}
-                >
-                  삭제
-                </button>
-                <button
-                  className="action-btn export-btn"
-                  onClick={handleExportCSV}
-                >
-                  CSV 다운로드
-                </button>
-              </div>
-            </div>
-
-            <div className="message-table-container">
-              <table className="message-table">
-                <thead>
-                  <tr>
-                    <th>메시지 ID</th>
-                    <th>채널</th>
-                    <th>수신자</th>
-                    <th>내용 (일부)</th>
-                    <th>상태</th>
-                    <th>발송일시</th>
-                    <th>액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentMessages.map((message) => (
-                    <tr key={message.id}>
-                      <td>{message.id}</td>
-                      <td>
-                        <span
-                          className={`channel-badge ${message.type.toLowerCase()}`}
-                        >
-                          {message.type}
-                        </span>
-                      </td>
-                      <td>{message.recipient}</td>
-                      <td className="content-cell">{message.content}</td>
-                      <td>
-                        <span
-                          className={`status-badge ${getStatusClass(
-                            message.status
-                          )}`}
-                        >
-                          {message.status}
-                        </span>
-                      </td>
-                      <td>{message.sentAt}</td>
-                      <td className="action-cell">
-                        <button className="action-detail-btn">상세</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 페이지네이션 */}
-            <div className="pagination">
-              <button
-                className="pagination-btn"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    className={`pagination-btn ${
-                      currentPage === page ? "active" : ""
-                    }`}
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
+                  <button className="search-btn" onClick={handleSearch}>
+                    검색
                   </button>
-                )
-              )}
-
-              <button
-                className="pagination-btn"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                }
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
+                </div>
+              </div>
             </div>
 
-            <div className="table-footer">
-              <p>
-                * 메시지 상세 보기는 클릭하면 Drawer 형태로 열리며, 메타데이터,
-                발송 결과 등 상세 정보를 제공합니다.
-              </p>
+            {/* 메시지 목록 섹션 */}
+            <div className="message-list-section">
+              <div className="list-header">
+                <h3>메시지 목록</h3>
+                <div className="list-actions">
+                  <button
+                    className="action-btn resend-btn"
+                    onClick={handleResend}
+                  >
+                    재발송
+                  </button>
+                  <button
+                    className="action-btn delete-btn"
+                    onClick={handleDelete}
+                  >
+                    삭제
+                  </button>
+                  <button
+                    className="action-btn export-btn"
+                    onClick={handleExportCSV}
+                  >
+                    CSV 다운로드
+                  </button>
+                </div>
+              </div>
+
+              <div className="message-table-container">
+                <table className="message-table">
+                  <thead>
+                    <tr>
+                      <th>메시지 ID</th>
+                      <th>채널</th>
+                      <th>수신자</th>
+                      <th>내용 (일부)</th>
+                      <th>상태</th>
+                      <th>발송일시</th>
+                      <th>액션</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentMessages.map((message) => (
+                      <tr key={message.id}>
+                        <td>{message.id}</td>
+                        <td>
+                          <span
+                            className={`channel-badge ${message.type.toLowerCase()}`}
+                          >
+                            {message.type}
+                          </span>
+                        </td>
+                        <td>{message.recipient}</td>
+                        <td className="content-cell">{message.content}</td>
+                        <td>
+                          <span
+                            className={`status-badge ${getStatusClass(
+                              message.status
+                            )}`}
+                          >
+                            {message.status}
+                          </span>
+                        </td>
+                        <td>{message.sentAt}</td>
+                        <td className="action-cell">
+                          <button className="action-detail-btn">상세</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 페이지네이션 */}
+              <div className="pagination">
+                <button
+                  className="pagination-btn"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      className={`pagination-btn ${
+                        currentPage === page ? "active" : ""
+                      }`}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+
+                <button
+                  className="pagination-btn"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+
+              <div className="table-footer">
+                <p>
+                  * 메시지 상세 보기는 클릭하면 Drawer 형태로 열리며,
+                  메타데이터, 발송 결과 등 상세 정보를 제공합니다.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </AdminGuard>
   );
 }
