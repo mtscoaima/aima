@@ -4777,3 +4777,123 @@ body .landing-root .main-content {
     font-size: 22px;
   }
 }
+
+/* AdvertiserGuardWithDisabled 스타일 */
+.page-disabled-overlay {
+  position: relative;
+  min-height: 100vh;
+}
+
+.login-prompt-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: linear-gradient(135deg, #1681ff 0%, #0066cc 100%);
+  color: white;
+  padding: 16px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.login-prompt-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.login-prompt-content h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.login-prompt-content p {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.login-prompt-btn {
+  background: white;
+  color: #1681ff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.login-prompt-btn:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.page-content-disabled {
+  position: relative;
+  pointer-events: none;
+  user-select: none;
+}
+
+.page-content-disabled::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  z-index: 999;
+  cursor: not-allowed;
+}
+
+/* 비활성화된 상태에서도 스크롤은 가능하도록 */
+.page-content-disabled * {
+  pointer-events: none !important;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .login-prompt-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .login-prompt-content h3 {
+    font-size: 1.1rem;
+  }
+
+  .login-prompt-content p {
+    font-size: 0.9rem;
+  }
+
+  .login-prompt-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-prompt-banner {
+    padding: 12px 0;
+  }
+
+  .login-prompt-content {
+    padding: 0 16px;
+  }
+
+  .login-prompt-content h3 {
+    font-size: 1rem;
+  }
+
+  .login-prompt-content p {
+    font-size: 0.85rem;
+  }
+}

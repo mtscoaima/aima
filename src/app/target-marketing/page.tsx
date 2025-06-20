@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Layout, ImageIcon, X } from "lucide-react";
-import { AdvertiserGuard } from "@/components/RoleGuard";
+import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import "./styles.css";
 
 interface Template {
@@ -551,7 +551,7 @@ export default function TargetMarketingPage() {
   };
 
   return (
-    <AdvertiserGuard>
+    <AdvertiserGuardWithDisabled>
       <div className="target-marketing-landing">
         <div className="landing-container">
           {/* Header */}
@@ -995,6 +995,6 @@ export default function TargetMarketingPage() {
           </div>
         )}
       </div>
-    </AdvertiserGuard>
+    </AdvertiserGuardWithDisabled>
   );
 }

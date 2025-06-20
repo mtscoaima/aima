@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { getUserInfo, updateUserInfo } from "@/lib/api";
 import { formatKSTDateTime, formatKSTDate } from "@/lib/utils";
-import { AdvertiserGuard } from "@/components/RoleGuard";
+import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 
 // 회원정보 데이터 타입
 interface UserProfileData {
@@ -115,8 +115,6 @@ export default function ProfilePage() {
   // 사용자 정보 로드
   useEffect(() => {
     const loadUserData = async () => {
-      if (!user) return;
-
       try {
         setIsLoading(true);
         const userInfo = await getUserInfo();
@@ -159,7 +157,7 @@ export default function ProfilePage() {
       }
     };
 
-    if (user && !authLoading) {
+    if (!authLoading) {
       loadUserData();
     }
   }, [user, authLoading]);
@@ -358,28 +356,8 @@ export default function ProfilePage() {
     );
   }
 
-  // 로그인하지 않은 경우
-  if (!user) {
-    return (
-      <div className="p-4 max-w-5xl mx-auto">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold mb-4">로그인이 필요합니다</h1>
-          <p className="text-gray-600 mb-4">
-            회원정보를 확인하려면 로그인해주세요.
-          </p>
-          <Link
-            href="/login"
-            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-          >
-            로그인하기
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <AdvertiserGuard>
+    <AdvertiserLoginRequiredGuard>
       <div className="p-4 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">회원정보 관리</h1>
@@ -1260,6 +1238,6 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-    </AdvertiserGuard>
+    </AdvertiserLoginRequiredGuard>
   );
 }
