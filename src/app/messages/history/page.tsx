@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Filter,
 } from "lucide-react";
-import { AdvertiserGuard } from "@/components/RoleGuard";
+import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import "./styles.css";
 
 interface MessageHistory {
@@ -113,7 +113,7 @@ export default function MessageHistoryPage() {
   const totalPages = Math.ceil(filteredMessages.length / itemsPerPage);
 
   return (
-    <AdvertiserGuard>
+    <AdvertiserGuardWithDisabled>
       <div className="message-history-container">
         <div className="history-header">
           <h1>
@@ -438,6 +438,6 @@ export default function MessageHistoryPage() {
           </div>
         </div>
       </div>
-    </AdvertiserGuard>
+    </AdvertiserGuardWithDisabled>
   );
 }

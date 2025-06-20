@@ -23,7 +23,7 @@ import {
   isFileSizeExceeded,
   ImageDimensions,
 } from "@/lib/imageUtils";
-import { AdvertiserGuard } from "@/components/RoleGuard";
+import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import "./styles.css";
 
 export default function MessageSendPage() {
@@ -345,7 +345,7 @@ export default function MessageSendPage() {
   };
 
   return (
-    <AdvertiserGuard>
+    <AdvertiserGuardWithDisabled>
       <div className="message-send-container">
         <div className="message-content">
           {/* 단일 카드 레이아웃 */}
@@ -680,6 +680,6 @@ export default function MessageSendPage() {
           type="warning"
         />
       </div>
-    </AdvertiserGuard>
+    </AdvertiserGuardWithDisabled>
   );
 }

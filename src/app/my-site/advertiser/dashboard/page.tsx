@@ -14,7 +14,7 @@ import {
 } from "chart.js";
 import { Line, Bar } from "react-chartjs-2";
 import Link from "next/link";
-import { AdvertiserGuard } from "@/components/RoleGuard";
+import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 
 // Chart.js 컴포넌트 등록
 ChartJS.register(
@@ -83,7 +83,7 @@ export default function AdvertiserDashboard() {
   };
 
   return (
-    <AdvertiserGuard>
+    <AdvertiserLoginRequiredGuard>
       <div className="p-4 max-w-7xl mx-auto">
         {/* 회원 요약정보 섹션 */}
         <div className="bg-white rounded-lg shadow p-4 mb-4 border-t-4 border-t-blue-500">
@@ -311,6 +311,6 @@ export default function AdvertiserDashboard() {
           </div>
         </div>
       </div>
-    </AdvertiserGuard>
+    </AdvertiserLoginRequiredGuard>
   );
 }

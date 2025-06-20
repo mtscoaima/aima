@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { AdvertiserGuard } from "@/components/RoleGuard";
+import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 
 // 요금제 타입
 type PlanType = "prepaid" | "postpaid";
@@ -274,7 +274,7 @@ export default function PlansPage() {
   };
 
   return (
-    <AdvertiserGuard>
+    <AdvertiserLoginRequiredGuard>
       <div className="p-4 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">요금제 관리</h1>
@@ -918,6 +918,6 @@ export default function PlansPage() {
           </div>
         )}
       </div>
-    </AdvertiserGuard>
+    </AdvertiserLoginRequiredGuard>
   );
 }

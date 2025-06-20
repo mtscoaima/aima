@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { AdvertiserGuard } from "@/components/RoleGuard";
+import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 
 // 기업정보 인증 상태 타입
 type VerificationStatus = "waiting" | "processing" | "approved" | "rejected";
@@ -136,7 +136,7 @@ export default function BusinessVerificationPage() {
   };
 
   return (
-    <AdvertiserGuard>
+    <AdvertiserLoginRequiredGuard>
       <div className="p-4 max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">기업정보 인증 상태</h1>
@@ -364,6 +364,6 @@ export default function BusinessVerificationPage() {
           </div>
         </div>
       </div>
-    </AdvertiserGuard>
+    </AdvertiserLoginRequiredGuard>
   );
 }
