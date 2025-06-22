@@ -75,30 +75,117 @@ export default function RoleGuard({
   return <>{children}</>;
 }
 
-// 영업사원 전용 가드
-export function SalespersonGuard({ children }: { children: ReactNode }) {
+// 관리자 페이지 가드 - 관리자를 제외한 모든 사용자 접근 불가
+export function AdminGuard({ children }: { children: ReactNode }) {
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  return (
-    <RoleGuard
-      allowedRoles={["SALESPERSON"]}
-      redirectTo="/"
-      fallback={
-        <div className="access-denied">
-          <h2>영업사원 전용 페이지</h2>
-          <p>이 페이지는 영업사원만 접근할 수 있습니다.</p>
-          <button onClick={() => router.push("/")} className="btn-primary">
-            홈으로 돌아가기
-          </button>
+  // 로딩 중일 때
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <div className="loading-text">
+          <p>로딩 중...</p>
         </div>
-      }
-    >
-      {children}
-    </RoleGuard>
-  );
+      </div>
+    );
+  }
+
+  // 로그인하지 않은 사용자인 경우
+  if (!isAuthenticated) {
+    return (
+      <div className="access-denied">
+        <h2>로그인이 필요합니다</h2>
+        <p>관리자 페이지에 접근하려면 로그인이 필요합니다.</p>
+        <button onClick={() => router.push("/login")} className="btn-primary">
+          로그인하기
+        </button>
+      </div>
+    );
+  }
+
+  // 관리자가 아닌 사용자인 경우
+  if (user && user.role !== "ADMIN") {
+    return (
+      <div className="access-denied">
+        <h2>접근 권한이 없습니다</h2>
+        <p>이 페이지는 관리자만 접근할 수 있습니다.</p>
+        <p>
+          현재 권한:{" "}
+          {user.role === "SALESPERSON"
+            ? "영업사원"
+            : user.role === "USER"
+            ? "일반 회원"
+            : user.role}
+        </p>
+        <button onClick={() => router.push("/")} className="btn-primary">
+          홈으로 돌아가기
+        </button>
+      </div>
+    );
+  }
+
+  // 관리자인 경우에만 자식 컴포넌트 렌더링
+  return <>{children}</>;
 }
 
-// 일반 유저(광고주) 전용 가드 - SALESPERSON만 접근 불가
+// 영업사원 전용 가드 - 일반회원과 로그인하지 않은 유저는 접근 불가
+export function SalespersonGuard({ children }: { children: ReactNode }) {
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  // 로딩 중일 때
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <div className="loading-text">
+          <p>로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 로그인하지 않은 사용자인 경우
+  if (!isAuthenticated) {
+    return (
+      <div className="access-denied">
+        <h2>로그인이 필요합니다</h2>
+        <p>영업사원 페이지에 접근하려면 로그인이 필요합니다.</p>
+        <button onClick={() => router.push("/login")} className="btn-primary">
+          로그인하기
+        </button>
+      </div>
+    );
+  }
+
+  // 영업사원이 아닌 사용자인 경우
+  if (user && user.role !== "SALESPERSON") {
+    return (
+      <div className="access-denied">
+        <h2>접근 권한이 없습니다</h2>
+        <p>이 페이지는 영업사원만 접근할 수 있습니다.</p>
+        <p>
+          현재 권한:{" "}
+          {user.role === "ADMIN"
+            ? "관리자"
+            : user.role === "USER"
+            ? "일반 회원"
+            : user.role}
+        </p>
+        <button onClick={() => router.push("/")} className="btn-primary">
+          홈으로 돌아가기
+        </button>
+      </div>
+    );
+  }
+
+  // 영업사원인 경우에만 자식 컴포넌트 렌더링
+  return <>{children}</>;
+}
+
+// 일반 회원 페이지 가드 - 영업사원만 접근 불가, 로그인 안한 유저도 접근 가능
 export function AdvertiserGuard({ children }: { children: ReactNode }) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -132,7 +219,7 @@ export function AdvertiserGuard({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-// 일반 유저(광고주) 전용 가드 - 로그인하지 않은 사용자는 접근 가능하지만 요소 비활성화
+// 일반 회원 페이지 가드 (비활성화 버전) - 영업사원만 접근 불가, 로그인 안한 유저는 비활성화 상태로 접근 가능
 export function AdvertiserGuardWithDisabled({
   children,
 }: {
@@ -191,7 +278,7 @@ export function AdvertiserGuardWithDisabled({
   return <>{children}</>;
 }
 
-// 일반 유저(광고주) 전용 가드 - 로그인 필수, SALESPERSON만 접근 불가
+// 일반 회원 페이지 가드 (로그인 필수) - 영업사원만 접근 불가, 로그인 안한 유저는 접근 불가
 export function AdvertiserLoginRequiredGuard({
   children,
 }: {

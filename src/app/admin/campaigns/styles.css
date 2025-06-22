@@ -1,0 +1,405 @@
+/* 캠페인 관리 페이지 스타일 */
+.campaigns-page {
+  flex: 1;
+  background: #f5f7fa;
+  margin-top: 64px; /* AdminHeader 높이만큼 상단 여백 추가 */
+  width: 100%;
+  max-width: 100%;
+}
+
+.campaigns-main-container {
+  padding: 2rem;
+  color: #333333;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+.campaigns-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.campaigns-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333333;
+  margin: 0;
+}
+
+.campaigns-content-wrapper {
+  width: 100%;
+}
+
+.btn-primary {
+  background-color: #0066ff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #0052cc;
+}
+
+.campaigns-section {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e8ec;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e8ec;
+}
+
+.section-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333333;
+  margin: 0 0 0.5rem 0;
+}
+
+.section-header p {
+  font-size: 0.875rem;
+  color: #666666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 테이블 스타일 */
+.campaigns-table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e8ec;
+}
+
+.campaigns-table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  table-layout: fixed;
+}
+
+.campaigns-table thead {
+  background-color: #f8f9fa;
+}
+
+.campaigns-table th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333333;
+  border-bottom: 2px solid #e5e8ec;
+  white-space: nowrap;
+}
+
+.campaigns-table td {
+  padding: 16px 12px;
+  font-size: 14px;
+  color: #333333;
+  border-bottom: 1px solid #f1f3f5;
+  vertical-align: middle;
+}
+
+.campaigns-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.campaigns-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 테이블 셀 특정 스타일 */
+.campaign-id {
+  font-family: "Monaco", "Menlo", monospace;
+  font-weight: 600;
+  color: #0066ff;
+}
+
+.campaign-name {
+  font-weight: 500;
+  max-width: 200px;
+}
+
+.campaign-period {
+  font-size: 13px;
+  color: #666666;
+  white-space: nowrap;
+}
+
+.campaign-stats {
+  font-family: "Monaco", "Menlo", monospace;
+  font-size: 13px;
+}
+
+.campaign-rate {
+  font-weight: 600;
+  text-align: left;
+}
+
+/* 상태 배지 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.status-badge.active {
+  background-color: rgba(0, 102, 255, 0.1);
+  color: #0066ff;
+  border-color: rgba(0, 102, 255, 0.3);
+}
+
+.status-badge.completed {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.scheduled {
+  background-color: rgba(251, 146, 60, 0.1);
+  color: #f59e0b;
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
+/* 액션 버튼들 */
+.campaign-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e8ec;
+  border-radius: 6px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pause-btn:hover {
+  background-color: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
+}
+
+.start-btn:hover {
+  background-color: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+}
+
+.stats-btn:hover {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  color: #0d47a1;
+}
+
+.edit-btn:hover {
+  background-color: #f3e5f5;
+  border-color: #9c27b0;
+  color: #4a148c;
+}
+
+.delete-btn:hover {
+  background-color: #ffebee;
+  border-color: #f44336;
+  color: #c62828;
+}
+
+/* 테이블 푸터 */
+.table-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f1f3f5;
+  background-color: #f8f9fa;
+}
+
+.table-footer p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #999999;
+  font-style: italic;
+}
+
+/* 관리자 레이아웃 */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.campaigns-page {
+  margin-left: 250px;
+  margin-top: 64px;
+  transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 769px) {
+  .campaigns-page {
+    margin-left: 250px;
+    margin-top: 64px;
+  }
+}
+
+.admin-layout * {
+  box-sizing: border-box;
+}
+
+.admin-layout *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.admin-layout *::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.admin-layout *::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.admin-layout *::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1024px) {
+  .campaigns-table th,
+  .campaigns-table td {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .campaign-name {
+    max-width: 150px;
+  }
+
+  .action-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .campaigns-main-container {
+    padding: 1rem;
+  }
+
+  .campaigns-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .campaigns-page {
+    margin-left: 0;
+    margin-top: 64px; /* AdminHeader 높이 유지 */
+  }
+
+  .campaigns-main-container {
+    padding: 1rem;
+  }
+
+  .section-header {
+    padding: 1rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.125rem;
+  }
+
+  .campaigns-table th,
+  .campaigns-table td {
+    padding: 10px 6px;
+    font-size: 12px;
+  }
+
+  .campaign-name {
+    max-width: 120px;
+  }
+
+  .campaign-period {
+    font-size: 11px;
+  }
+
+  .status-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .action-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .campaign-actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .campaigns-table {
+    font-size: 11px;
+  }
+
+  .campaigns-table th,
+  .campaigns-table td {
+    padding: 8px 4px;
+  }
+
+  .campaign-name {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .campaign-period {
+    font-size: 10px;
+  }
+
+  .status-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}

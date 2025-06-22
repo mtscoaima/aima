@@ -1,17 +1,38 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import SalespersonDashboard from "../components/SalespersonDashboard";
 
 export default function Home() {
   const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+
+  // 관리자로 로그인한 경우 관리자 대시보드로 리다이렉트
+  useEffect(() => {
+    if (isAuthenticated && user?.role === "ADMIN") {
+      router.push("/admin/dashboard");
+    }
+  }, [isAuthenticated, user, router]);
 
   // 영업사원으로 로그인한 경우 전용 대시보드 표시
   if (isAuthenticated && user?.role === "SALESPERSON") {
     return <SalespersonDashboard />;
+  }
+
+  // 관리자인 경우 리다이렉트 중이므로 로딩 표시
+  if (isAuthenticated && user?.role === "ADMIN") {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <div className="loading-text">
+          <p>관리자 대시보드로 이동 중...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
