@@ -132,6 +132,12 @@ export default function MemberApprovalPage() {
         throw new Error("인증 토큰이 없습니다.");
       }
 
+      // 현재 사용자 정보 가져오기 (SMS 전송을 위해)
+      const currentUser = users.find((user) => user.id === userId);
+      if (!currentUser) {
+        throw new Error("사용자 정보를 찾을 수 없습니다.");
+      }
+
       const response = await fetch("/api/admin/users", {
         method: "PUT",
         headers: {
@@ -170,8 +176,52 @@ export default function MemberApprovalPage() {
         )
       );
 
+      // 승인 시 SMS 알림 전송
+      if (newStatus === "APPROVED") {
+        try {
+          const notificationResponse = await fetch(
+            "/api/admin/send-approval-notification",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                phoneNumber: currentUser.phone_number,
+                userName: currentUser.name,
+                status: newStatus,
+              }),
+            }
+          );
+
+          if (notificationResponse.ok) {
+            console.log(
+              `✅ 승인 알림 SMS 전송 성공: ${currentUser.name} (${newStatus})`
+            );
+          } else {
+            const notificationError = await notificationResponse
+              .json()
+              .catch(() => ({}));
+            console.warn("SMS 알림 전송 실패:", notificationError.message);
+            // SMS 전송 실패는 전체 프로세스를 중단하지 않음
+          }
+        } catch (smsError) {
+          console.warn("SMS 알림 전송 중 오류 발생:", smsError);
+          // SMS 전송 실패는 전체 프로세스를 중단하지 않음
+        }
+      }
+
       // 드롭다운 닫기
       setEditingUserId(null);
+
+      // 성공 메시지 표시
+      const statusText =
+        newStatus === "APPROVED"
+          ? "승인"
+          : newStatus === "REJECTED"
+          ? "거부"
+          : "변경";
+      alert(`${currentUser.name}님의 상태가 ${statusText}되었습니다.`);
     } catch (error) {
       console.error("Error updating user status:", error);
       const errorMessage =
