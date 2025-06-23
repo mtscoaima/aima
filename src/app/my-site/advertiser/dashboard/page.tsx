@@ -15,6 +15,7 @@ import {
 import { Line, Bar } from "react-chartjs-2";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Chart.js 컴포넌트 등록
 ChartJS.register(
@@ -29,6 +30,41 @@ ChartJS.register(
 );
 
 export default function AdvertiserDashboard() {
+  const { user } = useAuth();
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date
+        .toLocaleDateString("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        })
+        .replace(/\./g, ".")
+        .replace(/ /g, "");
+    } catch {
+      return "-";
+    }
+  };
+
+  // 사용자 역할 한글 변환
+  const getRoleInKorean = (role?: string) => {
+    if (!role) return "일반회원";
+    switch (role) {
+      case "ADVERTISER":
+        return "광고주";
+      case "SALESPERSON":
+        return "영업사원";
+      case "ADMIN":
+        return "관리자";
+      default:
+        return "일반회원";
+    }
+  };
+
   // 메시지 발송 현황 차트 데이터 (월간)
   const messageChartData = {
     labels: ["1", "5", "10", "15", "20", "25", "30"],
@@ -87,23 +123,31 @@ export default function AdvertiserDashboard() {
       <div className="p-4 max-w-7xl mx-auto">
         {/* 회원 요약정보 섹션 */}
         <div className="bg-white rounded-lg shadow p-4 mb-4 border-t-4 border-t-blue-500">
-          <h2 className="text-lg font-semibold mb-3">회원 요약정보</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">회원 요약정보</h2>
+            <Link
+              href="/my-site/advertiser/profile"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              상세정보 →
+            </Link>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-gray-600">회원명</p>
-              <p className="font-medium">trialRklSHWH님</p>
+              <p className="font-medium">{user?.name || "Loading..."}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">가입일</p>
-              <p className="font-medium">2025.01.15</p>
+              <p className="font-medium">{formatDate(user?.createdAt)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">회원유형</p>
-              <p className="font-medium">광고주</p>
+              <p className="font-medium">{getRoleInKorean(user?.role)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">최근 로그인</p>
-              <p className="font-medium">2025.05.10 12:27:54</p>
+              <p className="font-medium">{formatDate(user?.lastLoginAt)}</p>
             </div>
           </div>
         </div>

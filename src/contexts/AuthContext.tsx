@@ -31,6 +31,7 @@ interface User {
   createdAt: string;
   updatedAt: string;
   approval_status?: string;
+  lastLoginAt?: string;
 }
 
 interface AuthContextType {
