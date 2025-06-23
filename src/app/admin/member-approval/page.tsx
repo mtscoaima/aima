@@ -246,13 +246,13 @@ export default function MemberApprovalPage() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "PENDING":
-        return "대기중";
+        return "비활성";
       case "APPROVED":
-        return "승인됨";
+        return "활성";
       case "REJECTED":
-        return "거부됨";
+        return "비활성";
       default:
-        return "대기중";
+        return "비활성";
     }
   };
 
