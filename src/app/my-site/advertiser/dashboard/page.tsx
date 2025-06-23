@@ -16,6 +16,7 @@ import { Line, Bar } from "react-chartjs-2";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBalance } from "@/contexts/BalanceContext";
 
 // Chart.js 컴포넌트 등록
 ChartJS.register(
@@ -31,6 +32,7 @@ ChartJS.register(
 
 export default function AdvertiserDashboard() {
   const { user } = useAuth();
+  const { balanceData, formatCurrency } = useBalance();
 
   // 날짜 포맷팅 함수
   const formatDate = (dateString?: string) => {
@@ -222,15 +224,26 @@ export default function AdvertiserDashboard() {
 
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <p className="text-sm text-gray-600">현재 이용 중인 자액</p>
+                <p className="text-sm text-gray-600">현재 이용 중인 잔액</p>
                 <div className="flex items-center justify-between mt-1">
-                  <p className="font-bold text-lg">25,000원</p>
+                  <p className="font-bold text-lg">
+                    {formatCurrency(balanceData.balance)}
+                  </p>
                   <Link
-                    href="/my-site/advertiser/balance/charge"
+                    href="/my-site/advertiser/plans"
                     className="text-sm text-blue-600 hover:underline"
                   >
                     충전하기
                   </Link>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-600">포인트 잔액</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="font-bold text-lg text-green-600">
+                    {formatCurrency(balanceData.pointBalance)}
+                  </p>
                 </div>
               </div>
 
@@ -244,9 +257,15 @@ export default function AdvertiserDashboard() {
               <div>
                 <p className="text-sm text-gray-600">발송 가능 수량</p>
                 <div className="mt-1">
-                  <p className="text-sm text-gray-700">SMS: 약 1,250건</p>
-                  <p className="text-sm text-gray-700">LMS: 약 500건</p>
-                  <p className="text-sm text-gray-700">MMS: 약 125건</p>
+                  <p className="text-sm text-gray-700">
+                    SMS: 약 {Math.floor(balanceData.balance / 20)}건
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    LMS: 약 {Math.floor(balanceData.balance / 50)}건
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    MMS: 약 {Math.floor(balanceData.balance / 200)}건
+                  </p>
                 </div>
               </div>
             </div>

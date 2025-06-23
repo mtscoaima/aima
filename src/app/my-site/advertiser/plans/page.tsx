@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
+import { useBalance } from "@/contexts/BalanceContext";
 
 // 요금제 타입
 type PlanType = "prepaid" | "postpaid";
@@ -79,20 +80,26 @@ interface PostpaidPlanData {
 
 // 요금제 페이지 컴포넌트
 export default function PlansPage() {
+  const { balanceData, setBalanceData, formatCurrency } = useBalance();
+
   // 현재 요금제 타입 상태 (실제 앱에서는 API로부터 가져옴)
   const [currentPlan, setCurrentPlan] = useState<PlanType>("prepaid");
 
   // 요금제 변경 모달 표시 상태
   const [showChangePlanModal, setShowChangePlanModal] = useState(false);
 
-  // 선불 요금제 데이터 (샘플)
+  // 충전 모달 표시 상태
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState<string>("");
+
+  // 선불 요금제 데이터 (샘플) - 이제 balanceData에서 가져옴
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prepaidData, setPrepaidData] = useState<PrepaidPlanData>({
-    balance: 500000,
-    pointBalance: 25000,
-    lastChargeDate: "2025-05-10 15:32:45",
-    lastChargeAmount: 300000,
-    paymentMethod: "card",
+    balance: balanceData.balance,
+    pointBalance: balanceData.pointBalance,
+    lastChargeDate: balanceData.lastChargeDate,
+    lastChargeAmount: balanceData.lastChargeAmount,
+    paymentMethod: balanceData.paymentMethod as PaymentMethod,
     chargeHistory: [
       {
         date: "2025-05-10 15:32:45",
@@ -224,14 +231,6 @@ export default function PlansPage() {
     }
   };
 
-  // 금액 형식 변환 함수
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("ko-KR", {
-      style: "currency",
-      currency: "KRW",
-    }).format(amount);
-  };
-
   // 요금제 타입을 한글로 표시
   const getPlanTypeText = (planType: PlanType) => {
     switch (planType) {
@@ -258,8 +257,38 @@ export default function PlansPage() {
 
   // 충전하기 핸들러
   const handleCharge = () => {
-    alert("충전 페이지로 이동합니다.");
-    // 실제 구현에서는 충전 페이지로 이동합니다
+    setShowChargeModal(true);
+  };
+
+  // 충전 확인 핸들러
+  const handleConfirmCharge = () => {
+    const amount = parseInt(chargeAmount);
+    if (amount > 0) {
+      const newBalance = balanceData.balance + amount;
+      const bonusAmount = Math.floor(amount * 0.05); // 5% 보너스
+      const newPointBalance = balanceData.pointBalance + bonusAmount;
+
+      setBalanceData({
+        ...balanceData,
+        balance: newBalance,
+        pointBalance: newPointBalance,
+        lastChargeDate: new Date()
+          .toISOString()
+          .replace("T", " ")
+          .substring(0, 19),
+        lastChargeAmount: amount,
+      });
+
+      setShowChargeModal(false);
+      setChargeAmount("");
+      alert(
+        `${formatCurrency(
+          amount
+        )} 충전이 완료되었습니다!\n보너스 ${formatCurrency(
+          bonusAmount
+        )}이 적립되었습니다.`
+      );
+    }
   };
 
   // 환불신청 핸들러
@@ -275,10 +304,8 @@ export default function PlansPage() {
 
   return (
     <AdvertiserLoginRequiredGuard>
-      <div className="p-4 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">요금제 관리</h1>
-        </div>
+      <div className="pt-20 p-4 max-w-5xl mx-auto">
+        <div className="mb-20"></div>
 
         {/* 현재 요금제 정보 */}
         <div className="bg-white rounded-lg shadow p-4 mb-6 border-t-4 border-t-blue-500">
@@ -293,7 +320,7 @@ export default function PlansPage() {
                   <span className="ml-4 text-gray-700">
                     잔액:{" "}
                     <span className="font-medium text-blue-600">
-                      {formatCurrency(prepaidData.balance)}
+                      {formatCurrency(balanceData.balance)}
                     </span>
                   </span>
                 )}
@@ -318,23 +345,23 @@ export default function PlansPage() {
                 <div>
                   <p className="text-sm text-gray-600">현재 잔액</p>
                   <p className="font-medium text-xl text-blue-600">
-                    {formatCurrency(prepaidData.balance)}
+                    {formatCurrency(balanceData.balance)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">포인트 잔액</p>
                   <p className="font-medium text-xl text-green-600">
-                    {formatCurrency(prepaidData.pointBalance)}
+                    {formatCurrency(balanceData.pointBalance)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">최근 충전일</p>
-                  <p className="font-medium">{prepaidData.lastChargeDate}</p>
+                  <p className="font-medium">{balanceData.lastChargeDate}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">최근 충전 금액</p>
                   <p className="font-medium">
-                    {formatCurrency(prepaidData.lastChargeAmount)}
+                    {formatCurrency(balanceData.lastChargeAmount)}
                   </p>
                 </div>
               </div>
@@ -789,126 +816,90 @@ export default function PlansPage() {
           </div>
         </div>
 
-        {/* 요금제 변경 모달 */}
-        {showChangePlanModal && (
-          <div
-            className="fixed inset-0 overflow-y-auto"
-            style={{ zIndex: 1001 }}
-            aria-labelledby="modal-title"
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-              <div
-                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                aria-hidden="true"
-                onClick={handleCloseModal}
-              ></div>
-
-              <span
-                className="hidden sm:inline-block sm:align-middle sm:h-screen"
-                aria-hidden="true"
-              >
-                &#8203;
-              </span>
-
-              <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="sm:flex sm:items-start">
-                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                      <h3
-                        className="text-lg leading-6 font-medium text-gray-900"
-                        id="modal-title"
-                      >
-                        요금제 변경
-                      </h3>
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-500 mb-4">
-                          변경하실 요금제를 선택해주세요. 요금제 변경에는 관리자
-                          승인이 필요할 수 있습니다.
-                        </p>
-
-                        <div className="mt-4 space-y-3">
-                          <div
-                            className={`p-4 border rounded-lg ${
-                              currentPlan === "prepaid"
-                                ? "bg-blue-50 border-blue-300"
-                                : "hover:bg-gray-50 cursor-pointer"
-                            }`}
-                            onClick={() => handleChangePlan("prepaid")}
-                          >
-                            <div className="flex items-center">
-                              <div
-                                className={`h-5 w-5 rounded-full ${
-                                  currentPlan === "prepaid"
-                                    ? "bg-blue-600"
-                                    : "bg-gray-200"
-                                } flex items-center justify-center mr-3`}
-                              >
-                                {currentPlan === "prepaid" && (
-                                  <span className="text-white text-xs">✓</span>
-                                )}
-                              </div>
-                              <h4 className="text-md font-medium">
-                                선불 요금제
-                              </h4>
-                            </div>
-                            <p className="mt-1 ml-8 text-sm text-gray-600">
-                              미리 충전 후 사용하는 방식입니다. 충전 금액의 5%가
-                              포인트로 적립됩니다.
-                            </p>
-                          </div>
-
-                          <div
-                            className={`p-4 border rounded-lg ${
-                              currentPlan === "postpaid"
-                                ? "bg-blue-50 border-blue-300"
-                                : "hover:bg-gray-50 cursor-pointer"
-                            }`}
-                            onClick={() => handleChangePlan("postpaid")}
-                          >
-                            <div className="flex items-center">
-                              <div
-                                className={`h-5 w-5 rounded-full ${
-                                  currentPlan === "postpaid"
-                                    ? "bg-blue-600"
-                                    : "bg-gray-200"
-                                } flex items-center justify-center mr-3`}
-                              >
-                                {currentPlan === "postpaid" && (
-                                  <span className="text-white text-xs">✓</span>
-                                )}
-                              </div>
-                              <h4 className="text-md font-medium">
-                                후불 요금제
-                              </h4>
-                            </div>
-                            <p className="mt-1 ml-8 text-sm text-gray-600">
-                              이용한 만큼 월별로 청구됩니다. 기업 신용 평가가
-                              필요합니다.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        {/* 충전 모달 */}
+        {showChargeModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  잔액 충전
+                </h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    충전 금액 (원)
+                  </label>
+                  <input
+                    type="number"
+                    value={chargeAmount}
+                    onChange={(e) => setChargeAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="충전할 금액을 입력하세요"
+                    min="1000"
+                    step="1000"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    최소 충전 금액: 1,000원 (5% 보너스 포인트 적립)
+                  </p>
                 </div>
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <div className="flex gap-2">
                   <button
-                    type="button"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-                    onClick={() =>
-                      alert(
-                        "요금제 변경 요청이 접수되었습니다. 관리자 검토 후 진행됩니다."
-                      )
-                    }
+                    onClick={handleConfirmCharge}
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    변경 요청
+                    충전하기
                   </button>
                   <button
-                    type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                    onClick={() => setShowChargeModal(false)}
+                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 요금제 변경 모달 */}
+        {showChangePlanModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  요금제 변경
+                </h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => handleChangePlan("prepaid")}
+                    className={`w-full p-3 text-left border rounded-lg ${
+                      currentPlan === "prepaid"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="font-medium">선불 요금제</div>
+                    <div className="text-sm text-gray-600">
+                      미리 충전하여 사용하는 방식
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleChangePlan("postpaid")}
+                    className={`w-full p-3 text-left border rounded-lg ${
+                      currentPlan === "postpaid"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="font-medium">후불 요금제</div>
+                    <div className="text-sm text-gray-600">
+                      사용 후 정기 결제하는 방식
+                    </div>
+                  </button>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button
                     onClick={handleCloseModal}
+                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
                   >
                     취소
                   </button>
