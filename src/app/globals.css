@@ -4771,6 +4771,10 @@ body .landing-root .main-content {
   box-shadow: var(--shadow-sm);
 }
 
+.login-prompt-banner.rejected {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
 .login-prompt-content {
   max-width: 1200px;
   margin: 0 auto;

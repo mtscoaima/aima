@@ -156,6 +156,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         phoneNumber: user.phone_number,
         role: user.role,
+        approval_status: user.approval_status,
       },
       JWT_SECRET,
       { expiresIn: "1h" }
@@ -227,6 +228,7 @@ export async function POST(request: NextRequest) {
           role: user.role,
           createdAt: user.created_at,
           updatedAt: user.updated_at,
+          approval_status: user.approval_status,
         },
       },
       { status: 200 }

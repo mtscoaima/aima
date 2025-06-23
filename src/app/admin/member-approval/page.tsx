@@ -369,7 +369,7 @@ export default function MemberApprovalPage() {
                               className="btn-edit"
                               onClick={() => handleEditClick(user.id)}
                             >
-                              변경
+                              수정
                             </button>
                           )}
                         </td>

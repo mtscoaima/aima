@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from("users")
       .select(
-        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents"
+        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status"
       )
       .eq("id", userId)
       .single();
@@ -226,6 +226,7 @@ export async function GET(request: NextRequest) {
       createdAt: user.created_at,
       updatedAt: user.updated_at,
       lastLoginAt: user.last_login_at,
+      approval_status: user.approval_status,
       companyInfo: user.company_info,
       taxInvoiceInfo: user.tax_invoice_info,
       documents:
