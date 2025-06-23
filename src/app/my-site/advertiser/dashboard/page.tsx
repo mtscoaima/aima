@@ -15,6 +15,8 @@ import {
 import { Line, Bar } from "react-chartjs-2";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBalance } from "@/contexts/BalanceContext";
 
 // Chart.js 컴포넌트 등록
 ChartJS.register(
@@ -29,6 +31,130 @@ ChartJS.register(
 );
 
 export default function AdvertiserDashboard() {
+  const { user } = useAuth();
+  const {
+    formatCurrency,
+    getTransactionHistory,
+    calculateBalance,
+    isLoading,
+    refreshTransactions,
+  } = useBalance();
+
+  // 트랜잭션 히스토리 가져오기
+  const transactionHistory = getTransactionHistory();
+
+  // 최근 5개 트랜잭션 가져오기
+  const recentTransactions = transactionHistory.slice(0, 5);
+
+  // 이번 달 트랜잭션 통계 계산
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const thisMonthTransactions = transactionHistory.filter((transaction) => {
+    const timestamp = transaction.timestamp || transaction.created_at;
+    if (!timestamp) return false;
+
+    const transactionDate = new Date(timestamp);
+    return (
+      transactionDate.getMonth() === currentMonth &&
+      transactionDate.getFullYear() === currentYear
+    );
+  });
+
+  const thisMonthCharges = thisMonthTransactions.filter(
+    (t) => t.type === "charge"
+  );
+  const thisMonthUsages = thisMonthTransactions.filter(
+    (t) => t.type === "usage"
+  );
+  const thisMonthRefunds = thisMonthTransactions.filter(
+    (t) => t.type === "refund"
+  );
+
+  const totalChargeAmount = thisMonthCharges.reduce(
+    (sum, t) => sum + t.amount,
+    0
+  );
+  const totalUsageAmount = thisMonthUsages.reduce(
+    (sum, t) => sum + t.amount,
+    0
+  );
+  const totalRefundAmount = thisMonthRefunds.reduce(
+    (sum, t) => sum + t.amount,
+    0
+  );
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date
+        .toLocaleDateString("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        })
+        .replace(/\./g, ".")
+        .replace(/ /g, "");
+    } catch {
+      return "-";
+    }
+  };
+
+  // 트랜잭션 시간 포맷팅 함수
+  const formatTransactionTime = (transaction: {
+    timestamp?: string;
+    created_at: string;
+  }) => {
+    const timestamp = transaction.timestamp || transaction.created_at;
+    if (!timestamp) return "-";
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) {
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      return `${diffMinutes}분 전`;
+    } else if (diffHours < 24) {
+      return `${diffHours}시간 전`;
+    } else {
+      return `${diffDays}일 전`;
+    }
+  };
+
+  // 트랜잭션 타입별 아이콘과 색상
+  const getTransactionDisplay = (type: string) => {
+    switch (type) {
+      case "charge":
+        return { icon: "💳", color: "bg-green-500", text: "잔액 충전" };
+      case "usage":
+        return { icon: "📱", color: "bg-blue-500", text: "서비스 사용" };
+      case "refund":
+        return { icon: "↩️", color: "bg-purple-500", text: "환불 처리" };
+      default:
+        return { icon: "📋", color: "bg-gray-500", text: "기타" };
+    }
+  };
+
+  // 사용자 역할 한글 변환
+  const getRoleInKorean = (role?: string) => {
+    if (!role) return "일반회원";
+    switch (role) {
+      case "ADVERTISER":
+        return "광고주";
+      case "SALESPERSON":
+        return "영업사원";
+      case "ADMIN":
+        return "관리자";
+      default:
+        return "일반회원";
+    }
+  };
+
   // 메시지 발송 현황 차트 데이터 (월간)
   const messageChartData = {
     labels: ["1", "5", "10", "15", "20", "25", "30"],
@@ -87,23 +213,45 @@ export default function AdvertiserDashboard() {
       <div className="p-4 max-w-7xl mx-auto">
         {/* 회원 요약정보 섹션 */}
         <div className="bg-white rounded-lg shadow p-4 mb-4 border-t-4 border-t-blue-500">
-          <h2 className="text-lg font-semibold mb-3">회원 요약정보</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">회원 요약정보</h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refreshTransactions}
+                disabled={isLoading}
+                className="text-sm text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
+                title="트랜잭션 새로고침"
+              >
+                {isLoading ? "🔄" : "↻"}
+              </button>
+              <Link
+                href="/my-site/advertiser/profile"
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                상세정보 →
+              </Link>
+            </div>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-gray-600">회원명</p>
-              <p className="font-medium">trialRklSHWH님</p>
+              <p className="font-medium">{user?.name || "Loading..."}</p>
+              <p className="text-xs text-gray-400">ID: {user?.id || "-"}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">가입일</p>
-              <p className="font-medium">2025.01.15</p>
+              <p className="font-medium">{formatDate(user?.createdAt)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">회원유형</p>
-              <p className="font-medium">광고주</p>
+              <p className="font-medium">{getRoleInKorean(user?.role)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">최근 로그인</p>
-              <p className="font-medium">2025.05.10 12:27:54</p>
+              <p className="text-sm text-gray-600">트랜잭션 수</p>
+              <p className="font-medium">{transactionHistory.length}건</p>
+              <p className="text-xs text-gray-400">
+                {isLoading ? "로딩 중..." : "최신 업데이트"}
+              </p>
             </div>
           </div>
         </div>
@@ -178,11 +326,15 @@ export default function AdvertiserDashboard() {
 
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <p className="text-sm text-gray-600">현재 이용 중인 자액</p>
+                <p className="text-sm text-gray-600">현재 이용 중인 잔액</p>
                 <div className="flex items-center justify-between mt-1">
-                  <p className="font-bold text-lg">25,000원</p>
+                  <p className="font-bold text-lg">
+                    {isLoading
+                      ? "로딩 중..."
+                      : formatCurrency(calculateBalance())}
+                  </p>
                   <Link
-                    href="/my-site/advertiser/balance/charge"
+                    href="/my-site/advertiser/plans"
                     className="text-sm text-blue-600 hover:underline"
                   >
                     충전하기
@@ -191,18 +343,44 @@ export default function AdvertiserDashboard() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-600">발송량</p>
+                <p className="text-sm text-gray-600">이번 달 충전 금액</p>
                 <div className="flex items-center justify-between mt-1">
-                  <p className="font-bold text-lg">이번 달 128건 발송 완료</p>
+                  <p className="font-bold text-lg text-green-600">
+                    {formatCurrency(totalChargeAmount)}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-600">이번 달 사용 금액</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="font-bold text-lg text-red-600">
+                    {formatCurrency(totalUsageAmount)}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-600">이번 달 환불 금액</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="font-bold text-lg text-purple-600">
+                    {formatCurrency(totalRefundAmount)}
+                  </p>
                 </div>
               </div>
 
               <div>
                 <p className="text-sm text-gray-600">발송 가능 수량</p>
                 <div className="mt-1">
-                  <p className="text-sm text-gray-700">SMS: 약 1,250건</p>
-                  <p className="text-sm text-gray-700">LMS: 약 500건</p>
-                  <p className="text-sm text-gray-700">MMS: 약 125건</p>
+                  <p className="text-sm text-gray-700">
+                    SMS: 약 {Math.floor(calculateBalance() / 20)}건
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    LMS: 약 {Math.floor(calculateBalance() / 50)}건
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    MMS: 약 {Math.floor(calculateBalance() / 200)}건
+                  </p>
                 </div>
               </div>
             </div>
@@ -261,44 +439,38 @@ export default function AdvertiserDashboard() {
           <h2 className="text-lg font-semibold mb-3">최근 활동</h2>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                <div>
-                  <p className="font-medium">메시지 발송 완료</p>
-                  <p className="text-sm text-gray-600">
-                    SMS 25건 발송 완료 (성공: 24건, 실패: 1건)
-                  </p>
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center">
+                    <div
+                      className={`w-2 h-2 ${
+                        getTransactionDisplay(transaction.type).color
+                      } rounded-full mr-3`}
+                    ></div>
+                    <div>
+                      <p className="font-medium">
+                        {getTransactionDisplay(transaction.type).text}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {formatCurrency(transaction.amount)} -{" "}
+                        {transaction.description}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {formatTransactionTime(transaction)}
+                  </span>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>최근 활동 내역이 없습니다.</p>
               </div>
-              <span className="text-sm text-gray-500">2시간 전</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
-                <div>
-                  <p className="font-medium">타겟마케팅 캠페인 시작</p>
-                  <p className="text-sm text-gray-600">
-                    캠페인 &quot;신제품 홍보&quot; 실행 시작
-                  </p>
-                </div>
-              </div>
-              <span className="text-sm text-gray-500">5시간 전</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                <div>
-                  <p className="font-medium">잔액 충전</p>
-                  <p className="text-sm text-gray-600">
-                    30만원 충전 완료 (신용카드)
-                  </p>
-                </div>
-              </div>
-              <span className="text-sm text-gray-500">1일 전</span>
-            </div>
+            )}
           </div>
 
           <div className="mt-4 text-center">
