@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
-import { useBalance } from "@/contexts/BalanceContext";
+import { useBalance, TransactionType } from "@/contexts/BalanceContext";
 
 // 요금제 타입
 type PlanType = "prepaid" | "postpaid";
@@ -14,10 +14,9 @@ type PaymentMethod = "card" | "bank" | "virtual" | "phone";
 // 결제 상태 타입
 type PaymentStatus = "completed" | "pending" | "failed";
 
-// 선불 요금제 데이터 타입
+// 선불 요금제 데이터 타입 (pointBalance 제거)
 interface PrepaidPlanData {
   balance: number;
-  pointBalance: number;
   lastChargeDate: string;
   lastChargeAmount: number;
   paymentMethod: PaymentMethod;
@@ -80,7 +79,13 @@ interface PostpaidPlanData {
 
 // 요금제 페이지 컴포넌트
 export default function PlansPage() {
-  const { balanceData, setBalanceData, formatCurrency } = useBalance();
+  const {
+    balanceData,
+    formatCurrency,
+    addTransaction,
+    getTransactionHistory,
+    calculateBalance,
+  } = useBalance();
 
   // 현재 요금제 타입 상태 (실제 앱에서는 API로부터 가져옴)
   const [currentPlan, setCurrentPlan] = useState<PlanType>("prepaid");
@@ -92,11 +97,22 @@ export default function PlansPage() {
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [chargeAmount, setChargeAmount] = useState<string>("");
 
+  // 사용 모달 표시 상태
+  const [showUsageModal, setShowUsageModal] = useState(false);
+  const [usageAmount, setUsageAmount] = useState<string>("");
+
+  // 환불 모달 표시 상태
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundAmount, setRefundAmount] = useState<string>("");
+
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // 선불 요금제 데이터 (샘플) - 이제 balanceData에서 가져옴
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [prepaidData, setPrepaidData] = useState<PrepaidPlanData>({
-    balance: balanceData.balance,
-    pointBalance: balanceData.pointBalance,
+    balance: calculateBalance(),
     lastChargeDate: balanceData.lastChargeDate,
     lastChargeAmount: balanceData.lastChargeAmount,
     paymentMethod: balanceData.paymentMethod as PaymentMethod,
@@ -260,46 +276,178 @@ export default function PlansPage() {
     setShowChargeModal(true);
   };
 
-  // 충전 확인 핸들러
+  // 충전 확인 핸들러 - 트랜잭션 시스템 사용 (보너스 제거)
   const handleConfirmCharge = () => {
     const amount = parseInt(chargeAmount);
-    if (amount > 0) {
-      const newBalance = balanceData.balance + amount;
-      const bonusAmount = Math.floor(amount * 0.05); // 5% 보너스
-      const newPointBalance = balanceData.pointBalance + bonusAmount;
+    if (amount >= 10) {
+      try {
+        // 충전 트랜잭션 추가
+        addTransaction("charge", amount, "잔액 충전", `charge_${Date.now()}`, {
+          paymentMethod: "card",
+          chargeAmount: amount,
+        });
 
-      setBalanceData({
-        ...balanceData,
-        balance: newBalance,
-        pointBalance: newPointBalance,
-        lastChargeDate: new Date()
-          .toISOString()
-          .replace("T", " ")
-          .substring(0, 19),
-        lastChargeAmount: amount,
-      });
-
-      setShowChargeModal(false);
-      setChargeAmount("");
-      alert(
-        `${formatCurrency(
-          amount
-        )} 충전이 완료되었습니다!\n보너스 ${formatCurrency(
-          bonusAmount
-        )}이 적립되었습니다.`
-      );
+        setShowChargeModal(false);
+        setChargeAmount("");
+        setCurrentPage(1); // 첫 페이지로 이동
+        alert(`${formatCurrency(amount)} 충전이 완료되었습니다!`);
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "충전 중 오류가 발생했습니다."
+        );
+      }
+    } else {
+      alert("최소 충전 금액은 10원입니다.");
     }
   };
 
-  // 환불신청 핸들러
+  // 환불신청 핸들러 - 모달 표시
   const handleRefund = () => {
-    alert("환불신청 페이지로 이동합니다.");
-    // 실제 구현에서는 환불신청 페이지로 이동합니다
+    setShowRefundModal(true);
+  };
+
+  // 테스트용 사용 트랜잭션 모달 표시 핸들러
+  const handleTestUsage = () => {
+    setShowUsageModal(true);
+  };
+
+  // 사용 확인 핸들러
+  const handleConfirmUsage = () => {
+    const amount = parseInt(usageAmount);
+    if (amount >= 10) {
+      try {
+        addTransaction("usage", amount, "서비스 사용", `usage_${Date.now()}`, {
+          serviceType: "manual",
+          description: "수동 사용",
+        });
+        setShowUsageModal(false);
+        setUsageAmount("");
+        setCurrentPage(1); // 첫 페이지로 이동
+        alert(`${formatCurrency(amount)} 사용이 완료되었습니다.`);
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "사용 처리 중 오류가 발생했습니다."
+        );
+      }
+    } else {
+      alert("최소 사용 금액은 10원입니다.");
+    }
+  };
+
+  // 환불 확인 핸들러
+  const handleConfirmRefund = () => {
+    const amount = parseInt(refundAmount);
+    if (amount >= 10) {
+      try {
+        addTransaction("refund", amount, "환불 처리", `refund_${Date.now()}`, {
+          refundType: "manual",
+          description: "수동 환불",
+        });
+        setShowRefundModal(false);
+        setRefundAmount("");
+        setCurrentPage(1); // 첫 페이지로 이동
+        alert(`${formatCurrency(amount)} 환불이 완료되었습니다.`);
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "환불 처리 중 오류가 발생했습니다."
+        );
+      }
+    } else {
+      alert("최소 환불 금액은 10원입니다.");
+    }
   };
 
   // 모달 닫기 핸들러
   const handleCloseModal = () => {
     setShowChangePlanModal(false);
+  };
+
+  // 트랜잭션 타입별 스타일 반환 (bonus 제거)
+  const getTransactionTypeStyle = (type: TransactionType) => {
+    switch (type) {
+      case "charge":
+        return "bg-blue-100 text-blue-800";
+      case "usage":
+        return "bg-red-100 text-red-800";
+      case "refund":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // 트랜잭션 타입별 한글 텍스트 반환 (bonus 제거)
+  const getTransactionTypeText = (type: TransactionType) => {
+    switch (type) {
+      case "charge":
+        return "충전";
+      case "usage":
+        return "사용";
+      case "refund":
+        return "환불";
+      default:
+        return "기타";
+    }
+  };
+
+  // 트랜잭션 히스토리 가져오기
+  const transactionHistory = getTransactionHistory();
+  const totalPages = Math.ceil(transactionHistory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentTransactions = transactionHistory.slice(startIndex, endIndex);
+
+  // 최근 충전 정보 계산
+  const lastChargeTransaction = transactionHistory.find(
+    (t) => t.type === "charge"
+  );
+  const lastChargeDate = lastChargeTransaction
+    ? new Date(lastChargeTransaction.timestamp).toLocaleDateString("ko-KR")
+    : "충전 내역 없음";
+  const lastChargeAmount = lastChargeTransaction
+    ? lastChargeTransaction.amount
+    : 0;
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // 이전 페이지 핸들러
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // 다음 페이지 핸들러
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // 페이지 번호 배열 생성 (최대 5개 페이지 번호 표시)
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
   };
 
   return (
@@ -320,7 +468,7 @@ export default function PlansPage() {
                   <span className="ml-4 text-gray-700">
                     잔액:{" "}
                     <span className="font-medium text-blue-600">
-                      {formatCurrency(balanceData.balance)}
+                      {formatCurrency(calculateBalance())}
                     </span>
                   </span>
                 )}
@@ -341,31 +489,25 @@ export default function PlansPage() {
             {/* 잔액 정보 */}
             <div className="bg-white rounded-lg shadow p-4 mb-6 border-t-4 border-t-green-500">
               <h2 className="text-lg font-semibold mb-4">잔액 정보</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">현재 잔액</p>
                   <p className="font-medium text-xl text-blue-600">
-                    {formatCurrency(balanceData.balance)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">포인트 잔액</p>
-                  <p className="font-medium text-xl text-green-600">
-                    {formatCurrency(balanceData.pointBalance)}
+                    {formatCurrency(calculateBalance())}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">최근 충전일</p>
-                  <p className="font-medium">{balanceData.lastChargeDate}</p>
+                  <p className="font-medium">{lastChargeDate}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">최근 충전 금액</p>
                   <p className="font-medium">
-                    {formatCurrency(balanceData.lastChargeAmount)}
+                    {formatCurrency(lastChargeAmount)}
                   </p>
                 </div>
               </div>
-              <div className="mt-6 flex gap-2">
+              <div className="mt-6 flex gap-2 flex-wrap">
                 <button
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   onClick={handleCharge}
@@ -378,192 +520,196 @@ export default function PlansPage() {
                 >
                   환불신청
                 </button>
+                {/* 테스트 버튼들 */}
+                <button
+                  className="inline-flex items-center px-4 py-2 border border-orange-300 text-sm font-medium rounded-md shadow-sm text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                  onClick={handleTestUsage}
+                >
+                  테스트 사용
+                </button>
               </div>
             </div>
 
-            {/* 충전 내역 */}
+            {/* 트랜잭션 히스토리 */}
             <div className="bg-white rounded-lg shadow p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4">충전 내역</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        충전일시
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        금액
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        결제수단
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        상태
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        영수증
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {prepaidData.chargeHistory.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.date}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(item.amount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {getPaymentMethodText(item.paymentMethod)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeStyle(
-                              item.status
-                            )}`}
+              <h2 className="text-lg font-semibold mb-4">트랜잭션 히스토리</h2>
+
+              {transactionHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-400 text-lg mb-2">📊</div>
+                  <p className="text-gray-500">아직 트랜잭션이 없습니다.</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    충전하기 버튼을 눌러 첫 트랜잭션을 만들어보세요!
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
-                            {getPaymentStatusText(item.status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <a
-                            href={item.receiptUrl}
-                            className="text-blue-600 hover:text-blue-800"
+                            일시
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
-                            보기
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                            유형
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            금액
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            잔액
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            설명
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            참조ID
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {currentTransactions.map((transaction) => (
+                          <tr key={transaction.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {transaction.timestamp}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTransactionTypeStyle(
+                                  transaction.type
+                                )}`}
+                              >
+                                {getTransactionTypeText(transaction.type)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <span
+                                className={
+                                  transaction.amount >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }
+                              >
+                                {transaction.amount >= 0 ? "+" : ""}
+                                {formatCurrency(transaction.amount)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {formatCurrency(transaction.balance)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {transaction.description}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {transaction.referenceId || "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-            {/* 증정 내역 */}
-            <div className="bg-white rounded-lg shadow p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4">포인트 증정 내역</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  {/* 페이지네이션 */}
+                  {totalPages > 1 && (
+                    <div className="mt-6 flex items-center justify-between">
+                      <div className="text-sm text-gray-700">
+                        총 {transactionHistory.length}개 중 {startIndex + 1}-
+                        {Math.min(endIndex, transactionHistory.length)}개 표시
+                      </div>
+                      <nav
+                        className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                        aria-label="Pagination"
                       >
-                        증정일시
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        금액
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        사유
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        만료일
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {prepaidData.bonusHistory.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.date}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(item.amount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.reason}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.expiryDate}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                        {/* 이전 버튼 */}
+                        <button
+                          onClick={handlePrevPage}
+                          disabled={currentPage === 1}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === 1
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          } focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500`}
+                        >
+                          <span className="sr-only">Previous</span>
+                          <svg
+                            className="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
 
-            {/* 사용 내역 */}
-            <div className="bg-white rounded-lg shadow p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4">사용 내역</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        사용일시
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        금액
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        서비스
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        설명
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {prepaidData.usageHistory.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.date}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(item.amount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.service}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.description}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        {/* 페이지 번호들 */}
+                        {getPageNumbers().map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => handlePageChange(page)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              currentPage === page
+                                ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600"
+                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                            } focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+
+                        {/* 다음 버튼 */}
+                        <button
+                          onClick={handleNextPage}
+                          disabled={currentPage === totalPages}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === totalPages
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          } focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500`}
+                        >
+                          <span className="sr-only">Next</span>
+                          <svg
+                            className="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </nav>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </>
         )}
@@ -818,8 +964,8 @@ export default function PlansPage() {
 
         {/* 충전 모달 */}
         {showChargeModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+            <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   잔액 충전
@@ -834,11 +980,11 @@ export default function PlansPage() {
                     onChange={(e) => setChargeAmount(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="충전할 금액을 입력하세요"
-                    min="1000"
-                    step="1000"
+                    min="10"
+                    step="10"
                   />
                   <p className="text-sm text-gray-500 mt-1">
-                    최소 충전 금액: 1,000원 (5% 보너스 포인트 적립)
+                    최소 충전 금액: 10원
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -862,8 +1008,8 @@ export default function PlansPage() {
 
         {/* 요금제 변경 모달 */}
         {showChangePlanModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+            <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   요금제 변경
@@ -899,6 +1045,94 @@ export default function PlansPage() {
                 <div className="mt-4 flex gap-2">
                   <button
                     onClick={handleCloseModal}
+                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 사용 모달 */}
+        {showUsageModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+            <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  서비스 사용
+                </h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    사용 금액 (원)
+                  </label>
+                  <input
+                    type="number"
+                    value={usageAmount}
+                    onChange={(e) => setUsageAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="사용할 금액을 입력하세요"
+                    min="10"
+                    step="10"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    최소 사용 금액: 10원
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleConfirmUsage}
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    사용하기
+                  </button>
+                  <button
+                    onClick={() => setShowUsageModal(false)}
+                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 환불 모달 */}
+        {showRefundModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+            <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  환불 처리
+                </h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    환불 금액 (원)
+                  </label>
+                  <input
+                    type="number"
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="환불할 금액을 입력하세요"
+                    min="10"
+                    step="10"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    최소 환불 금액: 10원
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleConfirmRefund}
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    환불하기
+                  </button>
+                  <button
+                    onClick={() => setShowRefundModal(false)}
                     className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
                   >
                     취소
