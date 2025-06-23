@@ -50,6 +50,12 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       href: "/admin/user-management",
     },
     {
+      id: "member-approval",
+      label: "일반회원 승인",
+      icon: "✅",
+      href: "/admin/member-approval",
+    },
+    {
       id: "system-settings",
       label: "시스템 설정",
       icon: "⚙️",
@@ -62,7 +68,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     if (window.innerWidth <= 768) {
       onClose();
     }
-    // 대시보드, 메시지 관리, 템플릿 관리, 수신자 관리, 캠페인 관리, 사용자 관리, 시스템 설정 페이지는 실제로 이동 가능
+    // 대시보드, 메시지 관리, 템플릿 관리, 수신자 관리, 캠페인 관리, 사용자 관리, 일반회원 승인, 시스템 설정 페이지는 실제로 이동 가능
     if (
       href === "/admin/dashboard" ||
       href === "/admin/messages" ||
@@ -70,6 +76,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       href === "/admin/recipients" ||
       href === "/admin/campaigns" ||
       href === "/admin/user-management" ||
+      href === "/admin/member-approval" ||
       href === "/admin/system-settings"
     ) {
       window.location.href = href;

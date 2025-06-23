@@ -30,6 +30,7 @@ interface User {
   role: string;
   createdAt: string;
   updatedAt: string;
+  approval_status?: string;
 }
 
 interface AuthContextType {

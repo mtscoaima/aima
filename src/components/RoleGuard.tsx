@@ -274,7 +274,32 @@ export function AdvertiserGuardWithDisabled({
     );
   }
 
-  // 로그인한 일반 사용자는 정상 접근
+  // 로그인한 일반 사용자 중 승인 상태가 PENDING 또는 REJECTED인 경우 비활성화 상태로 렌더링
+  if (
+    isAuthenticated &&
+    user &&
+    (user.approval_status === "PENDING" || user.approval_status === "REJECTED")
+  ) {
+    const isRejected = user.approval_status === "REJECTED";
+    const title = isRejected ? "계정 승인 거부" : "계정 승인 필요";
+    const message = isRejected
+      ? "승인이 거부되었습니다. 고객센터(02-111-1111)로 문의해주세요"
+      : "승인 대기 중입니다. 관리자에게 문의해주세요";
+
+    return (
+      <div className="page-disabled-overlay">
+        <div className={`login-prompt-banner ${isRejected ? "rejected" : ""}`}>
+          <div className="login-prompt-content">
+            <h3>{title}</h3>
+            <p>{message}</p>
+          </div>
+        </div>
+        <div className="page-content-disabled">{children}</div>
+      </div>
+    );
+  }
+
+  // 로그인한 승인된 일반 사용자는 정상 접근
   return <>{children}</>;
 }
 

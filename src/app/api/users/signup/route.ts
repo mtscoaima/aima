@@ -326,6 +326,7 @@ export async function POST(request: NextRequest) {
         name,
         phone_number: phoneNumber,
         role: "USER",
+        approval_status: "PENDING", // 일반 사용자는 승인 대기 상태
         is_active: true,
         created_at: now,
         updated_at: now,
