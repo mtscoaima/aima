@@ -85,6 +85,8 @@ export default function PlansPage() {
     addTransaction,
     getTransactionHistory,
     calculateBalance,
+    isLoading,
+    refreshTransactions,
   } = useBalance();
 
   // 현재 요금제 타입 상태 (실제 앱에서는 API로부터 가져옴)
@@ -408,7 +410,9 @@ export default function PlansPage() {
     (t) => t.type === "charge"
   );
   const lastChargeDate = lastChargeTransaction
-    ? new Date(lastChargeTransaction.timestamp).toLocaleDateString("ko-KR")
+    ? new Date(
+        lastChargeTransaction.timestamp || lastChargeTransaction.created_at
+      ).toLocaleDateString("ko-KR")
     : "충전 내역 없음";
   const lastChargeAmount = lastChargeTransaction
     ? lastChargeTransaction.amount
@@ -493,7 +497,9 @@ export default function PlansPage() {
                 <div>
                   <p className="text-sm text-gray-600">현재 잔액</p>
                   <p className="font-medium text-xl text-blue-600">
-                    {formatCurrency(calculateBalance())}
+                    {isLoading
+                      ? "로딩 중..."
+                      : formatCurrency(calculateBalance())}
                   </p>
                 </div>
                 <div>
@@ -532,7 +538,16 @@ export default function PlansPage() {
 
             {/* 트랜잭션 히스토리 */}
             <div className="bg-white rounded-lg shadow p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4">트랜잭션 히스토리</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">트랜잭션 히스토리</h2>
+                <button
+                  onClick={refreshTransactions}
+                  disabled={isLoading}
+                  className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {isLoading ? "새로고침 중..." : "새로고침"}
+                </button>
+              </div>
 
               {transactionHistory.length === 0 ? (
                 <div className="text-center py-8">
@@ -590,7 +605,7 @@ export default function PlansPage() {
                         {currentTransactions.map((transaction) => (
                           <tr key={transaction.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {transaction.timestamp}
+                              {transaction.timestamp || transaction.created_at}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
@@ -620,7 +635,7 @@ export default function PlansPage() {
                               {transaction.description}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {transaction.referenceId || "-"}
+                              {transaction.reference_id || "-"}
                             </td>
                           </tr>
                         ))}

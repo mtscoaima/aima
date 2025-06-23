@@ -32,8 +32,13 @@ ChartJS.register(
 
 export default function AdvertiserDashboard() {
   const { user } = useAuth();
-  const { formatCurrency, getTransactionHistory, calculateBalance } =
-    useBalance();
+  const {
+    formatCurrency,
+    getTransactionHistory,
+    calculateBalance,
+    isLoading,
+    refreshTransactions,
+  } = useBalance();
 
   // 트랜잭션 히스토리 가져오기
   const transactionHistory = getTransactionHistory();
@@ -46,7 +51,10 @@ export default function AdvertiserDashboard() {
   const currentYear = new Date().getFullYear();
 
   const thisMonthTransactions = transactionHistory.filter((transaction) => {
-    const transactionDate = new Date(transaction.timestamp);
+    const timestamp = transaction.timestamp || transaction.created_at;
+    if (!timestamp) return false;
+
+    const transactionDate = new Date(timestamp);
     return (
       transactionDate.getMonth() === currentMonth &&
       transactionDate.getFullYear() === currentYear
@@ -95,7 +103,13 @@ export default function AdvertiserDashboard() {
   };
 
   // 트랜잭션 시간 포맷팅 함수
-  const formatTransactionTime = (timestamp: string) => {
+  const formatTransactionTime = (transaction: {
+    timestamp?: string;
+    created_at: string;
+  }) => {
+    const timestamp = transaction.timestamp || transaction.created_at;
+    if (!timestamp) return "-";
+
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -201,17 +215,28 @@ export default function AdvertiserDashboard() {
         <div className="bg-white rounded-lg shadow p-4 mb-4 border-t-4 border-t-blue-500">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">회원 요약정보</h2>
-            <Link
-              href="/my-site/advertiser/profile"
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-            >
-              상세정보 →
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refreshTransactions}
+                disabled={isLoading}
+                className="text-sm text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
+                title="트랜잭션 새로고침"
+              >
+                {isLoading ? "🔄" : "↻"}
+              </button>
+              <Link
+                href="/my-site/advertiser/profile"
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                상세정보 →
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-gray-600">회원명</p>
               <p className="font-medium">{user?.name || "Loading..."}</p>
+              <p className="text-xs text-gray-400">ID: {user?.id || "-"}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">가입일</p>
@@ -222,8 +247,11 @@ export default function AdvertiserDashboard() {
               <p className="font-medium">{getRoleInKorean(user?.role)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">최근 로그인</p>
-              <p className="font-medium">{formatDate(user?.lastLoginAt)}</p>
+              <p className="text-sm text-gray-600">트랜잭션 수</p>
+              <p className="font-medium">{transactionHistory.length}건</p>
+              <p className="text-xs text-gray-400">
+                {isLoading ? "로딩 중..." : "최신 업데이트"}
+              </p>
             </div>
           </div>
         </div>
@@ -301,7 +329,9 @@ export default function AdvertiserDashboard() {
                 <p className="text-sm text-gray-600">현재 이용 중인 잔액</p>
                 <div className="flex items-center justify-between mt-1">
                   <p className="font-bold text-lg">
-                    {formatCurrency(calculateBalance())}
+                    {isLoading
+                      ? "로딩 중..."
+                      : formatCurrency(calculateBalance())}
                   </p>
                   <Link
                     href="/my-site/advertiser/plans"
@@ -432,7 +462,7 @@ export default function AdvertiserDashboard() {
                     </div>
                   </div>
                   <span className="text-sm text-gray-500">
-                    {formatTransactionTime(transaction.timestamp)}
+                    {formatTransactionTime(transaction)}
                   </span>
                 </div>
               ))
