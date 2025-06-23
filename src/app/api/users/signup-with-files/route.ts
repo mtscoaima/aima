@@ -301,8 +301,9 @@ export async function POST(request: NextRequest) {
       agreedAt: getKSTISOString(),
     };
 
-    // userType에 따른 role 설정
+    // userType에 따른 role 및 approval_status 설정
     const userRole = userType === "salesperson" ? "SALESPERSON" : "USER";
+    const approvalStatus = userType === "salesperson" ? "APPROVED" : "PENDING";
 
     const { data: newUser, error: insertError } = await supabase
       .from("users")
@@ -312,6 +313,7 @@ export async function POST(request: NextRequest) {
         name,
         phone_number: phoneNumber,
         role: userRole,
+        approval_status: approvalStatus, // 영업사원은 승인됨, 일반사원은 승인 대기
         is_active: true,
         created_at: now,
         updated_at: now,
