@@ -112,28 +112,8 @@ export async function POST(request: NextRequest) {
       agreePrivacy,
     } = body;
 
-    console.log("Signup request received:", {
-      email,
-      name,
-      phoneNumber,
-      companyName,
-      businessNumber,
-    });
-
-    // 환경 변수 확인
-    console.log("Environment variables check:");
-    console.log(
-      "SUPABASE_URL:",
-      process.env.NEXT_PUBLIC_SUPABASE_URL ? "✓ Set" : "✗ Not set"
-    );
-    console.log("SUPABASE_SERVICE_KEY:", "✓ Set (using service key)");
-    console.log("Using key type:", "SERVICE_ROLE_KEY");
-
-    // Supabase 연결 및 스키마 테스트
-    console.log("Testing Supabase connection and schema access...");
-
     // 먼저 간단한 테이블 존재 확인
-    const { data: tableCheck, error: tableError } = await supabase
+    const { error: tableError } = await supabase
       .from("users")
       .select("count", { count: "exact", head: true });
 
@@ -144,8 +124,6 @@ export async function POST(request: NextRequest) {
         details: tableError.details,
         hint: tableError.hint,
       });
-    } else {
-      console.log("Table access test successful, count:", tableCheck);
     }
 
     // 입력 값 검증
@@ -189,7 +167,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 이메일 중복 확인 (단순화)
-    console.log("Checking for existing email:", email);
 
     let { data: existingUser, error: checkError } = await supabase
       .from("users")
@@ -199,8 +176,6 @@ export async function POST(request: NextRequest) {
 
     // Supabase ORM이 실패하면 직접 REST API 호출
     if (checkError && checkError.code === "PGRST106") {
-      console.log("Supabase ORM failed, trying direct REST API...");
-
       try {
         const response = await fetch(
           `${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(
@@ -221,7 +196,6 @@ export async function POST(request: NextRequest) {
           const data = await response.json();
           existingUser = data && data.length > 0 ? data[0] : null;
           checkError = null;
-          console.log("Direct REST API call successful");
         } else {
           console.error(
             "Direct REST API call failed:",
@@ -263,7 +237,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingUser) {
-      console.log("Email already exists:", email);
       const errorResponse: ErrorResponse = {
         message: "이메일 중복",
         error: "string",
@@ -278,14 +251,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 비밀번호 해싱
-    console.log("Hashing password...");
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // 사용자 생성
-    console.log("Creating new user...");
     const now = getKSTISOString();
-    console.log("Setting last_login_at to:", now);
 
     // 기업 정보 JSON 객체 생성
     const companyInfo = companyName
@@ -353,8 +323,6 @@ export async function POST(request: NextRequest) {
       };
       return NextResponse.json(errorResponse, { status: 500 });
     }
-
-    console.log("User created successfully:", newUser.id);
 
     // 성공 응답
     const successResponse: SuccessResponse = {

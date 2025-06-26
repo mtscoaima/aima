@@ -83,29 +83,12 @@ export function PaymentModal({
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // 환경변수 디버깅
-  React.useEffect(() => {
-    console.log("🔍 [DEBUG] 환경변수 확인:");
-    console.log(
-      "🔍 [DEBUG] NEXT_PUBLIC_TOSS_CLIENT_KEY:",
-      process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY
-    );
-    console.log("🔍 [DEBUG] NODE_ENV:", process.env.NODE_ENV);
-    console.log(
-      "🔍 [DEBUG] 모든 NEXT_PUBLIC_ 환경변수:",
-      Object.keys(process.env).filter((key) => key.startsWith("NEXT_PUBLIC_"))
-    );
-  }, []);
-
   // 사용자 정보 가져오기
   useEffect(() => {
     const fetchUserInfo = async () => {
-      console.log("🔍 [DEBUG] 사용자 정보 조회 시작");
       try {
         // 로컬 스토리지에서 토큰 가져오기
         const token = localStorage.getItem("accessToken");
-        console.log("🔍 [DEBUG] 토큰 존재 여부:", !!token);
-        console.log("🔍 [DEBUG] 토큰 길이:", token ? token.length : 0);
 
         const headers: HeadersInit = {
           "Content-Type": "application/json",
@@ -114,23 +97,14 @@ export function PaymentModal({
         // 토큰이 있으면 Authorization 헤더에 추가
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
-          console.log("🔍 [DEBUG] Authorization 헤더 추가됨");
-        } else {
-          console.log("🔍 [DEBUG] 토큰이 없어서 게스트로 진행");
         }
 
-        console.log("🔍 [DEBUG] API 요청 시작: /api/users/me");
         const response = await fetch("/api/users/me", {
           headers,
         });
 
-        console.log("🔍 [DEBUG] API 응답 상태:", response.status);
-
         if (response.ok) {
           const data = await response.json();
-          console.log("🔍 [DEBUG] API 응답 데이터:", data);
-          console.log("🔍 [DEBUG] data.user 존재:", !!data.user);
-          console.log("🔍 [DEBUG] data 구조:", Object.keys(data));
 
           // API 응답 구조 확인 후 매핑
           let userData;
@@ -151,17 +125,12 @@ export function PaymentModal({
             name: userData.name,
             phone: userData.phone_number || userData.phone, // phone_number 또는 phone
           };
-          console.log("🔍 [DEBUG] 매핑된 사용자 정보:", mappedUserInfo);
           setUserInfo(mappedUserInfo);
         } else if (response.status === 401) {
           // 인증 실패 시 기본값 사용 (로그인하지 않은 사용자도 결제 가능)
-          console.log("🔍 [DEBUG] 사용자 인증 실패 (401), 게스트로 결제 진행");
-          const errorData = await response.text();
-          console.log("🔍 [DEBUG] 401 에러 상세:", errorData);
+          await response.text();
         } else {
-          console.log("🔍 [DEBUG] 기타 HTTP 에러:", response.status);
-          const errorData = await response.text();
-          console.log("🔍 [DEBUG] 에러 상세:", errorData);
+          await response.text();
         }
       } catch (error) {
         console.error("🔍 [DEBUG] 사용자 정보 조회 실패:", error);
@@ -173,35 +142,22 @@ export function PaymentModal({
     };
 
     if (isOpen) {
-      console.log("🔍 [DEBUG] PaymentModal 열림, 사용자 정보 조회 시작");
       fetchUserInfo();
     }
   }, [isOpen]);
 
   // 토스페이먼츠 SDK 초기화
   useEffect(() => {
-    console.log("🔍 [DEBUG] 토스페이먼츠 초기화 useEffect 실행");
-    console.log("🔍 [DEBUG] isOpen:", isOpen);
-    console.log("🔍 [DEBUG] packageInfo:", packageInfo);
-    console.log("🔍 [DEBUG] userInfo:", userInfo);
-
     if (!isOpen || !packageInfo) {
-      console.log("🔍 [DEBUG] 초기화 조건 미충족, 건너뜀");
       return;
     }
 
     const initializeTossPayments = async () => {
-      console.log("🔍 [DEBUG] 토스페이먼츠 SDK 초기화 시작");
       try {
         // 토스페이먼츠 클라이언트 키 (환경변수에서 가져오기)
         const envClientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
         const fallbackClientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
         const clientKey = envClientKey || fallbackClientKey;
-
-        console.log("🔍 [DEBUG] 환경변수 클라이언트 키:", envClientKey);
-        console.log("🔍 [DEBUG] 사용할 클라이언트 키:", clientKey);
-        console.log("🔍 [DEBUG] 클라이언트 키 존재:", !!clientKey);
-        console.log("🔍 [DEBUG] 클라이언트 키 길이:", clientKey.length);
 
         if (!clientKey) {
           throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다.");
@@ -212,26 +168,16 @@ export function PaymentModal({
           ? `customer_${userInfo.id}_${Date.now()}`
           : `customer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        console.log("🔍 [DEBUG] 생성된 customerKey:", customerKey);
-        console.log("🔍 [DEBUG] 패키지 가격:", packageInfo.price);
-
-        console.log("🔍 [DEBUG] loadTossPayments 호출 시작");
         const tossPayments = await loadTossPayments(clientKey);
-        console.log("🔍 [DEBUG] loadTossPayments 성공");
 
-        console.log("🔍 [DEBUG] widgets 인스턴스 생성 시작");
         const widgetsInstance = tossPayments.widgets({ customerKey });
-        console.log("🔍 [DEBUG] widgets 인스턴스 생성 성공");
 
-        console.log("🔍 [DEBUG] setAmount 호출 시작");
         await widgetsInstance.setAmount({
           currency: "KRW",
           value: packageInfo.price,
         });
-        console.log("🔍 [DEBUG] setAmount 성공");
 
         setWidgets(widgetsInstance);
-        console.log("🔍 [DEBUG] 토스페이먼츠 SDK 초기화 완료");
       } catch (error) {
         console.error("🔍 [DEBUG] 토스페이먼츠 초기화 실패:", error);
         console.error("🔍 [DEBUG] 에러 타입:", typeof error);
@@ -255,14 +201,12 @@ export function PaymentModal({
   // 3단계에서 결제 위젯 렌더링
   useEffect(() => {
     if (step === 3 && widgets) {
-      console.log("🔍 [DEBUG] 3단계에서 결제 위젯 렌더링 시작");
       const renderPaymentWidget = async () => {
         try {
           await widgets.renderPaymentMethods({
             selector: "#payment-method",
             variantKey: "DEFAULT",
           });
-          console.log("🔍 [DEBUG] 결제 위젯 렌더링 완료");
         } catch (error) {
           console.error("🔍 [DEBUG] 결제 위젯 렌더링 실패:", error);
         }
@@ -290,19 +234,11 @@ export function PaymentModal({
   ];
 
   const handleTossPayment = async () => {
-    console.log("🔍 [DEBUG] 결제 요청 시작");
-    console.log("🔍 [DEBUG] widgets 존재:", !!widgets);
-    console.log("🔍 [DEBUG] packageInfo:", packageInfo);
-    console.log("🔍 [DEBUG] userInfo:", userInfo);
-    console.log("🔍 [DEBUG] 결제 처리 중:", isProcessingPayment);
-
     if (isProcessingPayment) {
-      console.log("🔍 [DEBUG] 이미 결제 처리 중이므로 무시");
       return;
     }
 
     if (!widgets) {
-      console.log("🔍 [DEBUG] widgets가 없어서 결제 실패");
       alert("결제 시스템을 초기화하는 중입니다. 잠시 후 다시 시도해주세요.");
       return;
     }
@@ -310,7 +246,6 @@ export function PaymentModal({
     try {
       setIsProcessingPayment(true);
       setStep(4);
-      console.log("🔍 [DEBUG] 결제 단계를 4로 변경");
 
       const orderId = generateOrderId();
       const orderName = `크레딧 ${packageInfo.credits.toLocaleString()}개 충전`;
@@ -334,8 +269,6 @@ export function PaymentModal({
       };
 
       const formattedPhone = formatPhoneNumber(userInfo?.phone);
-      console.log("🔍 [DEBUG] 원본 전화번호:", userInfo?.phone);
-      console.log("🔍 [DEBUG] 정리된 전화번호:", formattedPhone);
 
       // 이메일 형식 검증
       const formatEmail = (email?: string) => {
@@ -346,8 +279,6 @@ export function PaymentModal({
       };
 
       const formattedEmail = formatEmail(userInfo?.email);
-      console.log("🔍 [DEBUG] 원본 이메일:", userInfo?.email);
-      console.log("🔍 [DEBUG] 정리된 이메일:", formattedEmail);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const paymentData: any = {
@@ -362,20 +293,9 @@ export function PaymentModal({
       // 전화번호가 유효한 경우에만 추가
       if (userInfo?.phone && userInfo.phone.trim()) {
         paymentData.customerMobilePhone = formattedPhone;
-        console.log("🔍 [DEBUG] 전화번호 포함:", formattedPhone);
-      } else {
-        console.log("🔍 [DEBUG] 전화번호 제외 (없음)");
       }
 
-      console.log("🔍 [DEBUG] 결제 요청 데이터:", paymentData);
-      console.log("🔍 [DEBUG] userInfo 상태:", userInfo);
-      console.log("🔍 [DEBUG] userInfo?.email:", userInfo?.email);
-      console.log("🔍 [DEBUG] userInfo?.name:", userInfo?.name);
-      console.log("🔍 [DEBUG] userInfo?.phone:", userInfo?.phone);
-
-      console.log("🔍 [DEBUG] widgets.requestPayment 호출 시작");
       await widgets.requestPayment(paymentData);
-      console.log("🔍 [DEBUG] widgets.requestPayment 호출 완료");
 
       // Promise 방식에서는 결과가 바로 반환되지 않으므로
       // successUrl로 리다이렉트됩니다.
@@ -399,7 +319,6 @@ export function PaymentModal({
         errorMessage.includes("S008") ||
         errorMessage.includes("기존 요청을 처리중")
       ) {
-        console.log("🔍 [DEBUG] 중복 요청 에러 무시, 결제 성공으로 처리");
         // 결제 성공 페이지로 리다이렉트하지 않고 모달만 닫기
         alert("결제가 처리되었습니다. 결제 결과를 확인해주세요.");
         onClose();

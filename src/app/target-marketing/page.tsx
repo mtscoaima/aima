@@ -151,9 +151,7 @@ export default function TargetMarketingPage() {
       const chatId = Date.now().toString();
 
       // 초기 메시지를 세션 스토리지에 저장
-      console.log("세션 스토리지에 저장할 메시지:", inputValue);
       sessionStorage.setItem("initialMessage", inputValue);
-      console.log("세션 스토리지 저장 완료");
 
       // 동적 라우트로 이동
       router.push(`/target-marketing/${chatId}`);
@@ -282,11 +280,6 @@ export default function TargetMarketingPage() {
               }
 
               const sizeKB = blob.size / 1024;
-              console.log(
-                `Compressed image size: ${sizeKB.toFixed(
-                  2
-                )}KB at quality ${currentQuality}`
-              );
 
               if (sizeKB <= maxSizeKB || currentQuality <= 0.1) {
                 const compressedFile = new File([blob], file.name, {
@@ -319,13 +312,8 @@ export default function TargetMarketingPage() {
 
     try {
       setIsUploadingImage(true);
-      console.log(`Original file size: ${(file.size / 1024).toFixed(2)}KB`);
-
       // 이미지 압축
       const compressedFile = await compressImage(file, 300);
-      console.log(
-        `Compressed file size: ${(compressedFile.size / 1024).toFixed(2)}KB`
-      );
 
       setSelectedImageFile(compressedFile);
       setImagePreviewUrl(URL.createObjectURL(compressedFile));
@@ -403,7 +391,6 @@ export default function TargetMarketingPage() {
 
       if (response.ok) {
         const updatedTemplate = await response.json();
-        console.log("템플릿 업데이트 성공:", updatedTemplate);
 
         // 로컬 상태 업데이트
         setTemplates(
@@ -492,8 +479,7 @@ export default function TargetMarketingPage() {
       });
 
       if (response.ok) {
-        const newTemplate = await response.json();
-        console.log("템플릿 생성 성공:", newTemplate);
+        await response.json();
 
         handleCloseCreateModal();
         alert("템플릿이 성공적으로 생성되었습니다.");

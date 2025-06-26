@@ -587,8 +587,7 @@ export default function SignupPage() {
         throw new Error(errorData.message || "회원가입에 실패했습니다.");
       }
 
-      const result = await response.json();
-      console.log("회원가입 성공:", result);
+      await response.json();
 
       // 회원가입 성공
       setIsSuccess(true);

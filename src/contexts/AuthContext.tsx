@@ -105,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log("토큰 갱신 시도 중...");
       const refreshData: RefreshTokenRequest = {
         refreshToken: refreshTokenValue,
       };
@@ -119,7 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateUser(response.user);
       setError(null);
 
-      console.log("토큰 갱신 성공");
       return true;
     } catch (err) {
       console.error("토큰 갱신 실패:", err);
@@ -157,7 +155,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 401 에러인 경우 토큰 갱신 시도
       if (err instanceof Error && err.message.includes("401")) {
-        console.log("401 에러 감지, 토큰 갱신 시도...");
         const refreshSuccess = await refreshAccessToken();
 
         if (refreshSuccess) {
@@ -215,7 +212,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated) return;
 
     const interval = setInterval(async () => {
-      console.log("정기 토큰 갱신 시도...");
       await refreshAccessToken();
     }, 55 * 60 * 1000); // 55분
 
@@ -249,11 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const response: SignupResponse = await signupUser(signupData);
-
-      // 회원가입 성공 후 자동 로그인은 하지 않음
-      // 사용자가 직접 로그인하도록 함
-      console.log("회원가입 성공:", response);
+      await signupUser(signupData);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "회원가입에 실패했습니다.";

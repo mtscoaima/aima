@@ -102,11 +102,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(
-      "Current user last_login_at before update:",
-      user.last_login_at
-    );
-
     // 비밀번호 검증
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -175,10 +170,8 @@ export async function POST(request: NextRequest) {
     );
 
     // 마지막 로그인 시간 업데이트 (한국 시간 사용)
-    console.log("Updating last_login_at for user:", user.id);
     const updateTime = getKSTISOString();
-    console.log("KST update time:", updateTime);
-    const { data: updateData, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from("users")
       .update({ last_login_at: updateTime })
       .eq("id", user.id)
@@ -193,11 +186,8 @@ export async function POST(request: NextRequest) {
         hint: updateError.hint,
       });
     } else {
-      console.log("Successfully updated last_login_at for user:", user.id);
-      console.log("Update result:", updateData);
-
       // 업데이트 후 실제 값 확인
-      const { data: verifyData, error: verifyError } = await supabase
+      const { error: verifyError } = await supabase
         .from("users")
         .select("last_login_at")
         .eq("id", user.id)
@@ -205,11 +195,6 @@ export async function POST(request: NextRequest) {
 
       if (verifyError) {
         console.error("Failed to verify last_login_at update:", verifyError);
-      } else {
-        console.log(
-          "Verified last_login_at after update:",
-          verifyData.last_login_at
-        );
       }
     }
 

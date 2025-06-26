@@ -171,9 +171,6 @@ export async function POST(request: NextRequest) {
                   }
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (error) {
-                  console.log(
-                    "JSON 파싱 실패, 전체 텍스트에서 SMS 내용 추출 시도"
-                  );
                   displayText = fullText;
                   smsTextContent = extractSMSContent(fullText);
                 }
