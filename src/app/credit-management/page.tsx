@@ -23,7 +23,6 @@ const CreditManagementPage = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
 
-  const [showTestPackageModal, setShowTestPackageModal] = useState(false);
   const [showUsageModal, setShowUsageModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [usageAmount, setUsageAmount] = useState("");
@@ -44,10 +43,11 @@ const CreditManagementPage = () => {
       const baseCredits = Math.floor(packageInfo.price / 10);
       const bonusCredits = totalCredits - baseCredits;
 
+      const packageName = `크레딧 ${totalCredits.toLocaleString()}개 패키지`;
       const description =
         bonusCredits > 0
-          ? `크레딧 패키지 충전: ${totalCredits}크레딧 (기본 ${baseCredits} + 보너스 ${bonusCredits})`
-          : `크레딧 패키지 충전: ${totalCredits}크레딧`;
+          ? `${packageName} 충전: ${totalCredits}크레딧 (기본 ${baseCredits} + 보너스 ${bonusCredits})`
+          : `${packageName} 충전: ${totalCredits}크레딧`;
 
       await addTransaction(
         "charge",
@@ -61,6 +61,7 @@ const CreditManagementPage = () => {
           baseCredits: baseCredits,
           bonusCredits: bonusCredits,
           totalCredits: totalCredits,
+          packageName: packageName,
         }
       );
 
@@ -84,53 +85,8 @@ const CreditManagementPage = () => {
     setSelectedPackage(null);
   };
 
-  const handleShowTestPackageModal = () => setShowTestPackageModal(true);
   const handleTestUsage = () => setShowUsageModal(true);
   const handleTestRefund = () => setShowRefundModal(true);
-
-  const handleTestPackageCharge = async (packageInfo: Package) => {
-    try {
-      const totalCredits = packageInfo.credits;
-      const baseCredits = Math.floor(packageInfo.price / 10);
-      const bonusCredits = totalCredits - baseCredits;
-
-      const description =
-        bonusCredits > 0
-          ? `테스트 패키지 충전: ${totalCredits}크레딧 (기본 ${baseCredits} + 보너스 ${bonusCredits})`
-          : `테스트 패키지 충전: ${totalCredits}크레딧`;
-
-      await addTransaction(
-        "charge",
-        totalCredits,
-        description,
-        `test_package_${packageInfo.id}_${Date.now()}`,
-        {
-          packageId: packageInfo.id,
-          packagePrice: packageInfo.price,
-          paymentMethod: "test",
-          testTransaction: true,
-          baseCredits: baseCredits,
-          bonusCredits: bonusCredits,
-          totalCredits: totalCredits,
-        }
-      );
-
-      setShowTestPackageModal(false);
-      setCurrentPage(1);
-
-      alert(
-        `테스트 충전 완료! ${totalCredits.toLocaleString()}크레딧이 충전되었습니다!${
-          bonusCredits > 0
-            ? ` (기본: ${baseCredits.toLocaleString()}, 보너스: ${bonusCredits.toLocaleString()})`
-            : ""
-        }`
-      );
-    } catch (error) {
-      alert(
-        error instanceof Error ? error.message : "충전 중 오류가 발생했습니다."
-      );
-    }
-  };
 
   const handleConfirmUsage = async () => {
     const amount = parseInt(usageAmount);
@@ -296,22 +252,26 @@ const CreditManagementPage = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {transactions.map((transaction) => {
                       const metadata = transaction.metadata || {};
+                      // packagePrice 또는 paymentAmount 중 존재하는 것 사용
                       const packagePrice =
-                        typeof metadata.packagePrice === "number"
-                          ? metadata.packagePrice
-                          : 0;
+                        metadata.packagePrice || metadata.paymentAmount || 0;
                       const baseCredits =
                         typeof metadata.baseCredits === "number"
                           ? metadata.baseCredits
-                          : Math.floor(packagePrice / 10);
+                          : typeof packagePrice === "number"
+                          ? Math.floor(packagePrice / 10)
+                          : 0;
                       const bonusCredits =
                         typeof metadata.bonusCredits === "number"
                           ? metadata.bonusCredits
-                          : transaction.amount - baseCredits;
+                          : Math.max(0, transaction.amount - baseCredits);
                       const paymentMethod =
                         typeof metadata.paymentMethod === "string"
                           ? metadata.paymentMethod
                           : "card";
+                      const packageName =
+                        metadata.packageName ||
+                        `크레딧 ${transaction.amount.toLocaleString()}개 패키지`;
 
                       return (
                         <tr key={transaction.id}>
@@ -328,8 +288,7 @@ const CreditManagementPage = () => {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            크레딧 {transaction.amount.toLocaleString()}개
-                            패키지
+                            {packageName}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
                             +{baseCredits.toLocaleString()}
@@ -340,7 +299,11 @@ const CreditManagementPage = () => {
                               : "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ₩{packagePrice.toLocaleString()}
+                            ₩
+                            {(typeof packagePrice === "number"
+                              ? packagePrice
+                              : 0
+                            ).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             {paymentMethod === "card"
@@ -349,10 +312,13 @@ const CreditManagementPage = () => {
                               ? "테스트"
                               : paymentMethod === "paypal"
                               ? "PayPal"
+                              : paymentMethod === "toss"
+                              ? "토스페이먼츠"
                               : paymentMethod}
-                            {paymentMethod === "card" && (
+                            {(paymentMethod === "card" ||
+                              paymentMethod === "toss") && (
                               <div className="text-xs text-gray-400">
-                                **** 1234
+                                토스페이먼츠
                               </div>
                             )}
                             {paymentMethod === "paypal" && (
@@ -743,12 +709,6 @@ const CreditManagementPage = () => {
               <h3 className="text-lg font-semibold mb-4">테스트 기능</h3>
               <div className="flex gap-2 flex-wrap">
                 <button
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  onClick={handleShowTestPackageModal}
-                >
-                  테스트 패키지 충전
-                </button>
-                <button
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                   onClick={handleTestUsage}
                 >
@@ -763,7 +723,16 @@ const CreditManagementPage = () => {
               </div>
             </div>
 
-            <TransactionTable transactions={currentTransactions} />
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  크레딧 사용 내역
+                </h3>
+              </div>
+              <div className="p-4">
+                <TransactionTable transactions={currentTransactions} />
+              </div>
+            </div>
           </div>
         );
       case "usage":
@@ -875,12 +844,10 @@ const CreditManagementPage = () => {
         );
         const totalChargeAmount = chargeTransactions.reduce((sum, t) => {
           const metadata = t.metadata || {};
-          return (
-            sum +
-            (typeof metadata.packagePrice === "number"
-              ? metadata.packagePrice
-              : 0)
-          );
+          // packagePrice 또는 paymentAmount 중 존재하는 것 사용
+          const paymentAmount =
+            metadata.packagePrice || metadata.paymentAmount || 0;
+          return sum + (typeof paymentAmount === "number" ? paymentAmount : 0);
         }, 0);
         const totalBonusCredits = chargeTransactions.reduce((sum, t) => {
           const metadata = t.metadata || {};
@@ -1010,82 +977,6 @@ const CreditManagementPage = () => {
           packageInfo={selectedPackage}
           onPaymentComplete={handlePaymentComplete}
         />
-
-        {showTestPackageModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-            <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  테스트 패키지 충전
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  테스트용 패키지를 선택하여 충전하세요.
-                </p>
-                <div className="space-y-3 mb-4">
-                  {[
-                    {
-                      id: 1,
-                      name: "기본",
-                      credits: 1000,
-                      bonus: 0,
-                      price: 10000,
-                    },
-                    {
-                      id: 2,
-                      name: "인기",
-                      credits: 3000,
-                      bonus: 200,
-                      price: 28000,
-                    },
-                    {
-                      id: 3,
-                      name: "프리미엄",
-                      credits: 5000,
-                      bonus: 500,
-                      price: 45000,
-                    },
-                    {
-                      id: 4,
-                      name: "비즈니스",
-                      credits: 10000,
-                      bonus: 1500,
-                      price: 85000,
-                    },
-                  ].map((pkg) => {
-                    const baseCredits = Math.floor(pkg.price / 10);
-                    const bonusCredits = pkg.credits - baseCredits;
-
-                    return (
-                      <button
-                        key={pkg.id}
-                        onClick={() => handleTestPackageCharge(pkg)}
-                        className="w-full p-3 border border-gray-300 rounded-md text-left hover:bg-gray-50 hover:border-blue-500"
-                      >
-                        <div className="font-medium">{pkg.name} 패키지</div>
-                        <div className="text-sm text-gray-600">
-                          총 {pkg.credits.toLocaleString()}크레딧
-                          {bonusCredits > 0 &&
-                            ` (기본 ${baseCredits.toLocaleString()} + 보너스 ${bonusCredits.toLocaleString()})`}
-                        </div>
-                        <div className="text-sm text-blue-600">
-                          {pkg.price.toLocaleString()}원
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowTestPackageModal(false)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                  >
-                    취소
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {showUsageModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
