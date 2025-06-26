@@ -12,7 +12,6 @@ import {
   LoginRequest,
   LoginResponse,
   SignupRequest,
-  SignupResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
   loginUser,
