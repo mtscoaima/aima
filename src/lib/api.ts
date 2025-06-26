@@ -175,7 +175,6 @@ async function refreshTokenInternal(): Promise<boolean> {
   }
 
   try {
-    console.log("API 레벨에서 토큰 갱신 시도...");
     const refreshData: RefreshTokenRequest = {
       refreshToken: refreshTokenValue,
     };
@@ -197,7 +196,6 @@ async function refreshTokenInternal(): Promise<boolean> {
     // 새로운 액세스 토큰 저장 (리프레시 토큰은 그대로 유지)
     tokenManager.setTokens(result.accessToken, refreshTokenValue);
 
-    console.log("API 레벨에서 토큰 갱신 성공");
     return true;
   } catch (err) {
     console.error("API 레벨에서 토큰 갱신 실패:", err);
@@ -234,7 +232,6 @@ async function apiCall<T>(
         !isRetry &&
         endpoint !== "/api/users/refresh"
       ) {
-        console.log("401 에러 감지, 토큰 갱신 후 재시도...");
         const refreshSuccess = await refreshTokenInternal();
 
         if (refreshSuccess) {

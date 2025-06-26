@@ -161,9 +161,7 @@ h3 {
 .nav-center {
   display: flex;
   align-items: center;
-  flex: 1;
   justify-content: center;
-  max-width: 60%; /* 중앙 메뉴 영역 최대 너비 제한 */
   overflow: visible; /* 드롭다운이 보이도록 */
 }
 
@@ -1664,7 +1662,6 @@ body .landing-root .main-content {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: auto;
   flex-shrink: 0; /* 버튼들이 축소되지 않도록 */
   min-width: 160px; /* 최소 너비 보장 */
   max-width: 200px; /* 최대 너비 제한 */

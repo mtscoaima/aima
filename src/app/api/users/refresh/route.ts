@@ -134,12 +134,8 @@ export async function POST(request: NextRequest) {
     );
 
     // 토큰 갱신 시 마지막 로그인 시간 업데이트
-    console.log(
-      "Updating last_login_at for user during token refresh:",
-      user.id
-    );
     const updateTime = getKSTISOString();
-    const { data: updateData, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from("users")
       .update({ last_login_at: updateTime })
       .eq("id", user.id)
@@ -156,12 +152,6 @@ export async function POST(request: NextRequest) {
         details: updateError.details,
         hint: updateError.hint,
       });
-    } else {
-      console.log(
-        "Successfully updated last_login_at during token refresh for user:",
-        user.id
-      );
-      console.log("Refresh update result:", updateData);
     }
 
     // 성공 응답

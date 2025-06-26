@@ -198,8 +198,6 @@ export async function POST(request: NextRequest) {
       const cleanPhoneNumber = phoneNumber.replace(/-/g, ""); // 하이픈 제거
       await sendSMS(TEST_CALLING_NUMBER, cleanPhoneNumber, smsMessage);
 
-      console.log(`✅ 승인 알림 SMS 발송 성공: ${phoneNumber} (${status})`);
-
       return NextResponse.json(
         {
           message: "승인 알림이 발송되었습니다.",

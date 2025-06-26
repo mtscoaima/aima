@@ -114,17 +114,6 @@ export async function POST(request: NextRequest) {
       "employmentCertificate"
     ) as File | null;
 
-    console.log("Signup with files request received:", {
-      userType,
-      email,
-      name,
-      phoneNumber,
-      companyName,
-      businessNumber,
-      hasBusinessRegistration: !!businessRegistration,
-      hasEmploymentCertificate: !!employmentCertificate,
-    });
-
     // 입력 값 검증
     const fieldErrors: Array<{ field: string; message: string }> = [];
 
@@ -224,8 +213,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 이메일 중복 확인
-    console.log("Checking for existing email:", email);
-
     const { data: existingUser, error: checkError } = await supabase
       .from("users")
       .select("email")
@@ -245,7 +232,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingUser) {
-      console.log("Email already exists:", email);
       const errorResponse: ErrorResponse = {
         message: "이메일 중복",
         error: "string",
@@ -260,12 +246,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 비밀번호 해싱
-    console.log("Hashing password...");
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // 사용자 생성
-    console.log("Creating new user...");
     const now = getKSTISOString();
 
     // 기업 정보 JSON 객체 생성 (일반회원인 경우에만)
@@ -340,8 +324,6 @@ export async function POST(request: NextRequest) {
       };
       return NextResponse.json(errorResponse, { status: 500 });
     }
-
-    console.log("User created successfully:", newUser.id);
 
     // 파일 업로드 처리 (일반회원인 경우에만)
     const documents: { [key: string]: UploadedFile } = {};

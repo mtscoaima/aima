@@ -224,8 +224,6 @@ export async function POST(request: NextRequest) {
       const cleanPhoneNumber = phoneNumber.replace(/-/g, ""); // 하이픈 제거
 
       await sendSMS(TEST_CALLING_NUMBER, cleanPhoneNumber, smsMessage);
-
-      console.log(`✅ 인증번호 SMS 발송 성공: ${phoneNumber}`);
     } catch (smsError) {
       console.error("SMS 발송 실패:", smsError);
 
@@ -334,8 +332,6 @@ export async function PUT(request: NextRequest) {
 
     // 인증 성공 - 저장된 인증번호 삭제
     verificationCodes.delete(phoneNumber);
-
-    console.log(`✅ 휴대폰 인증 성공: ${phoneNumber}`);
 
     return NextResponse.json(
       {

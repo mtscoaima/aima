@@ -175,6 +175,12 @@ export default function Navigation() {
                   >
                     고객센터
                   </button>
+                  <button
+                    onClick={() => handleNavClick("/credit-management")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
+                  >
+                    크레딧 관리
+                  </button>
                 </>
               )}
             </nav>
@@ -252,6 +258,12 @@ export default function Navigation() {
                     className="mobile-menu-item mobile-menu-btn"
                   >
                     고객센터
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/credit-management")}
+                    className="mobile-menu-item mobile-menu-btn"
+                  >
+                    크레딧 관리
                   </button>
                 </>
               )}

@@ -195,9 +195,6 @@ export default function MemberApprovalPage() {
           );
 
           if (notificationResponse.ok) {
-            console.log(
-              `✅ 승인 알림 SMS 전송 성공: ${currentUser.name} (${newStatus})`
-            );
           } else {
             const notificationError = await notificationResponse
               .json()

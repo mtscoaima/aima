@@ -19,8 +19,6 @@ export async function POST(request: NextRequest) {
     let result;
 
     if (editType === "edit") {
-      console.log("🎨 GPT-4 Vision + DALL-E 3 편집 모드 시작");
-
       try {
         // 1단계: 현재 이미지를 Base64로 변환
         const base64Image = imageUrl.startsWith("data:image/")

@@ -34,7 +34,6 @@ export default function SystemSettingsPage() {
 
   const handleSaveSettings = () => {
     // TODO: API 호출하여 설정 저장
-    console.log("Settings saved:", settings);
     alert("변경사항이 저장되었습니다.");
   };
 
