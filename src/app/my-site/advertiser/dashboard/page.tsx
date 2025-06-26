@@ -334,7 +334,7 @@ export default function AdvertiserDashboard() {
                       : formatCurrency(calculateBalance())}
                   </p>
                   <Link
-                    href="/my-site/advertiser/plans"
+                    href="/credit-management"
                     className="text-sm text-blue-600 hover:underline"
                   >
                     충전하기
@@ -422,13 +422,13 @@ export default function AdvertiserDashboard() {
               </Link>
 
               <Link
-                href="/my-site/advertiser/plans"
+                href="/credit-management"
                 className="flex flex-col items-center p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center mb-2">
                   <span className="text-white text-sm">💳</span>
                 </div>
-                <span className="text-sm font-medium">요금제</span>
+                <span className="text-sm font-medium">크레딧 관리</span>
               </Link>
             </div>
           </div>
