@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import { tokenManager } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -140,6 +141,8 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
   const [balanceData, setBalanceData] =
     useState<BalanceData>(defaultBalanceData);
   const [isLoading, setIsLoading] = useState(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRefreshRef = useRef<number>(0);
 
   const refreshTransactions = useCallback(async () => {
     if (!user || !tokenManager.isLoggedIn()) {
@@ -147,41 +150,70 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const data = await transactionAPI.getTransactions(100, 0);
-
-      const transactionsWithTimestamp = data.transactions.map(
-        (transaction) => ({
-          ...transaction,
-          timestamp: transaction.created_at,
-        })
-      );
-
-      const lastChargeTransaction = transactionsWithTimestamp.find(
-        (t) => t.type === "charge"
-      );
-
-      setBalanceData({
-        balance: data.currentBalance,
-        lastChargeDate: lastChargeTransaction
-          ? new Date(lastChargeTransaction.created_at).toLocaleString("ko-KR")
-          : "",
-        lastChargeAmount: lastChargeTransaction
-          ? Math.abs(lastChargeTransaction.amount)
-          : 0,
-        paymentMethod:
-          (lastChargeTransaction?.metadata?.paymentMethod as string) || "card",
-        transactions: transactionsWithTimestamp,
-      });
-    } catch (error) {
-      console.error("트랜잭션 로드 오류:", error);
-      if (error instanceof Error && error.message.includes("인증")) {
-        setBalanceData(defaultBalanceData);
-      }
-    } finally {
-      setIsLoading(false);
+    // 디바운싱: 1초 이내의 중복 호출 방지
+    const now = Date.now();
+    if (now - lastRefreshRef.current < 1000) {
+      console.log("🔄 refreshTransactions 디바운싱 - 스킵");
+      return;
     }
+
+    // 기존 타이머 취소
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    // 새로운 타이머 설정
+    refreshTimeoutRef.current = setTimeout(async () => {
+      if (!user || !tokenManager.isLoggedIn()) {
+        setBalanceData(defaultBalanceData);
+        return;
+      }
+
+      setIsLoading(true);
+      lastRefreshRef.current = Date.now();
+
+      try {
+        console.log("🔄 트랜잭션 데이터 새로고침 시작");
+        const data = await transactionAPI.getTransactions(100, 0);
+
+        const transactionsWithTimestamp = data.transactions.map(
+          (transaction) => ({
+            ...transaction,
+            timestamp: transaction.created_at,
+          })
+        );
+
+        const lastChargeTransaction = transactionsWithTimestamp.find(
+          (t) => t.type === "charge"
+        );
+
+        setBalanceData({
+          balance: data.currentBalance,
+          lastChargeDate: lastChargeTransaction
+            ? new Date(lastChargeTransaction.created_at).toLocaleString("ko-KR")
+            : "",
+          lastChargeAmount: lastChargeTransaction
+            ? Math.abs(lastChargeTransaction.amount)
+            : 0,
+          paymentMethod:
+            (lastChargeTransaction?.metadata?.paymentMethod as string) ||
+            "card",
+          transactions: transactionsWithTimestamp,
+        });
+
+        console.log(
+          "✅ 트랜잭션 데이터 새로고침 완료 - 잔액:",
+          data.currentBalance
+        );
+      } catch (error) {
+        console.error("❌ 트랜잭션 로드 오류:", error);
+        if (error instanceof Error && error.message.includes("인증")) {
+          setBalanceData(defaultBalanceData);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }, 100); // 100ms 지연
   }, [user]);
 
   useEffect(() => {
@@ -193,6 +225,15 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [user, authLoading, refreshTransactions]);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const calculateBalance = (): number => {
     return balanceData.balance;

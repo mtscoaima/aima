@@ -1,8 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useBalance } from "@/contexts/BalanceContext";
 
-export function CreditBalance() {
-  const { calculateBalance, getTransactionHistory, isLoading } = useBalance();
+interface CreditBalanceProps {
+  refreshKey?: number;
+}
+
+export function CreditBalance({ refreshKey }: CreditBalanceProps) {
+  const {
+    calculateBalance,
+    getTransactionHistory,
+    isLoading,
+    refreshTransactions,
+  } = useBalance();
+
+  // refreshKey가 변경될 때마다 데이터 새로고침
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      console.log(
+        "🔄 CreditBalance 컴포넌트 새로고침 (refreshKey:",
+        refreshKey,
+        ")"
+      );
+      refreshTransactions().catch((error) => {
+        console.error("CreditBalance 새로고침 실패:", error);
+      });
+    }
+  }, [refreshKey, refreshTransactions]);
 
   // 이번 달 사용량 계산
   const calculateMonthlyUsage = () => {

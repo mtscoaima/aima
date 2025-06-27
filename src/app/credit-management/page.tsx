@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useBalance } from "@/contexts/BalanceContext";
 import { CreditBalance } from "@/components/CreditBalance";
 import { CreditPackages } from "@/components/CreditPackages";
@@ -30,7 +30,71 @@ const CreditManagementPage = () => {
 
   const itemsPerPage = 10;
 
-  const { addTransaction, getTransactionHistory } = useBalance();
+  const { addTransaction, getTransactionHistory, refreshTransactions } =
+    useBalance();
+
+  // 결제 완료 후 자동 새로고침 처리
+  useEffect(() => {
+    const checkPaymentCompletion = async () => {
+      const paymentCompleted = localStorage.getItem("payment_completed");
+      const timestamp = localStorage.getItem("payment_completed_timestamp");
+
+      if (paymentCompleted === "true" && timestamp) {
+        const completionTime = parseInt(timestamp);
+        const now = Date.now();
+        // 5분 이내의 결제 완료만 처리 (중복 처리 방지)
+        if (now - completionTime < 5 * 60 * 1000) {
+          console.log("💰 결제 완료 감지 - 데이터 새로고침 중...");
+          try {
+            await refreshTransactions();
+            setRefreshKey((prev) => prev + 1);
+            console.log("✅ 크레딧 데이터 새로고침 완료");
+          } catch (error) {
+            console.error("❌ 데이터 새로고침 실패:", error);
+          }
+        }
+
+        // 플래그 제거
+        localStorage.removeItem("payment_completed");
+        localStorage.removeItem("payment_completed_timestamp");
+      }
+    };
+
+    checkPaymentCompletion();
+  }, [refreshTransactions]);
+
+  // 페이지 포커스 시 자동 새로고침
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        console.log("👀 페이지 포커스 - 데이터 새로고침");
+        try {
+          await refreshTransactions();
+          setRefreshKey((prev) => prev + 1);
+        } catch (error) {
+          console.error("페이지 포커스 시 새로고침 실패:", error);
+        }
+      }
+    };
+
+    const handleFocus = async () => {
+      console.log("🎯 윈도우 포커스 - 데이터 새로고침");
+      try {
+        await refreshTransactions();
+        setRefreshKey((prev) => prev + 1);
+      } catch (error) {
+        console.error("윈도우 포커스 시 새로고침 실패:", error);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [refreshTransactions]);
 
   const handleCharge = (packageInfo: Package) => {
     setSelectedPackage(packageInfo);
@@ -702,7 +766,7 @@ const CreditManagementPage = () => {
       case "charge":
         return (
           <div className="space-y-6" key={`charge-${refreshKey}`}>
-            <CreditBalance />
+            <CreditBalance refreshKey={refreshKey} />
             <CreditPackages onCharge={handleCharge} />
 
             <div className="bg-white rounded-lg shadow p-4">
