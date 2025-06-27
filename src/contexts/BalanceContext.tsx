@@ -153,7 +153,6 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     // 디바운싱: 1초 이내의 중복 호출 방지
     const now = Date.now();
     if (now - lastRefreshRef.current < 1000) {
-      console.log("🔄 refreshTransactions 디바운싱 - 스킵");
       return;
     }
 
@@ -173,7 +172,6 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       lastRefreshRef.current = Date.now();
 
       try {
-        console.log("🔄 트랜잭션 데이터 새로고침 시작");
         const data = await transactionAPI.getTransactions(100, 0);
 
         const transactionsWithTimestamp = data.transactions.map(
@@ -200,11 +198,6 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
             "card",
           transactions: transactionsWithTimestamp,
         });
-
-        console.log(
-          "✅ 트랜잭션 데이터 새로고침 완료 - 잔액:",
-          data.currentBalance
-        );
       } catch (error) {
         console.error("❌ 트랜잭션 로드 오류:", error);
         if (error instanceof Error && error.message.includes("인증")) {

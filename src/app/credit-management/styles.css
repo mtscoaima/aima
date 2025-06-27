@@ -1,7 +1,47 @@
+/* Layout 오버라이드 */
+body .main-content {
+  padding: 0 !important;
+  padding-top: 140px !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+/* Custom color classes */
+.text-primary {
+  color: #1681ff !important;
+}
+
+.bg-primary {
+  background-color: #1681ff !important;
+}
+
+.bg-primary:hover {
+  background-color: #1366cc !important;
+}
+
+.border-primary {
+  border-color: #1681ff !important;
+}
+
+.ring-primary {
+  --tw-ring-color: #1681ff !important;
+}
+
 .credit-management-container {
-  padding: calc(80px + 7rem) 4rem 2rem 4rem;
-  background-color: #f8f9fa;
-  min-height: 100vh;
+  min-height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  position: relative;
+}
+
+.cm-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .cm-header {
@@ -9,9 +49,15 @@
 }
 
 .cm-header h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+  color: #1681ff;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%; /* 28.8px */
+  letter-spacing: -0.48px;
+  margin: 0 0 0.5rem 0;
 }
 
 .cm-header p {
@@ -39,11 +85,11 @@
 }
 
 .cm-tab-btn:hover {
-  color: #007bff;
+  color: #1681ff;
 }
 
 .cm-tab-btn.active {
-  color: #007bff;
+  color: #1681ff;
 }
 
 .cm-tab-btn.active::after {
@@ -53,7 +99,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background-color: #007bff;
+  background-color: #1681ff;
 }
 
 .cm-balance-section {
@@ -86,7 +132,7 @@
 .cm-balance-amount {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #007bff;
+  color: #1681ff;
   line-height: 1;
 }
 
@@ -151,7 +197,7 @@
 }
 
 .cm-package-card.popular {
-  border-color: #007bff;
+  border-color: #1681ff;
   border-width: 2px;
 }
 
@@ -160,7 +206,7 @@
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #007bff;
+  background-color: #1681ff;
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
@@ -181,7 +227,7 @@
 }
 
 .cm-package-bonus {
-  color: #007bff;
+  color: #1681ff;
   font-size: 0.9rem;
   font-weight: 600;
   margin-bottom: 1rem;
@@ -194,7 +240,7 @@
 }
 
 .cm-package-charge-btn {
-  background-color: #007bff;
+  background-color: #1681ff;
   color: #fff;
   border: none;
   width: 100%;
@@ -298,22 +344,42 @@
   color: #dc3545;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
+  .cm-container {
+    padding: 0 20px;
+  }
   .cm-packages-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
+@media (max-width: 900px) {
+  .cm-container {
+    padding: 0 16px;
+  }
+  .cm-header h1 {
+    font-size: 20px;
+  }
+  .cm-packages-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .credit-management-container {
-    padding: 1rem;
+    padding: 16px;
+  }
+  .cm-container {
+    padding: 0;
+  }
+  .cm-header h1 {
+    font-size: 18px;
   }
   .cm-balance-content {
     flex-direction: column;
     align-items: flex-start;
     gap: 1.5rem;
   }
-
   .cm-balance-usage {
     text-align: left;
   }
@@ -323,16 +389,73 @@
   .cm-history-item {
     padding: 1rem 0;
   }
-
   .cm-history-info {
     gap: 0.375rem;
   }
-
   .cm-history-main {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
   }
+}
+
+@media (max-width: 480px) {
+  .credit-management-container {
+    padding: 12px;
+  }
+  .cm-header h1 {
+    font-size: 16px;
+  }
+  .cm-packages-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .credit-management-container {
+    padding: 8px;
+  }
+  .cm-header h1 {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .cm-container {
+    max-width: 1400px;
+  }
+}
+
+/* 전체 내역 리스트 스타일 */
+.cm-transaction-list {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.cm-transaction-list .space-y-3 > * + * {
+  margin-top: 12px;
+}
+
+.cm-transaction-card {
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.cm-transaction-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 카드 내부 여백 조정 */
+.cm-transaction-card .flex {
+  margin-bottom: 0;
+}
+
+.cm-transaction-card .mt-2 {
+  margin-top: 8px;
 }
 
 /* Payment Modal Styles */
@@ -392,7 +515,7 @@
 }
 
 .cm-modal-confirm-btn {
-  background-color: #007bff;
+  background-color: #1681ff;
   color: #fff;
 }
 

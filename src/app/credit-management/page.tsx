@@ -28,6 +28,10 @@ const CreditManagementPage = () => {
   const [usageAmount, setUsageAmount] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
 
+  // 필터링 상태
+  const [dateFilter, setDateFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const itemsPerPage = 10;
 
   const { addTransaction, getTransactionHistory, refreshTransactions } =
@@ -44,11 +48,9 @@ const CreditManagementPage = () => {
         const now = Date.now();
         // 5분 이내의 결제 완료만 처리 (중복 처리 방지)
         if (now - completionTime < 5 * 60 * 1000) {
-          console.log("💰 결제 완료 감지 - 데이터 새로고침 중...");
           try {
             await refreshTransactions();
             setRefreshKey((prev) => prev + 1);
-            console.log("✅ 크레딧 데이터 새로고침 완료");
           } catch (error) {
             console.error("❌ 데이터 새로고침 실패:", error);
           }
@@ -67,7 +69,6 @@ const CreditManagementPage = () => {
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!document.hidden) {
-        console.log("👀 페이지 포커스 - 데이터 새로고침");
         try {
           await refreshTransactions();
           setRefreshKey((prev) => prev + 1);
@@ -78,7 +79,6 @@ const CreditManagementPage = () => {
     };
 
     const handleFocus = async () => {
-      console.log("🎯 윈도우 포커스 - 데이터 새로고침");
       try {
         await refreshTransactions();
         setRefreshKey((prev) => prev + 1);
@@ -215,14 +215,67 @@ const CreditManagementPage = () => {
   const allTransactions = getTransactionHistory();
 
   const getFilteredTransactions = (tabType: string) => {
+    let filteredTransactions = allTransactions;
+
+    // 탭별 필터링
     switch (tabType) {
       case "usage":
-        return allTransactions.filter((t) => t.type === "usage");
+        filteredTransactions = allTransactions.filter(
+          (t) => t.type === "usage"
+        );
+        break;
       case "history":
-        return allTransactions.filter((t) => t.type === "charge");
+        filteredTransactions = allTransactions.filter(
+          (t) => t.type === "charge"
+        );
+        break;
+      case "all":
+        filteredTransactions = allTransactions;
+        break;
       default:
-        return allTransactions;
+        filteredTransactions = allTransactions;
     }
+
+    // 날짜 필터링
+    if (dateFilter !== "all") {
+      const now = new Date();
+      const filterDate = new Date();
+
+      switch (dateFilter) {
+        case "today":
+          filterDate.setHours(0, 0, 0, 0);
+          break;
+        case "week":
+          filterDate.setDate(now.getDate() - 7);
+          break;
+        case "month":
+          filterDate.setDate(now.getDate() - 30);
+          break;
+      }
+
+      filteredTransactions = filteredTransactions.filter(
+        (t) => new Date(t.created_at) >= filterDate
+      );
+    }
+
+    // 검색 필터링
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filteredTransactions = filteredTransactions.filter((t) => {
+        const metadata = t.metadata || {};
+        const packageName = String(metadata.packageName || "");
+        const templateName = String(metadata.templateName || "");
+        const description = String(t.description || "");
+
+        return (
+          packageName.toLowerCase().includes(query) ||
+          templateName.toLowerCase().includes(query) ||
+          description.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    return filteredTransactions;
   };
 
   const filteredTransactions = getFilteredTransactions(activeTab);
@@ -409,7 +462,7 @@ const CreditManagementPage = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button className="text-blue-600 hover:text-blue-800">
+                            <button className="text-primary hover:text-primary">
                               다운로드
                             </button>
                           </td>
@@ -643,6 +696,159 @@ const CreditManagementPage = () => {
               </>
             )}
 
+            {activeTab === "all" && (
+              <>
+                <div className="space-y-3">
+                  {transactions.length > 0 ? (
+                    transactions.map((transaction) => {
+                      const metadata = transaction.metadata || {};
+                      const isCharge = transaction.type === "charge";
+                      const isUsage = transaction.type === "usage";
+
+                      // 충전 관련 정보
+                      const packagePrice =
+                        metadata.packagePrice || metadata.paymentAmount || 0;
+                      const baseCredits =
+                        typeof metadata.baseCredits === "number"
+                          ? metadata.baseCredits
+                          : typeof packagePrice === "number"
+                          ? Math.floor(packagePrice / 10)
+                          : 0;
+                      const bonusCredits =
+                        typeof metadata.bonusCredits === "number"
+                          ? metadata.bonusCredits
+                          : Math.max(0, transaction.amount - baseCredits);
+                      const packageName =
+                        metadata.packageName ||
+                        `크레딧 ${transaction.amount.toLocaleString()}개 패키지`;
+
+                      // 사용 관련 정보
+                      const templateName =
+                        typeof metadata.templateName === "string"
+                          ? metadata.templateName
+                          : transaction.description;
+
+                      return (
+                        <div
+                          key={transaction.id}
+                          className="cm-transaction-card"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  isCharge
+                                    ? "bg-green-100 text-green-800"
+                                    : isUsage
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {isCharge
+                                  ? "크레딧 충전"
+                                  : isUsage
+                                  ? "크레딧 사용"
+                                  : "기타"}
+                              </span>
+                              {isCharge && bonusCredits > 0 && (
+                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                  +{bonusCredits.toLocaleString()} 보너스
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div
+                                className={`text-lg font-bold ${
+                                  isCharge ? "text-green-600" : "text-red-600"
+                                }`}
+                              >
+                                {isCharge ? "+" : "-"}
+                                {transaction.amount.toLocaleString()} 크레딧
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-2">
+                            <div className="text-sm text-gray-900 font-medium">
+                              {isCharge
+                                ? packageName
+                                : templateName || "크레딧 사용"}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(transaction.created_at).toLocaleString(
+                                "ko-KR",
+                                {
+                                  year: "numeric",
+                                  month: "2-digit",
+                                  day: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      전체 내역이 없습니다.
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    총 {transactions.length}개의 전체 내역
+                  </div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                        currentPage === 1
+                          ? "text-gray-300 cursor-not-allowed"
+                          : "text-gray-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      이전
+                    </button>
+
+                    {getPageNumbers().map((page) => (
+                      <button
+                        key={page}
+                        onClick={() =>
+                          typeof page === "number"
+                            ? handlePageChange(page)
+                            : undefined
+                        }
+                        disabled={typeof page !== "number"}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          currentPage === page
+                            ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                        currentPage === totalPages
+                          ? "text-gray-300 cursor-not-allowed"
+                          : "text-gray-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      다음
+                    </button>
+                  </nav>
+                </div>
+              </>
+            )}
+
             {activeTab === "charge" && (
               <div className="space-y-4">
                 {transactions.map((transaction) => (
@@ -757,8 +963,11 @@ const CreditManagementPage = () => {
     </div>
   );
 
+  // 탭 변경 시 필터링 초기화
   React.useEffect(() => {
     setCurrentPage(1);
+    setDateFilter("all");
+    setSearchQuery("");
   }, [activeTab]);
 
   const renderTabContent = () => {
@@ -789,12 +998,20 @@ const CreditManagementPage = () => {
 
             <div className="bg-white rounded-lg shadow">
               <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  크레딧 사용 내역
-                </h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    크레딧 사용 내역
+                  </h3>
+                  <button
+                    onClick={() => setActiveTab("all")}
+                    className="text-primary hover:text-primary text-sm font-medium cursor-pointer"
+                  >
+                    전체보기
+                  </button>
+                </div>
               </div>
               <div className="p-4">
-                <TransactionTable transactions={currentTransactions} />
+                <TransactionTable transactions={allTransactions.slice(0, 5)} />
               </div>
             </div>
           </div>
@@ -843,7 +1060,7 @@ const CreditManagementPage = () => {
                 <div className="text-sm font-medium text-gray-600 mb-1">
                   총 발송 건수
                 </div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-primary">
                   {totalSentMessages.toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-500">건</div>
@@ -868,7 +1085,11 @@ const CreditManagementPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       기간 선택
                     </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                    >
                       <option value="all">전체</option>
                       <option value="today">오늘</option>
                       <option value="week">최근 7일</option>
@@ -881,13 +1102,21 @@ const CreditManagementPage = () => {
                     </label>
                     <input
                       type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="템플릿명으로 검색..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                     />
                   </div>
                   <div className="flex items-end">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                      검색
+                    <button
+                      onClick={() => {
+                        setDateFilter("all");
+                        setSearchQuery("");
+                      }}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                    >
+                      초기화
                     </button>
                   </div>
                 </div>
@@ -940,7 +1169,7 @@ const CreditManagementPage = () => {
                 <div className="text-sm font-medium text-gray-600 mb-1">
                   총 결제 금액
                 </div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-primary">
                   ₩{totalChargeAmount.toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-500">원</div>
@@ -965,7 +1194,11 @@ const CreditManagementPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       기간 선택
                     </label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                    >
                       <option value="all">전체</option>
                       <option value="today">오늘</option>
                       <option value="week">최근 7일</option>
@@ -978,13 +1211,21 @@ const CreditManagementPage = () => {
                     </label>
                     <input
                       type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="패키지명으로 검색..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                     />
                   </div>
                   <div className="flex items-end">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                      검색
+                    <button
+                      onClick={() => {
+                        setDateFilter("all");
+                        setSearchQuery("");
+                      }}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                    >
+                      초기화
                     </button>
                   </div>
                 </div>
@@ -993,6 +1234,94 @@ const CreditManagementPage = () => {
               {/* 테이블 섹션 */}
               <div className="p-6">
                 <TransactionTable transactions={currentTransactions} />
+              </div>
+            </div>
+          </div>
+        );
+      case "all":
+        const allFilteredTransactions = getFilteredTransactions("all");
+        const allStartIndex = (currentPage - 1) * itemsPerPage;
+        const allEndIndex = allStartIndex + itemsPerPage;
+        const allCurrentTransactions = allFilteredTransactions.slice(
+          allStartIndex,
+          allEndIndex
+        );
+
+        return (
+          <div className="space-y-6">
+            {/* 제목과 뒤로가기 버튼 */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">전체 내역</h2>
+              <button
+                onClick={() => setActiveTab("charge")}
+                className="flex items-center gap-2 text-gray-600 hover:text-primary cursor-pointer"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                뒤로가기
+              </button>
+            </div>
+
+            {/* 필터링과 테이블을 하나의 카드로 합침 */}
+            <div className="bg-white rounded-lg border border-gray-200">
+              {/* 필터링 섹션 */}
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      기간 선택
+                    </label>
+                    <select
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                    >
+                      <option value="all">전체</option>
+                      <option value="today">오늘</option>
+                      <option value="week">최근 7일</option>
+                      <option value="month">최근 30일</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      내용 검색
+                    </label>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="패키지명/템플릿명으로 검색..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={() => {
+                        setDateFilter("all");
+                        setSearchQuery("");
+                      }}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                    >
+                      초기화
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 테이블 섹션 */}
+              <div className="p-6 cm-transaction-list">
+                <TransactionTable transactions={allCurrentTransactions} />
               </div>
             </div>
           </div>
@@ -1007,33 +1336,39 @@ const CreditManagementPage = () => {
   return (
     <RoleGuard allowedRoles={allowedRoles}>
       <div className="credit-management-container">
-        <header className="cm-header">
-          <h1>크레딧 충전 관리</h1>
-          <p>크레딧 충전 및 사용 내역을 관리할 수 있습니다.</p>
-        </header>
+        <div className="cm-container">
+          <header className="cm-header">
+            <h1>크레딧 충전 관리</h1>
+            <p>크레딧 충전 및 사용 내역을 관리할 수 있습니다.</p>
+          </header>
 
-        <div className="cm-tabs">
-          <button
-            className={`cm-tab-btn ${activeTab === "charge" ? "active" : ""}`}
-            onClick={() => setActiveTab("charge")}
-          >
-            크레딧 충전
-          </button>
-          <button
-            className={`cm-tab-btn ${activeTab === "usage" ? "active" : ""}`}
-            onClick={() => setActiveTab("usage")}
-          >
-            사용 내역
-          </button>
-          <button
-            className={`cm-tab-btn ${activeTab === "history" ? "active" : ""}`}
-            onClick={() => setActiveTab("history")}
-          >
-            충전 내역
-          </button>
+          <div className="cm-tabs">
+            <button
+              className={`cm-tab-btn ${
+                activeTab === "charge" || activeTab === "all" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("charge")}
+            >
+              크레딧 충전
+            </button>
+            <button
+              className={`cm-tab-btn ${activeTab === "usage" ? "active" : ""}`}
+              onClick={() => setActiveTab("usage")}
+            >
+              사용 내역
+            </button>
+            <button
+              className={`cm-tab-btn ${
+                activeTab === "history" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("history")}
+            >
+              충전 내역
+            </button>
+          </div>
+
+          <div className="cm-content">{renderTabContent()}</div>
         </div>
-
-        <div className="cm-content">{renderTabContent()}</div>
 
         <PaymentModal
           isOpen={isPaymentModalOpen}
@@ -1057,7 +1392,7 @@ const CreditManagementPage = () => {
                     type="number"
                     value={usageAmount}
                     onChange={(e) => setUsageAmount(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                     placeholder="사용할 크레딧을 입력하세요"
                     min="1"
                   />
@@ -1096,7 +1431,7 @@ const CreditManagementPage = () => {
                     type="number"
                     value={refundAmount}
                     onChange={(e) => setRefundAmount(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                     placeholder="환불할 크레딧을 입력하세요"
                     min="1"
                   />

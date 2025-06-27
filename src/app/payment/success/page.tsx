@@ -89,7 +89,6 @@ export default function PaymentSuccessPage() {
         // 결제 완료 후 BalanceContext 새로고침
         try {
           await refreshTransactions();
-          console.log("💰 결제 완료 후 잔액 정보 업데이트됨");
         } catch (refreshError) {
           console.error("잔액 정보 업데이트 실패:", refreshError);
         }

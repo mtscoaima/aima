@@ -87,13 +87,13 @@ export function CreditPackages({
             key={pkg.id}
             className={`relative border-2 rounded-lg p-4 cursor-pointer transition-colors ${
               pkg.is_popular
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-blue-300"
+                ? "border-[#1681ff] bg-blue-50"
+                : "border-gray-200 hover:border-[#1681ff]"
             }`}
           >
             {pkg.is_popular && (
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm">
+                <span className="bg-[#1681ff] text-white px-3 py-1 rounded-full text-sm">
                   인기
                 </span>
               </div>
@@ -111,7 +111,7 @@ export function CreditPackages({
                   +{pkg.bonus_credits.toLocaleString()} 보너스
                 </div>
               )}
-              <div className="text-xl font-bold text-blue-600">
+              <div className="text-xl font-bold text-[#1681ff]">
                 ₩{pkg.price.toLocaleString()}
               </div>
               <div className="text-xs text-gray-500 mb-3">
@@ -127,7 +127,7 @@ export function CreditPackages({
                     popular: pkg.is_popular,
                   })
                 }
-                className="w-full mt-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                className="w-full mt-2 bg-[#1681ff] text-white py-2 px-4 rounded-md hover:bg-[#1366cc] transition-colors"
               >
                 충전하기
               </button>
