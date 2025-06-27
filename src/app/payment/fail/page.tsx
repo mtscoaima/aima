@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function PaymentFailPage() {
@@ -9,6 +10,12 @@ export default function PaymentFailPage() {
   const errorCode = searchParams.get("code");
   const errorMessage = searchParams.get("message");
   const orderId = searchParams.get("orderId");
+
+  // 결제 실패 시 결제 완료 플래그 제거
+  useEffect(() => {
+    localStorage.removeItem("payment_completed");
+    localStorage.removeItem("payment_completed_timestamp");
+  }, []);
 
   const getErrorDescription = (code: string | null) => {
     switch (code) {

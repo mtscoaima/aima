@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useBalance } from "@/contexts/BalanceContext";
 
 interface CreditInfo {
   userId: number;
@@ -13,6 +14,7 @@ interface CreditInfo {
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { refreshTransactions } = useBalance();
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creditInfo, setCreditInfo] = useState<CreditInfo | null>(null);
@@ -84,6 +86,20 @@ export default function PaymentSuccessPage() {
           setCreditInfo(result.creditInfo);
         }
 
+        // 결제 완료 후 BalanceContext 새로고침
+        try {
+          await refreshTransactions();
+        } catch (refreshError) {
+          console.error("잔액 정보 업데이트 실패:", refreshError);
+        }
+
+        // 결제 완료 플래그를 로컬 스토리지에 저장
+        localStorage.setItem("payment_completed", "true");
+        localStorage.setItem(
+          "payment_completed_timestamp",
+          Date.now().toString()
+        );
+
         // 5초 후 크레딧 관리 페이지로 이동
         setTimeout(() => {
           router.push("/credit-management");
@@ -106,7 +122,7 @@ export default function PaymentSuccessPage() {
     };
 
     confirmPayment();
-  }, [searchParams, router]);
+  }, [searchParams, router, refreshTransactions]);
 
   if (isProcessing) {
     return (
