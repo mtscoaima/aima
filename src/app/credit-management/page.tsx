@@ -862,12 +862,11 @@ const CreditManagementPage = () => {
                           ? "크레딧 충전"
                           : transaction.description}
                         {transaction.type === "charge" &&
-                          transaction.metadata?.bonusCredits &&
-                          Number(transaction.metadata.bonusCredits) > 0 && (
+                          Number(transaction.metadata?.bonusCredits) > 0 && (
                             <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                               +
                               {Number(
-                                transaction.metadata.bonusCredits
+                                transaction.metadata?.bonusCredits || 0
                               ).toLocaleString()}{" "}
                               보너스
                             </span>
