@@ -42,6 +42,10 @@ CREATE TABLE users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_login_at TIMESTAMP WITH TIME ZONE,
 
+  -- 추천 시스템
+  referral_code VARCHAR(20) UNIQUE,  -- 영업사원 추천 코드 (고유값)
+  approval_status VARCHAR(20) DEFAULT 'PENDING',  -- 승인 상태 (PENDING, APPROVED, REJECTED)
+
   -- JSON 객체로 저장되는 정보들
   company_info JSONB,           -- 기업 정보
   tax_invoice_info JSONB,       -- 세금계산서 정보
@@ -49,6 +53,14 @@ CREATE TABLE users (
   agreement_info JSONB,         -- 약관 동의 정보
   agree_marketing BOOLEAN DEFAULT false  -- 기존 호환성을 위해 유지
 );
+
+-- 추천 코드 인덱스 생성
+CREATE INDEX idx_users_referral_code ON users(referral_code) WHERE referral_code IS NOT NULL;
+
+-- 기존 테이블에 컬럼 추가하는 경우 (마이그레이션)
+-- ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE;
+-- ALTER TABLE users ADD COLUMN approval_status VARCHAR(20) DEFAULT 'PENDING';
+-- CREATE INDEX idx_users_referral_code ON users(referral_code) WHERE referral_code IS NOT NULL;
 
 -- JSON 필드 검색 성능을 위한 인덱스
 CREATE INDEX idx_users_company_info ON users USING GIN (company_info);

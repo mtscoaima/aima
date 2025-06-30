@@ -31,6 +31,7 @@ interface User {
   updatedAt: string;
   approval_status?: string;
   lastLoginAt?: string;
+  referralCode?: string;
 }
 
 interface AuthContextType {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { getKSTISOString } from "@/lib/utils";
+import { getKSTISOString, generateReferralCode } from "@/lib/utils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -169,6 +169,44 @@ export async function POST(request: NextRequest) {
       { expiresIn: "7d" }
     );
 
+    // 영업사원인 경우 추천 코드가 없다면 생성
+    let updatedUser = user;
+    if (user.role === "SALESPERSON" && !user.referral_code) {
+      const referralCode = generateReferralCode(user.id);
+
+      // 중복 검증
+      let attempts = 0;
+      let uniqueReferralCode = referralCode;
+
+      while (attempts < 10) {
+        const { data: existingCode } = await supabase
+          .from("users")
+          .select("id")
+          .eq("referral_code", uniqueReferralCode)
+          .maybeSingle();
+
+        if (!existingCode) break;
+
+        uniqueReferralCode = generateReferralCode(user.id + attempts);
+        attempts++;
+      }
+
+      // 추천 코드 저장
+      const { data: updatedUserData, error: referralUpdateError } =
+        await supabase
+          .from("users")
+          .update({ referral_code: uniqueReferralCode })
+          .eq("id", user.id)
+          .select("*")
+          .single();
+
+      if (referralUpdateError) {
+        console.error("Failed to update referral code:", referralUpdateError);
+      } else if (updatedUserData) {
+        updatedUser = updatedUserData;
+      }
+    }
+
     // 마지막 로그인 시간 업데이트 (한국 시간 사용)
     const updateTime = getKSTISOString();
     const { error: updateError } = await supabase
@@ -206,14 +244,15 @@ export async function POST(request: NextRequest) {
         tokenType: "Bearer",
         expiresIn: 3600,
         user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          phoneNumber: user.phone_number,
-          role: user.role,
-          createdAt: user.created_at,
-          updatedAt: user.updated_at,
-          approval_status: user.approval_status,
+          id: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          phoneNumber: updatedUser.phone_number,
+          role: updatedUser.role,
+          createdAt: updatedUser.created_at,
+          updatedAt: updatedUser.updated_at,
+          approval_status: updatedUser.approval_status,
+          referralCode: updatedUser.referral_code, // 추천 코드 포함
         },
       },
       { status: 200 }

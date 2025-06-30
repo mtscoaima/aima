@@ -3295,6 +3295,93 @@ body .landing-root .main-content {
   background: #e04900;
 }
 
+/* 초대 링크 통계 카드 스타일 */
+.link-stats-card {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-sm);
+  padding: 24px;
+  transition: var(--transition);
+}
+
+.link-stats-card:hover {
+  background: #f0f2f5;
+  box-shadow: var(--shadow-sm);
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-code {
+  color: var(--text-primary);
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.stats-status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.stats-status.active {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--accent-green);
+}
+
+.stats-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.stats-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.stats-actions .copy-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.stats-actions .copy-btn:hover {
+  background: #0052cc;
+}
+
 /* 리워드 관리 페이지 스타일 */
 .referrals-content {
   display: flex;
@@ -3653,6 +3740,15 @@ body .landing-root .main-content {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+  }
+
+  .stats-content {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .link-stats-card {
+    padding: 20px;
   }
 
   .reward-summary {
