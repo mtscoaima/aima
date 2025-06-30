@@ -38,6 +38,10 @@ export default function SignupPage() {
     taxInvoiceManager: "",
     taxInvoiceContact: "",
 
+    // 추천인 정보
+    referrerName: "",
+    referrerCode: "",
+
     // 약관 동의
     agreeTerms: false,
     agreePrivacy: false,
@@ -160,7 +164,9 @@ export default function SignupPage() {
       name === "password" ||
       name === "name" ||
       name === "phone" ||
-      name === "userType"
+      name === "userType" ||
+      name === "referrerName" ||
+      name === "referrerCode"
     ) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -310,6 +316,35 @@ export default function SignupPage() {
     }
   };
 
+  // 추천인 정보 검증 함수
+  const validateReferrer = async (
+    referrerName: string,
+    referrerCode: string
+  ) => {
+    try {
+      const response = await fetch("/api/auth/validate-referrer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          referrerName: referrerName.trim(),
+          referrerCode: referrerCode.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.isValid) {
+        return data.message || "추천인 정보가 올바르지 않습니다.";
+      }
+      return null; // 검증 성공
+    } catch (error) {
+      console.error("추천인 검증 오류:", error);
+      return "추천인 정보 확인 중 오류가 발생했습니다.";
+    }
+  };
+
   const validateStep = async (step: number) => {
     const newErrors: { [key: string]: string } = {};
 
@@ -415,14 +450,28 @@ export default function SignupPage() {
         break;
 
       case 3:
-        // 영업사원의 경우 약관 동의 검증, 일반회원의 경우 기업 정보 검증
+        // 영업사원의 경우 추천인 정보, 일반회원의 경우 기업 정보 검증
         if ((formData.userType as string) === "salesperson") {
-          // 약관 동의 검증
-          if (!formData.agreeTerms) {
-            newErrors.agreeTerms = "서비스 이용약관에 동의해주세요.";
-          }
-          if (!formData.agreePrivacy) {
-            newErrors.agreePrivacy = "개인정보 수집 및 이용에 동의해주세요.";
+          // 추천인 정보 검증 (입력된 경우에만)
+          if (formData.referrerName || formData.referrerCode) {
+            // 둘 다 입력되어야 함
+            if (!formData.referrerName.trim()) {
+              newErrors.referrerName = "추천인 이름을 입력해주세요.";
+            }
+            if (!formData.referrerCode.trim()) {
+              newErrors.referrerCode = "추천인 코드를 입력해주세요.";
+            }
+
+            // 둘 다 입력된 경우 서버에서 검증
+            if (formData.referrerName.trim() && formData.referrerCode.trim()) {
+              const referrerError = await validateReferrer(
+                formData.referrerName,
+                formData.referrerCode
+              );
+              if (referrerError) {
+                newErrors.referrerCode = referrerError;
+              }
+            }
           }
         } else {
           // 기업 정보 검증
@@ -445,26 +494,77 @@ export default function SignupPage() {
         break;
 
       case 4:
-        // 제출 서류 검증 (일반회원만)
-        if (!formData.businessRegistration) {
-          newErrors.businessRegistration = "사업자등록증을 업로드해주세요.";
+        // 영업사원의 경우 약관 동의, 일반회원의 경우 제출 서류 검증
+        if ((formData.userType as string) === "salesperson") {
+          // 약관 동의 검증
+          if (!formData.agreeTerms) {
+            newErrors.agreeTerms = "서비스 이용약관에 동의해주세요.";
+          }
+          if (!formData.agreePrivacy) {
+            newErrors.agreePrivacy = "개인정보 수집 및 이용에 동의해주세요.";
+          }
+        } else {
+          // 제출 서류 검증 (일반회원만)
+          if (!formData.businessRegistration) {
+            newErrors.businessRegistration = "사업자등록증을 업로드해주세요.";
+          }
         }
         break;
 
       case 5:
         // 세금계산서 정보 검증 (일반회원만)
-        if (!formData.taxInvoiceEmail.trim()) {
-          newErrors.taxInvoiceEmail = "세금계산서 수신 이메일을 입력해주세요.";
-        }
-        if (!formData.taxInvoiceManager.trim()) {
-          newErrors.taxInvoiceManager = "담당자명을 입력해주세요.";
-        }
-        if (!formData.taxInvoiceContact.trim()) {
-          newErrors.taxInvoiceContact = "담당자 연락처를 입력해주세요.";
+        if ((formData.userType as string) === "general") {
+          if (!formData.taxInvoiceEmail.trim()) {
+            newErrors.taxInvoiceEmail =
+              "세금계산서 수신 이메일을 입력해주세요.";
+          } else if (!/\S+@\S+\.\S+/.test(formData.taxInvoiceEmail)) {
+            newErrors.taxInvoiceEmail = "유효한 이메일 주소를 입력해주세요.";
+          }
+          if (!formData.taxInvoiceManager.trim()) {
+            newErrors.taxInvoiceManager = "담당자명을 입력해주세요.";
+          }
+          if (!formData.taxInvoiceContact.trim()) {
+            newErrors.taxInvoiceContact = "담당자 연락처를 입력해주세요.";
+          } else {
+            // 연락처 형식 검증
+            const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
+            if (
+              !phoneRegex.test(formData.taxInvoiceContact.replace(/-/g, ""))
+            ) {
+              newErrors.taxInvoiceContact =
+                "올바른 연락처 형식이 아닙니다. (예: 010-1234-5678)";
+            }
+          }
         }
         break;
 
       case 6:
+        // 일반회원의 추천인 정보 검증 (입력된 경우에만)
+        if ((formData.userType as string) === "general") {
+          if (formData.referrerName || formData.referrerCode) {
+            // 둘 다 입력되어야 함
+            if (!formData.referrerName.trim()) {
+              newErrors.referrerName = "추천인 이름을 입력해주세요.";
+            }
+            if (!formData.referrerCode.trim()) {
+              newErrors.referrerCode = "추천인 코드를 입력해주세요.";
+            }
+
+            // 둘 다 입력된 경우 서버에서 검증
+            if (formData.referrerName.trim() && formData.referrerCode.trim()) {
+              const referrerError = await validateReferrer(
+                formData.referrerName,
+                formData.referrerCode
+              );
+              if (referrerError) {
+                newErrors.referrerCode = referrerError;
+              }
+            }
+          }
+        }
+        break;
+
+      case 7:
         // 약관 동의 검증 (일반회원만)
         if (!formData.agreeTerms) {
           newErrors.agreeTerms = "서비스 이용약관에 동의해주세요.";
@@ -484,10 +584,10 @@ export default function SignupPage() {
     try {
       if (await validateStep(currentStep)) {
         if ((formData.userType as string) === "salesperson") {
-          // 영업사원의 경우: 1(회원유형) -> 2(기본정보) -> 3(약관동의)
+          // 영업사원의 경우: 1(회원유형) -> 2(기본정보) -> 3(추천인) -> 4(약관동의)
           setCurrentStep(currentStep + 1);
         } else {
-          // 일반회원의 경우: 1(회원유형) -> 2(기본정보) -> 3(기업정보) -> 4(제출서류) -> 5(세금계산서) -> 6(약관동의)
+          // 일반회원의 경우: 1(회원유형) -> 2(기본정보) -> 3(기업정보) -> 4(제출서류) -> 5(세금계산서) -> 6(추천인) -> 7(약관동의)
           setCurrentStep(currentStep + 1);
         }
       }
@@ -551,6 +651,12 @@ export default function SignupPage() {
         formDataToSend.append("taxInvoiceManager", formData.taxInvoiceManager);
       if (formData.taxInvoiceContact)
         formDataToSend.append("taxInvoiceContact", formData.taxInvoiceContact);
+
+      // 추천인 정보
+      if (formData.referrerName)
+        formDataToSend.append("referrerName", formData.referrerName);
+      if (formData.referrerCode)
+        formDataToSend.append("referrerCode", formData.referrerCode);
 
       // 마케팅 동의
       formDataToSend.append(
@@ -651,14 +757,14 @@ export default function SignupPage() {
   const isAllAgreed =
     formData.agreeTerms && formData.agreePrivacy && formData.agreeMarketing;
 
-  // 진행바에 표시할 총 단계 수 (기본정보 -> 약관동의)
+  // 진행바에 표시할 총 단계 수 (기본정보 -> 추천인 -> 약관동의)
   const getTotalSteps = () => {
-    return (formData.userType as string) === "salesperson" ? 2 : 5;
+    return (formData.userType as string) === "salesperson" ? 3 : 6;
   };
 
   // 실제 총 단계 수 (회원유형 포함)
   const getActualTotalSteps = () => {
-    return (formData.userType as string) === "salesperson" ? 3 : 6;
+    return (formData.userType as string) === "salesperson" ? 4 : 7;
   };
 
   // 진행바에 표시할 단계 번호를 실제 currentStep에서 계산
@@ -678,6 +784,8 @@ export default function SignupPage() {
         case 1:
           return "기본정보";
         case 2:
+          return "추천인";
+        case 3:
           return "약관동의";
         default:
           return "";
@@ -693,6 +801,8 @@ export default function SignupPage() {
         case 4:
           return "세금계산서";
         case 5:
+          return "추천인";
+        case 6:
           return "약관동의";
         default:
           return "";
@@ -1064,8 +1174,73 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* Step 3: 기업 정보 - 영업사원인 경우 약관동의로 변경 */}
+            {/* Step 3: 추천인 정보 - 영업사원인 경우 */}
             {currentStep === 3 &&
+              (formData.userType as string) === "salesperson" && (
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>추천인 정보</h3>
+                  <p className={styles.sectionDescription}>
+                    추천인이 있으시면 정보를 입력해주세요. (선택사항)
+                  </p>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="referrerName"
+                        className={styles.formLabel}
+                      >
+                        추천인 이름
+                      </label>
+                      <input
+                        type="text"
+                        id="referrerName"
+                        name="referrerName"
+                        value={formData.referrerName}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.referrerName ? styles.error : ""
+                        }`}
+                        placeholder="추천인 이름을 입력하세요"
+                      />
+                      {errors.referrerName && (
+                        <p className={styles.formError}>
+                          {errors.referrerName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="referrerCode"
+                        className={styles.formLabel}
+                      >
+                        추천인 코드
+                      </label>
+                      <input
+                        type="text"
+                        id="referrerCode"
+                        name="referrerCode"
+                        value={formData.referrerCode}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.referrerCode ? styles.error : ""
+                        }`}
+                        placeholder="추천인 코드를 입력하세요"
+                      />
+                      {errors.referrerCode && (
+                        <p className={styles.formError}>
+                          {errors.referrerCode}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Step 4: 약관 동의 - 영업사원인 경우 */}
+            {currentStep === 4 &&
               (formData.userType as string) === "salesperson" && (
                 <div className={styles.formSection}>
                   <h3 className={styles.sectionTitle}>약관 동의</h3>
@@ -1538,8 +1713,73 @@ export default function SignupPage() {
                 </div>
               )}
 
-            {/* Step 6: 약관 동의 - 일반회원인 경우만 표시 */}
+            {/* Step 6: 추천인 정보 - 일반회원인 경우 */}
             {currentStep === 6 &&
+              (formData.userType as string) === "general" && (
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>추천인 정보</h3>
+                  <p className={styles.sectionDescription}>
+                    추천인이 있으시면 정보를 입력해주세요. (선택사항)
+                  </p>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="referrerName"
+                        className={styles.formLabel}
+                      >
+                        추천인 이름
+                      </label>
+                      <input
+                        type="text"
+                        id="referrerName"
+                        name="referrerName"
+                        value={formData.referrerName}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.referrerName ? styles.error : ""
+                        }`}
+                        placeholder="추천인 이름을 입력하세요"
+                      />
+                      {errors.referrerName && (
+                        <p className={styles.formError}>
+                          {errors.referrerName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label
+                        htmlFor="referrerCode"
+                        className={styles.formLabel}
+                      >
+                        추천인 코드
+                      </label>
+                      <input
+                        type="text"
+                        id="referrerCode"
+                        name="referrerCode"
+                        value={formData.referrerCode}
+                        onChange={handleInputChange}
+                        className={`${styles.formInput} ${
+                          errors.referrerCode ? styles.error : ""
+                        }`}
+                        placeholder="추천인 코드를 입력하세요"
+                      />
+                      {errors.referrerCode && (
+                        <p className={styles.formError}>
+                          {errors.referrerCode}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Step 7: 약관 동의 - 일반회원인 경우만 표시 */}
+            {currentStep === 7 &&
               (formData.userType as string) === "general" && (
                 <div className={styles.formSection}>
                   <h3 className={styles.sectionTitle}>약관 동의</h3>

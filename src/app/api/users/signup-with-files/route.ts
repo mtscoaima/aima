@@ -99,6 +99,10 @@ export async function POST(request: NextRequest) {
     const taxInvoiceManager = formData.get("taxInvoiceManager") as string;
     const taxInvoiceContact = formData.get("taxInvoiceContact") as string;
 
+    // 추천인 정보
+    const referrerName = formData.get("referrerName") as string;
+    const referrerCode = formData.get("referrerCode") as string;
+
     // 마케팅 동의
     const agreeMarketing = formData.get("agreeMarketing") === "true";
 
@@ -380,6 +384,46 @@ export async function POST(request: NextRequest) {
 
       // 응답용 데이터 업데이트
       newUser.referral_code = uniqueReferralCode;
+    }
+
+    // 추천인 정보 처리 (추천인 코드가 있는 경우)
+    if (referrerCode && referrerName) {
+      try {
+        // 추천인 정보 검증
+        const { data: referrer, error: referrerError } = await supabase
+          .from("users")
+          .select("id, name, referral_code, role, is_active")
+          .eq("referral_code", referrerCode)
+          .eq("name", referrerName)
+          .eq("is_active", true)
+          .eq("role", "SALESPERSON")
+          .single();
+
+        if (!referrerError && referrer) {
+          // referrals 테이블에 추천 관계 저장
+          const { error: referralInsertError } = await supabase
+            .from("referrals")
+            .insert({
+              referrer_id: referrer.id,
+              referred_user_id: newUser.id,
+              referral_code: referrerCode,
+              status: "ACTIVE", // 추천 관계 상태
+              created_at: getKSTISOString(),
+            });
+
+          if (referralInsertError) {
+            console.error("추천 관계 저장 실패:", referralInsertError);
+          } else {
+            console.log(
+              `추천 관계 저장 성공: ${referrer.name} -> ${newUser.name}`
+            );
+          }
+        } else {
+          console.error("추천인 정보 확인 실패:", referrerError);
+        }
+      } catch (referralError) {
+        console.error("추천인 처리 중 오류:", referralError);
+      }
     }
 
     // 파일 업로드 처리 (일반회원인 경우에만)
