@@ -115,7 +115,7 @@ export default function SalespersonDashboard() {
             <div className="quick-actions">
               <Link href="/salesperson/invite" className="quick-action-btn">
                 <div className="action-icon">🔗</div>
-                <span>새 초대 링크 생성</span>
+                <span>초대 링크 생성</span>
               </Link>
 
               <Link href="/salesperson/referrals" className="quick-action-btn">
