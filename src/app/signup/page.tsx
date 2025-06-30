@@ -68,12 +68,44 @@ export default function SignupPage() {
     }
   }, [isAuthenticated, router]);
 
-  // URL에서 code 파라미터 확인하고 referral_views 업데이트
+  // URL에서 code 파라미터 확인하고 referral_views 업데이트 및 추천인 정보 자동 채우기
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const referralCode = urlParams.get("code");
 
     if (referralCode) {
+      // 추천인 정보 자동 채우기
+      const fetchReferrerInfo = async () => {
+        try {
+          const response = await fetch("/api/auth/validate-referral", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              referralCode: referralCode,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.isValid && data.referrer) {
+            // 추천인 정보 자동 채우기
+            setFormData((prev) => ({
+              ...prev,
+              referrerName: data.referrer.name,
+              referrerCode: data.referrer.referralCode,
+            }));
+            console.log(
+              "추천인 정보가 자동으로 채워졌습니다:",
+              data.referrer.name
+            );
+          }
+        } catch (error) {
+          console.error("추천인 정보 조회 중 오류:", error);
+        }
+      };
+
       // referral_views 업데이트 API 호출
       const updateReferralViews = async () => {
         try {
@@ -97,6 +129,8 @@ export default function SignupPage() {
         }
       };
 
+      // 두 함수를 동시에 실행
+      fetchReferrerInfo();
       updateReferralViews();
     }
   }, []);
