@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
-import { getKSTISOString } from "@/lib/utils";
+import { getKSTISOString, generateReferralCode } from "@/lib/utils";
 
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -289,6 +289,30 @@ export async function POST(request: NextRequest) {
     const userRole = userType === "salesperson" ? "SALESPERSON" : "USER";
     const approvalStatus = userType === "salesperson" ? "APPROVED" : "PENDING";
 
+    // 영업사원인 경우 추천 코드 생성
+    let referralCode = null;
+    if (userType === "salesperson") {
+      // 임시 사용자 ID를 사용하여 추천 코드 생성 (실제 ID는 삽입 후 얻음)
+      const tempUserId = Date.now() % 100000; // 임시 ID 생성
+      referralCode = generateReferralCode(tempUserId);
+
+      // 중복 검증
+      let attempts = 0;
+      while (attempts < 10) {
+        const { data: existingCode } = await supabase
+          .from("users")
+          .select("id")
+          .eq("referral_code", referralCode)
+          .maybeSingle();
+
+        if (!existingCode) break;
+
+        // 중복이면 새로 생성
+        referralCode = generateReferralCode(tempUserId + attempts);
+        attempts++;
+      }
+    }
+
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
@@ -303,6 +327,7 @@ export async function POST(request: NextRequest) {
         updated_at: now,
         last_login_at: now,
         email_verified: false,
+        referral_code: referralCode, // 영업사원인 경우 추천 코드 저장
         // JSON 객체로 저장
         company_info: companyInfo,
         tax_invoice_info: taxInvoiceInfo,
@@ -323,6 +348,38 @@ export async function POST(request: NextRequest) {
         path: "/api/users/signup-with-files",
       };
       return NextResponse.json(errorResponse, { status: 500 });
+    }
+
+    // 영업사원인 경우 실제 사용자 ID로 추천 코드 재생성 및 업데이트
+    if (userType === "salesperson" && newUser) {
+      const finalReferralCode = generateReferralCode(newUser.id);
+
+      // 중복 검증 후 업데이트
+      let finalAttempts = 0;
+      let uniqueReferralCode = finalReferralCode;
+
+      while (finalAttempts < 10) {
+        const { data: existingCode } = await supabase
+          .from("users")
+          .select("id")
+          .eq("referral_code", uniqueReferralCode)
+          .neq("id", newUser.id) // 자신 제외
+          .maybeSingle();
+
+        if (!existingCode) break;
+
+        uniqueReferralCode = generateReferralCode(newUser.id + finalAttempts);
+        finalAttempts++;
+      }
+
+      // 최종 추천 코드로 업데이트
+      await supabase
+        .from("users")
+        .update({ referral_code: uniqueReferralCode })
+        .eq("id", newUser.id);
+
+      // 응답용 데이터 업데이트
+      newUser.referral_code = uniqueReferralCode;
     }
 
     // 파일 업로드 처리 (일반회원인 경우에만)

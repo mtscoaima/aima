@@ -42,3 +42,29 @@ export function formatKSTDate(date: string | Date): string {
     day: "2-digit",
   });
 }
+
+/**
+ * 추천 코드 생성 함수
+ * 사용자 ID + 랜덤 문자열 조합으로 고유한 추천 코드 생성
+ */
+export function generateReferralCode(userId: number): string {
+  // 사용자 ID를 Base36으로 인코딩 (숫자와 소문자 알파벳)
+  const userIdEncoded = userId.toString(36).toUpperCase();
+  
+  // 랜덤 문자열 생성 (6자리)
+  const randomString = Math.random().toString(36).substring(2, 8).toUpperCase();
+  
+  // 현재 시간의 마지막 3자리를 추가하여 더 고유하게 만들기
+  const timestamp = Date.now().toString().slice(-3);
+  
+  return `${userIdEncoded}${randomString}${timestamp}`;
+}
+
+/**
+ * 추천 코드 유효성 검증 함수
+ */
+export function isValidReferralCode(code: string): boolean {
+  // 추천 코드는 영문 대문자와 숫자만 포함, 길이는 8-15자
+  const regex = /^[A-Z0-9]{8,15}$/;
+  return regex.test(code);
+}

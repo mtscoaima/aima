@@ -1,17 +1,65 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SalespersonGuard } from "@/components/RoleGuard";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function InvitePage() {
   const [inviteCode, setInviteCode] = useState("");
   const [inviteLink, setInviteLink] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { user } = useAuth();
 
-  const generateInviteLink = () => {
-    const code = Math.random().toString(36).substring(2, 15);
-    const link = `${window.location.origin}/signup?ref=${code}`;
-    setInviteCode(code);
-    setInviteLink(link);
+  // 컴포넌트 마운트 시 기존 추천 코드 확인
+  useEffect(() => {
+    if (user?.referralCode) {
+      setInviteCode(user.referralCode);
+      setInviteLink(
+        `${window.location.origin}/signup?ref=${user.referralCode}`
+      );
+    }
+  }, [user]);
+
+  const generateInviteLink = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("로그인이 필요합니다.");
+      }
+
+      const response = await fetch("/api/users/generate-code", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "추천 코드 생성에 실패했습니다.");
+      }
+
+      const data = await response.json();
+      const code = data.referralCode;
+      const link = `${window.location.origin}/signup?ref=${code}`;
+
+      setInviteCode(code);
+      setInviteLink(link);
+
+      if (data.isNew) {
+        alert("새로운 추천 코드가 생성되었습니다!");
+      }
+    } catch (err) {
+      console.error("추천 코드 생성 오류:", err);
+      setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -31,13 +79,30 @@ export default function InvitePage() {
           <div className="invite-content">
             <div className="invite-generator">
               <div className="generator-card">
-                <h3>새 초대 링크 생성</h3>
+                <h3>추천 코드 관리</h3>
                 <p>
-                  고객이 이 링크를 통해 가입하면 추천 리워드를 받을 수 있습니다.
+                  고객이 이 코드를 통해 가입하면 추천 리워드를 받을 수 있습니다.
                 </p>
 
-                <button onClick={generateInviteLink} className="generate-btn">
-                  초대 링크 생성하기
+                {error && (
+                  <div
+                    className="error-message"
+                    style={{ color: "red", marginBottom: "16px" }}
+                  >
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  onClick={generateInviteLink}
+                  className="generate-btn"
+                  disabled={isLoading}
+                >
+                  {isLoading
+                    ? "생성 중..."
+                    : inviteCode
+                    ? "추천 코드 새로고침"
+                    : "추천 코드 생성하기"}
                 </button>
 
                 {inviteLink && (
