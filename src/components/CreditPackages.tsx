@@ -106,11 +106,6 @@ export function CreditPackages({
                 {pkg.credits.toLocaleString()}
               </div>
               <div className="text-sm text-gray-600 mb-2">크레딧</div>
-              {pkg.bonus_credits > 0 && (
-                <div className="text-sm text-green-600 mb-2">
-                  +{pkg.bonus_credits.toLocaleString()} 보너스
-                </div>
-              )}
               <div className="text-xl font-bold text-[#1681ff]">
                 ₩{pkg.price.toLocaleString()}
               </div>
@@ -123,7 +118,7 @@ export function CreditPackages({
                     id: pkg.id,
                     credits: pkg.credits,
                     price: pkg.price,
-                    bonus: pkg.bonus_credits,
+                    bonus: 0,
                     popular: pkg.is_popular,
                   })
                 }

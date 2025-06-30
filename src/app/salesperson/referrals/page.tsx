@@ -12,7 +12,7 @@ export default function ReferralsPage() {
         <div className="page-container">
           <div className="page-header">
             <h1>리워드 관리</h1>
-            <p>다단계 리워드 내역을 확인하고 관리하세요.</p>
+            <p>리워드 내역을 확인하고 관리하세요.</p>
           </div>
 
           <div className="referrals-content">

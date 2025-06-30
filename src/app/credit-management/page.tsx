@@ -104,14 +104,8 @@ const CreditManagementPage = () => {
   const handlePaymentComplete = async (packageInfo: Package) => {
     try {
       const totalCredits = packageInfo.credits;
-      const baseCredits = Math.floor(packageInfo.price / 10);
-      const bonusCredits = totalCredits - baseCredits;
-
       const packageName = `크레딧 ${totalCredits.toLocaleString()}개 패키지`;
-      const description =
-        bonusCredits > 0
-          ? `${packageName} 충전: ${totalCredits}크레딧 (기본 ${baseCredits} + 보너스 ${bonusCredits})`
-          : `${packageName} 충전: ${totalCredits}크레딧`;
+      const description = `${packageName} 충전: ${totalCredits}크레딧`;
 
       await addTransaction(
         "charge",
@@ -122,21 +116,13 @@ const CreditManagementPage = () => {
           packageId: packageInfo.id,
           packagePrice: packageInfo.price,
           paymentMethod: "card",
-          baseCredits: baseCredits,
-          bonusCredits: bonusCredits,
           totalCredits: totalCredits,
           packageName: packageName,
         }
       );
 
       setRefreshKey((prev) => prev + 1);
-      alert(
-        `${totalCredits.toLocaleString()}크레딧이 충전되었습니다!${
-          bonusCredits > 0
-            ? ` (기본: ${baseCredits.toLocaleString()}, 보너스: ${bonusCredits.toLocaleString()})`
-            : ""
-        }`
-      );
+      alert(`${totalCredits.toLocaleString()}크레딧이 충전되었습니다!`);
     } catch (error) {
       alert(
         error instanceof Error ? error.message : "충전 중 오류가 발생했습니다."
@@ -350,9 +336,6 @@ const CreditManagementPage = () => {
                         크레딧
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        보너스
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         결제금액
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -372,16 +355,6 @@ const CreditManagementPage = () => {
                       // packagePrice 또는 paymentAmount 중 존재하는 것 사용
                       const packagePrice =
                         metadata.packagePrice || metadata.paymentAmount || 0;
-                      const baseCredits =
-                        typeof metadata.baseCredits === "number"
-                          ? metadata.baseCredits
-                          : typeof packagePrice === "number"
-                          ? Math.floor(packagePrice / 10)
-                          : 0;
-                      const bonusCredits =
-                        typeof metadata.bonusCredits === "number"
-                          ? metadata.bonusCredits
-                          : Math.max(0, transaction.amount - baseCredits);
                       const paymentMethod =
                         typeof metadata.paymentMethod === "string"
                           ? metadata.paymentMethod
@@ -408,12 +381,7 @@ const CreditManagementPage = () => {
                             {packageName}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                            +{baseCredits.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                            {bonusCredits > 0
-                              ? `+${bonusCredits.toLocaleString()}`
-                              : "-"}
+                            +{transaction.amount.toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             ₩
@@ -706,18 +674,6 @@ const CreditManagementPage = () => {
                       const isUsage = transaction.type === "usage";
 
                       // 충전 관련 정보
-                      const packagePrice =
-                        metadata.packagePrice || metadata.paymentAmount || 0;
-                      const baseCredits =
-                        typeof metadata.baseCredits === "number"
-                          ? metadata.baseCredits
-                          : typeof packagePrice === "number"
-                          ? Math.floor(packagePrice / 10)
-                          : 0;
-                      const bonusCredits =
-                        typeof metadata.bonusCredits === "number"
-                          ? metadata.bonusCredits
-                          : Math.max(0, transaction.amount - baseCredits);
                       const packageName =
                         metadata.packageName ||
                         `크레딧 ${transaction.amount.toLocaleString()}개 패키지`;
@@ -750,11 +706,6 @@ const CreditManagementPage = () => {
                                   ? "크레딧 사용"
                                   : "기타"}
                               </span>
-                              {isCharge && bonusCredits > 0 && (
-                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                  +{bonusCredits.toLocaleString()} 보너스
-                                </span>
-                              )}
                             </div>
                             <div className="text-right">
                               <div
@@ -861,16 +812,6 @@ const CreditManagementPage = () => {
                         {transaction.type === "charge"
                           ? "크레딧 충전"
                           : transaction.description}
-                        {transaction.type === "charge" &&
-                          Number(transaction.metadata?.bonusCredits) > 0 && (
-                            <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                              +
-                              {Number(
-                                transaction.metadata?.bonusCredits || 0
-                              ).toLocaleString()}{" "}
-                              보너스
-                            </span>
-                          )}
                       </div>
                       <div className="text-sm text-gray-500">
                         {new Date(transaction.created_at).toLocaleString(
@@ -1141,20 +1082,11 @@ const CreditManagementPage = () => {
             metadata.packagePrice || metadata.paymentAmount || 0;
           return sum + (typeof paymentAmount === "number" ? paymentAmount : 0);
         }, 0);
-        const totalBonusCredits = chargeTransactions.reduce((sum, t) => {
-          const metadata = t.metadata || {};
-          return (
-            sum +
-            (typeof metadata.bonusCredits === "number"
-              ? metadata.bonusCredits
-              : 0)
-          );
-        }, 0);
 
         return (
           <div className="space-y-6">
             {/* 통계 카드 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-lg border border-gray-200">
                 <div className="text-sm font-medium text-gray-600 mb-1">
                   총 충전 크레딧
@@ -1172,15 +1104,6 @@ const CreditManagementPage = () => {
                   ₩{totalChargeAmount.toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-500">원</div>
-              </div>
-              <div className="bg-white p-6 rounded-lg border border-gray-200">
-                <div className="text-sm font-medium text-gray-600 mb-1">
-                  총 보너스 크레딧
-                </div>
-                <div className="text-2xl font-bold text-orange-600">
-                  {totalBonusCredits.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-500">크레딧</div>
               </div>
             </div>
 

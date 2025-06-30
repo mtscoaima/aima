@@ -352,11 +352,6 @@ export function PaymentModal({
                   {packageInfo.credits.toLocaleString()}
                 </div>
                 <div className="text-gray-600 mb-4">크레딧</div>
-                {packageInfo.bonus > 0 && (
-                  <div className="text-green-600 mb-4">
-                    +{packageInfo.bonus.toLocaleString()} 보너스 크레딧
-                  </div>
-                )}
                 <div className="text-2xl font-bold text-gray-900">
                   ₩{packageInfo.price.toLocaleString()}
                 </div>
@@ -479,13 +474,6 @@ export function PaymentModal({
                 <br />
                 <strong>충전 크레딧:</strong>{" "}
                 {packageInfo.credits.toLocaleString()}개
-                {packageInfo.bonus > 0 && (
-                  <>
-                    <br />
-                    <strong>보너스 크레딧:</strong> +
-                    {packageInfo.bonus.toLocaleString()}개
-                  </>
-                )}
               </div>
             </div>
 
