@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { SalespersonGuard } from "@/components/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -17,7 +17,7 @@ export default function InvitePage() {
   const { user } = useAuth();
 
   // 추천 통계 데이터 가져오기
-  const fetchReferralStats = async () => {
+  const fetchReferralStats = useCallback(async () => {
     if (!user?.referralCode) return;
 
     setIsStatsLoading(true);
@@ -45,18 +45,18 @@ export default function InvitePage() {
     } finally {
       setIsStatsLoading(false);
     }
-  };
+  }, [user?.referralCode]);
 
   // 컴포넌트 마운트 시 기존 추천 코드 확인 및 통계 데이터 로드
   useEffect(() => {
     if (user?.referralCode) {
       setInviteCode(user.referralCode);
       setInviteLink(
-        `${window.location.origin}/signup?ref=${user.referralCode}`
+        `${window.location.origin}/signup?code=${user.referralCode}`
       );
       fetchReferralStats();
     }
-  }, [user]);
+  }, [user, fetchReferralStats]);
 
   const generateInviteLink = async () => {
     setIsLoading(true);
@@ -83,7 +83,7 @@ export default function InvitePage() {
 
       const data = await response.json();
       const code = data.referralCode;
-      const link = `${window.location.origin}/signup?ref=${code}`;
+      const link = `${window.location.origin}/signup?code=${code}`;
 
       setInviteCode(code);
       setInviteLink(link);

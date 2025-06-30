@@ -68,6 +68,39 @@ export default function SignupPage() {
     }
   }, [isAuthenticated, router]);
 
+  // URL에서 code 파라미터 확인하고 referral_views 업데이트
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const referralCode = urlParams.get("code");
+
+    if (referralCode) {
+      // referral_views 업데이트 API 호출
+      const updateReferralViews = async () => {
+        try {
+          const response = await fetch("/api/users/update-referral-views", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              referralCode: referralCode,
+            }),
+          });
+
+          if (response.ok) {
+            console.log("추천 조회수가 업데이트되었습니다.");
+          } else {
+            console.error("추천 조회수 업데이트 실패");
+          }
+        } catch (error) {
+          console.error("추천 조회수 업데이트 중 오류:", error);
+        }
+      };
+
+      updateReferralViews();
+    }
+  }, []);
+
   // 타이머 효과
   useEffect(() => {
     let interval: NodeJS.Timeout;

@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 현재 사용자의 referral_code 조회
+    // 현재 사용자의 referral_code와 referral_views 조회
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("referral_code")
+      .select("referral_code, referral_views")
       .eq("id", userId)
       .single();
 
@@ -118,9 +118,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: 링크 클릭 수는 별도 테이블이나 추적 시스템에서 가져와야 함
-    // 현재는 임시로 가입 수의 2-5배 정도로 설정
-    const clickCount = (signupCount || 0) * (Math.floor(Math.random() * 4) + 2);
+    // users 테이블의 referral_views를 클릭 수로 사용
+    const clickCount = user.referral_views || 0;
 
     return NextResponse.json({
       referralCode: user.referral_code,
