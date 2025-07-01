@@ -98,8 +98,6 @@ export async function GET(request: NextRequest) {
     // 체인을 문자열로 변환 (예: "3->2->1")
     const chainString = referralChain.join("->");
 
-    console.log(`추천 체인: ${chainString}`);
-
     return NextResponse.json({
       userId: userId,
       referralChain: referralChain,

@@ -413,10 +413,6 @@ export async function POST(request: NextRequest) {
 
           if (referralInsertError) {
             console.error("추천 관계 저장 실패:", referralInsertError);
-          } else {
-            console.log(
-              `추천 관계 저장 성공: ${referrer.name} -> ${newUser.name}`
-            );
           }
         } else {
           console.error("추천인 정보 확인 실패:", referrerError);

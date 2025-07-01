@@ -136,31 +136,6 @@ const CreditManagementPage = () => {
   };
 
   const handleTestUsage = async () => {
-    // 먼저 추천 체인을 조회하고 console에 출력
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (token) {
-        const response = await fetch("/api/users/referral-chain", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`추천 체인: ${data.chainString}`);
-          console.log("추천 체인 상세:", data.referralChain);
-        } else {
-          console.log("추천 체인 조회에 실패했습니다.");
-        }
-      }
-    } catch (error) {
-      console.error("추천 체인 조회 중 오류:", error);
-    }
-
-    // 기존의 사용 모달 열기
     setShowUsageModal(true);
   };
   const handleTestRefund = () => setShowRefundModal(true);
