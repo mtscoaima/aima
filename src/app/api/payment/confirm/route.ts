@@ -70,12 +70,13 @@ export async function POST(request: NextRequest) {
     let creditAmount = 0;
     let packageName = "크레딧 충전";
 
-    // 패키지 정보를 orderId나 결제 금액으로 추정 (총 크레딧)
+    // 패키지 정보를 orderId나 결제 금액으로 추정 (1원당 1크레딧)
     const packageMap: Record<number, { credits: number; name: string }> = {
-      10000: { credits: 1000, name: "크레딧 1,000개 패키지" }, // 총 1,000 크레딧
-      28000: { credits: 3000, name: "크레딧 3,000개 패키지" }, // 총 3,000 크레딧 (2,800 + 200 보너스)
-      45000: { credits: 5000, name: "크레딧 5,000개 패키지" }, // 총 5,000 크레딧 (4,500 + 500 보너스)
-      85000: { credits: 10000, name: "크레딧 10,000개 패키지" }, // 총 10,000 크레딧 (8,500 + 1,500 보너스)
+      10000: { credits: 10000, name: "크레딧 10,000개 패키지" },
+      28000: { credits: 28000, name: "크레딧 28,000개 패키지" },
+      45000: { credits: 45000, name: "크레딧 45,000개 패키지" },
+      50000: { credits: 50000, name: "크레딧 50,000개 패키지" },
+      85000: { credits: 85000, name: "크레딧 85,000개 패키지" },
     };
 
     const packageInfo = packageMap[amount];
@@ -83,8 +84,8 @@ export async function POST(request: NextRequest) {
       creditAmount = packageInfo.credits;
       packageName = packageInfo.name;
     } else {
-      // 기본 계산: 100원당 1크레딧
-      creditAmount = Math.floor(amount / 100);
+      // 기본 계산: 1원당 1크레딧
+      creditAmount = amount;
     }
 
     try {
@@ -196,40 +197,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 패키지별 기본 크레딧과 보너스 크레딧 계산
-      const packageDetails = packageMap[amount];
-      let baseCredits = 0;
-      let bonusCredits = 0;
-
-      if (packageDetails) {
-        // 패키지별 보너스 계산
-        switch (amount) {
-          case 10000: // 스타터
-            baseCredits = 1000;
-            bonusCredits = 0;
-            break;
-          case 28000: // 베이직
-            baseCredits = 2800;
-            bonusCredits = 200;
-            break;
-          case 45000: // 프로
-            baseCredits = 4500;
-            bonusCredits = 500;
-            break;
-          case 85000: // 비즈니스
-            baseCredits = 8500;
-            bonusCredits = 1500;
-            break;
-          default:
-            baseCredits = creditAmount;
-            bonusCredits = 0;
-        }
-      } else {
-        baseCredits = creditAmount;
-        bonusCredits = 0;
-      }
-
-      // 크레딧 충전 트랜잭션 생성 (보너스 포함)
+      // 크레딧 충전 트랜잭션 생성
       const transactionData = {
         user_id: userId,
         type: "charge" as const,
@@ -243,8 +211,6 @@ export async function POST(request: NextRequest) {
           packagePrice: amount, // 충전 내역에서 사용
           paymentMethod: paymentData.method || "toss",
           packageName,
-          baseCredits,
-          bonusCredits,
           totalCredits: creditAmount,
         },
         status: "completed" as const,

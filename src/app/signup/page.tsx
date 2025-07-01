@@ -96,10 +96,6 @@ export default function SignupPage() {
               referrerName: data.referrer.name,
               referrerCode: data.referrer.referralCode,
             }));
-            console.log(
-              "추천인 정보가 자동으로 채워졌습니다:",
-              data.referrer.name
-            );
           }
         } catch (error) {
           console.error("추천인 정보 조회 중 오류:", error);
@@ -119,9 +115,7 @@ export default function SignupPage() {
             }),
           });
 
-          if (response.ok) {
-            console.log("추천 조회수가 업데이트되었습니다.");
-          } else {
+          if (!response.ok) {
             console.error("추천 조회수 업데이트 실패");
           }
         } catch (error) {
