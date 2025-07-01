@@ -328,6 +328,136 @@ export async function updateUserInfo(
   });
 }
 
+// 리워드 관련 타입 정의
+export interface RewardStats {
+  totalReward: number;
+  directReward: number;
+  indirectReward: number;
+  pendingReward: number;
+  monthlyReward: number;
+}
+
+export interface RewardTransaction {
+  id: string;
+  user_id: number;
+  type: string;
+  amount: number;
+  description: string;
+  reference_id: string;
+  metadata: Record<string, unknown>;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  referredUser?: {
+    name: string;
+    email: string;
+  };
+  level?: number;
+  referralChain?: Array<{
+    name: string;
+    email: string;
+    level: number;
+  }>;
+}
+
+export interface Settlement {
+  id: string;
+  period: string;
+  totalReward: number;
+  directReward: number;
+  indirectReward: number;
+  status: string;
+  settlementDate: string;
+  transactionCount: number;
+}
+
+export interface RewardStatsResponse {
+  stats: RewardStats;
+  message: string;
+  timestamp: string;
+}
+
+export interface RewardTransactionsResponse {
+  transactions: RewardTransaction[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  message: string;
+  timestamp: string;
+}
+
+export interface SettlementsResponse {
+  settlements: Settlement[];
+  message: string;
+  timestamp: string;
+}
+
+// 리워드 통계 조회 API 함수
+export async function getRewardStats(
+  startDate?: string,
+  endDate?: string
+): Promise<RewardStatsResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  const params = new URLSearchParams({ action: "stats" });
+  if (startDate) params.append("startDate", startDate);
+  if (endDate) params.append("endDate", endDate);
+
+  return apiCall<RewardStatsResponse>(`/api/rewards?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+// 리워드 내역 조회 API 함수
+export async function getRewardTransactions(
+  type: "all" | "direct" | "indirect" = "all",
+  page: number = 1,
+  limit: number = 20
+): Promise<RewardTransactionsResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  const params = new URLSearchParams({
+    type,
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+
+  return apiCall<RewardTransactionsResponse>(
+    `/api/rewards?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+// 정산 내역 조회 API 함수
+export async function getSettlements(): Promise<SettlementsResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  return apiCall<SettlementsResponse>("/api/settlements", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 // 토큰 저장/관리 함수들
 export const tokenManager = {
   // localStorage 사용 가능 여부 체크
