@@ -258,52 +258,64 @@ async function getRewardTransactions(
               },
             ];
           } else if (level > 1) {
-            // 간접 추천: 일반회원 -> 1차 영업사원 체인 구성
+            // 간접 추천: 전체 추천 체인 구성 (level에 맞게)
             try {
-              // 실제 쿼리도 실행해서 로그 확인
-              // 1단계: 일반회원을 직접 추천한 referrer_id 찾기
-              const { data: referralData } = await supabase
-                .from("referrals")
-                .select("referrer_id")
-                .eq("referred_user_id", originalUserId)
-                .single();
+              const fullChain: Array<{
+                name: string;
+                email: string;
+                level: number;
+              }> = [];
 
-              if (referralData && referralData.referrer_id) {
-                // 2단계: 1차 영업사원 정보 조회
-                const { data: firstSalespersonData } = await supabase
-                  .from("users")
-                  .select("name, email, role")
-                  .eq("id", referralData.referrer_id)
+              // 1단계: 결제한 일반회원 추가
+              fullChain.push({
+                name: originalUser.name,
+                email: originalUser.email,
+                level: 1,
+              });
+
+              // 2단계부터 추천 체인 역순으로 조회
+              let currentUserId = originalUserId;
+              for (let chainLevel = 2; chainLevel <= level; chainLevel++) {
+                const { data: referralData } = await supabase
+                  .from("referrals")
+                  .select("referrer_id")
+                  .eq("referred_user_id", currentUserId)
                   .single();
 
-                if (firstSalespersonData) {
-                  // 실제 데이터로 체인 업데이트
-                  referralChain = [
-                    {
-                      name: originalUser.name,
-                      email: originalUser.email,
-                      level: 1,
-                    },
-                    {
-                      name: firstSalespersonData.name,
-                      email: firstSalespersonData.email,
-                      level: 2,
-                    },
-                  ];
+                if (referralData && referralData.referrer_id) {
+                  const { data: referrerData } = await supabase
+                    .from("users")
+                    .select("name, email")
+                    .eq("id", referralData.referrer_id)
+                    .single();
+
+                  if (referrerData) {
+                    fullChain.push({
+                      name: referrerData.name,
+                      email: referrerData.email,
+                      level: chainLevel,
+                    });
+
+                    currentUserId = referralData.referrer_id;
+                  } else {
+                    break; // 사용자 정보 없으면 중단
+                  }
+                } else {
+                  break; // 추천 관계 없으면 중단
                 }
               }
+
+              referralChain = fullChain;
             } catch (error) {
-              console.error("1차 영업사원 조회 실패:", error);
-              // 에러시에도 테스트 체인 유지
-              if (referralChain.length === 0) {
-                referralChain = [
-                  {
-                    name: originalUser.name,
-                    email: originalUser.email,
-                    level: 1,
-                  },
-                ];
-              }
+              console.error("추천 체인 조회 실패:", error);
+              // 에러시 기본 체인 유지
+              referralChain = [
+                {
+                  name: originalUser.name,
+                  email: originalUser.email,
+                  level: 1,
+                },
+              ];
             }
           }
         }

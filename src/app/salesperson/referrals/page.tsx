@@ -184,15 +184,11 @@ export default function ReferralsPage() {
         : "직접 추천";
     }
 
-    // 간접 추천인 경우: 일반회원 → 1차영업사원 형태로 표시
-    if (reward.referralChain && reward.referralChain.length >= 2) {
-      const customer = reward.referralChain[0]; // 일반회원
-      const firstSalesperson = reward.referralChain[1]; // 1차 영업사원
-
-      return `${maskUserName(customer.name, customer.email)} → ${maskUserName(
-        firstSalesperson.name,
-        firstSalesperson.email
-      )}`;
+    // 간접 추천인 경우: 전체 추천 체인 표시 (예: test9 → test8 → test5)
+    if (reward.referralChain && reward.referralChain.length > 1) {
+      return reward.referralChain
+        .map((user) => maskUserName(user.name, user.email))
+        .join(" → ");
     }
 
     // 체인이 1개만 있는 경우 (일반회원만)
@@ -223,15 +219,11 @@ export default function ReferralsPage() {
         : "직접 추천";
     }
 
-    // 간접 추천인 경우: 일반회원 → 1차영업사원 형태로 표시
-    if (reward.referralChain && reward.referralChain.length >= 2) {
-      const customer = reward.referralChain[0]; // 일반회원
-      const firstSalesperson = reward.referralChain[1]; // 1차 영업사원
-
-      return `${getFullUserInfo(
-        customer.name,
-        customer.email
-      )} → ${getFullUserInfo(firstSalesperson.name, firstSalesperson.email)}`;
+    // 간접 추천인 경우: 전체 추천 체인 표시 (예: test9 → test8 → test5)
+    if (reward.referralChain && reward.referralChain.length > 1) {
+      return reward.referralChain
+        .map((user) => getFullUserInfo(user.name, user.email))
+        .join(" → ");
     }
 
     // 체인이 1개만 있는 경우 (일반회원만)

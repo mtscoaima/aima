@@ -20,6 +20,38 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 // 트랜잭션 타입 정의
 type TransactionType = "charge" | "usage" | "refund" | "penalty";
 
+// 시스템 설정 조회 함수
+async function getSystemSettings() {
+  try {
+    const { data: settings, error } = await supabase
+      .from("system_settings")
+      .select("first_level_commission_rate, nth_level_denominator")
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error("시스템 설정 조회 오류:", error);
+      // 기본값 반환
+      return {
+        firstLevelCommissionRate: 10.0,
+        nthLevelDenominator: 20,
+      };
+    }
+
+    return {
+      firstLevelCommissionRate: Number(settings.first_level_commission_rate),
+      nthLevelDenominator: settings.nth_level_denominator,
+    };
+  } catch (error) {
+    console.error("시스템 설정 조회 중 오류:", error);
+    // 기본값 반환
+    return {
+      firstLevelCommissionRate: 10.0,
+      nthLevelDenominator: 20,
+    };
+  }
+}
+
 // 리워드 트랜잭션 타입 정의
 interface RewardTransaction {
   level: number;
@@ -69,22 +101,27 @@ async function getReferralChain(startUserId: number): Promise<number[]> {
 
 // 리워드 계산 함수
 function calculateRewards(
-  usageAmount: number
+  usageAmount: number,
+  firstLevelCommissionRate: number,
+  nthLevelDenominator: number
 ): Array<{ level: number; amount: number }> {
   const rewards: Array<{ level: number; amount: number }> = [];
 
-  // 1차 영업사원: 10% 고정
-  const firstLevelReward = Math.floor(usageAmount * 0.1);
+  // 1차 영업사원: 시스템 설정의 비율 사용
+  const firstLevelReward = Math.floor(
+    usageAmount * (firstLevelCommissionRate / 100)
+  );
   if (firstLevelReward >= 10) {
     rewards.push({ level: 1, amount: firstLevelReward });
   }
 
-  // 나머지 90%에 대해서 계산
-  const remainingAmount = usageAmount * 0.9;
+  // 나머지 금액에 대해서 계산 (100% - 1차 비율)
+  const remainingAmount =
+    usageAmount * ((100 - firstLevelCommissionRate) / 100);
 
-  // 2차부터 계산 (분모가 20, 20^2, 20^3, ... 로 증가)
+  // 2차부터 계산 (시스템 설정의 분모 사용)
   for (let level = 2; level <= 10; level++) {
-    const denominator = Math.pow(20, level - 1);
+    const denominator = Math.pow(nthLevelDenominator, level - 1);
     const rewardAmount = Math.floor(remainingAmount / denominator);
 
     // 10원 미만은 지급하지 않음
@@ -112,8 +149,15 @@ async function processReferralRewards(
       return [];
     }
 
+    // 시스템 설정 조회
+    const systemSettings = await getSystemSettings();
+
     // 리워드 계산
-    const rewards = calculateRewards(usageAmount);
+    const rewards = calculateRewards(
+      usageAmount,
+      systemSettings.firstLevelCommissionRate,
+      systemSettings.nthLevelDenominator
+    );
 
     if (rewards.length === 0) {
       return [];

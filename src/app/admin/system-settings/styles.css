@@ -38,6 +38,7 @@
   gap: 24px;
   max-width: 800px;
   margin: 0 auto;
+  position: relative;
 }
 
 /* Settings Section */
@@ -233,6 +234,140 @@
   color: white;
 }
 
+/* Commission Rate Settings */
+.commission-rate-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.commission-rate-item {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.rate-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 500px;
+  flex-wrap: wrap;
+}
+
+.rate-input {
+  width: 100%;
+  max-width: 150px;
+  padding: 12px 16px;
+  border: 1px solid #e5e8ec;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333333;
+  background-color: white;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  text-align: right;
+}
+
+.rate-input:focus {
+  outline: none;
+  border-color: #0066ff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.rate-input.readonly {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.rate-input.readonly:focus {
+  border-color: #e5e8ec;
+  box-shadow: none;
+}
+
+.rate-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666666;
+  min-width: 20px;
+}
+
+.rate-percentage {
+  font-size: 12px;
+  color: #0066ff;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: 8px;
+  padding: 4px 8px;
+  background-color: #f0f7ff;
+  border-radius: 4px;
+  border: 1px solid #b3d9ff;
+}
+
+.rate-description {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.commission-rate-preview {
+  background-color: #f0f7ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 8px;
+}
+
+.commission-rate-preview h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0066ff;
+}
+
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #333333;
+}
+
+.preview-item:first-child {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #d1e7ff;
+  font-weight: 500;
+}
+
+.preview-item strong {
+  color: #0066ff;
+  font-weight: 600;
+}
+
+.preview-calculation {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #d1e7ff;
+  background-color: #f8fbff;
+  padding: 16px;
+  border-radius: 6px;
+}
+
+.preview-calculation small {
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.6;
+}
+
 /* Settings Actions */
 .settings-actions {
   display: flex;
@@ -258,6 +393,16 @@
   background-color: #0052cc;
 }
 
+.btn-save-settings:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+.btn-save-settings:disabled:hover {
+  background-color: #cccccc;
+}
+
 .settings-notice {
   margin: 0;
   font-size: 12px;
@@ -266,6 +411,35 @@
   font-style: italic;
   text-align: center;
   width: 100%;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  border-radius: 12px;
+}
+
+.loading-overlay .loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 0;
+}
+
+.loading-overlay .loading-container p {
+  margin: 0;
+  color: #666666;
+  font-size: 14px;
 }
 
 /* Responsive Design */
@@ -334,6 +508,30 @@
 
   .setting-item {
     margin-bottom: 20px;
+  }
+
+  .commission-rate-item {
+    padding: 16px;
+  }
+
+  .rate-input-container {
+    max-width: 100%;
+  }
+
+  .rate-percentage {
+    font-size: 11px;
+    padding: 3px 6px;
+    margin-left: 4px;
+  }
+
+  .commission-rate-preview {
+    padding: 16px;
+  }
+
+  .preview-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
   .settings-actions {
