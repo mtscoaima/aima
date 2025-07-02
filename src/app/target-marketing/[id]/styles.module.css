@@ -887,13 +887,17 @@ body .main-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #e9ecef;
 }
 
 .modalHeader h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2d3748;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 28.8px */
+  letter-spacing: -0.48px;
   margin: 0;
 }
 
@@ -1002,34 +1006,56 @@ body .main-content {
 }
 
 .modalFooter {
-  padding: 20px 24px;
-  border-top: 1px solid #e9ecef;
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
-  background: #e9ecef;
+  padding: 20px 24px 24px 24px;
+  border-top: 1px solid #e6e6e6;
+  margin-top: 20px;
 }
 
-.cancelButton {
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  background: white;
-  color: #4a5568;
-  border-radius: 6px;
+.modalFooter .cancelButton {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
   font-size: 14px;
+  font-style: normal;
   font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
-.cancelButton:hover:not(:disabled) {
-  background: #f7fafc;
-  border-color: #cbd5e0;
+.modalFooter .cancelButton:hover:not(:disabled) {
+  border-color: #c7c7c7;
+  background: #f8f9fa;
 }
 
-.cancelButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.modalFooter .sendButton.primary {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #007aff;
+  color: #fff;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalFooter .sendButton.primary:hover:not(:disabled) {
+  background: #0056cc;
 }
 
 .loadingSpinner {
@@ -1469,17 +1495,25 @@ body .main-content {
   color: #000;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
-  font-size: 16px;
+  font-size: 20px;
   font-style: normal;
   font-weight: 500;
-  line-height: 120%; /* 19.2px */
-  letter-spacing: -0.32px;
+  line-height: 120%; /* 24px */
+  letter-spacing: -0.4px;
 }
 
 .costValue {
   display: flex;
   align-items: baseline;
   text-align: right;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 19.2px */
+  letter-spacing: -0.32px;
 }
 
 .costAmount {
@@ -1542,4 +1576,449 @@ body .main-content {
 .approvalButton:disabled {
   background: #9ca3af;
   cursor: not-allowed;
+}
+
+/* 발송 정책 선택 모달 */
+.approvalModal {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.policyDescription {
+  margin-bottom: 20px;
+}
+
+.policyDescription p {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.24px;
+  margin: 8px 0;
+}
+
+.policyOptions {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #1681ff;
+  cursor: pointer;
+}
+
+.checkboxLabel span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.validitySection {
+  margin-bottom: 20px;
+}
+
+.validitySection label {
+  display: block;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  margin-bottom: 12px;
+}
+
+.dateInputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dateInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+}
+
+.dateInput:focus {
+  border-color: #1681ff;
+}
+
+.periodButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.periodButton {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.periodButton:hover {
+  border-color: #007aff;
+  color: #007aff;
+}
+
+.periodButton.active {
+  border-radius: 10px;
+  border: 0.5px solid #007aff;
+  background: #d8ecff;
+  color: #007aff;
+}
+
+.recipientLimitSection {
+  margin-bottom: 20px;
+}
+
+.recipientLimitSection label {
+  display: block;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  margin-bottom: 8px;
+}
+
+.recipientInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  width: 100px;
+  text-align: right;
+}
+
+.recipientInput:focus {
+  border-color: #1681ff;
+}
+
+.batchSection {
+  margin-bottom: 20px;
+}
+
+.batchInfo {
+  margin-bottom: 12px;
+}
+
+.batchInfo span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.batchInfo p {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.24px;
+  margin: 4px 0;
+}
+
+.batchSelectors {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.batchSelect {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  cursor: pointer;
+}
+
+.batchSelect:focus {
+  border-color: #1681ff;
+}
+
+.targetInfo {
+  margin-bottom: 12px;
+}
+
+.targetInfo div {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  margin-bottom: 4px;
+}
+
+.targetInfo span {
+  font-weight: 600;
+}
+
+.targetInfo p {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.22px;
+  margin-top: 8px;
+}
+
+.costSummary {
+  padding-top: 20px;
+  margin-top: 24px;
+}
+
+.costRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.costRow:first-child {
+  font-weight: 600;
+}
+
+.costRow span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.32px;
+  text-align: left;
+}
+
+.costRow span:first-child {
+  text-align: left;
+}
+
+.costRow span:last-child {
+  text-align: right;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.48px;
+}
+
+.balanceAmount {
+  color: #000 !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
+  line-height: 120% !important;
+  letter-spacing: -0.48px !important;
+}
+
+.chargeNoticeText {
+  color: #f00 !important;
+  text-align: right;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.chargeButton {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid #1681ff;
+  background: #1681ff;
+  color: #fff;
+  text-align: center;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 120%; /* 16.8px */
+  letter-spacing: -0.28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chargeButton:hover {
+  background: #1469cc;
+  border-color: #1469cc;
+}
+
+.balanceUnit {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.32px;
+}
+
+.batchContentContainer {
+  width: fit-content;
+}
+
+.targetCountInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.targetCountInfo span:first-child {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.targetCountInfo span:last-child {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.adRecipientSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.adRecipientSection span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.adRecipientInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  width: 80px;
+  text-align: right;
+}
+
+.adRecipientInput:focus {
+  border-color: #1681ff;
+}
+
+.adRecipientNotice {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.24px;
+  margin: 8px 0 0 0;
 }

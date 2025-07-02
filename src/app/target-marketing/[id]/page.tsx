@@ -45,6 +45,12 @@ function TargetMarketingContent() {
   const [isFromTemplate, setIsFromTemplate] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [sendPolicy, setSendPolicy] = useState<"realtime" | "batch">(
+    "realtime"
+  );
+  const [validityPeriod, setValidityPeriod] = useState("2025/06/01");
+  const [maxRecipients, setMaxRecipients] = useState("30");
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -900,7 +906,7 @@ function TargetMarketingContent() {
               className={`${styles.approvalButton} ${styles.primary}`}
               onClick={() => {
                 if (smsTextContent.trim() && currentGeneratedImage) {
-                  alert("승인 신청이 제출되었습니다!");
+                  setShowApprovalModal(true);
                 } else {
                   alert("템플릿 내용을 먼저 생성해주세요.");
                 }
@@ -994,6 +1000,199 @@ function TargetMarketingContent() {
                     MMS 전송
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 발송 정책 선택 모달 */}
+      {showApprovalModal && (
+        <div className={styles.modalOverlay}>
+          <div className={`${styles.modalContent} ${styles.approvalModal}`}>
+            <div className={styles.modalHeader}>
+              <h2>발송 정책 선택</h2>
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className={styles.modalClose}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <div className={styles.policyDescription}>
+                <p>
+                  ※ 실시간 발송이란? 유효 기간 동안 카드 승인 시간에 고객에게
+                  문자 메시지를 즉시 발송하는 방식입니다.
+                </p>
+                <p>
+                  ※ 일괄 발송이란? 수집된 고객 데이터를 기반으로, AI가 가장 반응
+                  가능성이 높은 타겟을 선별하여 한 번에 문자 메시지를 발송하는
+                  방식입니다.
+                </p>
+              </div>
+
+              <div className={styles.policyOptions}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={sendPolicy === "realtime"}
+                    onChange={() => setSendPolicy("realtime")}
+                    className={styles.checkbox}
+                  />
+                  <span>실시간 발송</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={sendPolicy === "batch"}
+                    onChange={() => setSendPolicy("batch")}
+                    className={styles.checkbox}
+                  />
+                  <span>일괄 발송</span>
+                </label>
+              </div>
+
+              {sendPolicy === "realtime" && (
+                <>
+                  <div className={styles.validitySection}>
+                    <label>유효 기간</label>
+                    <div className={styles.dateInputs}>
+                      <input
+                        type="date"
+                        value={validityPeriod}
+                        onChange={(e) => setValidityPeriod(e.target.value)}
+                        className={styles.dateInput}
+                      />
+                      <span>~</span>
+                      <input
+                        type="date"
+                        value={validityPeriod}
+                        onChange={(e) => setValidityPeriod(e.target.value)}
+                        className={styles.dateInput}
+                      />
+                    </div>
+                    <div className={styles.periodButtons}>
+                      <button
+                        className={`${styles.periodButton} ${styles.active}`}
+                      >
+                        일주일
+                      </button>
+                      <button className={styles.periodButton}>한달</button>
+                      <button className={styles.periodButton}>1년</button>
+                    </div>
+                  </div>
+
+                  <div className={styles.recipientLimitSection}>
+                    <label>일 최대 건수</label>
+                    <input
+                      type="text"
+                      value={maxRecipients + "건"}
+                      onChange={(e) =>
+                        setMaxRecipients(e.target.value.replace("건", ""))
+                      }
+                      className={styles.recipientInput}
+                    />
+                  </div>
+                </>
+              )}
+
+              {sendPolicy === "batch" && (
+                <>
+                  <div className={styles.batchSection}>
+                    <div className={styles.batchInfo}>
+                      <span>발송 일·시간</span>
+                      <p>
+                        ※ 발송 일·시는 승인 이후에 가능합니다. (승인은 2일 정도
+                        소요)
+                      </p>
+                    </div>
+                    <div className={styles.batchContentContainer}>
+                      <div className={styles.batchSelectors}>
+                        <select className={styles.batchSelect}>
+                          <option>오늘+3일</option>
+                          <option>오늘+7일</option>
+                          <option>오늘+14일</option>
+                        </select>
+                        <select className={styles.batchSelect}>
+                          <option>8:00</option>
+                          <option>9:00</option>
+                          <option>10:00</option>
+                        </select>
+                      </div>
+
+                      <div className={styles.targetCountInfo}>
+                        <span>타겟 대상자 수</span>
+                        <span>500명</span>
+                      </div>
+
+                      <div className={styles.adRecipientSection}>
+                        <span>광고 수신자 수</span>
+                        <input
+                          type="text"
+                          value="30명"
+                          onChange={(e) =>
+                            setMaxRecipients(e.target.value.replace("명", ""))
+                          }
+                          className={styles.adRecipientInput}
+                        />
+                      </div>
+
+                      <p className={styles.adRecipientNotice}>
+                        ※ 광고 수신자 수는 타겟 대상자 수를 초과할 수 없습니다.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className={styles.costSummary}>
+                <div className={styles.costRow}>
+                  <span>예상금액</span>
+                  <span>캠페인</span>
+                  <span>100원/건</span>
+                </div>
+                <div className={styles.costRow}>
+                  <span></span>
+                  <span>합계</span>
+                  <span>21,000원</span>
+                </div>
+                <div className={styles.costRow}>
+                  <span></span>
+                  <span>충전 잔액</span>
+                  <span>
+                    <span className={styles.balanceAmount}>500</span>
+                    <span className={styles.balanceUnit}>원</span>
+                  </span>
+                </div>
+                <div className={styles.costRow}>
+                  <span></span>
+                  <span className={styles.chargeNoticeText}>
+                    ⚠ 잔액을 충전해주세요.
+                  </span>
+                  <span>
+                    <button className={styles.chargeButton}>+ 충전하기</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className={styles.cancelButton}
+              >
+                닫기
+              </button>
+              <button
+                onClick={() => {
+                  alert("승인 신청이 제출되었습니다!");
+                  setShowApprovalModal(false);
+                }}
+                className={`${styles.sendButton} ${styles.primary}`}
+              >
+                승인 신청
               </button>
             </div>
           </div>
