@@ -7,20 +7,51 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 Create a `.env.local` file in the root directory and add your Supabase configuration:
 
 ```bash
-# Supabase 설정
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+# Supabase 설정 (필수)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-# JWT 토큰 시크릿 키 (로그인 시 사용)
+# JWT 토큰 시크릿 키 (필수)
 JWT_SECRET=your_jwt_secret_key_here
+
+# 기타 설정 (선택사항)
+NAVER_SENS_SERVICE_ID=your_service_id
+NAVER_ACCESS_KEY_ID=your_access_key
+NAVER_SECRET_KEY=your_secret_key
 ```
+
+**⚠️ 중요 사항:**
+
+- `SUPABASE_SERVICE_ROLE_KEY`는 Supabase 대시보드 → Settings → API → service_role에서 복사
+- `NEXT_PUBLIC_SUPABASE_URL`은 Supabase 대시보드 → Settings → API → URL에서 복사
+- `.env.local` 파일은 프로젝트 루트 디렉토리에 생성
+- 환경변수 변경 후 **반드시 개발 서버 재시작** 필요
 
 **Supabase 설정 방법:**
 
 1. [Supabase](https://supabase.com)에서 새 프로젝트를 생성합니다
 2. 프로젝트 설정에서 API 키를 확인합니다:
+
    - `NEXT_PUBLIC_SUPABASE_URL`: 프로젝트 URL
    - `SUPABASE_SERVICE_ROLE_KEY`: service_role 키 (서버 사이드 전용)
+
+   **중요**: anon key는 사용하지 않습니다. service role key만 서버 사이드에서 사용합니다.
+
+3. **Realtime 기능 활성화** (실시간 대시보드 업데이트용):
+
+   - Supabase 대시보드 → Settings → API → Realtime → Enable
+   - 또는 SQL Editor에서 다음 실행:
+
+   ```sql
+   -- referrals 테이블에 Realtime 활성화
+   ALTER PUBLICATION supabase_realtime ADD TABLE referrals;
+
+   -- transactions 테이블에 Realtime 활성화
+   ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
+
+   -- users 테이블에 Realtime 활성화 (선택사항)
+   ALTER PUBLICATION supabase_realtime ADD TABLE users;
+   ```
 
 ### Database Setup
 
@@ -302,7 +333,75 @@ SET agreement_info = jsonb_build_object(
 WHERE agreement_info IS NULL;
 ```
 
+## 🔧 문제 해결
+
+### "supabaseKey is required" 에러
+
+이 에러가 발생하면 다음을 확인하세요:
+
+1. **환경변수 파일 확인**:
+
+   ```bash
+   # 프로젝트 루트에 .env.local 파일이 있는지 확인
+   ls -la .env.local
+   ```
+
+2. **환경변수 값 확인**:
+
+   ```bash
+   # .env.local 파일 내용 확인 (민감 정보 주의)
+   cat .env.local
+   ```
+
+3. **개발 서버 재시작**:
+
+   ```bash
+   # 기존 서버 중지 (Ctrl+C)
+   # 새로 시작
+   npm run dev
+   ```
+
+4. **환경변수 형식 확인**:
+   ```bash
+   # 올바른 형식 (공백 없음, 따옴표 없음)
+   NEXT_PUBLIC_SUPABASE_URL=https://abc123.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   JWT_SECRET=your_secret_key_here
+   ```
+
+### "Authentication failed" 에러
+
+- Supabase service role key가 올바른지 확인
+- Supabase 프로젝트가 활성화되어 있는지 확인
+
 **중요:** 환경변수를 변경한 후에는 개발 서버를 재시작해야 합니다.
+
+## 실시간 업데이트 기능
+
+영업사원 대시보드는 다음과 같은 실시간 업데이트 기능을 제공합니다:
+
+### 1. 자동 데이터 새로고침
+
+- **추천인 가입**: 새로운 추천인이 가입하면 즉시 대시보드에 반영
+- **리워드 발생**: 새로운 리워드가 지급되면 즉시 수익 데이터 업데이트
+- **상태 변경**: 추천인의 승인 상태나 활성화 상태 변경 시 실시간 반영
+
+### 2. 이중 안전장치
+
+- **Realtime 구독**: Supabase Realtime을 통한 즉시 업데이트
+- **폴링 백업**: 실시간 연결이 실패할 경우 30초마다 자동 새로고침
+
+### 3. 연결 상태 표시
+
+- 대시보드 상단에 실시간 연결 상태 표시
+- 마지막 업데이트 시간 표시
+- 수동 새로고침 버튼 제공
+
+### 4. 성능 최적화
+
+- 초당 이벤트 수 제한 (10개/초)
+- 컴포넌트 언마운트 시 자동 구독 해제
+- 메모리 누수 방지
 
 ## Vercel 배포 가이드
 

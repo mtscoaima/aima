@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { subscribeToReferrals, subscribeToTransactions } from "@/lib/supabase";
 
 interface ReferralData {
   id: number;
@@ -14,6 +15,15 @@ interface ReferralData {
   level?: number;
 }
 
+interface DashboardData {
+  totalReferrals: number;
+  monthlyNewSignups: number;
+  totalRevenue: number;
+  referralList: ReferralData[];
+  dailyRevenue: Array<{ date: string; amount: number }>;
+  monthlyRevenue: Array<{ period: string; amount: number }>;
+}
+
 export default function SalespersonDashboard() {
   const { user } = useAuth();
   const [chartPeriod, setChartPeriod] = useState<"daily" | "monthly">(
@@ -21,231 +31,190 @@ export default function SalespersonDashboard() {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRealTimeConnected, setIsRealTimeConnected] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const channelsRef = useRef<
+    Array<{ unsubscribe?: () => void; state?: string }>
+  >([]);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 계층구조가 있는 더미 데이터
-  const dummyReferrals: ReferralData[] = [
-    {
-      id: 1,
-      name: "김민수",
-      joinDate: "2024-01-15",
-      status: "활성",
-      totalPayment: 2500000,
-      email: "kim***@email.com",
-      level: 0,
-      children: [
-        {
-          id: 2,
-          name: "이수정",
-          joinDate: "2024-01-22",
-          status: "활성",
-          totalPayment: 1800000,
-          email: "lee***@email.com",
-          level: 1,
-          children: [
-            {
-              id: 3,
-              name: "박준호",
-              joinDate: "2024-02-03",
-              status: "비활성",
-              totalPayment: 950000,
-              email: "park***@email.com",
-              level: 2,
-            },
-            {
-              id: 4,
-              name: "최유리",
-              joinDate: "2024-02-10",
-              status: "활성",
-              totalPayment: 3200000,
-              email: "choi***@email.com",
-              level: 2,
-            },
-          ],
-        },
-        {
-          id: 5,
-          name: "정태민",
-          joinDate: "2024-02-18",
-          status: "활성",
-          totalPayment: 1400000,
-          email: "jung***@email.com",
-          level: 1,
-        },
-      ],
+  // API에서 대시보드 데이터 가져오기
+  const fetchDashboardData = useCallback(
+    async (isRealTimeUpdate = false) => {
+      if (!user) return;
+
+      try {
+        // 초기 로딩이 아닌 실시간 업데이트의 경우 로딩 스피너를 표시하지 않음
+        if (!isRealTimeUpdate && isInitialLoad) {
+          setLoading(true);
+        }
+        setError(null);
+
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          setError("인증 토큰이 없습니다.");
+          return;
+        }
+
+        const response = await fetch("/api/referrals/dashboard", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        setDashboardData(result.data);
+        setLastUpdated(new Date());
+
+        // 데이터 업데이트 시 페이지 초기화 (선택사항)
+        if (isRealTimeUpdate && currentPage > 1) {
+          const newTotalPages = Math.ceil(
+            (result.data.referralList?.length || 0) / itemsPerPage
+          );
+          if (currentPage > newTotalPages && newTotalPages > 0) {
+            setCurrentPage(newTotalPages);
+          }
+        }
+
+        // 초기 로딩 완료 표시
+        if (isInitialLoad) {
+          setIsInitialLoad(false);
+        }
+      } catch (error) {
+        console.error("Dashboard data fetch error:", error);
+        setError("대시보드 데이터를 불러오는데 실패했습니다.");
+      } finally {
+        if (!isRealTimeUpdate && isInitialLoad) {
+          setLoading(false);
+        }
+      }
     },
-    {
-      id: 6,
-      name: "홍지연",
-      joinDate: "2024-02-25",
-      status: "대기",
-      totalPayment: 0,
-      email: "hong***@email.com",
-      level: 0,
-      children: [
-        {
-          id: 7,
-          name: "김영희",
-          joinDate: "2024-03-01",
-          status: "활성",
-          totalPayment: 850000,
-          email: "kim_yh***@email.com",
-          level: 1,
-        },
-        {
-          id: 8,
-          name: "박철수",
-          joinDate: "2024-03-05",
-          status: "활성",
-          totalPayment: 1250000,
-          email: "park_cs***@email.com",
-          level: 1,
-          children: [
-            {
-              id: 9,
-              name: "이민정",
-              joinDate: "2024-03-10",
-              status: "활성",
-              totalPayment: 750000,
-              email: "lee_mj***@email.com",
-              level: 2,
-            },
-          ],
-        },
-      ],
-    },
-  ];
+    [user, isInitialLoad]
+  );
 
-  // 전체 일별 데이터
-  const allDailyRevenue = [
-    { date: "2023-12-02", amount: 34000 },
-    { date: "2023-12-03", amount: 41000 },
-    { date: "2023-12-04", amount: 28000 },
-    { date: "2023-12-05", amount: 52000 },
-    { date: "2023-12-06", amount: 38000 },
-    { date: "2023-12-07", amount: 45000 },
-    { date: "2023-12-08", amount: 61000 },
-    { date: "2023-12-09", amount: 33000 },
-    { date: "2023-12-10", amount: 49000 },
-    { date: "2023-12-11", amount: 56000 },
-    { date: "2023-12-12", amount: 42000 },
-    { date: "2023-12-13", amount: 38000 },
-    { date: "2023-12-14", amount: 47000 },
-    { date: "2023-12-15", amount: 53000 },
-    { date: "2023-12-16", amount: 29000 },
-    { date: "2023-12-17", amount: 44000 },
-    { date: "2023-12-18", amount: 58000 },
-    { date: "2023-12-19", amount: 31000 },
-    { date: "2023-12-20", amount: 46000 },
-    { date: "2023-12-21", amount: 54000 },
-    { date: "2023-12-22", amount: 39000 },
-    { date: "2023-12-23", amount: 48000 },
-    { date: "2023-12-24", amount: 62000 },
-    { date: "2023-12-25", amount: 35000 },
-    { date: "2023-12-26", amount: 51000 },
-    { date: "2023-12-27", amount: 43000 },
-    { date: "2023-12-28", amount: 37000 },
-    { date: "2023-12-29", amount: 49000 },
-    { date: "2023-12-30", amount: 55000 },
-    { date: "2023-12-31", amount: 67000 },
-    { date: "2024-01-01", amount: 45000 },
-    { date: "2024-01-02", amount: 52000 },
-    { date: "2024-01-03", amount: 38000 },
-    { date: "2024-01-04", amount: 67000 },
-    { date: "2024-01-05", amount: 43000 },
-    { date: "2024-01-06", amount: 59000 },
-    { date: "2024-01-07", amount: 71000 },
-    { date: "2024-01-08", amount: 36000 },
-    { date: "2024-01-09", amount: 48000 },
-    { date: "2024-01-10", amount: 54000 },
-    { date: "2024-01-11", amount: 41000 },
-    { date: "2024-01-12", amount: 56000 },
-    { date: "2024-01-13", amount: 63000 },
-    { date: "2024-01-14", amount: 39000 },
-    { date: "2024-01-15", amount: 47000 },
-    { date: "2024-01-16", amount: 52000 },
-    { date: "2024-01-17", amount: 44000 },
-    { date: "2024-01-18", amount: 58000 },
-    { date: "2024-01-19", amount: 35000 },
-    { date: "2024-01-20", amount: 49000 },
-    { date: "2024-01-21", amount: 61000 },
-    { date: "2024-01-22", amount: 42000 },
-    { date: "2024-01-23", amount: 54000 },
-    { date: "2024-01-24", amount: 37000 },
-    { date: "2024-01-25", amount: 51000 },
-    { date: "2024-01-26", amount: 46000 },
-    { date: "2024-01-27", amount: 59000 },
-    { date: "2024-01-28", amount: 33000 },
-    { date: "2024-01-29", amount: 48000 },
-    { date: "2024-01-30", amount: 55000 },
-  ];
+  // 실시간 구독 설정
+  const setupRealTimeSubscriptions = useCallback(() => {
+    if (!user?.id) return;
 
-  // 전체 월별 데이터
-  const allMonthlyRevenue = [
-    { period: "2022-02", amount: 650000 },
-    { period: "2022-03", amount: 720000 },
-    { period: "2022-04", amount: 680000 },
-    { period: "2022-05", amount: 790000 },
-    { period: "2022-06", amount: 850000 },
-    { period: "2022-07", amount: 920000 },
-    { period: "2022-08", amount: 780000 },
-    { period: "2022-09", amount: 890000 },
-    { period: "2022-10", amount: 950000 },
-    { period: "2022-11", amount: 1080000 },
-    { period: "2022-12", amount: 1150000 },
-    { period: "2023-01", amount: 1020000 },
-    { period: "2023-02", amount: 1180000 },
-    { period: "2023-03", amount: 1260000 },
-    { period: "2023-04", amount: 1340000 },
-    { period: "2023-05", amount: 1420000 },
-    { period: "2023-06", amount: 1580000 },
-    { period: "2023-07", amount: 1650000 },
-    { period: "2023-08", amount: 1890000 },
-    { period: "2023-09", amount: 1240000 },
-    { period: "2023-10", amount: 1567000 },
-    { period: "2023-11", amount: 1890000 },
-    { period: "2023-12", amount: 2150000 },
-    { period: "2024-01", amount: 2430000 },
-  ];
+    // 기존 구독 정리
+    channelsRef.current.forEach((channel) => {
+      if (channel?.unsubscribe) {
+        channel.unsubscribe();
+      }
+    });
+    channelsRef.current = [];
 
-  // 유저 가입일 기준으로 데이터 필터링
-  const getFilteredData = () => {
-    if (!user?.createdAt) {
-      // 유저 정보가 없으면 빈 배열 반환
-      return { dailyRevenue: [], monthlyRevenue: [] };
+    try {
+      // 1. 추천인 테이블 변경사항 구독
+      const referralsChannel = subscribeToReferrals(
+        parseInt(user.id.toString()),
+        () => {
+          fetchDashboardData(true); // 실시간 업데이트임을 표시
+        }
+      );
+
+      // 2. 트랜잭션 테이블 변경사항 구독 (리워드 관련)
+      const transactionsChannel = subscribeToTransactions(
+        parseInt(user.id.toString()),
+        () => {
+          fetchDashboardData(true); // 실시간 업데이트임을 표시
+        }
+      );
+
+      channelsRef.current = [referralsChannel, transactionsChannel];
+      setIsRealTimeConnected(true);
+
+      // 연결 상태 모니터링
+      setTimeout(() => {
+        const isConnected = channelsRef.current.some(
+          (channel) =>
+            channel?.state === "joined" || channel?.state === "subscribed"
+        );
+        setIsRealTimeConnected(isConnected);
+      }, 2000);
+    } catch (error) {
+      console.error("Real-time subscription error:", error);
+      setIsRealTimeConnected(false);
+    }
+  }, [user, fetchDashboardData]);
+
+  // 폴링 백업 설정 (실시간이 실패할 경우)
+  const setupPollingBackup = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
     }
 
-    const joinDate = new Date(user.createdAt);
-    const currentDate = new Date();
+    // 30초마다 데이터 새로고침 (실시간 연결이 안 된 경우에만)
+    pollingIntervalRef.current = setInterval(() => {
+      if (!isRealTimeConnected) {
+        fetchDashboardData(true); // 실시간 업데이트임을 표시
+      }
+    }, 30000);
+  }, [isRealTimeConnected, fetchDashboardData]);
 
-    // 일별 데이터 필터링
-    const filteredDaily = allDailyRevenue.filter((item) => {
-      const itemDate = new Date(item.date);
-      return itemDate >= joinDate && itemDate <= currentDate;
-    });
+  // 컴포넌트 마운트 시 데이터 가져오기
+  useEffect(() => {
+    fetchDashboardData(false); // 초기 로딩
+  }, [fetchDashboardData]);
 
-    // 월별 데이터 필터링
-    const filteredMonthly = allMonthlyRevenue.filter((item) => {
-      const [year, month] = item.period.split("-");
-      const itemDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-      const joinMonthStart = new Date(
-        joinDate.getFullYear(),
-        joinDate.getMonth(),
-        1
-      );
-      const currentMonthStart = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth(),
-        1
-      );
+  // 실시간 구독 및 폴링 설정
+  useEffect(() => {
+    if (user?.id) {
+      setupRealTimeSubscriptions();
+      setupPollingBackup();
+    }
 
-      return itemDate >= joinMonthStart && itemDate <= currentMonthStart;
-    });
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      // 실시간 구독 정리
+      channelsRef.current.forEach((channel) => {
+        if (channel?.unsubscribe) {
+          channel.unsubscribe();
+        }
+      });
+      channelsRef.current = [];
 
-    return { dailyRevenue: filteredDaily, monthlyRevenue: filteredMonthly };
+      // 폴링 정리
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [user?.id, setupRealTimeSubscriptions, setupPollingBackup]);
+
+  // 실시간 연결 상태가 변경될 때 폴링 재설정
+  useEffect(() => {
+    setupPollingBackup();
+  }, [isRealTimeConnected, setupPollingBackup]);
+
+  // 실제 데이터 또는 더미 데이터 사용
+  const actualData = dashboardData || {
+    totalReferrals: 0,
+    monthlyNewSignups: 0,
+    totalRevenue: 0,
+    referralList: [],
+    dailyRevenue: [],
+    monthlyRevenue: [],
   };
 
-  const { dailyRevenue, monthlyRevenue } = getFilteredData();
-  const allData = chartPeriod === "daily" ? dailyRevenue : monthlyRevenue;
+  const allData =
+    chartPeriod === "daily"
+      ? actualData.dailyRevenue
+      : actualData.monthlyRevenue;
   const visibleData = allData.slice(currentIndex, currentIndex + 7);
   const maxAmount =
     visibleData.length > 0
@@ -271,7 +240,20 @@ export default function SalespersonDashboard() {
     return result;
   };
 
-  const flatReferrals = flattenTree(dummyReferrals);
+  const flatReferrals = flattenTree(actualData.referralList);
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(flatReferrals.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentReferrals = flatReferrals.slice(startIndex, endIndex);
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // 페이지 변경 시 펼쳐진 항목들 초기화 (선택사항)
+    // setExpandedItems(new Set());
+  };
 
   // 펼치기/접기 토글 함수
   const toggleExpand = (id: number) => {
@@ -297,54 +279,60 @@ export default function SalespersonDashboard() {
   };
 
   // 현재 날짜 기준으로 초기 인덱스를 설정하는 함수
-  const getCurrentIndex = (period: "daily" | "monthly") => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    const currentDay = now.getDate();
+  const getCurrentIndex = useCallback(
+    (period: "daily" | "monthly") => {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const currentDay = now.getDate();
 
-    if (period === "daily") {
-      if (dailyRevenue.length === 0) return 0;
+      if (period === "daily") {
+        if (actualData.dailyRevenue.length === 0) return 0;
 
-      const currentDateStr = `${currentYear}-${currentMonth
-        .toString()
-        .padStart(2, "0")}-${currentDay.toString().padStart(2, "0")}`;
-      const closestIndex = dailyRevenue.findIndex(
-        (item) => item.date >= currentDateStr
-      );
-
-      if (closestIndex >= 0) {
-        return Math.max(0, Math.min(closestIndex - 3, dailyRevenue.length - 7));
-      } else {
-        return Math.max(0, dailyRevenue.length - 7);
-      }
-    } else {
-      if (monthlyRevenue.length === 0) return 0;
-
-      const currentPeriodStr = `${currentYear}-${currentMonth
-        .toString()
-        .padStart(2, "0")}`;
-      const closestIndex = monthlyRevenue.findIndex(
-        (item) => item.period >= currentPeriodStr
-      );
-
-      if (closestIndex >= 0) {
-        return Math.max(
-          0,
-          Math.min(closestIndex - 3, monthlyRevenue.length - 7)
+        const currentDateStr = `${currentYear}-${currentMonth
+          .toString()
+          .padStart(2, "0")}-${currentDay.toString().padStart(2, "0")}`;
+        const closestIndex = actualData.dailyRevenue.findIndex(
+          (item) => item.date >= currentDateStr
         );
+
+        if (closestIndex >= 0) {
+          return Math.max(
+            0,
+            Math.min(closestIndex - 3, actualData.dailyRevenue.length - 7)
+          );
+        } else {
+          return Math.max(0, actualData.dailyRevenue.length - 7);
+        }
       } else {
-        return Math.max(0, monthlyRevenue.length - 7);
+        if (actualData.monthlyRevenue.length === 0) return 0;
+
+        const currentPeriodStr = `${currentYear}-${currentMonth
+          .toString()
+          .padStart(2, "0")}`;
+        const closestIndex = actualData.monthlyRevenue.findIndex(
+          (item) => item.period >= currentPeriodStr
+        );
+
+        if (closestIndex >= 0) {
+          return Math.max(
+            0,
+            Math.min(closestIndex - 3, actualData.monthlyRevenue.length - 7)
+          );
+        } else {
+          return Math.max(0, actualData.monthlyRevenue.length - 7);
+        }
       }
-    }
-  };
+    },
+    [actualData.dailyRevenue, actualData.monthlyRevenue]
+  );
 
   // 초기 로드 시 현재 날짜 기준으로 설정
   useEffect(() => {
     if (user?.createdAt) {
       setCurrentIndex(getCurrentIndex(chartPeriod));
     }
-  }, [user?.createdAt, chartPeriod]);
+  }, [user?.createdAt, chartPeriod, getCurrentIndex]);
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
@@ -381,15 +369,39 @@ export default function SalespersonDashboard() {
     return { main: "", sub: "" };
   };
 
-  // 유저 정보가 없으면 로딩 표시
-  if (!user) {
+  // 로딩 및 에러 상태 처리 (초기 로딩 시에만)
+  if (!user || (loading && isInitialLoad)) {
     return (
       <div className="salesperson-dashboard">
         <div className="dashboard-container">
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <div className="loading-text">
-              <p>사용자 정보를 불러오는 중...</p>
+              <p>
+                {!user
+                  ? "사용자 정보를 불러오는 중..."
+                  : "대시보드 데이터를 불러오는 중..."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="salesperson-dashboard">
+        <div className="dashboard-container">
+          <div className="error-container">
+            <div className="error-message">
+              <p>{error}</p>
+              <button
+                onClick={() => fetchDashboardData(false)}
+                className="retry-button"
+              >
+                다시 시도
+              </button>
             </div>
           </div>
         </div>
@@ -400,13 +412,64 @@ export default function SalespersonDashboard() {
   return (
     <div className="salesperson-dashboard">
       <div className="dashboard-container">
+        {/* 상단 상태 바 */}
+        <div
+          className="dashboard-status-bar"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 16px",
+            backgroundColor: "#f8f9fa",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            fontSize: "14px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: isRealTimeConnected ? "#10b981" : "#ef4444",
+                }}
+              ></div>
+              <span>
+                {isRealTimeConnected ? "실시간 연결됨" : "실시간 연결 안됨"}
+              </span>
+            </div>
+            {lastUpdated && (
+              <span style={{ color: "#6b7280" }}>
+                마지막 업데이트: {lastUpdated.toLocaleTimeString("ko-KR")}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => fetchDashboardData(false)}
+            disabled={loading && isInitialLoad}
+            style={{
+              padding: "6px 12px",
+              backgroundColor: "#3b82f6",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: loading && isInitialLoad ? "not-allowed" : "pointer",
+              opacity: loading && isInitialLoad ? 0.6 : 1,
+            }}
+          >
+            새로고침
+          </button>
+        </div>
+
         {/* 상단 핵심 지표 카드들 */}
         <div className="dashboard-stats">
           <div className="stat-card">
             <div className="stat-icon">👥</div>
             <div className="stat-content">
               <h3>총 추천인 수</h3>
-              <p className="stat-number">24명</p>
+              <p className="stat-number">{actualData.totalReferrals}명</p>
               <p className="stat-description">전체 추천 가입자</p>
             </div>
           </div>
@@ -415,8 +478,10 @@ export default function SalespersonDashboard() {
             <div className="stat-icon">📈</div>
             <div className="stat-content">
               <h3>이번 달 신규 가입자</h3>
-              <p className="stat-number">6명</p>
-              <p className="stat-description">2월 신규 추천 가입</p>
+              <p className="stat-number">{actualData.monthlyNewSignups}명</p>
+              <p className="stat-description">
+                {new Date().getMonth() + 1}월 신규 추천 가입
+              </p>
             </div>
           </div>
 
@@ -424,7 +489,9 @@ export default function SalespersonDashboard() {
             <div className="stat-icon">💰</div>
             <div className="stat-content">
               <h3>총 수익</h3>
-              <p className="stat-number">₩14,567,000</p>
+              <p className="stat-number">
+                ₩{actualData.totalRevenue.toLocaleString()}
+              </p>
               <p className="stat-description">누적 수익 금액</p>
             </div>
           </div>
@@ -450,7 +517,7 @@ export default function SalespersonDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {flatReferrals.map((referral) => (
+                {currentReferrals.map((referral) => (
                   <tr
                     key={referral.id}
                     className={`referral-row level-${referral.level}`}
@@ -505,6 +572,35 @@ export default function SalespersonDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <span className="pagination-info">
+                총 {flatReferrals.length}개의 추천인 ({startIndex + 1}-
+                {Math.min(endIndex, flatReferrals.length)}개 표시)
+              </span>
+              <div className="pagination-controls">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="pagination-button"
+                >
+                  이전
+                </button>
+                <span className="pagination-current">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="pagination-button"
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 수익 내역 차트 */}

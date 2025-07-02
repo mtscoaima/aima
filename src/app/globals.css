@@ -2810,6 +2810,7 @@ body .landing-root .main-content {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
   margin-bottom: 40px;
+  transition: opacity 0.3s ease;
 }
 
 .stat-card {
@@ -2852,6 +2853,7 @@ body .landing-root .main-content {
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0;
+  transition: all 0.3s ease;
 }
 
 .stat-description {
@@ -6070,4 +6072,114 @@ body .landing-root .main-content {
 
 .chart-empty-state p:last-child {
   margin-bottom: 0;
+}
+
+/* 데이터 업데이트 애니메이션 */
+.dashboard-data-updating {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.stat-card-updating .stat-number {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+/* 부드러운 데이터 전환 효과 */
+.stat-number.updating {
+  animation: numberUpdate 0.6s ease-in-out;
+}
+
+@keyframes numberUpdate {
+  0% {
+    transform: translateY(-5px);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 테이블 행 업데이트 애니메이션 */
+.referrals-table tbody tr.updating {
+  animation: rowHighlight 1s ease-in-out;
+}
+
+@keyframes rowHighlight {
+  0% {
+    background-color: rgba(22, 129, 255, 0.1);
+    transform: translateX(5px);
+  }
+  100% {
+    background-color: transparent;
+    transform: translateX(0);
+  }
+}
+
+/* 실시간 업데이트 상태 표시 */
+.real-time-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.real-time-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+/* 페이드 전환 효과 */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }

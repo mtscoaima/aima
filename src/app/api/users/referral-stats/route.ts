@@ -98,11 +98,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // referrals 테이블에서 해당 referral_code로 가입한 사용자 수 조회
     const { count: signupCount, error: countError } = await supabase
       .from("referrals")
       .select("*", { count: "exact", head: true })
-      .eq("referral_code", user.referral_code);
+      .eq("referral_code", user.referral_code)
+      .eq("status", "ACTIVE");
+
+    // 실제 데이터도 조회해서 확인
 
     if (countError) {
       console.error("Error counting referrals:", countError);
