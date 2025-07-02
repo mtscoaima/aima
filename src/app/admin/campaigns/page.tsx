@@ -126,47 +126,23 @@ export default function CampaignsPage() {
 
   const getStatusBadgeClass = (status: Campaign["status"]) => {
     switch (status) {
-      case "ACTIVE":
-        return "status-badge active";
-      case "COMPLETED":
-        return "status-badge completed";
       case "PENDING_APPROVAL":
         return "status-badge scheduled";
-      case "APPROVED":
-        return "status-badge approved";
       case "REJECTED":
         return "status-badge rejected";
-      case "PAUSED":
-        return "status-badge paused";
-      case "CANCELLED":
-        return "status-badge cancelled";
-      case "DRAFT":
-        return "status-badge draft";
       default:
-        return "status-badge";
+        return "status-badge approved"; // 다른 모든 상태는 승인됨 스타일
     }
   };
 
   const getStatusDisplayText = (status: Campaign["status"]) => {
     switch (status) {
-      case "DRAFT":
-        return "초안";
       case "PENDING_APPROVAL":
         return "승인 대기";
-      case "APPROVED":
-        return "승인됨";
       case "REJECTED":
         return "거부됨";
-      case "ACTIVE":
-        return "진행중";
-      case "PAUSED":
-        return "일시정지";
-      case "COMPLETED":
-        return "완료";
-      case "CANCELLED":
-        return "취소됨";
       default:
-        return status;
+        return "승인됨"; // 다른 모든 상태는 승인됨으로 표시
     }
   };
 
@@ -223,6 +199,29 @@ export default function CampaignsPage() {
       );
 
       if (response.ok) {
+        // 승인된 캠페인 찾기
+        const approvedCampaign = campaigns.find((c) => c.id === campaignId);
+
+        if (approvedCampaign) {
+          // 승인된 캠페인 데이터 전체 출력
+          console.log("=== 승인된 캠페인 데이터 ===");
+          console.log("캠페인 ID:", approvedCampaign.id);
+          console.log("캠페인명:", approvedCampaign.name);
+          console.log("설명:", approvedCampaign.description);
+          console.log("이전 상태:", approvedCampaign.status);
+          console.log("생성일:", approvedCampaign.created_at);
+          console.log("사용자 ID:", approvedCampaign.user_id);
+          console.log("예산:", approvedCampaign.budget);
+          console.log("대상 수신자:", approvedCampaign.total_recipients);
+          console.log("발송 수:", approvedCampaign.sent_count);
+          console.log("성공 수:", approvedCampaign.success_count);
+          console.log("실패 수:", approvedCampaign.failed_count);
+          console.log("타겟 조건:", approvedCampaign.target_criteria);
+          console.log("메시지 템플릿:", approvedCampaign.message_template);
+          console.log("전체 캠페인 객체:", approvedCampaign);
+          console.log("========================");
+        }
+
         // 즉시 테이블 업데이트 (네트워크 요청 없이)
         setCampaigns((prevCampaigns) =>
           prevCampaigns.map((campaign) =>
@@ -301,172 +300,6 @@ export default function CampaignsPage() {
       console.error("거부 오류:", error);
       alert(
         `거부 처리 중 오류가 발생했습니다: ${
-          error instanceof Error ? error.message : "알 수 없는 오류"
-        }`
-      );
-    } finally {
-      setProcessingCampaignId(null);
-    }
-  };
-
-  const handlePause = async (campaignId: number) => {
-    if (!confirm("이 캠페인을 일시정지하시겠습니까?")) return;
-
-    if (processingCampaignId) return; // 이미 처리 중인 경우 방지
-
-    try {
-      setProcessingCampaignId(campaignId);
-
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        alert("로그인이 필요합니다.");
-        return;
-      }
-
-      const response = await fetch(`/api/admin/campaigns/${campaignId}/pause`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        // 즉시 테이블 업데이트
-        setCampaigns((prevCampaigns) =>
-          prevCampaigns.map((campaign) =>
-            campaign.id === campaignId
-              ? { ...campaign, status: "PAUSED" as const }
-              : campaign
-          )
-        );
-        alert("캠페인이 일시정지되었습니다.");
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "일시정지 처리에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("일시정지 오류:", error);
-      alert(
-        `일시정지 처리 중 오류가 발생했습니다: ${
-          error instanceof Error ? error.message : "알 수 없는 오류"
-        }`
-      );
-    } finally {
-      setProcessingCampaignId(null);
-    }
-  };
-
-  const handleStart = async (campaignId: number) => {
-    const campaign = campaigns.find((c) => c.id === campaignId);
-    const isRestart = campaign?.status === "PAUSED";
-
-    if (!confirm(`이 캠페인을 ${isRestart ? "재시작" : "시작"}하시겠습니까?`))
-      return;
-
-    if (processingCampaignId) return; // 이미 처리 중인 경우 방지
-
-    try {
-      setProcessingCampaignId(campaignId);
-
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        alert("로그인이 필요합니다.");
-        return;
-      }
-
-      const response = await fetch(`/api/admin/campaigns/${campaignId}/start`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        // 즉시 테이블 업데이트
-        setCampaigns((prevCampaigns) =>
-          prevCampaigns.map((campaign) =>
-            campaign.id === campaignId
-              ? {
-                  ...campaign,
-                  status: "ACTIVE" as const,
-                  started_at: campaign.started_at || new Date().toISOString(),
-                }
-              : campaign
-          )
-        );
-        alert(`캠페인이 ${isRestart ? "재시작" : "시작"}되었습니다.`);
-      } else {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            `${isRestart ? "재시작" : "시작"} 처리에 실패했습니다.`
-        );
-      }
-    } catch (error) {
-      console.error("시작 오류:", error);
-      alert(
-        `${isRestart ? "재시작" : "시작"} 처리 중 오류가 발생했습니다: ${
-          error instanceof Error ? error.message : "알 수 없는 오류"
-        }`
-      );
-    } finally {
-      setProcessingCampaignId(null);
-    }
-  };
-
-  const handleViewStats = (campaignId: number) => {
-    // TODO: 캠페인 상세 통계 페이지로 이동
-    console.log("통계 보기:", campaignId);
-  };
-
-  const handleEdit = (campaignId: number) => {
-    // TODO: 캠페인 편집 페이지로 이동
-    console.log("편집:", campaignId);
-  };
-
-  const handleDelete = async (campaignId: number) => {
-    if (
-      !confirm(
-        "정말로 이 캠페인을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-      )
-    )
-      return;
-
-    if (processingCampaignId) return; // 이미 처리 중인 경우 방지
-
-    try {
-      setProcessingCampaignId(campaignId);
-
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        alert("로그인이 필요합니다.");
-        return;
-      }
-
-      const response = await fetch(`/api/admin/campaigns/${campaignId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        // 즉시 테이블에서 제거
-        setCampaigns((prevCampaigns) =>
-          prevCampaigns.filter((campaign) => campaign.id !== campaignId)
-        );
-        alert("캠페인이 삭제되었습니다.");
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "삭제 처리에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("삭제 오류:", error);
-      alert(
-        `삭제 처리 중 오류가 발생했습니다: ${
           error instanceof Error ? error.message : "알 수 없는 오류"
         }`
       );
@@ -646,212 +479,9 @@ export default function CampaignsPage() {
                                       ? "처리중..."
                                       : "거부"}
                                   </button>
-                                  <button
-                                    className="action-btn edit-btn"
-                                    onClick={() => handleEdit(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    편집
-                                  </button>
-                                  <button
-                                    className="action-btn delete-btn"
-                                    onClick={() => handleDelete(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "삭제중..."
-                                      : "삭제"}
-                                  </button>
                                 </>
                               )}
-
-                              {campaign.status === "DRAFT" && (
-                                <>
-                                  <button
-                                    className="action-btn edit-btn"
-                                    onClick={() => handleEdit(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    편집
-                                  </button>
-                                  <button
-                                    className="action-btn delete-btn"
-                                    onClick={() => handleDelete(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "삭제중..."
-                                      : "삭제"}
-                                  </button>
-                                </>
-                              )}
-
-                              {campaign.status === "APPROVED" && (
-                                <>
-                                  <button
-                                    className="action-btn start-btn"
-                                    onClick={() => handleStart(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "시작중..."
-                                      : "시작"}
-                                  </button>
-                                  <button
-                                    className="action-btn edit-btn"
-                                    onClick={() => handleEdit(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    편집
-                                  </button>
-                                  <button
-                                    className="action-btn delete-btn"
-                                    onClick={() => handleDelete(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "삭제중..."
-                                      : "삭제"}
-                                  </button>
-                                </>
-                              )}
-
-                              {campaign.status === "REJECTED" && (
-                                <>
-                                  <button
-                                    className="action-btn edit-btn"
-                                    onClick={() => handleEdit(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    편집
-                                  </button>
-                                  <button
-                                    className="action-btn delete-btn"
-                                    onClick={() => handleDelete(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "삭제중..."
-                                      : "삭제"}
-                                  </button>
-                                </>
-                              )}
-
-                              {campaign.status === "ACTIVE" && (
-                                <>
-                                  <button
-                                    className="action-btn pause-btn"
-                                    onClick={() => handlePause(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "처리중..."
-                                      : "일시정지"}
-                                  </button>
-                                  <button
-                                    className="action-btn stats-btn"
-                                    onClick={() => handleViewStats(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    통계
-                                  </button>
-                                </>
-                              )}
-
-                              {campaign.status === "PAUSED" && (
-                                <>
-                                  <button
-                                    className="action-btn start-btn"
-                                    onClick={() => handleStart(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "시작중..."
-                                      : "재시작"}
-                                  </button>
-                                  <button
-                                    className="action-btn stats-btn"
-                                    onClick={() => handleViewStats(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    통계
-                                  </button>
-                                  <button
-                                    className="action-btn delete-btn"
-                                    onClick={() => handleDelete(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "삭제중..."
-                                      : "삭제"}
-                                  </button>
-                                </>
-                              )}
-
-                              {campaign.status === "COMPLETED" && (
-                                <button
-                                  className="action-btn stats-btn"
-                                  onClick={() => handleViewStats(campaign.id)}
-                                  disabled={
-                                    processingCampaignId === campaign.id
-                                  }
-                                >
-                                  통계
-                                </button>
-                              )}
-
-                              {campaign.status === "CANCELLED" && (
-                                <>
-                                  <button
-                                    className="action-btn stats-btn"
-                                    onClick={() => handleViewStats(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    통계
-                                  </button>
-                                  <button
-                                    className="action-btn delete-btn"
-                                    onClick={() => handleDelete(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "삭제중..."
-                                      : "삭제"}
-                                  </button>
-                                </>
-                              )}
+                              {/* 승인됨이나 거부됨 상태에서는 액션 버튼 없음 */}
                             </td>
                           </tr>
                         ))

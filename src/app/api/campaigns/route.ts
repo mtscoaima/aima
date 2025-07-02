@@ -30,6 +30,7 @@ interface CreateCampaignRequest {
     };
   };
   estimatedCost: number;
+  templateDescription?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -137,11 +138,20 @@ export async function POST(request: NextRequest) {
       maxRecipients: parseInt(campaignData.maxRecipients) || 30,
     };
 
+    // description을 템플릿 설명의 첫 문장으로 설정
+    const getFirstSentence = (text: string) => {
+      if (!text) return "";
+      const sentences = text.split(/[.!?]\s+/);
+      return sentences[0] || text;
+    };
+
     // 캠페인 데이터 준비 (실제 스키마에 맞게)
     const campaign = {
       user_id: userId,
-      name: campaignData.title || "AI 생성 캠페인",
-      description: `AI가 생성한 캠페인입니다. 발송 정책: ${campaignData.sendPolicy}`,
+      name: campaignData.title || messageTemplate.name, // 템플릿의 제목 사용
+      description: getFirstSentence(
+        campaignData.templateDescription || campaignData.content
+      ), // 템플릿 설명의 첫 문장 사용
       template_id: messageTemplate.id,
       status: "PENDING_APPROVAL", // 승인 대기 상태
       total_recipients: parseInt(campaignData.maxRecipients) || 30,

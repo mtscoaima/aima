@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, Suspense } from "react";
 import { Send, Sparkles, X, Phone } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
+import SuccessModal from "@/components/SuccessModal";
 import styles from "./styles.module.css";
 
 interface Message {
@@ -75,6 +76,12 @@ function TargetMarketingContent() {
 
   // 승인 신청 처리 상태
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+
+  // 성공 모달 상태
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // 템플릿 제목 상태
+  const [templateTitle, setTemplateTitle] = useState("AI 생성 콘텐츠");
 
   // 시간대 변경시 시간 옵션 업데이트
   useEffect(() => {
@@ -320,6 +327,9 @@ function TargetMarketingContent() {
           // 우측 MMS 전송 섹션에 템플릿 데이터 설정
           setSmsTextContent(templateData.content);
           setCurrentGeneratedImage(templateData.image_url);
+          setTemplateTitle(
+            templateData.name || templateData.title || "템플릿에서 불러온 내용"
+          );
           setIsFromTemplate(true);
 
           // localStorage에서 템플릿 데이터 제거
@@ -471,6 +481,11 @@ function TargetMarketingContent() {
                 // SMS 텍스트 내용 업데이트
                 if (data.smsTextContent) {
                   setSmsTextContent(data.smsTextContent);
+                }
+
+                // 템플릿 제목 업데이트
+                if (data.templateData && data.templateData.title) {
+                  setTemplateTitle(data.templateData.title);
                 }
 
                 // 텍스트 교체 후 스크롤
@@ -742,7 +757,7 @@ function TargetMarketingContent() {
 
       // 캠페인 데이터 준비
       const campaignData = {
-        title: "AI 생성 캠페인",
+        title: templateTitle, // 템플릿의 실제 제목 사용
         content: smsTextContent,
         imageUrl: currentGeneratedImage,
         sendPolicy: sendPolicy,
@@ -764,6 +779,7 @@ function TargetMarketingContent() {
           },
         },
         estimatedCost: 21000, // 예상 금액
+        templateDescription: smsTextContent, // 템플릿 설명 추가
       };
 
       // 캠페인 생성 API 호출
@@ -784,12 +800,8 @@ function TargetMarketingContent() {
       const result = await response.json();
 
       if (result.success) {
-        alert("승인 신청이 성공적으로 제출되었습니다!");
         setShowApprovalModal(false);
-
-        // 폼 초기화 (선택사항)
-        // setSmsTextContent("");
-        // setCurrentGeneratedImage(null);
+        setShowSuccessModal(true); // 성공 모달 표시
       } else {
         throw new Error(result.message || "캠페인 저장에 실패했습니다.");
       }
@@ -907,13 +919,7 @@ function TargetMarketingContent() {
                   </div>
                 )}
                 <div className={styles.templateInfo}>
-                  <h3 className={styles.templateTitle}>
-                    {isFromTemplate
-                      ? "템플릿에서 불러온 내용"
-                      : currentGeneratedImage
-                      ? "AI 생성 콘텐츠"
-                      : "AI 생성 대기 중"}
-                  </h3>
+                  <h3 className={styles.templateTitle}>{templateTitle}</h3>
                   <div className={styles.templateDescription}>
                     <textarea
                       value={smsTextContent || ""}
@@ -1513,6 +1519,15 @@ function TargetMarketingContent() {
           </div>
         </div>
       )}
+
+      {/* 성공 모달 */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="승인 요청이 완료되었습니다"
+        message="캠페인 승인 요청이 성공적으로 제출되었습니다."
+        buttonText="확인"
+      />
     </div>
   );
 }
