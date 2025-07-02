@@ -215,35 +215,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. 추천인 목록 조회 (계층구조 포함)
-    const { data: referralUsers, error: referralUsersError } = await supabase
-      .from("referrals")
-      .select(
-        `
-        referred_user_id,
-        created_at,
-        users!referrals_referred_user_id_fkey (
-          id,
-          name,
-          email,
+    // 3. 추천인 목록 조회 (계층구조 포함) - 재귀 함수를 사용하여 처리
+
+    // 4. 재귀적으로 하위 추천인 트리를 구성하는 함수
+    async function buildReferralTree(
+      userId: number,
+      level: number = 1,
+      maxDepth: number = 5
+    ): Promise<ReferralData[]> {
+      if (level > maxDepth) return [];
+
+      const { data: referralUsers, error: referralUsersError } = await supabase
+        .from("referrals")
+        .select(
+          `
+          referred_user_id,
           created_at,
-          is_active,
-          approval_status
+          users!referrals_referred_user_id_fkey (
+            id,
+            name,
+            email,
+            created_at,
+            is_active,
+            approval_status
+          )
+        `
         )
-      `
-      )
-      .eq("referrer_id", userId)
-      .eq("status", "ACTIVE")
-      .order("created_at", { ascending: false });
+        .eq("referrer_id", userId)
+        .eq("status", "ACTIVE")
+        .order("created_at", { ascending: false });
 
-    if (referralUsersError) {
-      console.error("Error fetching referral users:", referralUsersError);
-    }
+      if (referralUsersError || !referralUsers) return [];
 
-    // 4. 각 추천인의 결제 정보 조회 (transactions 테이블에서)
-    const referralList: ReferralData[] = [];
+      const referralList: ReferralData[] = [];
 
-    if (referralUsers) {
       for (const referral of referralUsers) {
         const referredUser = referral.users as unknown as UserJoinResult;
         if (!referredUser) continue;
@@ -271,72 +276,12 @@ export async function GET(request: NextRequest) {
           status = "활성";
         }
 
-        // 하위 추천인 조회 (2단계까지)
-        const { data: subReferrals, error: subReferralsError } = await supabase
-          .from("referrals")
-          .select(
-            `
-            referred_user_id,
-            created_at,
-            users!referrals_referred_user_id_fkey (
-              id,
-              name,
-              email,
-              created_at,
-              is_active,
-              approval_status
-            )
-          `
-          )
-          .eq("referrer_id", referredUser.id)
-          .eq("status", "ACTIVE")
-          .order("created_at", { ascending: false });
-
-        const children: ReferralData[] = [];
-        if (!subReferralsError && subReferrals) {
-          for (const subReferral of subReferrals) {
-            const subUser = subReferral.users as unknown as UserJoinResult;
-            if (!subUser) continue;
-
-            // 하위 추천인의 결제 정보
-            const { data: subTransactions, error: subTransactionsError } =
-              await supabase
-                .from("transactions")
-                .select("amount")
-                .eq("user_id", subUser.id)
-                .eq("type", "charge")
-                .eq("status", "completed");
-
-            let subTotalPayment = 0;
-            if (!subTransactionsError && subTransactions) {
-              subTotalPayment = subTransactions.reduce(
-                (sum, t) => sum + t.amount,
-                0
-              );
-            }
-
-            let subStatus: "활성" | "비활성" | "대기";
-            if (!subUser.is_active) {
-              subStatus = "비활성";
-            } else if (subUser.approval_status === "PENDING") {
-              subStatus = "대기";
-            } else {
-              subStatus = "활성";
-            }
-
-            children.push({
-              id: subUser.id,
-              name: subUser.name,
-              joinDate: new Date(subUser.created_at).toLocaleDateString(
-                "ko-KR"
-              ),
-              status: subStatus,
-              totalPayment: subTotalPayment,
-              email: subUser.email.replace(/(.{3}).*(@.*)/, "$1***$2"),
-              level: 2,
-            });
-          }
-        }
+        // 재귀적으로 하위 추천인 조회
+        const children = await buildReferralTree(
+          referredUser.id,
+          level + 1,
+          maxDepth
+        );
 
         referralList.push({
           id: referredUser.id,
@@ -348,10 +293,15 @@ export async function GET(request: NextRequest) {
           totalPayment,
           email: referredUser.email.replace(/(.{3}).*(@.*)/, "$1***$2"),
           children: children.length > 0 ? children : undefined,
-          level: 1,
+          level,
         });
       }
+
+      return referralList;
     }
+
+    // 추천인 목록 구성 (최대 5단계까지)
+    const referralList = await buildReferralTree(userId, 1, 5);
 
     // 5. 총 수익 조회 (transactions 테이블에서)
     const { data: rewardTransactions, error: rewardError } = await supabase
