@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import { Send, Sparkles, X, Phone, Smartphone } from "lucide-react";
+import { Send, Sparkles, X, Phone } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import styles from "./styles.module.css";
@@ -41,7 +41,7 @@ function TargetMarketingContent() {
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState<
     string | null
   >(null);
-  const [recipientNumber, setRecipientNumber] = useState("");
+
   const [isFromTemplate, setIsFromTemplate] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
@@ -133,61 +133,6 @@ function TargetMarketingContent() {
       }
     }
   }, [isInitialized, handleInitialResponse]);
-
-  // Base64 이미지를 리사이징하는 함수
-  const resizeBase64Image = async (
-    base64Data: string,
-    quality: number = 0.8
-  ): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) {
-          reject(new Error("Canvas context를 생성할 수 없습니다."));
-          return;
-        }
-
-        // 원본 크기
-        const { width: originalWidth, height: originalHeight } = img;
-
-        // 최대 해상도 제한 (1500x1440)
-        const maxWidth = 1500;
-        const maxHeight = 1440;
-
-        // 비율 계산
-        const ratio = Math.min(
-          maxWidth / originalWidth,
-          maxHeight / originalHeight,
-          1 // 확대는 하지 않음
-        );
-
-        // 새로운 크기 계산
-        const newWidth = Math.round(originalWidth * ratio);
-        const newHeight = Math.round(originalHeight * ratio);
-
-        // Canvas 크기 설정
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-
-        // 이미지 그리기
-        ctx.drawImage(img, 0, 0, newWidth, newHeight);
-
-        // Base64로 변환
-        const resizedBase64 = canvas.toDataURL("image/jpeg", quality);
-        resolve(resizedBase64);
-      };
-
-      img.onerror = () => {
-        reject(new Error("이미지를 로드할 수 없습니다."));
-      };
-
-      img.src = base64Data;
-    });
-  };
 
   const scrollToBottom = () => {
     if (chatMessagesRef.current) {
@@ -499,177 +444,6 @@ function TargetMarketingContent() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
-    }
-  };
-
-  // 우측 발신 영역에서 직접 전송
-  const handleDirectSendMMS = async () => {
-    if (!recipientNumber.trim()) {
-      alert("수신번호를 입력해주세요.");
-      return;
-    }
-
-    if (!smsTextContent.trim()) {
-      alert("메시지 내용을 입력해주세요.");
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      let fileId = null;
-
-      // 이미지가 있는 경우 파일 업로드 (Base64 또는 URL)
-      if (
-        currentGeneratedImage &&
-        (currentGeneratedImage.startsWith("data:image/") ||
-          currentGeneratedImage.startsWith("http"))
-      ) {
-        let blob: Blob;
-        let fileName: string;
-
-        if (currentGeneratedImage.startsWith("data:image/")) {
-          let processedImage = currentGeneratedImage;
-
-          // 먼저 현재 이미지 크기 확인
-          const base64Data = currentGeneratedImage.split(",")[1];
-          const originalByteCharacters = atob(base64Data);
-          const originalSize = originalByteCharacters.length;
-
-          // 300KB 초과 시 자동 리사이징
-          if (originalSize > 300 * 1024) {
-            try {
-              // 품질을 점진적으로 낮춰가며 300KB 이하로 만들기
-              let quality = 0.8;
-              let resizedImage = processedImage;
-              let attempts = 0;
-              const maxAttempts = 5;
-
-              while (attempts < maxAttempts) {
-                resizedImage = await resizeBase64Image(processedImage, quality);
-                const resizedBase64Data = resizedImage.split(",")[1];
-                const resizedBytes = atob(resizedBase64Data);
-                const resizedSize = resizedBytes.length;
-
-                if (resizedSize <= 300 * 1024) {
-                  processedImage = resizedImage;
-                  break;
-                }
-
-                quality -= 0.15; // 품질을 15%씩 낮춤
-                if (quality < 0.1) quality = 0.1; // 최소 품질 제한
-                attempts++;
-              }
-
-              if (attempts >= maxAttempts) {
-                console.warn("최대 시도 횟수에 도달했지만 계속 진행합니다.");
-              }
-            } catch (error) {
-              console.error("이미지 리사이징 실패:", error);
-              alert(
-                "이미지 크기 조정 중 오류가 발생했습니다. 원본 이미지로 전송을 시도합니다."
-              );
-            }
-          }
-
-          // Base64 데이터에서 파일 정보 추출
-          const finalBase64Data = processedImage.split(",")[1];
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const mimeType = processedImage.split(";")[0].split(":")[1];
-
-          // Base64를 Blob으로 변환
-          const finalByteCharacters = atob(finalBase64Data);
-          const byteNumbers = new Array(finalByteCharacters.length);
-          for (let i = 0; i < finalByteCharacters.length; i++) {
-            byteNumbers[i] = finalByteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          blob = new Blob([byteArray], { type: "image/jpeg" }); // JPEG로 강제 변환
-          fileName = `ai-generated-${Math.random()
-            .toString(36)
-            .substr(2, 9)}.jpg`;
-        } else if (currentGeneratedImage.startsWith("http")) {
-          // URL에서 이미지 다운로드
-          const imageResponse = await fetch(currentGeneratedImage);
-          if (!imageResponse.ok) {
-            throw new Error(
-              `이미지 다운로드 실패: ${imageResponse.status} ${imageResponse.statusText}`
-            );
-          }
-
-          blob = await imageResponse.blob();
-
-          // URL에서 파일명 추출 또는 기본 파일명 사용
-          const urlParts = currentGeneratedImage.split("/");
-          const originalFileName = urlParts[urlParts.length - 1];
-          fileName = originalFileName.includes(".")
-            ? originalFileName
-            : `template-${Math.random().toString(36).substr(2, 9)}.jpg`;
-
-          // JPEG가 아닌 경우 파일명과 타입을 JPEG로 변경
-          if (!blob.type.includes("jpeg") && !blob.type.includes("jpg")) {
-            fileName = fileName.replace(/\.[^/.]+$/, ".jpg");
-            blob = new Blob([blob], { type: "image/jpeg" });
-          }
-        } else {
-          throw new Error("지원하지 않는 이미지 형식입니다.");
-        }
-
-        // Blob을 File 객체로 변환
-        const file = new File([blob], fileName, {
-          type: "image/jpeg",
-        });
-
-        // FormData로 파일 업로드
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const uploadResponse = await fetch("/api/message/upload-file", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json();
-          fileId = uploadResult.fileId;
-        } else {
-          const uploadError = await uploadResponse.json();
-          throw new Error(`파일 업로드 실패: ${uploadError.error}`);
-        }
-      }
-
-      // 메시지 전송
-      const sendRequestBody = {
-        toNumbers: [recipientNumber.trim().replace(/-/g, "")], // 하이픈 제거
-        message: smsTextContent,
-        fileIds: fileId ? [fileId] : undefined,
-      };
-
-      const response = await fetch("/api/message/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(sendRequestBody),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert("MMS가 성공적으로 전송되었습니다!");
-        // 전송 후 수신번호만 초기화 (내용과 이미지는 유지)
-        setRecipientNumber("");
-      } else {
-        throw new Error(result.error || "MMS 전송에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("MMS 전송 오류:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "MMS 전송 중 오류가 발생했습니다."
-      );
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -1002,64 +776,137 @@ function TargetMarketingContent() {
               </div>
             </div>
 
-            {/* 발송 정보 카드 */}
-            <div className={styles.sendInfoCard}>
-              {/* 발송 정보 */}
-              <div className={styles.templateBadge}>발송 정보</div>
+            {/* 타겟 추천 결과 섹션 */}
+            <div className={styles.targetRecommendationCard}>
+              <div className={styles.templateBadge}>타겟 추천 결과</div>
 
-              {/* 발신번호 입력 */}
-              <div className={styles.contentSection}>
-                <div className={styles.sectionHeader}>
-                  <Phone size={16} />
-                  <span>발신번호</span>
-                </div>
-                <div className={styles.selectedSender}>
-                  <div className={styles.senderInfoRow}>
-                    <div className={styles.senderDetails}>
-                      <div className={styles.senderDisplay}>
-                        <Phone className={styles.senderIcon} size={16} />
-                        <span className={styles.senderTitle}>
-                          메시지 발신번호
-                        </span>
-                      </div>
-                      <div className={styles.senderNumber}>테스트 번호</div>
-                    </div>
+              {/* 타겟 설정 */}
+              <div className={styles.targetFiltersSection}>
+                <div className={styles.sectionTitle}>타겟 설정</div>
+                <div className={styles.filterRow}>
+                  <div className={styles.filterGroup}>
+                    <select className={styles.filterSelect}>
+                      <option value="female">여성</option>
+                      <option value="male">남성</option>
+                      <option value="all">전체</option>
+                    </select>
+                  </div>
+                  <div className={styles.filterGroup}>
+                    <select className={styles.filterSelect}>
+                      <option value="thirties">30대</option>
+                      <option value="teens">10대</option>
+                      <option value="twenties">20대</option>
+                      <option value="forties">40대</option>
+                      <option value="fifties">50대+</option>
+                    </select>
                   </div>
                 </div>
               </div>
 
-              {/* 수신번호 입력 */}
-              <div className={styles.contentSection}>
-                <div className={styles.sectionHeader}>
-                  <Smartphone size={16} />
-                  <span>수신번호</span>
+              {/* 카드 사용 위치 */}
+              <div className={styles.targetFiltersSection}>
+                <div className={styles.sectionTitle}>카드 사용 위치</div>
+                <div className={styles.filterRow}>
+                  <div className={styles.filterGroup}>
+                    <select className={styles.filterSelect}>
+                      <option value="seoul">서울시</option>
+                      <option value="busan">부산광역시</option>
+                      <option value="daegu">대구광역시</option>
+                      <option value="incheon">인천광역시</option>
+                      <option value="gwangju">광주광역시</option>
+                    </select>
+                  </div>
+                  <div className={styles.filterGroup}>
+                    <select className={styles.filterSelect}>
+                      <option value="gangnam">강남구</option>
+                      <option value="gangdong">강동구</option>
+                      <option value="gangbuk">강북구</option>
+                      <option value="gangseo">강서구</option>
+                      <option value="seocho">서초구</option>
+                    </select>
+                  </div>
                 </div>
-                <div className={styles.recipientInput}>
+              </div>
+
+              {/* 카드 송신 금액 */}
+              <div className={styles.cardAmountSection}>
+                <div className={styles.sectionTitle}>카드 송신 금액</div>
+                <div className={styles.amountInputSection}>
                   <input
                     type="text"
-                    value={recipientNumber}
-                    onChange={(e) => setRecipientNumber(e.target.value)}
-                    placeholder="수신번호를 입력하세요 (예: 01012345678)"
-                    className={styles.numberInput}
+                    value="10,000원"
+                    className={styles.amountInput}
+                    readOnly
                   />
+                  <span className={styles.amountLabel}>미만</span>
+                </div>
+                <div className={styles.amountOptions}>
+                  <button className={`${styles.amountButton} ${styles.active}`}>
+                    1만원 미만
+                  </button>
+                  <button className={styles.amountButton}>5만원 미만</button>
+                  <button className={styles.amountButton}>10만원 미만</button>
+                  <button className={styles.amountButton}>전체</button>
+                </div>
+              </div>
+
+              {/* 카드 송신 시간 */}
+              <div className={styles.cardTimeSection}>
+                <div className={styles.sectionTitle}>카드 송신 시간</div>
+                <div className={styles.timeSelectors}>
+                  <div className={styles.timeGroup}>
+                    <select className={styles.timeSelect}>
+                      <option value="08:00">8:00</option>
+                      <option value="09:00">9:00</option>
+                      <option value="10:00">10:00</option>
+                      <option value="11:00">11:00</option>
+                      <option value="12:00">12:00</option>
+                    </select>
+                  </div>
+                  <span className={styles.timeSeparator}>~</span>
+                  <div className={styles.timeGroup}>
+                    <select className={styles.timeSelect}>
+                      <option value="12:00">12:00</option>
+                      <option value="13:00">13:00</option>
+                      <option value="14:00">14:00</option>
+                      <option value="15:00">15:00</option>
+                      <option value="16:00">16:00</option>
+                    </select>
+                  </div>
+                </div>
+                <div className={styles.timeOptions}>
+                  <button className={`${styles.timeButton} ${styles.active}`}>
+                    오전
+                  </button>
+                  <button className={styles.timeButton}>오후</button>
+                  <button className={styles.timeButton}>전체</button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 전송 버튼 */}
-          <div className={styles.sendButtonSection}>
+          {/* 예상금액 */}
+          <div className={styles.costEstimationSection}>
+            <div className={styles.costLabel}>예상금액</div>
+            <div className={styles.costValue}>
+              <span className={styles.costAmount}>100원/</span>
+              <span className={styles.costUnit}>건</span>
+            </div>
+          </div>
+
+          {/* 승인 신청 버튼 */}
+          <div className={styles.approvalButtonSection}>
             <button
-              className={`${styles.sendButton} ${styles.primary}`}
-              onClick={handleDirectSendMMS}
-              disabled={
-                !recipientNumber.trim() ||
-                !smsTextContent.trim() ||
-                !currentGeneratedImage ||
-                isSending
-              }
+              className={`${styles.approvalButton} ${styles.primary}`}
+              onClick={() => {
+                if (smsTextContent.trim() && currentGeneratedImage) {
+                  alert("승인 신청이 제출되었습니다!");
+                } else {
+                  alert("템플릿 내용을 먼저 생성해주세요.");
+                }
+              }}
             >
-              {isSending ? "전송 중..." : "전송"}
+              승인 신청
             </button>
           </div>
         </div>

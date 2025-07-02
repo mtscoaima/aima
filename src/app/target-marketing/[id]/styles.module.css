@@ -1213,3 +1213,333 @@ body .main-content {
     width: 100%;
   }
 }
+
+/* 타겟 추천 결과 카드 */
+.targetRecommendationCard {
+  background: transparent;
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+
+/* 타겟 필터 섹션 */
+.targetFiltersSection {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 12px;
+}
+
+.filterGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterGroup label {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.filterSelect {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  outline: none;
+  cursor: pointer;
+}
+
+.filterSelect:focus {
+  border-color: #1681ff;
+}
+
+/* 섹션 제목 */
+.sectionTitle {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.32px;
+  margin-bottom: 12px;
+}
+
+/* 카드 송신 금액 섹션 */
+.cardAmountSection {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.amountInputSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.amountInput {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  outline: none;
+  width: 120px;
+}
+
+.amountInput:focus {
+  border-color: #1681ff;
+}
+
+.amountLabel {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.amountOptions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.amountButton {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.amountButton:hover {
+  border-color: #1681ff;
+  color: #1681ff;
+}
+
+.amountButton.active {
+  background: #1681ff;
+  border-color: #1681ff;
+  color: #fff;
+}
+
+/* 카드 송신 시간 섹션 */
+.cardTimeSection {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeSeparator {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  margin: 0 8px;
+}
+
+.timeSelectors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeGroup {
+  display: flex;
+  align-items: center;
+}
+
+.timeSelect {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.timeSelect:focus {
+  border-color: #1681ff;
+}
+
+.timeOptions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.timeButton {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.timeButton:hover {
+  border-color: #1681ff;
+  color: #1681ff;
+}
+
+.timeButton.active {
+  background: #1681ff;
+  border-color: #1681ff;
+  color: #fff;
+}
+
+/* 예상금액 섹션 */
+.costEstimationSection {
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.costLabel {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 19.2px */
+  letter-spacing: -0.32px;
+}
+
+.costValue {
+  display: flex;
+  align-items: baseline;
+  text-align: right;
+}
+
+.costAmount {
+  color: #000;
+  text-align: right;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 28.8px */
+  letter-spacing: -0.48px;
+}
+
+.costUnit {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.4px;
+}
+
+/* 승인 신청 버튼 섹션 */
+.approvalButtonSection {
+  padding: 20px 30px;
+  flex-shrink: 0;
+}
+
+.approvalButton {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 12px;
+  background: #1681ff;
+  color: #fff;
+  text-align: center;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.36px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.approvalButton:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(22, 129, 255, 0.3);
+}
+
+.approvalButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
