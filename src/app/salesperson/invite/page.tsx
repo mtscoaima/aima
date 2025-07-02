@@ -17,35 +17,48 @@ export default function InvitePage() {
   const { user } = useAuth();
 
   // 추천 통계 데이터 가져오기
-  const fetchReferralStats = useCallback(async () => {
-    if (!user?.referralCode) return;
-
-    setIsStatsLoading(true);
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return;
-
-      const response = await fetch("/api/users/referral-stats", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setLinkStats({
-          clickCount: data.clickCount,
-          signupCount: data.signupCount,
-        });
+  const fetchReferralStats = useCallback(
+    async (referralCode?: string) => {
+      const codeToUse = referralCode || user?.referralCode;
+      if (!codeToUse) {
+        console.error("No referral code available for stats fetch");
+        return;
       }
-    } catch (err) {
-      console.error("추천 통계 조회 오류:", err);
-    } finally {
-      setIsStatsLoading(false);
-    }
-  }, [user?.referralCode]);
+
+      setIsStatsLoading(true);
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          console.error("No access token found");
+          return;
+        }
+
+        const response = await fetch("/api/users/referral-stats", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setLinkStats({
+            clickCount: data.clickCount,
+            signupCount: data.signupCount,
+          });
+        } else {
+          const errorData = await response.text();
+          console.error("API Error response:", errorData);
+        }
+      } catch (err) {
+        console.error("추천 통계 조회 오류:", err);
+      } finally {
+        setIsStatsLoading(false);
+      }
+    },
+    [user?.referralCode]
+  );
 
   // 컴포넌트 마운트 시 기존 추천 코드 확인 및 통계 데이터 로드
   useEffect(() => {
@@ -93,10 +106,12 @@ export default function InvitePage() {
           clickCount: 0,
           signupCount: 0,
         });
-        fetchReferralStats();
+        // 새로 생성된 코드로 통계 조회
+        fetchReferralStats(code);
         alert("새로운 추천 코드가 생성되었습니다!");
       } else {
-        fetchReferralStats();
+        // 기존 코드로 통계 조회
+        fetchReferralStats(code);
       }
     } catch (err) {
       console.error("추천 코드 생성 오류:", err);

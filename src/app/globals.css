@@ -2796,7 +2796,7 @@ body .landing-root .main-content {
 .salesperson-dashboard {
   min-height: 100vh;
   background: var(--background);
-  padding: 140px 20px 40px;
+  padding: 170px 20px 40px;
 }
 
 .dashboard-container {
@@ -2810,6 +2810,7 @@ body .landing-root .main-content {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
   margin-bottom: 40px;
+  transition: opacity 0.3s ease;
 }
 
 .stat-card {
@@ -2852,6 +2853,13 @@ body .landing-root .main-content {
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0;
+  transition: all 0.3s ease;
+}
+
+.stat-description {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  margin: 4px 0 0 0;
 }
 
 /* 메인 콘텐츠 영역 */
@@ -3046,7 +3054,7 @@ body .landing-root .main-content {
 
 @media (max-width: 768px) {
   .salesperson-dashboard {
-    padding: 100px 16px 32px;
+    padding: 130px 16px 32px;
   }
 
   .dashboard-stats {
@@ -3069,13 +3077,91 @@ body .landing-root .main-content {
   .chart-placeholder {
     height: 200px;
   }
+
+  /* 테이블 모바일 스타일 */
+  .table-container {
+    overflow-x: scroll;
+  }
+
+  .referrals-table {
+    min-width: 600px;
+  }
+
+  .referrals-table th,
+  .referrals-table td {
+    padding: 12px 16px;
+  }
+
+  /* 트리 구조 모바일 스타일 */
+  .tree-toggle {
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+  }
+
+  .referral-name-cell {
+    gap: 6px;
+  }
+
+  .children-count {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+  }
+
+  /* 차트 모바일 스타일 */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .chart-controls {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .chart-navigation {
+    gap: 12px;
+  }
+
+  .chart-nav-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .chart-wrapper {
+    height: 250px;
+    padding: 16px 0 0 0;
+    gap: 6px;
+  }
+
+  .chart-bar {
+    max-width: 32px;
+  }
+
+  .chart-value {
+    font-size: 0.7rem;
+  }
+
+  .chart-label-year {
+    font-size: 0.7rem;
+  }
+
+  .chart-label-main {
+    font-size: 0.8rem;
+  }
+
+  .stat-description {
+    font-size: 0.75rem;
+  }
 }
 
 /* 영업사원 페이지 공통 스타일 */
 .salesperson-page {
   min-height: 100vh;
   background: var(--background);
-  padding: 140px 20px 40px;
+  padding: 170px 20px 40px;
 }
 
 .page-container {
@@ -4092,7 +4178,7 @@ body .landing-root .main-content {
 
 @media (max-width: 768px) {
   .salesperson-page {
-    padding: 100px 16px 32px;
+    padding: 130px 16px 32px;
   }
 
   .invite-generator,
@@ -5637,3 +5723,463 @@ body .landing-root .main-content {
 }
 
 /* 기존 검색 필터 섹션 유지 */
+
+/* 추천인 테이블 스타일 */
+.referrals-table-section {
+  margin-bottom: 40px;
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border);
+}
+
+.referrals-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.referrals-table th {
+  background: var(--secondary);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.referrals-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.referrals-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.referrals-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.referral-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.referral-date {
+  color: var(--text-secondary);
+}
+
+.referral-amount {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.referral-email {
+  color: var(--text-tertiary);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+/* 트리 구조 스타일 */
+.referral-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.tree-toggle {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.tree-toggle:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.tree-toggle.expanded {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.name-text {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.referral-children {
+  text-align: center;
+}
+
+.children-count {
+  background: var(--secondary);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+}
+
+/* 레벨별 행 스타일 */
+.referral-row.level-0 {
+  background: rgba(255, 255, 255, 1);
+}
+
+.referral-row.level-1 {
+  background: rgba(248, 250, 252, 1);
+}
+
+.referral-row.level-2 {
+  background: rgba(241, 245, 249, 1);
+}
+
+.referral-row.level-3 {
+  background: rgba(226, 232, 240, 1);
+}
+
+.referral-row:hover {
+  background: #f8f9fa !important;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.status-badge.active {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-badge.inactive {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+/* 수익 차트 스타일 */
+.revenue-chart-section {
+  margin-bottom: 40px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.section-title-group h3 {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.section-title-group p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.chart-toggle-btn {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.chart-toggle-btn:hover {
+  background: #f0f2f5;
+  color: var(--text-primary);
+}
+
+.chart-toggle-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.chart-container {
+  margin-top: 24px;
+}
+
+.chart-navigation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chart-nav-btn {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chart-nav-btn:hover:not(:disabled) {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  transform: scale(1.05);
+}
+
+.chart-nav-btn:disabled {
+  background: #f5f5f5;
+  border-color: #e0e0e0;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.chart-wrapper {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  height: 300px;
+  padding: 20px 0 0 0;
+  border-bottom: 2px solid var(--border);
+  position: relative;
+  flex: 1;
+}
+
+.chart-bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  height: 100%;
+}
+
+.chart-bar {
+  background: linear-gradient(to top, var(--primary), #4c9aff);
+  border-radius: 4px 4px 0 0;
+  width: 100%;
+  max-width: 60px;
+  position: relative;
+  transition: var(--transition);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.chart-bar:hover {
+  background: linear-gradient(to top, #0052cc, #2684ff);
+  transform: scale(1.05);
+}
+
+.chart-value {
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.chart-label {
+  margin-top: 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chart-label-year {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.chart-label-main {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* 빈 차트 상태 스타일 */
+.chart-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  background: var(--secondary);
+  border: 2px dashed var(--border);
+  border-radius: var(--border-radius-sm);
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.chart-empty-state p {
+  color: var(--text-tertiary);
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+}
+
+.chart-empty-state p:last-child {
+  margin-bottom: 0;
+}
+
+/* 데이터 업데이트 애니메이션 */
+.dashboard-data-updating {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.stat-card-updating .stat-number {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+/* 부드러운 데이터 전환 효과 */
+.stat-number.updating {
+  animation: numberUpdate 0.6s ease-in-out;
+}
+
+@keyframes numberUpdate {
+  0% {
+    transform: translateY(-5px);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 테이블 행 업데이트 애니메이션 */
+.referrals-table tbody tr.updating {
+  animation: rowHighlight 1s ease-in-out;
+}
+
+@keyframes rowHighlight {
+  0% {
+    background-color: rgba(22, 129, 255, 0.1);
+    transform: translateX(5px);
+  }
+  100% {
+    background-color: transparent;
+    transform: translateX(0);
+  }
+}
+
+/* 실시간 업데이트 상태 표시 */
+.real-time-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.real-time-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+/* 페이드 전환 효과 */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
