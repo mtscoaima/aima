@@ -49,10 +49,148 @@ function TargetMarketingContent() {
   const [sendPolicy, setSendPolicy] = useState<"realtime" | "batch">(
     "realtime"
   );
-  const [validityPeriod, setValidityPeriod] = useState("2025/06/01");
+  const [validityStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
+  const [validityEndDate, setValidityEndDate] = useState(() => {
+    const today = new Date();
+    const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return oneWeekLater.toISOString().split("T")[0];
+  });
   const [maxRecipients, setMaxRecipients] = useState("30");
+  const [selectedPeriod, setSelectedPeriod] = useState<
+    "week" | "month" | "year"
+  >("week");
+
+  // 타겟 필터 상태들 추가
+  const [targetGender, setTargetGender] = useState("female");
+  const [targetAge, setTargetAge] = useState("thirties");
+  const [targetCity, setTargetCity] = useState("seoul");
+  const [targetDistrict, setTargetDistrict] = useState("gangnam");
+  const [cardAmount, setCardAmount] = useState("10000");
+  const [cardStartTime, setCardStartTime] = useState("08:00");
+  const [cardEndTime, setCardEndTime] = useState("12:00");
+  const [cardTimePeriod, setCardTimePeriod] = useState("오전");
+
+  // 승인 신청 처리 상태
+  const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+
+  // 시간대 변경시 시간 옵션 업데이트
+  useEffect(() => {
+    const timeOptions = getTimeOptions(cardTimePeriod);
+
+    // 현재 선택된 시간이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
+    const validStartTime = timeOptions.find(
+      (option) => option.value === cardStartTime
+    );
+    const validEndTime = timeOptions.find(
+      (option) => option.value === cardEndTime
+    );
+
+    if (!validStartTime && timeOptions.length > 0) {
+      setCardStartTime(timeOptions[0].value);
+    }
+
+    if (!validEndTime && timeOptions.length > 0) {
+      setCardEndTime(timeOptions[timeOptions.length - 1].value);
+    }
+  }, [cardTimePeriod, cardStartTime, cardEndTime]);
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  // 카드 금액을 표시용 텍스트로 변환
+  const getAmountDisplayText = (amount: string) => {
+    switch (amount) {
+      case "10000":
+        return "1만원";
+      case "50000":
+        return "5만원";
+      case "100000":
+        return "10만원";
+      case "all":
+        return "전체";
+      default:
+        return "1만원";
+    }
+  };
+
+  // 시간대별 시간 옵션 생성
+  const getTimeOptions = (period: string) => {
+    const options: { value: string; label: string }[] = [];
+
+    let startHour = 0;
+    let endHour = 23;
+
+    if (period === "오전") {
+      startHour = 0;
+      endHour = 12;
+    } else if (period === "오후") {
+      startHour = 12;
+      endHour = 23;
+    } else if (period === "전체") {
+      startHour = 0;
+      endHour = 23;
+    }
+
+    for (let hour = startHour; hour <= endHour; hour++) {
+      const hourStr = hour.toString().padStart(2, "0");
+
+      options.push({
+        value: `${hourStr}:00`,
+        label: `${hourStr}:00`,
+      });
+    }
+
+    return options;
+  };
+
+  // 유효기간 설정 함수
+  const setPeriod = (period: "week" | "month" | "year") => {
+    const today = new Date();
+    let endDate: Date;
+
+    switch (period) {
+      case "week":
+        endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "month":
+        endDate = new Date(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          today.getDate()
+        );
+        break;
+      case "year":
+        endDate = new Date(
+          today.getFullYear() + 1,
+          today.getMonth(),
+          today.getDate()
+        );
+        break;
+      default:
+        endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+
+    setValidityEndDate(endDate.toISOString().split("T")[0]);
+    setSelectedPeriod(period);
+  };
+
+  // 일괄발송 시간 옵션 생성 (00:00 ~ 23:00)
+  const getBatchTimeOptions = () => {
+    const options: { value: string; label: string }[] = [];
+
+    for (let hour = 0; hour < 24; hour++) {
+      const hourStr = hour.toString().padStart(2, "0");
+      options.push({
+        value: `${hourStr}:00`,
+        label: `${hourStr}:00`,
+      });
+    }
+
+    return options;
+  };
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevMessagesLengthRef = useRef(0);
 
@@ -586,6 +724,87 @@ function TargetMarketingContent() {
     }
   };
 
+  // 승인 신청 처리 함수
+  const handleApprovalSubmit = async () => {
+    if (!smsTextContent.trim() || !currentGeneratedImage) {
+      alert("캠페인 내용과 이미지가 필요합니다.");
+      return;
+    }
+
+    setIsSubmittingApproval(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      // 캠페인 데이터 준비
+      const campaignData = {
+        title: "AI 생성 캠페인",
+        content: smsTextContent,
+        imageUrl: currentGeneratedImage,
+        sendPolicy: sendPolicy,
+        validityStartDate: validityStartDate,
+        validityEndDate: validityEndDate,
+        maxRecipients: maxRecipients,
+        targetFilters: {
+          gender: targetGender,
+          ageGroup: targetAge,
+          location: {
+            city: targetCity,
+            district: targetDistrict,
+          },
+          cardAmount: cardAmount,
+          cardTime: {
+            startTime: cardStartTime,
+            endTime: cardEndTime,
+            period: cardTimePeriod,
+          },
+        },
+        estimatedCost: 21000, // 예상 금액
+      };
+
+      // 캠페인 생성 API 호출
+      const response = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(campaignData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "캠페인 저장에 실패했습니다.");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert("승인 신청이 성공적으로 제출되었습니다!");
+        setShowApprovalModal(false);
+
+        // 폼 초기화 (선택사항)
+        // setSmsTextContent("");
+        // setCurrentGeneratedImage(null);
+      } else {
+        throw new Error(result.message || "캠페인 저장에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("승인 신청 오류:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "승인 신청 중 오류가 발생했습니다."
+      );
+    } finally {
+      setIsSubmittingApproval(false);
+    }
+  };
+
   return (
     <div className={styles.targetMarketingContainer}>
       <div className={styles.targetMarketingHeader}>
@@ -791,14 +1010,22 @@ function TargetMarketingContent() {
                 <div className={styles.sectionTitle}>타겟 설정</div>
                 <div className={styles.filterRow}>
                   <div className={styles.filterGroup}>
-                    <select className={styles.filterSelect}>
+                    <select
+                      className={styles.filterSelect}
+                      value={targetGender}
+                      onChange={(e) => setTargetGender(e.target.value)}
+                    >
                       <option value="female">여성</option>
                       <option value="male">남성</option>
                       <option value="all">전체</option>
                     </select>
                   </div>
                   <div className={styles.filterGroup}>
-                    <select className={styles.filterSelect}>
+                    <select
+                      className={styles.filterSelect}
+                      value={targetAge}
+                      onChange={(e) => setTargetAge(e.target.value)}
+                    >
                       <option value="thirties">30대</option>
                       <option value="teens">10대</option>
                       <option value="twenties">20대</option>
@@ -814,7 +1041,11 @@ function TargetMarketingContent() {
                 <div className={styles.sectionTitle}>카드 사용 위치</div>
                 <div className={styles.filterRow}>
                   <div className={styles.filterGroup}>
-                    <select className={styles.filterSelect}>
+                    <select
+                      className={styles.filterSelect}
+                      value={targetCity}
+                      onChange={(e) => setTargetCity(e.target.value)}
+                    >
                       <option value="seoul">서울시</option>
                       <option value="busan">부산광역시</option>
                       <option value="daegu">대구광역시</option>
@@ -823,7 +1054,11 @@ function TargetMarketingContent() {
                     </select>
                   </div>
                   <div className={styles.filterGroup}>
-                    <select className={styles.filterSelect}>
+                    <select
+                      className={styles.filterSelect}
+                      value={targetDistrict}
+                      onChange={(e) => setTargetDistrict(e.target.value)}
+                    >
                       <option value="gangnam">강남구</option>
                       <option value="gangdong">강동구</option>
                       <option value="gangbuk">강북구</option>
@@ -840,19 +1075,47 @@ function TargetMarketingContent() {
                 <div className={styles.amountInputSection}>
                   <input
                     type="text"
-                    value="10,000원"
+                    value={getAmountDisplayText(cardAmount)}
                     className={styles.amountInput}
                     readOnly
                   />
-                  <span className={styles.amountLabel}>미만</span>
+                  <span className={styles.amountLabel}>
+                    {cardAmount === "all" ? "" : "미만"}
+                  </span>
                 </div>
                 <div className={styles.amountOptions}>
-                  <button className={`${styles.amountButton} ${styles.active}`}>
+                  <button
+                    className={`${styles.amountButton} ${
+                      cardAmount === "10000" ? styles.active : ""
+                    }`}
+                    onClick={() => setCardAmount("10000")}
+                  >
                     1만원 미만
                   </button>
-                  <button className={styles.amountButton}>5만원 미만</button>
-                  <button className={styles.amountButton}>10만원 미만</button>
-                  <button className={styles.amountButton}>전체</button>
+                  <button
+                    className={`${styles.amountButton} ${
+                      cardAmount === "50000" ? styles.active : ""
+                    }`}
+                    onClick={() => setCardAmount("50000")}
+                  >
+                    5만원 미만
+                  </button>
+                  <button
+                    className={`${styles.amountButton} ${
+                      cardAmount === "100000" ? styles.active : ""
+                    }`}
+                    onClick={() => setCardAmount("100000")}
+                  >
+                    10만원 미만
+                  </button>
+                  <button
+                    className={`${styles.amountButton} ${
+                      cardAmount === "all" ? styles.active : ""
+                    }`}
+                    onClick={() => setCardAmount("all")}
+                  >
+                    전체
+                  </button>
                 </div>
               </div>
 
@@ -861,31 +1124,58 @@ function TargetMarketingContent() {
                 <div className={styles.sectionTitle}>카드 송신 시간</div>
                 <div className={styles.timeSelectors}>
                   <div className={styles.timeGroup}>
-                    <select className={styles.timeSelect}>
-                      <option value="08:00">8:00</option>
-                      <option value="09:00">9:00</option>
-                      <option value="10:00">10:00</option>
-                      <option value="11:00">11:00</option>
-                      <option value="12:00">12:00</option>
+                    <select
+                      className={styles.timeSelect}
+                      value={cardStartTime}
+                      onChange={(e) => setCardStartTime(e.target.value)}
+                    >
+                      {getTimeOptions(cardTimePeriod).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <span className={styles.timeSeparator}>~</span>
                   <div className={styles.timeGroup}>
-                    <select className={styles.timeSelect}>
-                      <option value="12:00">12:00</option>
-                      <option value="13:00">13:00</option>
-                      <option value="14:00">14:00</option>
-                      <option value="15:00">15:00</option>
-                      <option value="16:00">16:00</option>
+                    <select
+                      className={styles.timeSelect}
+                      value={cardEndTime}
+                      onChange={(e) => setCardEndTime(e.target.value)}
+                    >
+                      {getTimeOptions(cardTimePeriod).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
                 <div className={styles.timeOptions}>
-                  <button className={`${styles.timeButton} ${styles.active}`}>
+                  <button
+                    className={`${styles.timeButton} ${
+                      cardTimePeriod === "오전" ? styles.active : ""
+                    }`}
+                    onClick={() => setCardTimePeriod("오전")}
+                  >
                     오전
                   </button>
-                  <button className={styles.timeButton}>오후</button>
-                  <button className={styles.timeButton}>전체</button>
+                  <button
+                    className={`${styles.timeButton} ${
+                      cardTimePeriod === "오후" ? styles.active : ""
+                    }`}
+                    onClick={() => setCardTimePeriod("오후")}
+                  >
+                    오후
+                  </button>
+                  <button
+                    className={`${styles.timeButton} ${
+                      cardTimePeriod === "전체" ? styles.active : ""
+                    }`}
+                    onClick={() => setCardTimePeriod("전체")}
+                  >
+                    전체
+                  </button>
                 </div>
               </div>
             </div>
@@ -1061,26 +1351,43 @@ function TargetMarketingContent() {
                     <div className={styles.dateInputs}>
                       <input
                         type="date"
-                        value={validityPeriod}
-                        onChange={(e) => setValidityPeriod(e.target.value)}
+                        value={validityStartDate}
                         className={styles.dateInput}
+                        readOnly
                       />
                       <span>~</span>
                       <input
                         type="date"
-                        value={validityPeriod}
-                        onChange={(e) => setValidityPeriod(e.target.value)}
+                        value={validityEndDate}
+                        onChange={(e) => setValidityEndDate(e.target.value)}
                         className={styles.dateInput}
                       />
                     </div>
                     <div className={styles.periodButtons}>
                       <button
-                        className={`${styles.periodButton} ${styles.active}`}
+                        className={`${styles.periodButton} ${
+                          selectedPeriod === "week" ? styles.active : ""
+                        }`}
+                        onClick={() => setPeriod("week")}
                       >
                         일주일
                       </button>
-                      <button className={styles.periodButton}>한달</button>
-                      <button className={styles.periodButton}>1년</button>
+                      <button
+                        className={`${styles.periodButton} ${
+                          selectedPeriod === "month" ? styles.active : ""
+                        }`}
+                        onClick={() => setPeriod("month")}
+                      >
+                        한달
+                      </button>
+                      <button
+                        className={`${styles.periodButton} ${
+                          selectedPeriod === "year" ? styles.active : ""
+                        }`}
+                        onClick={() => setPeriod("year")}
+                      >
+                        1년
+                      </button>
                     </div>
                   </div>
 
@@ -1116,9 +1423,11 @@ function TargetMarketingContent() {
                           <option>오늘+14일</option>
                         </select>
                         <select className={styles.batchSelect}>
-                          <option>8:00</option>
-                          <option>9:00</option>
-                          <option>10:00</option>
+                          {getBatchTimeOptions().map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -1182,17 +1491,23 @@ function TargetMarketingContent() {
               <button
                 onClick={() => setShowApprovalModal(false)}
                 className={styles.cancelButton}
+                disabled={isSubmittingApproval}
               >
                 닫기
               </button>
               <button
-                onClick={() => {
-                  alert("승인 신청이 제출되었습니다!");
-                  setShowApprovalModal(false);
-                }}
+                onClick={handleApprovalSubmit}
                 className={`${styles.sendButton} ${styles.primary}`}
+                disabled={isSubmittingApproval}
               >
-                승인 신청
+                {isSubmittingApproval ? (
+                  <>
+                    <div className={styles.loadingSpinner}></div>
+                    승인 신청 중...
+                  </>
+                ) : (
+                  "승인 신청"
+                )}
               </button>
             </div>
           </div>
