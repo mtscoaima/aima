@@ -65,17 +65,41 @@ body .main-content {
   display: flex;
   flex-direction: column;
   min-height: 500px;
-  max-height: 100%;
+  height: 100%;
+  max-height: calc(100vh - 200px);
   overflow: hidden;
 }
 
 .chatMessages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: calc(100vh - 400px);
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+/* 스크롤바 스타일링 (Webkit 브라우저) */
+.chatMessages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chatMessages::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 3px;
+}
+
+.chatMessages::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.chatMessages::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }
 
 .message {
@@ -200,6 +224,8 @@ body .main-content {
   width: 100%;
   margin: 0 20px;
   padding: 20px;
+  flex-shrink: 0;
+  min-height: 140px;
 }
 
 .inputWrapper {
@@ -335,12 +361,40 @@ body .main-content {
   border-radius: 18px 18px 0px 0px;
   overflow: hidden;
   background: #f8f9fa;
+  position: relative;
 }
 
 .templateImage img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.imageGeneratingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #1681ff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 18px 18px 0px 0px;
+}
+
+.imageGeneratingOverlay .loadingSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(22, 129, 255, 0.2);
+  border-top: 3px solid #1681ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .templateImagePlaceholder {
@@ -887,13 +941,17 @@ body .main-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #e9ecef;
 }
 
 .modalHeader h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2d3748;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 28.8px */
+  letter-spacing: -0.48px;
   margin: 0;
 }
 
@@ -1002,34 +1060,56 @@ body .main-content {
 }
 
 .modalFooter {
-  padding: 20px 24px;
-  border-top: 1px solid #e9ecef;
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
-  background: #e9ecef;
+  padding: 20px 24px 24px 24px;
+  border-top: 1px solid #e6e6e6;
+  margin-top: 20px;
 }
 
-.cancelButton {
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  background: white;
-  color: #4a5568;
-  border-radius: 6px;
+.modalFooter .cancelButton {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
   font-size: 14px;
+  font-style: normal;
   font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
-.cancelButton:hover:not(:disabled) {
-  background: #f7fafc;
-  border-color: #cbd5e0;
+.modalFooter .cancelButton:hover:not(:disabled) {
+  border-color: #c7c7c7;
+  background: #f8f9fa;
 }
 
-.cancelButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.modalFooter .sendButton.primary {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #007aff;
+  color: #fff;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalFooter .sendButton.primary:hover:not(:disabled) {
+  background: #0056cc;
 }
 
 .loadingSpinner {
@@ -1096,6 +1176,10 @@ body .main-content {
     max-height: calc(100vh - 200px); /* 모바일에서 더 작은 높이 */
   }
 
+  .chatMessages {
+    max-height: calc(100vh - 340px);
+  }
+
   .mmsSendSection {
     padding: 20px;
   }
@@ -1136,6 +1220,10 @@ body .main-content {
   .mmsSendContainer {
     min-height: 350px;
     max-height: calc(100vh - 180px); /* 작은 화면에서 더 작은 높이 */
+  }
+
+  .chatMessages {
+    max-height: calc(100vh - 300px);
   }
 
   .mmsSendSection {
@@ -1212,4 +1300,984 @@ body .main-content {
   .modalFooter button {
     width: 100%;
   }
+}
+
+/* 타겟 추천 결과 카드 */
+.targetRecommendationCard {
+  background: transparent;
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+
+/* 타겟 필터 섹션 */
+.targetFiltersSection {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterRow {
+  display: flex;
+  gap: 12px;
+}
+
+.filterGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterGroup label {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.filterSelect {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  outline: none;
+  cursor: pointer;
+}
+
+.filterSelect:focus {
+  border-color: #1681ff;
+}
+
+/* 섹션 제목 */
+.sectionTitle {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.32px;
+  margin-bottom: 12px;
+}
+
+/* 카드 송신 금액 섹션 */
+.cardAmountSection {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.amountInputSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.amountInput {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  outline: none;
+  width: 120px;
+}
+
+.amountInput:focus {
+  border-color: #1681ff;
+}
+
+.amountLabel {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.amountOptions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.amountButton {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.amountButton:hover {
+  border-color: #1681ff;
+  color: #1681ff;
+}
+
+.amountButton.active {
+  background: #1681ff;
+  border-color: #1681ff;
+  color: #fff;
+}
+
+/* 카드 송신 시간 섹션 */
+.cardTimeSection {
+  padding-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeSeparator {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  margin: 0 8px;
+}
+
+.timeSelectors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeGroup {
+  display: flex;
+  align-items: center;
+}
+
+.timeSelect {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.timeSelect:focus {
+  border-color: #1681ff;
+}
+
+.timeOptions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.timeButton {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.timeButton:hover {
+  border-color: #1681ff;
+  color: #1681ff;
+}
+
+.timeButton.active {
+  background: #1681ff;
+  border-color: #1681ff;
+  color: #fff;
+}
+
+/* 예상금액 섹션 */
+.costEstimationSection {
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.costLabel {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 24px */
+  letter-spacing: -0.4px;
+}
+
+.costValue {
+  display: flex;
+  align-items: baseline;
+  text-align: right;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 19.2px */
+  letter-spacing: -0.32px;
+}
+
+.costAmount {
+  color: #000;
+  text-align: right;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%; /* 28.8px */
+  letter-spacing: -0.48px;
+}
+
+.costUnit {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.4px;
+}
+
+/* 승인 신청 버튼 섹션 */
+.approvalButtonSection {
+  padding: 20px 30px;
+  flex-shrink: 0;
+}
+
+.approvalButton {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 12px;
+  background: #1681ff;
+  color: #fff;
+  text-align: center;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.36px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.approvalButton:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(22, 129, 255, 0.3);
+}
+
+.approvalButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* 발송 정책 선택 모달 */
+.approvalModal {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.policyDescription {
+  margin-bottom: 20px;
+}
+
+.policyDescription p {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.24px;
+  margin: 8px 0;
+}
+
+.policyOptions {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #1681ff;
+  cursor: pointer;
+}
+
+.checkboxLabel span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.validitySection {
+  margin-bottom: 20px;
+}
+
+.validitySection label {
+  display: block;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  margin-bottom: 12px;
+}
+
+.dateInputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dateInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+}
+
+.dateInput:focus {
+  border-color: #1681ff;
+}
+
+.periodButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.periodButton {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.periodButton:hover {
+  border-color: #007aff;
+  color: #007aff;
+}
+
+.periodButton.active {
+  border-radius: 10px;
+  border: 0.5px solid #007aff;
+  background: #d8ecff;
+  color: #007aff;
+}
+
+.recipientLimitSection {
+  margin-bottom: 20px;
+}
+
+.recipientLimitSection label {
+  display: block;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+  margin-bottom: 8px;
+}
+
+.recipientInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  width: 100px;
+  text-align: right;
+}
+
+.recipientInput:focus {
+  border-color: #1681ff;
+}
+
+.batchSection {
+  margin-bottom: 20px;
+}
+
+.batchInfo {
+  margin-bottom: 12px;
+}
+
+.batchInfo span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.batchInfo p {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.24px;
+  margin: 4px 0;
+}
+
+.batchSelectors {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.batchSelect {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  cursor: pointer;
+}
+
+.batchSelect:focus {
+  border-color: #1681ff;
+}
+
+.targetInfo {
+  margin-bottom: 12px;
+}
+
+.targetInfo div {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  margin-bottom: 4px;
+}
+
+.targetInfo span {
+  font-weight: 600;
+}
+
+.targetInfo p {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.22px;
+  margin-top: 8px;
+}
+
+.costSummary {
+  padding-top: 20px;
+  margin-top: 24px;
+}
+
+.costRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.costRow:first-child {
+  font-weight: 600;
+}
+
+.costRow span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.32px;
+  text-align: left;
+}
+
+.costRow span:first-child {
+  text-align: left;
+}
+
+.costRow span:last-child {
+  text-align: right;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.48px;
+}
+
+.balanceAmount {
+  color: #000 !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
+  line-height: 120% !important;
+  letter-spacing: -0.48px !important;
+}
+
+.chargeNoticeText {
+  color: #f00 !important;
+  text-align: right;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.chargeButton {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid #1681ff;
+  background: #1681ff;
+  color: #fff;
+  text-align: center;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 120%; /* 16.8px */
+  letter-spacing: -0.28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chargeButton:hover {
+  background: #1469cc;
+  border-color: #1469cc;
+}
+
+.balanceUnit {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.32px;
+}
+
+.batchContentContainer {
+  width: fit-content;
+}
+
+.targetCountInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.targetCountInfo span:first-child {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.targetCountInfo span:last-child {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.adRecipientSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.adRecipientSection span {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.adRecipientInput {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  outline: none;
+  width: 80px;
+  text-align: right;
+}
+
+.adRecipientInput:focus {
+  border-color: #1681ff;
+}
+
+.adRecipientNotice {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 140%;
+  letter-spacing: -0.24px;
+  margin: 8px 0 0 0;
+}
+
+/* 크레딧 충전 모달 */
+.creditModal {
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.creditInfo {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.creditRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.creditRow:last-child {
+  border-bottom: none;
+}
+
+.creditRow span:first-child {
+  color: #666;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.creditRow span:last-child {
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.shortageAmount {
+  color: #dc3545 !important;
+  font-weight: 700 !important;
+}
+
+.chargeAmountSection {
+  margin-bottom: 24px;
+}
+
+.chargeAmountSection label {
+  display: block;
+  color: #000;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.amountInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.amountInputGroup .amountInput {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #c7c7c7;
+  background: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.amountInputGroup .amountInput:focus {
+  border-color: #1681ff;
+  outline: none;
+}
+
+.amountInputGroup .amountUnit {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.quickAmountButtons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quickAmountBtn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  color: #666;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.quickAmountBtn:hover {
+  border-color: #1681ff;
+  color: #1681ff;
+}
+
+.quickAmountBtn:active {
+  background: #1681ff;
+  color: #fff;
+}
+
+.paymentNotice {
+  background: #e3f2fd;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+}
+
+.paymentNotice p {
+  color: #1976d2;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 4px 0;
+}
+
+/* 크레딧 패키지 섹션 스타일 */
+.creditPackagesSection {
+  margin: 20px 0;
+}
+
+/* 크레딧 패키지 컴포넌트 내부 스타일 조정 */
+.creditPackagesSection > div {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.creditPackagesSection h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #2d3748;
+}
+
+/* 패키지 그리드가 모달에서 적절히 표시되도록 조정 */
+.creditPackagesSection .grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .creditPackagesSection .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 크레딧 패키지 카드들이 모달에서 적절한 크기를 갖도록 조정 */
+.creditPackagesSection [class*="border-2"] {
+  min-height: 140px;
+  padding: 12px !important;
+}
+
+.creditPackagesSection [class*="text-2xl"] {
+  font-size: 16px !important;
+  line-height: 1.2 !important;
+}
+
+.creditPackagesSection [class*="text-xl"] {
+  font-size: 18px !important;
+}
+
+.creditPackagesSection button {
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}
+
+/* PaymentModal z-index override */
+.paymentModalWrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 1010 !important;
+  pointer-events: none;
+}
+
+.paymentModalWrapper > div {
+  pointer-events: auto;
+}
+
+/* PaymentModal의 모든 하위 요소가 올바른 z-index를 갖도록 설정 */
+.paymentModalWrapper * {
+  z-index: inherit;
 }

@@ -115,7 +115,7 @@ export function PaymentModal({
             // data에 직접 사용자 정보가 있는 경우
             userData = data;
           } else {
-            console.error("🔍 [DEBUG] 예상하지 못한 API 응답 구조:", data);
+            console.error(data);
             return;
           }
 
@@ -133,11 +133,7 @@ export function PaymentModal({
           await response.text();
         }
       } catch (error) {
-        console.error("🔍 [DEBUG] 사용자 정보 조회 실패:", error);
-        console.error(
-          "🔍 [DEBUG] 에러 스택:",
-          error instanceof Error ? error.stack : "No stack trace"
-        );
+        console.error(error);
       }
     };
 
@@ -178,18 +174,7 @@ export function PaymentModal({
         });
 
         setWidgets(widgetsInstance);
-      } catch (error) {
-        console.error("🔍 [DEBUG] 토스페이먼츠 초기화 실패:", error);
-        console.error("🔍 [DEBUG] 에러 타입:", typeof error);
-        console.error(
-          "🔍 [DEBUG] 에러 메시지:",
-          error instanceof Error ? error.message : String(error)
-        );
-        console.error(
-          "🔍 [DEBUG] 에러 스택:",
-          error instanceof Error ? error.stack : "No stack trace"
-        );
-
+      } catch {
         // 사용자에게 에러 표시
         alert("결제 시스템 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
@@ -208,7 +193,7 @@ export function PaymentModal({
             variantKey: "DEFAULT",
           });
         } catch (error) {
-          console.error("🔍 [DEBUG] 결제 위젯 렌더링 실패:", error);
+          console.error(error);
         }
       };
       renderPaymentWidget();
@@ -249,6 +234,8 @@ export function PaymentModal({
 
       const orderId = generateOrderId();
       const orderName = `크레딧 ${packageInfo.credits.toLocaleString()}개 충전`;
+
+      // 모든 결제를 payment/success 페이지로 통일하여 결제 승인 API 호출 보장
       const successUrl = `${window.location.origin}/payment/success`;
       const failUrl = `${window.location.origin}/payment/fail`;
 
@@ -300,16 +287,7 @@ export function PaymentModal({
       // Promise 방식에서는 결과가 바로 반환되지 않으므로
       // successUrl로 리다이렉트됩니다.
     } catch (error) {
-      console.error("🔍 [DEBUG] 결제 실패:", error);
-      console.error("🔍 [DEBUG] 에러 타입:", typeof error);
-      console.error(
-        "🔍 [DEBUG] 에러 메시지:",
-        error instanceof Error ? error.message : String(error)
-      );
-      console.error(
-        "🔍 [DEBUG] 에러 스택:",
-        error instanceof Error ? error.stack : "No stack trace"
-      );
+      console.error(error);
 
       const errorMessage =
         error instanceof Error ? error.message : "알 수 없는 오류";

@@ -37,7 +37,7 @@ const CreditManagementPage = () => {
   const { addTransaction, getTransactionHistory, refreshTransactions } =
     useBalance();
 
-  // 결제 완료 후 자동 새로고침 처리
+  // 결제 완료 후 자동 새로고침 처리 (localStorage 방식)
   useEffect(() => {
     const checkPaymentCompletion = async () => {
       const paymentCompleted = localStorage.getItem("payment_completed");
@@ -64,6 +64,18 @@ const CreditManagementPage = () => {
 
     checkPaymentCompletion();
   }, [refreshTransactions]);
+
+  // URL 파라미터 정리 (결제는 이제 payment/success 페이지에서 처리됨)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment");
+
+    if (paymentStatus) {
+      // URL에서 파라미터 제거 (실제 결제 처리는 payment/success에서 수행됨)
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, []);
 
   // 페이지 포커스 시 자동 새로고침
   useEffect(() => {
