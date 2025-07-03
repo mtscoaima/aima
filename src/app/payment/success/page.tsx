@@ -143,9 +143,14 @@ export default function PaymentSuccessPage() {
           Date.now().toString()
         );
 
-        // 5초 후 크레딧 관리 페이지로 이동
+        // 5초 후 리디렉션 (redirectUrl이 있으면 해당 페이지로, 없으면 크레딧 관리 페이지로)
         setTimeout(() => {
-          router.push("/credit-management");
+          const redirectUrl = searchParams.get("redirectUrl");
+          if (redirectUrl) {
+            router.push(redirectUrl);
+          } else {
+            router.push("/credit-management");
+          }
         }, 5000);
       } catch (error) {
         setError(
@@ -202,10 +207,19 @@ export default function PaymentSuccessPage() {
           </h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => router.push("/credit-management")}
+            onClick={() => {
+              const redirectUrl = searchParams.get("redirectUrl");
+              if (redirectUrl) {
+                router.push(redirectUrl);
+              } else {
+                router.push("/credit-management");
+              }
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            크레딧 관리로 돌아가기
+            {searchParams.get("redirectUrl")
+              ? "이전 페이지로 돌아가기"
+              : "크레딧 관리로 돌아가기"}
           </button>
         </div>
       </div>
@@ -260,7 +274,11 @@ export default function PaymentSuccessPage() {
         )}
 
         <p className="text-sm text-gray-500">
-          5초 후 자동으로 크레딧 관리 페이지로 이동합니다...
+          5초 후 자동으로{" "}
+          {searchParams.get("redirectUrl")
+            ? "이전 페이지로"
+            : "크레딧 관리 페이지로"}{" "}
+          이동합니다...
         </p>
       </div>
     </div>

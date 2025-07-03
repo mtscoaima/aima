@@ -70,7 +70,14 @@ export default function PaymentFailPage() {
 
         <div className="space-y-2">
           <button
-            onClick={() => router.push("/credit-management")}
+            onClick={() => {
+              const redirectUrl = searchParams.get("redirectUrl");
+              if (redirectUrl) {
+                router.push(redirectUrl);
+              } else {
+                router.push("/credit-management");
+              }
+            }}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             다시 시도하기

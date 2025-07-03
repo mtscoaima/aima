@@ -969,30 +969,32 @@ function TargetMarketingContent() {
 
   // 페이지 로드 시 저장된 상태 복원 (결제 완료 후 돌아온 경우)
   useEffect(() => {
-    // URL 파라미터 확인
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get("payment");
+    // 결제 완료 플래그 확인
+    const paymentCompleted = localStorage.getItem("payment_completed");
+    const paymentTimestamp = localStorage.getItem(
+      "payment_completed_timestamp"
+    );
 
-    if (paymentStatus === "success" || paymentStatus === "fail") {
-      // 결제 완료/실패 후 돌아온 경우
-      const restored = restoreState();
-      if (restored) {
-        // 결제 성공 시 크레딧 잔액 새로고침
-        if (paymentStatus === "success") {
+    if (paymentCompleted === "true" && paymentTimestamp) {
+      const timestamp = parseInt(paymentTimestamp);
+      const now = Date.now();
+      const timeDiff = now - timestamp;
+
+      // 결제 완료 후 30초 이내인 경우에만 상태 복원
+      if (timeDiff < 30000) {
+        const restored = restoreState();
+        if (restored) {
+          // 결제 성공 시 크레딧 잔액 새로고침
           setTimeout(async () => {
             await refreshTransactions(); // 크레딧 잔액 새로고침
             alert("결제가 완료되었습니다. 크레딧이 충전되었습니다.");
-          }, 1500);
-        } else {
-          setTimeout(() => {
-            alert("결제가 취소되거나 실패했습니다.");
-          }, 1500);
+          }, 1000);
         }
-      }
 
-      // URL에서 파라미터 제거
-      const newUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState({}, "", newUrl);
+        // 플래그 제거
+        localStorage.removeItem("payment_completed");
+        localStorage.removeItem("payment_completed_timestamp");
+      }
     }
   }, [refreshTransactions, restoreState]);
 
@@ -2182,6 +2184,7 @@ function TargetMarketingContent() {
           onClose={handleClosePaymentModal}
           packageInfo={selectedPackage}
           onPaymentComplete={handlePaymentComplete}
+          redirectUrl={window.location.pathname}
         />
       </div>
     </div>
