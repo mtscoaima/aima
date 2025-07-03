@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import { Send, Sparkles, X, Phone } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import SuccessModal from "@/components/SuccessModal";
@@ -48,11 +48,6 @@ function TargetMarketingContent() {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] =
-    useState<GeneratedTemplate | null>(null);
-  const [recipients, setRecipients] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const [smsTextContent, setSmsTextContent] = useState("");
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState<
     string | null
@@ -1331,23 +1326,14 @@ function TargetMarketingContent() {
 
   // 이미지 편집 처리
   const handleImageEdit = async (prompt: string) => {
-    if (!currentGeneratedImage) return;
-
-    const userMessage: Message = {
-      id: `user-${Math.random().toString(36).substr(2, 9)}`,
-      role: "user",
-      content: prompt,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
-    setIsLoading(true);
-    setShowTypingIndicator(true);
+    if (!currentGeneratedImage) {
+      alert("편집할 이미지가 없습니다. 먼저 이미지를 생성해주세요.");
+      return;
+    }
 
     try {
-      // 기본적으로 직접 편집 사용
-      const editType = "edit";
+      setIsLoading(true);
+      setShowTypingIndicator(true);
 
       const response = await fetch("/api/ai/edit-image", {
         method: "POST",
@@ -1355,32 +1341,24 @@ function TargetMarketingContent() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          imageUrl: currentGeneratedImage,
-          prompt: prompt,
-          editType: editType,
+          baseImageUrl: currentGeneratedImage,
+          editPrompt: prompt,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("이미지 편집에 실패했습니다.");
-      }
-
       const data = await response.json();
 
-      if (data.success && data.imageUrl) {
-        // 편집된 이미지로 교체
-        setCurrentGeneratedImage(data.imageUrl);
+      if (data.success && data.editedImageUrl) {
+        setCurrentGeneratedImage(data.editedImageUrl);
 
-        // 성공 메시지 추가
-        const successMessage: Message = {
-          id: `edit-success-${Math.random().toString(36).substr(2, 9)}`,
+        const editedMessage: Message = {
+          id: `edited-${Math.random().toString(36).substr(2, 9)}`,
           role: "assistant",
-          content: `🎉 이미지가 성공적으로 편집되었습니다!\n\n편집된 이미지가 우측 첨부 영역에 적용되었습니다.`,
+          content: `✨ 이미지가 수정되었습니다: ${prompt}`,
           timestamp: new Date(),
-          imageUrl: data.imageUrl,
+          imageUrl: data.editedImageUrl,
         };
-
-        setMessages((prev) => [...prev, successMessage]);
+        setMessages((prev) => [...prev, editedMessage]);
       } else {
         throw new Error(data.error || "이미지 편집에 실패했습니다.");
       }
@@ -1397,68 +1375,6 @@ function TargetMarketingContent() {
     } finally {
       setIsLoading(false);
       setShowTypingIndicator(false);
-    }
-  };
-
-  const handleSendMMS = async () => {
-    if (!recipients.trim()) {
-      alert("수신번호를 입력해주세요.");
-      return;
-    }
-
-    if (!smsTextContent.trim()) {
-      alert("메시지 내용을 입력해주세요.");
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      const requestBody = {
-        templateId:
-          selectedTemplate?.id ||
-          `temp-${Math.random().toString(36).substr(2, 9)}`,
-        recipients: recipients.split(",").map((num) => num.trim()),
-        message: smsTextContent,
-        imageUrl: currentGeneratedImage,
-      };
-
-      const response = await fetch("/api/ai/send-mms", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert("MMS가 성공적으로 전송되었습니다!");
-        setShowSendModal(false);
-        setRecipients("");
-
-        // 템플릿 상태 업데이트 (selectedTemplate이 있는 경우에만)
-        if (selectedTemplate) {
-          setTemplates((prev) =>
-            prev.map((t) =>
-              t.id === selectedTemplate.id
-                ? { ...t, status: "전송완료" as const }
-                : t
-            )
-          );
-        }
-      } else {
-        throw new Error(result.error || "MMS 전송에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("MMS 전송 오류:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "MMS 전송 중 오류가 발생했습니다."
-      );
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -1625,7 +1541,7 @@ function TargetMarketingContent() {
           </div>
         </div>
 
-        {/* 우측: MMS 전송 영역 */}
+        {/* 우측: 캠페인 설정 영역 */}
         <div className={styles.mmsSendContainer}>
           <div className={styles.mmsSendSection}>
             {/* 템플릿 미리보기 카드 */}
@@ -1959,94 +1875,6 @@ function TargetMarketingContent() {
           </div>
         </div>
       </div>
-
-      {/* MMS 전송 모달 */}
-      {showSendModal && (
-        <div className={styles.modalOverlay}>
-          <div className={`${styles.modalContent} ${styles.sendModal}`}>
-            <div className={styles.modalHeader}>
-              <h2>MMS 전송</h2>
-              <button
-                onClick={() => {
-                  setShowSendModal(false);
-                  setRecipients("");
-                  setSelectedTemplate(null);
-                }}
-                className={styles.modalClose}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className={styles.modalBody}>
-              <div className={styles.templatePreview}>
-                <h3>전송할 내용</h3>
-                <div className={styles.previewCard}>
-                  {currentGeneratedImage && (
-                    <div className={styles.previewImage}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={currentGeneratedImage} alt="전송할 이미지" />
-                    </div>
-                  )}
-                  <div className={styles.previewContent}>
-                    <h4>{selectedTemplate?.title || "템플릿 내용"}</h4>
-                    <p>{smsTextContent}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.recipientSection}>
-                <label htmlFor="recipients">
-                  <Phone size={16} />
-                  수신번호
-                </label>
-                <textarea
-                  id="recipients"
-                  value={recipients}
-                  onChange={(e) => setRecipients(e.target.value)}
-                  placeholder="수신번호를 입력하세요. 여러 번호는 쉼표(,)로 구분해주세요.&#10;예: 010-1234-5678, 010-9876-5432"
-                  className={styles.recipientsInput}
-                  rows={3}
-                />
-                <div className={styles.inputHelp}>
-                  여러 번호를 입력할 때는 쉼표(,)로 구분해주세요.
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.modalFooter}>
-              <button
-                onClick={() => {
-                  setShowSendModal(false);
-                  setRecipients("");
-                  setSelectedTemplate(null);
-                }}
-                className={styles.cancelButton}
-                disabled={isSending}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSendMMS}
-                className={`${styles.sendButton} ${styles.primary}`}
-                disabled={!recipients.trim() || isSending}
-              >
-                {isSending ? (
-                  <>
-                    <div className={styles.loadingSpinner}></div>
-                    전송 중...
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    MMS 전송
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 발송 정책 선택 모달 */}
       {showApprovalModal && (
