@@ -37,7 +37,7 @@ const CreditManagementPage = () => {
   const { addTransaction, getTransactionHistory, refreshTransactions } =
     useBalance();
 
-  // 결제 완료 후 자동 새로고침 처리
+  // 결제 완료 후 자동 새로고침 처리 (localStorage 방식)
   useEffect(() => {
     const checkPaymentCompletion = async () => {
       const paymentCompleted = localStorage.getItem("payment_completed");
@@ -63,6 +63,39 @@ const CreditManagementPage = () => {
     };
 
     checkPaymentCompletion();
+  }, [refreshTransactions]);
+
+  // URL 파라미터를 통한 결제 완료 처리 (새로운 방식)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment");
+
+    if (paymentStatus === "success" || paymentStatus === "fail") {
+      // 결제 완료/실패 후 돌아온 경우
+      console.log("크레딧 관리 페이지로 결제 후 돌아옴:", paymentStatus);
+
+      // 결제 결과 알림 및 데이터 새로고침
+      setTimeout(async () => {
+        if (paymentStatus === "success") {
+          try {
+            await refreshTransactions();
+            setRefreshKey((prev) => prev + 1);
+            alert("결제가 완료되었습니다. 크레딧이 충전되었습니다.");
+          } catch (error) {
+            console.error("❌ 결제 완료 후 데이터 새로고침 실패:", error);
+            alert(
+              "결제는 완료되었지만 페이지 새로고침에 실패했습니다. 페이지를 새로고침해주세요."
+            );
+          }
+        } else {
+          alert("결제가 취소되거나 실패했습니다.");
+        }
+      }, 500);
+
+      // URL에서 파라미터 제거
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
   }, [refreshTransactions]);
 
   // 페이지 포커스 시 자동 새로고침

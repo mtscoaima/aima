@@ -5,6 +5,8 @@ import { Send, Sparkles, X, Phone } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import SuccessModal from "@/components/SuccessModal";
+import { PaymentModal } from "@/components/PaymentModal";
+import { useBalance } from "@/contexts/BalanceContext";
 import styles from "./styles.module.css";
 
 interface Message {
@@ -25,9 +27,22 @@ interface GeneratedTemplate {
   status: "생성완료" | "전송준비" | "전송완료";
 }
 
+interface Package {
+  id: number;
+  credits: number;
+  price: number;
+  bonus: number;
+  popular?: boolean;
+}
+
 // useSearchParams를 사용하는 컴포넌트를 별도로 분리
 function TargetMarketingContent() {
   const searchParams = useSearchParams();
+  const {
+    balanceData,
+    isLoading: isLoadingCredits,
+    refreshTransactions,
+  } = useBalance();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
@@ -82,6 +97,247 @@ function TargetMarketingContent() {
 
   // 템플릿 제목 상태
   const [templateTitle, setTemplateTitle] = useState("AI 생성 콘텐츠");
+
+  // 크레딧 관련 상태
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
+  // BalanceContext에서 크레딧 정보 가져오기
+  const userCredits = balanceData.balance;
+
+  // 이미지 생성 로딩 상태 추가
+  const [isImageGenerating, setIsImageGenerating] = useState(false);
+
+  // 사용자 입력을 기반으로 템플릿 제목 생성
+  const generateTemplateTitle = React.useCallback((content: string) => {
+    const lowerContent = content.toLowerCase();
+    let title = "";
+
+    // 업종 키워드 분석
+    if (lowerContent.includes("카페") || lowerContent.includes("커피")) {
+      title += "카페 ";
+    } else if (
+      lowerContent.includes("헤어샵") ||
+      lowerContent.includes("미용실")
+    ) {
+      title += "헤어샵 ";
+    } else if (lowerContent.includes("병원") || lowerContent.includes("의원")) {
+      title += "병원 ";
+    } else if (lowerContent.includes("학원") || lowerContent.includes("교육")) {
+      title += "학원 ";
+    } else if (
+      lowerContent.includes("음식점") ||
+      lowerContent.includes("식당") ||
+      lowerContent.includes("레스토랑")
+    ) {
+      title += "음식점 ";
+    } else if (
+      lowerContent.includes("쇼핑몰") ||
+      lowerContent.includes("옷가게") ||
+      lowerContent.includes("의류")
+    ) {
+      title += "의류매장 ";
+    } else if (
+      lowerContent.includes("뷰티") ||
+      lowerContent.includes("네일") ||
+      lowerContent.includes("피부")
+    ) {
+      title += "뷰티샵 ";
+    }
+
+    // 이벤트 타입 분석
+    if (lowerContent.includes("할인") || lowerContent.includes("세일")) {
+      title += "할인 이벤트";
+    } else if (lowerContent.includes("오픈") || lowerContent.includes("개업")) {
+      title += "오픈 이벤트";
+    } else if (lowerContent.includes("무료") || lowerContent.includes("체험")) {
+      title += "무료 체험";
+    } else if (
+      lowerContent.includes("신메뉴") ||
+      lowerContent.includes("새로운")
+    ) {
+      title += "신메뉴 출시";
+    } else if (lowerContent.includes("이벤트")) {
+      title += "특별 이벤트";
+    } else {
+      title += "프로모션";
+    }
+
+    // 할인율이나 특정 혜택이 있으면 추가
+    if (lowerContent.includes("50%") || lowerContent.includes("반값")) {
+      title = title.replace("할인 이벤트", "50% 할인 이벤트");
+    } else if (lowerContent.includes("30%")) {
+      title = title.replace("할인 이벤트", "30% 할인 이벤트");
+    } else if (lowerContent.includes("20%")) {
+      title = title.replace("할인 이벤트", "20% 할인 이벤트");
+    }
+
+    return title || "AI 생성 마케팅 콘텐츠";
+  }, []);
+
+  // 타겟 분석 함수 추가
+  const analyzeTargetContent = React.useCallback(
+    (content: string) => {
+      const lowerContent = content.toLowerCase();
+
+      // 템플릿 제목 생성 및 설정
+      const generatedTitle = generateTemplateTitle(content);
+      console.log("분석된 제목:", generatedTitle, "입력 내용:", content); // 디버깅용 로그
+      setTemplateTitle(generatedTitle);
+
+      // 성별 분석
+      if (
+        lowerContent.includes("여성") ||
+        lowerContent.includes("여자") ||
+        lowerContent.includes("여성용") ||
+        lowerContent.includes("뷰티") ||
+        lowerContent.includes("미용") ||
+        lowerContent.includes("헤어샵") ||
+        lowerContent.includes("네일") ||
+        lowerContent.includes("피부")
+      ) {
+        setTargetGender("female");
+      } else if (
+        lowerContent.includes("남성") ||
+        lowerContent.includes("남자") ||
+        lowerContent.includes("남성용")
+      ) {
+        setTargetGender("male");
+      }
+
+      // 연령대 분석
+      if (
+        lowerContent.includes("10대") ||
+        lowerContent.includes("학생") ||
+        lowerContent.includes("청소년")
+      ) {
+        setTargetAge("teens");
+      } else if (
+        lowerContent.includes("20대") ||
+        lowerContent.includes("대학생") ||
+        lowerContent.includes("신입")
+      ) {
+        setTargetAge("twenties");
+      } else if (
+        lowerContent.includes("30대") ||
+        lowerContent.includes("직장인")
+      ) {
+        setTargetAge("thirties");
+      } else if (
+        lowerContent.includes("40대") ||
+        lowerContent.includes("중년")
+      ) {
+        setTargetAge("forties");
+      } else if (
+        lowerContent.includes("50대") ||
+        lowerContent.includes("시니어")
+      ) {
+        setTargetAge("fifties");
+      }
+
+      // 지역 분석
+      if (
+        lowerContent.includes("홍대") ||
+        lowerContent.includes("신촌") ||
+        lowerContent.includes("마포")
+      ) {
+        setTargetCity("seoul");
+        setTargetDistrict("mapo");
+      } else if (
+        lowerContent.includes("강남") ||
+        lowerContent.includes("역삼") ||
+        lowerContent.includes("선릉")
+      ) {
+        setTargetCity("seoul");
+        setTargetDistrict("gangnam");
+      } else if (
+        lowerContent.includes("강북") ||
+        lowerContent.includes("노원") ||
+        lowerContent.includes("도봉")
+      ) {
+        setTargetCity("seoul");
+        setTargetDistrict("gangbuk");
+      } else if (
+        lowerContent.includes("서초") ||
+        lowerContent.includes("양재") ||
+        lowerContent.includes("교대")
+      ) {
+        setTargetCity("seoul");
+        setTargetDistrict("seocho");
+      } else if (
+        lowerContent.includes("강서") ||
+        lowerContent.includes("김포공항") ||
+        lowerContent.includes("발산")
+      ) {
+        setTargetCity("seoul");
+        setTargetDistrict("gangseo");
+      } else if (
+        lowerContent.includes("부산") ||
+        lowerContent.includes("해운대") ||
+        lowerContent.includes("서면")
+      ) {
+        setTargetCity("busan");
+      } else if (
+        lowerContent.includes("대구") ||
+        lowerContent.includes("동성로")
+      ) {
+        setTargetCity("daegu");
+      }
+
+      // 카드 금액 분석
+      if (
+        lowerContent.includes("고급") ||
+        lowerContent.includes("프리미엄") ||
+        lowerContent.includes("럭셔리") ||
+        lowerContent.includes("10만원") ||
+        lowerContent.includes("100000")
+      ) {
+        setCardAmount("100000");
+      } else if (
+        lowerContent.includes("5만원") ||
+        lowerContent.includes("50000") ||
+        lowerContent.includes("중가")
+      ) {
+        setCardAmount("50000");
+      } else if (
+        lowerContent.includes("저렴") ||
+        lowerContent.includes("할인") ||
+        lowerContent.includes("특가") ||
+        lowerContent.includes("1만원") ||
+        lowerContent.includes("10000")
+      ) {
+        setCardAmount("10000");
+      }
+
+      // 시간대 분석
+      if (
+        lowerContent.includes("아침") ||
+        lowerContent.includes("오전") ||
+        lowerContent.includes("모닝") ||
+        lowerContent.includes("브런치")
+      ) {
+        setCardTimePeriod("오전");
+        setCardStartTime("08:00");
+        setCardEndTime("12:00");
+      } else if (
+        lowerContent.includes("점심") ||
+        lowerContent.includes("런치")
+      ) {
+        setCardTimePeriod("오후");
+        setCardStartTime("12:00");
+        setCardEndTime("14:00");
+      } else if (
+        lowerContent.includes("저녁") ||
+        lowerContent.includes("디너") ||
+        lowerContent.includes("나이트")
+      ) {
+        setCardTimePeriod("오후");
+        setCardStartTime("18:00");
+        setCardEndTime("22:00");
+      }
+    },
+    [generateTemplateTitle]
+  );
 
   // 시간대 변경시 시간 옵션 업데이트
   useEffect(() => {
@@ -201,36 +457,443 @@ function TargetMarketingContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevMessagesLengthRef = useRef(0);
 
-  // 초기 메시지에 대한 AI 응답 처리
+  // 예상금액 계산 함수
+  const calculateTotalCost = () => {
+    const campaignCostPerItem = 100; // 캠페인 건당 금액 (100원)
+    const maxRecipientsNum = parseInt(maxRecipients) || 0;
+    return campaignCostPerItem * maxRecipientsNum;
+  };
+
+  // 부족한 잔액 계산
+  const calculateRequiredCredits = () => {
+    const totalCost = calculateTotalCost();
+    const shortage = totalCost - userCredits;
+    return shortage > 0 ? shortage : 0;
+  };
+
+  // 크레딧 패키지 선택 처리
+  const handleCharge = async (packageInfo: Package) => {
+    try {
+      // 결제 전 현재 상태 저장
+      saveCurrentState();
+      setSelectedPackage(packageInfo);
+      setIsPaymentModalOpen(true);
+    } catch (error) {
+      console.error("패키지 선택 오류:", error);
+      alert("패키지 선택 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 권장 패키지 자동 선택 처리
+  const handleAutoSelectPackage = async () => {
+    try {
+      // 패키지 목록 가져오기
+      const response = await fetch("/api/credit-packages");
+      if (!response.ok) {
+        throw new Error("패키지 정보를 가져올 수 없습니다.");
+      }
+
+      const data = await response.json();
+      const packages = data.packages || [];
+
+      if (packages.length === 0) {
+        alert("사용 가능한 패키지가 없습니다.");
+        return;
+      }
+
+      // 필요한 크레딧 계산
+      const requiredCredits = calculateRequiredCredits();
+
+      // 필요한 크레딧보다 큰 패키지들 중에서 가장 작은 것 찾기
+      const suitablePackages = packages
+        .filter((pkg: { credits: number }) => pkg.credits >= requiredCredits)
+        .sort(
+          (a: { credits: number }, b: { credits: number }) =>
+            a.credits - b.credits
+        );
+
+      if (suitablePackages.length === 0) {
+        // 가장 큰 패키지라도 부족한 경우
+        const largestPackage = packages.sort(
+          (a: { credits: number }, b: { credits: number }) =>
+            b.credits - a.credits
+        )[0];
+        alert(
+          `최대 패키지(${largestPackage.credits.toLocaleString()}크레딧)로도 부족합니다. 더 작은 캠페인으로 진행해주세요.`
+        );
+        return;
+      }
+
+      // 가장 적합한 패키지 자동 선택
+      const recommendedPackage = suitablePackages[0];
+      const packageInfo: Package = {
+        id: recommendedPackage.id,
+        credits: recommendedPackage.credits,
+        price: recommendedPackage.price,
+        bonus: recommendedPackage.bonus_credits || 0,
+        popular: recommendedPackage.is_popular || false,
+      };
+
+      await handleCharge(packageInfo);
+    } catch (error) {
+      console.error("자동 패키지 선택 오류:", error);
+      alert("패키지 정보를 가져오는 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 결제 완료 처리
+  const handlePaymentComplete = async (packageInfo: Package) => {
+    try {
+      // 실제 최신 크레딧 정보를 API에서 다시 가져오기
+      await refreshTransactions();
+
+      alert(`${packageInfo.credits.toLocaleString()}크레딧이 충전되었습니다!`);
+
+      // 모달 닫기
+      setIsPaymentModalOpen(false);
+      setSelectedPackage(null);
+    } catch (error) {
+      console.error("결제 완료 처리 오류:", error);
+      alert("결제 완료 처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 결제 모달 닫기
+  const handleClosePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setSelectedPackage(null);
+  };
+
+  // 현재 상태 저장 (결제 전)
+  const saveCurrentState = () => {
+    const currentState = {
+      templateTitle,
+      smsTextContent,
+      currentGeneratedImage,
+      targetGender,
+      targetAge,
+      targetCity,
+      targetDistrict,
+      cardAmount,
+      cardStartTime,
+      cardEndTime,
+      cardTimePeriod,
+      maxRecipients,
+      sendPolicy,
+      validityStartDate,
+      validityEndDate,
+      showApprovalModal: true, // 결제 완료 후 발송 모달 다시 열기
+      timestamp: Date.now(),
+    };
+
+    sessionStorage.setItem(
+      "targetMarketingState",
+      JSON.stringify(currentState)
+    );
+    console.log("현재 상태 저장됨:", currentState);
+  };
+
+  // 저장된 상태 복원
+  const restoreState = React.useCallback(() => {
+    try {
+      const savedState = sessionStorage.getItem("targetMarketingState");
+      if (!savedState) return false;
+
+      const state = JSON.parse(savedState);
+
+      // 5분 이내의 상태만 복원 (결제 시간 고려)
+      if (Date.now() - state.timestamp > 5 * 60 * 1000) {
+        sessionStorage.removeItem("targetMarketingState");
+        return false;
+      }
+
+      // 상태 복원
+      setTemplateTitle(state.templateTitle || "AI 생성 콘텐츠");
+      setSmsTextContent(state.smsTextContent || "");
+      setCurrentGeneratedImage(state.currentGeneratedImage || null);
+      setTargetGender(state.targetGender || "female");
+      setTargetAge(state.targetAge || "thirties");
+      setTargetCity(state.targetCity || "seoul");
+      setTargetDistrict(state.targetDistrict || "gangnam");
+      setCardAmount(state.cardAmount || "10000");
+      setCardStartTime(state.cardStartTime || "08:00");
+      setCardEndTime(state.cardEndTime || "12:00");
+      setCardTimePeriod(state.cardTimePeriod || "오전");
+      setMaxRecipients(state.maxRecipients || "30");
+      setSendPolicy(state.sendPolicy || "realtime");
+      // validityStartDate는 읽기 전용이므로 제외
+      setValidityEndDate(state.validityEndDate || validityEndDate);
+
+      // 결제 완료 후 발송 모달 다시 열기
+      if (state.showApprovalModal) {
+        setTimeout(() => {
+          setShowApprovalModal(true);
+        }, 1000);
+      }
+
+      // 저장된 상태 제거
+      sessionStorage.removeItem("targetMarketingState");
+      console.log("상태 복원 완료:", state);
+      return true;
+    } catch (error) {
+      console.error("상태 복원 실패:", error);
+      sessionStorage.removeItem("targetMarketingState");
+      return false;
+    }
+  }, [validityEndDate]);
+
+  // 크레딧 충전 모달 열기 (권장 패키지 자동 선택)
+  const openCreditModal = () => {
+    handleAutoSelectPackage();
+  };
+
+  // 초기 메시지에 대한 AI 응답 처리 (실제 AI API 호출)
   const handleInitialResponse = React.useCallback(
     async (userMessage: string, currentMessages: Message[]) => {
       setShowTypingIndicator(true);
 
       try {
-        // AI 응답 시뮬레이션 (실제로는 API 호출)
-        const response = `"${userMessage}"에 대한 마케팅 캠페인을 만들어드리겠습니다! 어떤 타겟 고객층을 대상으로 하시나요?`;
+        // 사용자 입력 내용을 분석하여 타겟 설정
+        analyzeTargetContent(userMessage);
 
-        // 2초 후 AI 응답 추가
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // 사용자 입력 내용을 기반으로 제목 업데이트
+        const generatedTitle = generateTemplateTitle(userMessage);
+        console.log("초기 생성된 제목:", generatedTitle); // 디버깅용 로그
+        setTemplateTitle(generatedTitle);
 
-        const aiResponse: Message = {
-          id: `ai-${Date.now()}`,
+        // 스트리밍 응답을 위한 임시 메시지 생성
+        const assistantMessageId = `assistant-initial-${Date.now()}`;
+        const assistantMessage: Message = {
+          id: assistantMessageId,
           role: "assistant",
-          content: response,
+          content: "",
           timestamp: new Date(),
         };
 
-        // 현재 메시지들에 AI 응답 추가
-        const newMessages = [...currentMessages, aiResponse];
+        const initialMessages = [...currentMessages, assistantMessage];
+        setMessages(initialMessages);
 
-        setMessages(newMessages);
-        setShowTypingIndicator(false);
+        // 실제 AI API 호출
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: userMessage,
+            previousMessages: [],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("API 요청에 실패했습니다.");
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("스트림을 읽을 수 없습니다.");
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const jsonString = line.slice(6).trim();
+
+                // 더 강화된 JSON 검증 (초기 응답)
+                if (
+                  !jsonString ||
+                  jsonString.length < 10 ||
+                  jsonString === "{" ||
+                  jsonString.startsWith('{"response') ||
+                  jsonString.startsWith('{ "response') ||
+                  !jsonString.endsWith("}") ||
+                  !jsonString.includes('"type"')
+                ) {
+                  continue;
+                }
+
+                const data = JSON.parse(jsonString);
+
+                if (data.type === "text_delta") {
+                  // 첫 번째 텍스트 응답이 오면 타이핑 인디케이터 숨기기
+                  setShowTypingIndicator(false);
+
+                  // 텍스트 스트리밍 업데이트
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            content: msg.content + data.content,
+                            isImageLoading: false,
+                          }
+                        : msg
+                    )
+                  );
+                  setTimeout(() => {
+                    if (chatMessagesRef.current) {
+                      chatMessagesRef.current.scrollTop =
+                        chatMessagesRef.current.scrollHeight;
+                    }
+                  }, 50);
+                } else if (data.type === "text_replace") {
+                  setShowTypingIndicator(false);
+
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            content: data.content,
+                            isImageLoading: false,
+                          }
+                        : msg
+                    )
+                  );
+
+                  if (data.smsTextContent) {
+                    setSmsTextContent(data.smsTextContent);
+                  }
+
+                  if (data.templateData && data.templateData.title) {
+                    setTemplateTitle(data.templateData.title);
+                  }
+
+                  setTimeout(() => {
+                    if (chatMessagesRef.current) {
+                      chatMessagesRef.current.scrollTop =
+                        chatMessagesRef.current.scrollHeight;
+                    }
+                  }, 50);
+                } else if (data.type === "partial_image") {
+                  setShowTypingIndicator(false);
+                  setIsImageGenerating(true);
+
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            imageUrl: data.imageUrl,
+                            isImageLoading: true,
+                          }
+                        : msg
+                    )
+                  );
+
+                  setCurrentGeneratedImage(data.imageUrl);
+                  setTimeout(() => {
+                    if (chatMessagesRef.current) {
+                      chatMessagesRef.current.scrollTop =
+                        chatMessagesRef.current.scrollHeight;
+                    }
+                  }, 100);
+                } else if (data.type === "image_generated") {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            imageUrl: data.imageUrl,
+                            isImageLoading: false,
+                          }
+                        : msg
+                    )
+                  );
+
+                  setCurrentGeneratedImage(data.imageUrl);
+                  setIsImageGenerating(false);
+                  setTimeout(() => {
+                    if (chatMessagesRef.current) {
+                      chatMessagesRef.current.scrollTop =
+                        chatMessagesRef.current.scrollHeight;
+                    }
+                  }, 100);
+                } else if (data.type === "response_complete") {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            content: data.fullText,
+                            imageUrl: data.imageUrl || msg.imageUrl,
+                            isImageLoading: false,
+                          }
+                        : msg
+                    )
+                  );
+
+                  if (data.smsTextContent) {
+                    setSmsTextContent(data.smsTextContent);
+                  }
+
+                  if (data.imageUrl) {
+                    setCurrentGeneratedImage(data.imageUrl);
+                    setIsImageGenerating(false);
+                  }
+
+                  if (data.templateData && data.templateData.title) {
+                    setTemplateTitle(data.templateData.title);
+                  }
+
+                  if (data.imageUrl && data.templateData) {
+                    const newTemplate: GeneratedTemplate = {
+                      id: `template-${Math.random().toString(36).substr(2, 9)}`,
+                      title: data.templateData.title || templateTitle,
+                      description:
+                        data.templateData.description ||
+                        data.smsTextContent ||
+                        smsTextContent,
+                      imageUrl: data.imageUrl,
+                      createdAt: new Date(),
+                      status: "생성완료",
+                    };
+                    setTemplates((prev) => [newTemplate, ...prev]);
+                  }
+                } else if (data.type === "error") {
+                  throw new Error(data.error);
+                }
+              } catch (parseError) {
+                console.error(
+                  "JSON 파싱 오류:",
+                  parseError,
+                  "원본 라인:",
+                  line
+                );
+                continue;
+              }
+            }
+          }
+        }
       } catch (error) {
-        console.error("초기 응답 처리 중 오류:", error);
+        console.error("초기 AI 채팅 오류:", error);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id.includes("initial")
+              ? {
+                  ...msg,
+                  content:
+                    "죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.",
+                }
+              : msg
+          )
+        );
+      } finally {
         setShowTypingIndicator(false);
       }
     },
-    []
+    [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent]
   );
 
   // 클라이언트에서만 초기 데이터 설정
@@ -313,6 +976,37 @@ function TargetMarketingContent() {
     }
   }, [showTypingIndicator]);
 
+  // 페이지 로드 시 저장된 상태 복원 (결제 완료 후 돌아온 경우)
+  useEffect(() => {
+    // URL 파라미터 확인
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment");
+
+    if (paymentStatus === "success" || paymentStatus === "fail") {
+      // 결제 완료/실패 후 돌아온 경우
+      const restored = restoreState();
+      if (restored) {
+        console.log("결제 후 상태 복원 완료");
+
+        // 결제 성공 시 크레딧 잔액 새로고침
+        if (paymentStatus === "success") {
+          setTimeout(async () => {
+            await refreshTransactions(); // 크레딧 잔액 새로고침
+            alert("결제가 완료되었습니다. 크레딧이 충전되었습니다.");
+          }, 1500);
+        } else {
+          setTimeout(() => {
+            alert("결제가 취소되거나 실패했습니다.");
+          }, 1500);
+        }
+      }
+
+      // URL에서 파라미터 제거
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [refreshTransactions, restoreState]);
+
   // 템플릿 사용하기로 온 경우 처리
   useEffect(() => {
     if (!isInitialized) return;
@@ -386,6 +1080,11 @@ function TargetMarketingContent() {
       timestamp: new Date(),
     };
 
+    // 사용자 입력 내용을 기반으로 제목 업데이트
+    const generatedTitle = generateTemplateTitle(inputMessage);
+    console.log("생성된 제목:", generatedTitle); // 디버깅용 로그
+    setTemplateTitle(generatedTitle);
+
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
@@ -440,7 +1139,22 @@ function TargetMarketingContent() {
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             try {
-              const data = JSON.parse(line.slice(6));
+              const jsonString = line.slice(6).trim();
+
+              // 더 강화된 JSON 검증 (일반 메시지)
+              if (
+                !jsonString ||
+                jsonString.length < 10 ||
+                jsonString === "{" ||
+                jsonString.startsWith('{"response') ||
+                jsonString.startsWith('{ "response') ||
+                !jsonString.endsWith("}") ||
+                !jsonString.includes('"type"')
+              ) {
+                continue;
+              }
+
+              const data = JSON.parse(jsonString);
 
               if (data.type === "text_delta") {
                 // 첫 번째 텍스트 응답이 오면 타이핑 인디케이터 숨기기
@@ -483,8 +1197,12 @@ function TargetMarketingContent() {
                   setSmsTextContent(data.smsTextContent);
                 }
 
-                // 템플릿 제목 업데이트
+                // 템플릿 제목 업데이트 (API 응답에서 온 경우 - text_replace)
                 if (data.templateData && data.templateData.title) {
+                  console.log(
+                    "API에서 받은 제목 (text_replace):",
+                    data.templateData.title
+                  ); // 디버깅용 로그
                   setTemplateTitle(data.templateData.title);
                 }
 
@@ -493,6 +1211,8 @@ function TargetMarketingContent() {
               } else if (data.type === "partial_image") {
                 // 첫 번째 이미지 응답이 오면 타이핑 인디케이터 숨기기
                 setShowTypingIndicator(false);
+                // 이미지 생성 중 상태 활성화
+                setIsImageGenerating(true);
 
                 // 부분 이미지 생성 중 (미리보기)
                 setMessages((prev) =>
@@ -527,6 +1247,8 @@ function TargetMarketingContent() {
 
                 // 생성된 이미지를 우측 첨부 영역에 표시
                 setCurrentGeneratedImage(data.imageUrl);
+                // 이미지 생성 완료 시 로딩 상태 해제
+                setIsImageGenerating(false);
 
                 // 최종 이미지 생성 완료 시 스크롤
                 setTimeout(() => scrollToBottom(), 100);
@@ -558,14 +1280,28 @@ function TargetMarketingContent() {
                 // 생성된 이미지를 우측 첨부 영역에 표시
                 if (data.imageUrl) {
                   setCurrentGeneratedImage(data.imageUrl);
+                  // 이미지 생성 완료 시 로딩 상태 해제
+                  setIsImageGenerating(false);
+                }
+
+                // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
+                if (data.templateData && data.templateData.title) {
+                  console.log(
+                    "API에서 받은 제목 (response_complete):",
+                    data.templateData.title
+                  ); // 디버깅용 로그
+                  setTemplateTitle(data.templateData.title);
                 }
 
                 // 이미지가 생성된 경우 템플릿에 추가
                 if (data.imageUrl && data.templateData) {
                   const newTemplate: GeneratedTemplate = {
                     id: `template-${Math.random().toString(36).substr(2, 9)}`,
-                    title: data.templateData.title,
-                    description: data.templateData.description,
+                    title: data.templateData.title || templateTitle,
+                    description:
+                      data.templateData.description ||
+                      data.smsTextContent ||
+                      smsTextContent,
                     imageUrl: data.imageUrl,
                     createdAt: new Date(),
                     status: "생성완료",
@@ -576,7 +1312,9 @@ function TargetMarketingContent() {
                 throw new Error(data.error);
               }
             } catch (parseError) {
-              console.error("JSON 파싱 오류:", parseError);
+              console.error("JSON 파싱 오류:", parseError, "원본 라인:", line);
+              // JSON 파싱 오류가 발생한 경우 해당 라인을 무시하고 계속 진행
+              continue;
             }
           }
         }
@@ -746,6 +1484,13 @@ function TargetMarketingContent() {
       return;
     }
 
+    // 크레딧 잔액 확인
+    const requiredCredits = calculateRequiredCredits();
+    if (requiredCredits > 0) {
+      alert("크레딧이 부족합니다. 크레딧을 충전해주세요.");
+      return;
+    }
+
     setIsSubmittingApproval(true);
 
     try {
@@ -878,7 +1623,7 @@ function TargetMarketingContent() {
                 placeholder="어떤 광고를 만들고 싶나요?"
                 className={styles.chatInput}
                 rows={3}
-                disabled={isLoading}
+                disabled={isLoading || showTypingIndicator}
               />
               <button
                 onClick={handleSendMessage}
@@ -909,12 +1654,27 @@ function TargetMarketingContent() {
                       src={currentGeneratedImage}
                       alt="생성된 템플릿 이미지"
                     />
+                    {isImageGenerating && (
+                      <div className={styles.imageGeneratingOverlay}>
+                        <div className={styles.loadingSpinner}></div>
+                        <span>이미지 생성 중...</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className={styles.templateImagePlaceholder}>
                     <div className={styles.placeholderContent}>
-                      <Sparkles size={32} />
-                      <span>AI가 이미지를 생성하면 여기에 표시됩니다</span>
+                      {isImageGenerating ? (
+                        <>
+                          <div className={styles.loadingSpinner}></div>
+                          <span>AI가 이미지를 생성하고 있습니다...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={32} />
+                          <span>AI가 이미지를 생성하면 여기에 표시됩니다</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -978,7 +1738,7 @@ function TargetMarketingContent() {
                           id: `saved-${Date.now()}`,
                           title: isFromTemplate
                             ? "템플릿에서 불러온 내용"
-                            : "AI 생성 콘텐츠",
+                            : templateTitle, // 동적으로 생성된 제목 사용
                           description: smsTextContent,
                           imageUrl: currentGeneratedImage,
                           createdAt: new Date(),
@@ -1070,6 +1830,7 @@ function TargetMarketingContent() {
                       <option value="gangbuk">강북구</option>
                       <option value="gangseo">강서구</option>
                       <option value="seocho">서초구</option>
+                      <option value="mapo">마포구</option>
                     </select>
                   </div>
                 </div>
@@ -1191,7 +1952,7 @@ function TargetMarketingContent() {
           <div className={styles.costEstimationSection}>
             <div className={styles.costLabel}>예상금액</div>
             <div className={styles.costValue}>
-              <span className={styles.costAmount}>100원/</span>
+              <span className={styles.costAmount}>100크레딧/</span>
               <span className={styles.costUnit}>건</span>
             </div>
           </div>
@@ -1466,30 +2227,45 @@ function TargetMarketingContent() {
                 <div className={styles.costRow}>
                   <span>예상금액</span>
                   <span>캠페인</span>
-                  <span>100원/건</span>
+                  <span>100크레딧/건</span>
                 </div>
                 <div className={styles.costRow}>
                   <span></span>
                   <span>합계</span>
-                  <span>21,000원</span>
+                  <span>{calculateTotalCost().toLocaleString()}크레딧</span>
                 </div>
                 <div className={styles.costRow}>
                   <span></span>
                   <span>충전 잔액</span>
                   <span>
-                    <span className={styles.balanceAmount}>500</span>
-                    <span className={styles.balanceUnit}>원</span>
+                    {isLoadingCredits ? (
+                      <span className={styles.balanceAmount}>로딩 중...</span>
+                    ) : (
+                      <>
+                        <span className={styles.balanceAmount}>
+                          {userCredits.toLocaleString()}
+                        </span>
+                        <span className={styles.balanceUnit}>크레딧</span>
+                      </>
+                    )}
                   </span>
                 </div>
-                <div className={styles.costRow}>
-                  <span></span>
-                  <span className={styles.chargeNoticeText}>
-                    ⚠ 잔액을 충전해주세요.
-                  </span>
-                  <span>
-                    <button className={styles.chargeButton}>+ 충전하기</button>
-                  </span>
-                </div>
+                {calculateRequiredCredits() > 0 && (
+                  <div className={styles.costRow}>
+                    <span></span>
+                    <span className={styles.chargeNoticeText}>
+                      ⚠ 크레딧을 충전해주세요.
+                    </span>
+                    <span>
+                      <button
+                        className={styles.chargeButton}
+                        onClick={openCreditModal}
+                      >
+                        + 충전하기
+                      </button>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1528,6 +2304,22 @@ function TargetMarketingContent() {
         message="캠페인 승인 요청이 성공적으로 제출되었습니다."
         buttonText="확인"
       />
+
+      {/* 결제 모달 */}
+      <div
+        className={styles.paymentModalWrapper}
+        style={{
+          display: isPaymentModalOpen ? "block" : "none",
+          zIndex: 1010,
+        }}
+      >
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={handleClosePaymentModal}
+          packageInfo={selectedPackage}
+          onPaymentComplete={handlePaymentComplete}
+        />
+      </div>
     </div>
   );
 }

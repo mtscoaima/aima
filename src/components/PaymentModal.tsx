@@ -249,8 +249,25 @@ export function PaymentModal({
 
       const orderId = generateOrderId();
       const orderName = `크레딧 ${packageInfo.credits.toLocaleString()}개 충전`;
-      const successUrl = `${window.location.origin}/payment/success`;
-      const failUrl = `${window.location.origin}/payment/fail`;
+
+      // 현재 페이지 경로에 따라 결제 후 이동할 URL 결정
+      const currentPath = window.location.pathname;
+
+      let successUrl, failUrl;
+
+      if (currentPath.includes("/target-marketing/")) {
+        // target-marketing 페이지에서 결제한 경우
+        successUrl = `${window.location.origin}${currentPath}?payment=success`;
+        failUrl = `${window.location.origin}${currentPath}?payment=fail`;
+      } else if (currentPath.includes("/credit-management")) {
+        // credit-management 페이지에서 결제한 경우
+        successUrl = `${window.location.origin}/credit-management?payment=success`;
+        failUrl = `${window.location.origin}/credit-management?payment=fail`;
+      } else {
+        // 기타 페이지에서 결제한 경우 (기본 결제 페이지로)
+        successUrl = `${window.location.origin}/payment/success`;
+        failUrl = `${window.location.origin}/payment/fail`;
+      }
 
       // 전화번호 형식 검증 및 정리
       const formatPhoneNumber = (phone?: string) => {
