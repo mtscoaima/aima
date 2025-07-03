@@ -348,7 +348,7 @@ export async function POST(
       user_id: campaignUserId,
       type: "usage",
       amount: campaignCost,
-      description: `캠페인 실행 비용 (${campaign.name})`,
+      description: `캠페인 실행 (${campaign.name})`,
       reference_id: `campaign_usage_${campaignId}`,
       metadata: {
         campaign_id: parseInt(campaignId),

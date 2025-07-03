@@ -153,14 +153,13 @@ const CreditManagementPage = () => {
     if (filterType === "history") {
       filtered = allTransactions.filter((t) => t.type === "charge");
     } else if (filterType === "usage") {
-      // 사용 관련 트랜잭션만 포함 (usage, reserve, unreserve)
-      filtered = allTransactions.filter(
-        (t) =>
-          t.type === "usage" || t.type === "reserve" || t.type === "unreserve"
-      );
+      // 사용 관련 트랜잭션만 포함 (usage만, 예약/예약해제 제외)
+      filtered = allTransactions.filter((t) => t.type === "usage");
     } else if (filterType === "all") {
-      // 모든 트랜잭션 포함
-      filtered = allTransactions;
+      // 모든 트랜잭션 포함 (예약/예약해제 제외)
+      filtered = allTransactions.filter(
+        (t) => t.type !== "reserve" && t.type !== "unreserve"
+      );
     }
 
     // 날짜 필터 적용
@@ -487,7 +486,13 @@ const CreditManagementPage = () => {
                 </div>
               </div>
               <div className="p-4">
-                <TransactionTable transactions={allTransactions.slice(0, 5)} />
+                <TransactionTable
+                  transactions={allTransactions
+                    .filter(
+                      (t) => t.type !== "reserve" && t.type !== "unreserve"
+                    )
+                    .slice(0, 5)}
+                />
               </div>
             </div>
           </div>
