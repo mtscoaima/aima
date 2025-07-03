@@ -203,23 +203,7 @@ export default function CampaignsPage() {
         const approvedCampaign = campaigns.find((c) => c.id === campaignId);
 
         if (approvedCampaign) {
-          // 승인된 캠페인 데이터 전체 출력
-          console.log("=== 승인된 캠페인 데이터 ===");
-          console.log("캠페인 ID:", approvedCampaign.id);
-          console.log("캠페인명:", approvedCampaign.name);
-          console.log("설명:", approvedCampaign.description);
-          console.log("이전 상태:", approvedCampaign.status);
-          console.log("생성일:", approvedCampaign.created_at);
-          console.log("사용자 ID:", approvedCampaign.user_id);
-          console.log("예산:", approvedCampaign.budget);
-          console.log("대상 수신자:", approvedCampaign.total_recipients);
-          console.log("발송 수:", approvedCampaign.sent_count);
-          console.log("성공 수:", approvedCampaign.success_count);
-          console.log("실패 수:", approvedCampaign.failed_count);
-          console.log("타겟 조건:", approvedCampaign.target_criteria);
-          console.log("메시지 템플릿:", approvedCampaign.message_template);
           console.log("전체 캠페인 객체:", approvedCampaign);
-          console.log("========================");
         }
 
         // 즉시 테이블 업데이트 (네트워크 요청 없이)

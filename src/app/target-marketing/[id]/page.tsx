@@ -182,7 +182,6 @@ function TargetMarketingContent() {
 
       // 템플릿 제목 생성 및 설정
       const generatedTitle = generateTemplateTitle(content);
-      console.log("분석된 제목:", generatedTitle, "입력 내용:", content); // 디버깅용 로그
       setTemplateTitle(generatedTitle);
 
       // 성별 분석
@@ -590,7 +589,6 @@ function TargetMarketingContent() {
       "targetMarketingState",
       JSON.stringify(currentState)
     );
-    console.log("현재 상태 저장됨:", currentState);
   };
 
   // 저장된 상태 복원
@@ -633,7 +631,6 @@ function TargetMarketingContent() {
 
       // 저장된 상태 제거
       sessionStorage.removeItem("targetMarketingState");
-      console.log("상태 복원 완료:", state);
       return true;
     } catch (error) {
       console.error("상태 복원 실패:", error);
@@ -658,7 +655,6 @@ function TargetMarketingContent() {
 
         // 사용자 입력 내용을 기반으로 제목 업데이트
         const generatedTitle = generateTemplateTitle(userMessage);
-        console.log("초기 생성된 제목:", generatedTitle); // 디버깅용 로그
         setTemplateTitle(generatedTitle);
 
         // 스트리밍 응답을 위한 임시 메시지 생성
@@ -986,8 +982,6 @@ function TargetMarketingContent() {
       // 결제 완료/실패 후 돌아온 경우
       const restored = restoreState();
       if (restored) {
-        console.log("결제 후 상태 복원 완료");
-
         // 결제 성공 시 크레딧 잔액 새로고침
         if (paymentStatus === "success") {
           setTimeout(async () => {
@@ -1082,7 +1076,6 @@ function TargetMarketingContent() {
 
     // 사용자 입력 내용을 기반으로 제목 업데이트
     const generatedTitle = generateTemplateTitle(inputMessage);
-    console.log("생성된 제목:", generatedTitle); // 디버깅용 로그
     setTemplateTitle(generatedTitle);
 
     setMessages((prev) => [...prev, userMessage]);
@@ -1199,10 +1192,6 @@ function TargetMarketingContent() {
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - text_replace)
                 if (data.templateData && data.templateData.title) {
-                  console.log(
-                    "API에서 받은 제목 (text_replace):",
-                    data.templateData.title
-                  ); // 디버깅용 로그
                   setTemplateTitle(data.templateData.title);
                 }
 
@@ -1286,10 +1275,6 @@ function TargetMarketingContent() {
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
                 if (data.templateData && data.templateData.title) {
-                  console.log(
-                    "API에서 받은 제목 (response_complete):",
-                    data.templateData.title
-                  ); // 디버깅용 로그
                   setTemplateTitle(data.templateData.title);
                 }
 
