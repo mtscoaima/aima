@@ -11,7 +11,13 @@ import React, {
 import { tokenManager } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type TransactionType = "charge" | "usage" | "refund" | "penalty";
+export type TransactionType =
+  | "charge"
+  | "usage"
+  | "refund"
+  | "penalty"
+  | "reserve"
+  | "unreserve";
 
 export interface Transaction {
   id: string;
@@ -30,6 +36,8 @@ export interface Transaction {
 
 interface BalanceData {
   balance: number;
+  reservedAmount: number;
+  availableBalance: number;
   lastChargeDate: string;
   lastChargeAmount: number;
   paymentMethod: string;
@@ -49,6 +57,8 @@ interface BalanceContextType {
     metadata?: Record<string, string | number | boolean>
   ) => Promise<void>;
   calculateBalance: () => number;
+  getReservedAmount: () => number;
+  getAvailableBalance: () => number;
   getTransactionHistory: () => Transaction[];
   refreshTransactions: () => Promise<void>;
   isLoading: boolean;
@@ -58,6 +68,8 @@ const BalanceContext = createContext<BalanceContextType | undefined>(undefined);
 
 const defaultBalanceData: BalanceData = {
   balance: 0,
+  reservedAmount: 0,
+  availableBalance: 0,
   lastChargeDate: "",
   lastChargeAmount: 0,
   paymentMethod: "card",
@@ -71,6 +83,8 @@ const transactionAPI = {
   ): Promise<{
     transactions: Transaction[];
     currentBalance: number;
+    reservedAmount: number;
+    availableBalance: number;
     total: number;
   }> {
     const token = tokenManager.getAccessToken();
@@ -106,6 +120,8 @@ const transactionAPI = {
   ): Promise<{
     transaction: Transaction;
     newBalance: number;
+    reservedAmount: number;
+    availableBalance: number;
   }> {
     const token = tokenManager.getAccessToken();
     if (!token) {
@@ -191,6 +207,8 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
 
         setBalanceData({
           balance: data.currentBalance,
+          reservedAmount: data.reservedAmount,
+          availableBalance: data.availableBalance,
           lastChargeDate: lastChargeTransaction
             ? new Date(lastChargeTransaction.created_at).toLocaleString("ko-KR")
             : "",
@@ -234,6 +252,14 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
 
   const calculateBalance = (): number => {
     return balanceData.balance;
+  };
+
+  const getReservedAmount = (): number => {
+    return balanceData.reservedAmount;
+  };
+
+  const getAvailableBalance = (): number => {
+    return balanceData.availableBalance;
   };
 
   const addTransaction = async (
@@ -303,6 +329,8 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     formatCurrency,
     addTransaction,
     calculateBalance,
+    getReservedAmount,
+    getAvailableBalance,
     getTransactionHistory,
     refreshTransactions,
     isLoading,

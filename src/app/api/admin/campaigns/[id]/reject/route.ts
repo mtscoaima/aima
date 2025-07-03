@@ -121,6 +121,39 @@ export async function POST(
       );
     }
 
+    // 예약 크레딧 해제 처리
+    const campaignCost = campaign.budget || 0;
+    const campaignUserId = campaign.user_id;
+
+    if (campaignCost > 0) {
+      const unreserveTransactionData = {
+        user_id: campaignUserId,
+        type: "unreserve",
+        amount: campaignCost,
+        description: `캠페인 거부로 인한 예약 해제 (${campaign.name})`,
+        reference_id: `campaign_unreserve_reject_${campaignId}`,
+        metadata: {
+          campaign_id: parseInt(campaignId),
+          campaign_name: campaign.name,
+          unreserve_type: "campaign_rejection",
+          rejection_reason: reason.trim(),
+        },
+        status: "completed",
+      };
+
+      const { error: unreserveError } = await supabase
+        .from("transactions")
+        .insert(unreserveTransactionData);
+
+      if (unreserveError) {
+        console.error("예약 해제 오류:", unreserveError);
+        return NextResponse.json(
+          { success: false, message: "예약 해제 처리에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "캠페인이 성공적으로 거부되었습니다.",

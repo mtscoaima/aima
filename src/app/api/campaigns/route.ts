@@ -103,6 +103,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 예상 비용 계산
+    const campaignCost = campaignData.estimatedCost || 0;
+
+    // 사용 가능한 크레딧 확인
+    const { data: balanceData, error: balanceError } = await supabase
+      .from("user_balances")
+      .select("current_balance")
+      .eq("user_id", userId)
+      .single();
+
+    if (balanceError) {
+      console.error("잔액 조회 오류:", balanceError);
+      return NextResponse.json(
+        { success: false, message: "잔액 조회에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const currentBalance = balanceData?.current_balance || 0;
+
+    // 예약 크레딧 계산
+    const { data: reserveData, error: reserveError } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("type", "reserve")
+      .eq("status", "completed");
+
+    if (reserveError) {
+      console.error("예약 크레딧 조회 오류:", reserveError);
+      return NextResponse.json(
+        { success: false, message: "예약 크레딧 조회에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const reserveTotal =
+      reserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+
+    // 예약 해제 크레딧 계산
+    const { data: unreserveData, error: unreserveError } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("type", "unreserve")
+      .eq("status", "completed");
+
+    if (unreserveError) {
+      console.error("예약 해제 크레딧 조회 오류:", unreserveError);
+      return NextResponse.json(
+        { success: false, message: "예약 해제 크레딧 조회에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const unreserveTotal =
+      unreserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+    const reservedAmount = Math.max(0, reserveTotal - unreserveTotal);
+    const availableBalance = currentBalance - reservedAmount;
+
+    // 사용 가능한 크레딧 부족 검증
+    if (availableBalance < campaignCost) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `사용 가능한 크레딧이 부족합니다. 예약된 크레딧: ${reservedAmount.toLocaleString()}원, 사용 가능한 크레딧: ${availableBalance.toLocaleString()}원`,
+        },
+        { status: 400 }
+      );
+    }
+
     // 현재 시간 (KST)
     const now = new Date();
     const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString();
@@ -245,6 +316,38 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // 캠페인이 성공적으로 생성되었으면 예약 크레딧 차감
+    const reserveTransactionData = {
+      user_id: userId,
+      type: "reserve",
+      amount: campaignCost,
+      description: `캠페인 예약 (${campaign.name})`,
+      reference_id: `campaign_reserve_${newCampaign.id}`,
+      metadata: {
+        campaign_id: newCampaign.id,
+        campaign_name: campaign.name,
+        reserve_type: "campaign_approval",
+      },
+      status: "completed",
+    };
+
+    const { error: reserveTransactionError } = await supabase
+      .from("transactions")
+      .insert(reserveTransactionData);
+
+    if (reserveTransactionError) {
+      console.error("예약 크레딧 차감 오류:", reserveTransactionError);
+
+      // 캠페인 생성은 성공했으므로 경고 메시지와 함께 응답
+      return NextResponse.json({
+        success: true,
+        message:
+          "캠페인이 저장되었으나 예약 크레딧 차감에 실패했습니다. 관리자에게 문의해주세요.",
+        campaign: newCampaign,
+        warning: "예약 크레딧 차감 실패",
+      });
     }
 
     return NextResponse.json({
