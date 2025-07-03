@@ -1387,6 +1387,7 @@ function TargetMarketingContent() {
 
     // 크레딧 잔액 확인
     const requiredCredits = calculateRequiredCredits();
+
     if (requiredCredits > 0) {
       alert("크레딧이 부족합니다. 크레딧을 충전해주세요.");
       return;
@@ -1401,15 +1402,41 @@ function TargetMarketingContent() {
         return;
       }
 
+      // 실제 계산된 비용 사용
+      const totalCost = calculateTotalCost();
+      const actualMaxRecipients =
+        sendPolicy === "batch" ? adRecipientCount : parseInt(maxRecipients);
+
+      // 일괄 발송의 경우 발송 예정 날짜 계산
+      let scheduledDate = null;
+      if (sendPolicy === "batch") {
+        const today = new Date();
+        const daysToAdd =
+          batchSendDate === "오늘+3일"
+            ? 3
+            : batchSendDate === "오늘+7일"
+            ? 7
+            : 14;
+        scheduledDate = new Date(
+          today.getTime() + daysToAdd * 24 * 60 * 60 * 1000
+        );
+      }
+
       // 캠페인 데이터 준비
       const campaignData = {
         title: templateTitle, // 템플릿의 실제 제목 사용
         content: smsTextContent,
         imageUrl: currentGeneratedImage,
-        sendPolicy: sendPolicy,
-        validityStartDate: validityStartDate,
-        validityEndDate: validityEndDate,
-        maxRecipients: maxRecipients,
+        sendPolicy: sendPolicy, // 실제 선택된 발송 정책
+        validityStartDate: sendPolicy === "realtime" ? validityStartDate : null,
+        validityEndDate: sendPolicy === "realtime" ? validityEndDate : null,
+        scheduledSendDate:
+          sendPolicy === "batch"
+            ? scheduledDate?.toISOString().split("T")[0]
+            : null,
+        scheduledSendTime: sendPolicy === "batch" ? batchSendTime : null,
+        maxRecipients: actualMaxRecipients.toString(), // 실제 설정된 수신자 수
+        targetCount: sendPolicy === "batch" ? targetCount : null, // 타겟 대상자 수
         targetFilters: {
           gender: targetGender,
           ageGroup: targetAge,
@@ -1424,7 +1451,7 @@ function TargetMarketingContent() {
             period: cardTimePeriod,
           },
         },
-        estimatedCost: 21000, // 예상 금액
+        estimatedCost: totalCost, // 실제 계산된 예상 금액 사용
         templateDescription: smsTextContent, // 템플릿 설명 추가
       };
 
@@ -1452,7 +1479,6 @@ function TargetMarketingContent() {
         throw new Error(result.message || "캠페인 저장에 실패했습니다.");
       }
     } catch (error) {
-      console.error("승인 신청 오류:", error);
       alert(
         error instanceof Error
           ? error.message
@@ -1462,6 +1488,12 @@ function TargetMarketingContent() {
       setIsSubmittingApproval(false);
     }
   };
+
+  //상태 추가 (일괄 발송 관련)
+  const [batchSendDate, setBatchSendDate] = useState("오늘+3일");
+  const [batchSendTime, setBatchSendTime] = useState("00:00");
+  const [targetCount, setTargetCount] = useState(500); // 타겟 대상자 수
+  const [adRecipientCount, setAdRecipientCount] = useState(30); // 광고 수신자 수
 
   return (
     <div className={styles.targetMarketingContainer}>
@@ -1997,12 +2029,20 @@ function TargetMarketingContent() {
                     </div>
                     <div className={styles.batchContentContainer}>
                       <div className={styles.batchSelectors}>
-                        <select className={styles.batchSelect}>
-                          <option>오늘+3일</option>
-                          <option>오늘+7일</option>
-                          <option>오늘+14일</option>
+                        <select
+                          className={styles.batchSelect}
+                          value={batchSendDate}
+                          onChange={(e) => setBatchSendDate(e.target.value)}
+                        >
+                          <option value="오늘+3일">오늘+3일</option>
+                          <option value="오늘+7일">오늘+7일</option>
+                          <option value="오늘+14일">오늘+14일</option>
                         </select>
-                        <select className={styles.batchSelect}>
+                        <select
+                          className={styles.batchSelect}
+                          value={batchSendTime}
+                          onChange={(e) => setBatchSendTime(e.target.value)}
+                        >
                           {getBatchTimeOptions().map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
@@ -2013,19 +2053,30 @@ function TargetMarketingContent() {
 
                       <div className={styles.targetCountInfo}>
                         <span>타겟 대상자 수</span>
-                        <span>500명</span>
+                        <input
+                          type="number"
+                          value={targetCount}
+                          onChange={(e) =>
+                            setTargetCount(parseInt(e.target.value) || 500)
+                          }
+                          className={styles.adRecipientInput}
+                          style={{ width: "80px", textAlign: "right" }}
+                        />
+                        <span>명</span>
                       </div>
 
                       <div className={styles.adRecipientSection}>
                         <span>광고 수신자 수</span>
                         <input
-                          type="text"
-                          value="30명"
+                          type="number"
+                          value={adRecipientCount}
                           onChange={(e) =>
-                            setMaxRecipients(e.target.value.replace("명", ""))
+                            setAdRecipientCount(parseInt(e.target.value) || 30)
                           }
                           className={styles.adRecipientInput}
+                          max={targetCount}
                         />
+                        <span>명</span>
                       </div>
 
                       <p className={styles.adRecipientNotice}>

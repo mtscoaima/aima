@@ -397,9 +397,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("🔍 [TRANS_DEBUG] === 트랜잭션 삽입 실패 ===");
-      console.error("트랜잭션 생성 오류:", insertError);
-      console.error("🔍 [TRANS_DEBUG] 삽입 시도한 데이터:", transactionData);
       return NextResponse.json(
         { error: "트랜잭션 생성에 실패했습니다." },
         { status: 500 }
