@@ -10,10 +10,11 @@ const supabase = createClient(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const campaignId = params.id;
+    const { id } = await params;
+    const campaignId = id;
 
     // Authorization 헤더에서 토큰 추출
     const authHeader = request.headers.get("authorization");

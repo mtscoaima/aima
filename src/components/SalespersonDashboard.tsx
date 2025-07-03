@@ -103,7 +103,7 @@ export default function SalespersonDashboard() {
         }
       }
     },
-    [user, isInitialLoad]
+    [user, isInitialLoad, currentPage, itemsPerPage]
   );
 
   // 실시간 구독 설정
