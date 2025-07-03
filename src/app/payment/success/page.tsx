@@ -18,9 +18,16 @@ export default function PaymentSuccessPage() {
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creditInfo, setCreditInfo] = useState<CreditInfo | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [processingMessage, setProcessingMessage] =
+    useState("결제를 확인하는 중...");
 
   useEffect(() => {
-    const confirmPayment = async () => {
+    let isProcessed = false; // 중복 요청 방지
+
+    const confirmPayment = async (attempt: number = 1) => {
+      if (isProcessed) return; // 이미 처리된 경우 중단
+
       try {
         const paymentKey = searchParams.get("paymentKey");
         const orderId = searchParams.get("orderId");
@@ -28,6 +35,12 @@ export default function PaymentSuccessPage() {
 
         if (!paymentKey || !orderId || !amount) {
           throw new Error("결제 정보가 누락되었습니다.");
+        }
+
+        setRetryCount(attempt - 1);
+
+        if (attempt > 1) {
+          setProcessingMessage(`결제 승인 재시도 중... (${attempt}회차)`);
         }
 
         // 결제 승인 API 호출
@@ -60,18 +73,45 @@ export default function PaymentSuccessPage() {
           }
         }
 
+        // 일시적 오류 체크 및 재시도 로직
+        const isTemporaryError = (responseData: {
+          message?: string;
+          code?: string;
+        }) => {
+          const message = responseData.message || "";
+          return (
+            message.includes("잠시 후 다시 이용해 주시기 바랍니다") ||
+            message.includes("일시적인 오류") ||
+            message.includes("서버가 응답하지 않습니다") ||
+            response.status === 500 ||
+            response.status === 502 ||
+            response.status === 503 ||
+            response.status === 504
+          );
+        };
+
         if (!response.ok) {
-          // S008 에러 (중복 요청)는 성공으로 처리
+          // S008 에러 (중복 요청) 및 ALREADY_PROCESSED_PAYMENT 에러는 성공으로 처리
           if (
             responseData.code === "S008" ||
+            responseData.code === "ALREADY_PROCESSED_PAYMENT" ||
             (responseData.message &&
-              responseData.message.includes("기존 요청을 처리중"))
+              responseData.message.includes("기존 요청을 처리중")) ||
+            (responseData.message &&
+              responseData.message.includes("이미 처리")) ||
+            (responseData.message && responseData.message.includes("이미 승인"))
           ) {
-            // 성공 플로우로 진행하기 위해 responseData를 성공 형태로 변경
             responseData = {
               success: true,
               message: "결제가 성공적으로 처리되었습니다.",
             };
+          }
+          // 일시적 오류이고 재시도 횟수가 3회 미만인 경우 재시도
+          else if (isTemporaryError(responseData) && attempt < 3) {
+            setTimeout(() => {
+              confirmPayment(attempt + 1);
+            }, 3000);
+            return;
           } else {
             throw new Error(
               responseData.message || "결제 승인에 실패했습니다."
@@ -80,6 +120,9 @@ export default function PaymentSuccessPage() {
         }
 
         const result = responseData;
+
+        // 성공적으로 처리되었음을 표시
+        isProcessed = true;
 
         // 크레딧 정보가 있으면 저장
         if (result.creditInfo) {
@@ -105,12 +148,6 @@ export default function PaymentSuccessPage() {
           router.push("/credit-management");
         }, 5000);
       } catch (error) {
-        console.error("🔍 [DEBUG] 결제 승인 실패:", error);
-        console.error("🔍 [DEBUG] 에러 타입:", typeof error);
-        console.error(
-          "🔍 [DEBUG] 에러 메시지:",
-          error instanceof Error ? error.message : String(error)
-        );
         setError(
           error instanceof Error
             ? error.message
@@ -130,9 +167,12 @@ export default function PaymentSuccessPage() {
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            결제를 확인하는 중...
+            {processingMessage}
           </h2>
-          <p className="text-gray-600">잠시만 기다려주세요.</p>
+          <p className="text-gray-600">
+            잠시만 기다려주세요.
+            {retryCount > 0 && ` (${retryCount + 1}회차 시도)`}
+          </p>
         </div>
       </div>
     );

@@ -52,19 +52,17 @@ export async function POST(request: NextRequest) {
     const paymentData = await response.json();
 
     if (!response.ok) {
-      console.error(
-        "🔍 [DEBUG] 토스페이먼츠 결제 승인 실패:",
-        paymentData.message
-      );
-
-      return NextResponse.json(
-        {
-          error: "결제 승인에 실패했습니다.",
-          message: paymentData.message || "알 수 없는 오류",
-          code: paymentData.code,
-        },
-        { status: response.status }
-      );
+      // ALREADY_PROCESSED_PAYMENT 에러는 이미 처리된 성공적인 결제를 의미하므로 성공으로 처리
+      if (paymentData.code !== "ALREADY_PROCESSED_PAYMENT") {
+        return NextResponse.json(
+          {
+            error: "결제 승인에 실패했습니다.",
+            message: paymentData.message || "알 수 없는 오류",
+            code: paymentData.code,
+          },
+          { status: response.status }
+        );
+      }
     }
 
     let creditAmount = 0;
@@ -143,20 +141,8 @@ export async function POST(request: NextRequest) {
       }
 
       if (userError || !userData) {
-        console.error("🔍 [DEBUG] 최종 에러:", userError);
-        // 사용자를 찾을 수 없어도 결제는 성공으로 처리하고 수동으로 크레딧 추가
-        return NextResponse.json({
-          success: true,
-          payment: paymentData,
-          message: "결제가 완료되었습니다. 크레딧은 수동으로 추가됩니다.",
-          warning: "사용자 정보를 찾을 수 없어 수동 처리가 필요합니다.",
-          debugInfo: {
-            customerEmail,
-            userIdFromOrderId,
-            orderId,
-            paymentKey,
-          },
-        });
+        console.error(userError);
+        return;
       }
 
       const userId = userData.id;
@@ -166,7 +152,6 @@ export async function POST(request: NextRequest) {
         .select("count", { count: "exact", head: true });
 
       if (testError) {
-        console.error("🔍 [DEBUG] users 테이블 접근 실패:", testError);
         throw new Error(`users 테이블 접근 실패: ${testError.message}`);
       }
 
@@ -176,10 +161,7 @@ export async function POST(request: NextRequest) {
         .select("count", { count: "exact", head: true });
 
       if (transactionsTestError) {
-        console.error(
-          "🔍 [DEBUG] transactions 테이블 접근 실패:",
-          transactionsTestError
-        );
+        console.error(transactionsTestError);
         throw new Error(
           `transactions 테이블 접근 실패: ${transactionsTestError.message}`
         );
@@ -191,48 +173,55 @@ export async function POST(request: NextRequest) {
         .select("count", { count: "exact", head: true });
 
       if (balancesTestError) {
-        console.error(
-          "🔍 [DEBUG] user_balances 테이블 접근 실패:",
-          balancesTestError
-        );
+        console.error(balancesTestError);
       }
 
-      // 크레딧 충전 트랜잭션 생성
-      const transactionData = {
-        user_id: userId,
-        type: "charge" as const,
-        amount: creditAmount,
-        description: `${packageName} 충전`,
-        reference_id: paymentKey,
-        metadata: {
-          paymentKey,
-          orderId,
-          paymentAmount: amount,
-          packagePrice: amount, // 충전 내역에서 사용
-          paymentMethod: paymentData.method || "toss",
-          packageName,
-          totalCredits: creditAmount,
-        },
-        status: "completed" as const,
-      };
-
-      const { data: transaction, error: transactionError } = await supabase
+      // 이미 처리된 결제인지 확인 (중복 트랜잭션 방지)
+      const { data: existingTransaction, error: existingError } = await supabase
         .from("transactions")
-        .insert(transactionData)
-        .select()
+        .select("*")
+        .eq("reference_id", paymentKey)
+        .eq("user_id", userId)
+        .eq("type", "charge")
         .single();
 
-      if (transactionError) {
-        console.error("🔍 [DEBUG] 크레딧 트랜잭션 생성 실패:", {
-          error: transactionError,
-          code: transactionError.code,
-          message: transactionError.message,
-          details: transactionError.details,
-          hint: transactionError.hint,
-        });
-        throw new Error(
-          `크레딧 충전에 실패했습니다: ${transactionError.message}`
-        );
+      let transaction;
+
+      if (existingTransaction && !existingError) {
+        transaction = existingTransaction;
+      } else {
+        // 크레딧 충전 트랜잭션 생성
+        const transactionData = {
+          user_id: userId,
+          type: "charge" as const,
+          amount: creditAmount,
+          description: `${packageName} 충전`,
+          reference_id: paymentKey,
+          metadata: {
+            paymentKey,
+            orderId,
+            paymentAmount: amount,
+            packagePrice: amount, // 충전 내역에서 사용
+            paymentMethod: paymentData.method || "toss",
+            packageName,
+            totalCredits: creditAmount,
+          },
+          status: "completed" as const,
+        };
+
+        const { data: newTransaction, error: transactionError } = await supabase
+          .from("transactions")
+          .insert(transactionData)
+          .select()
+          .single();
+
+        if (transactionError) {
+          throw new Error(
+            `크레딧 충전에 실패했습니다: ${transactionError.message}`
+          );
+        }
+
+        transaction = newTransaction;
       }
 
       // 최종 잔액 조회
@@ -243,12 +232,12 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (balanceError) {
-        console.error("🔍 [DEBUG] 최종 잔액 조회 실패:", balanceError);
+        console.error(balanceError);
       }
 
       const newBalance = finalBalance?.current_balance || 0;
 
-      return NextResponse.json({
+      const responseData = {
         success: true,
         payment: paymentData,
         message: "결제가 성공적으로 완료되었습니다.",
@@ -260,38 +249,17 @@ export async function POST(request: NextRequest) {
           packageName,
           transaction,
         },
-      });
+      };
+
+      return NextResponse.json(responseData);
     } catch (creditError) {
-      console.error("🔍 [DEBUG] 크레딧 충전 처리 중 오류:", creditError);
+      console.error(creditError);
 
       // 크레딧 충전 실패해도 결제는 성공했으므로 성공으로 응답
       // 수동으로 크레딧을 추가할 수 있도록 정보 제공
-      return NextResponse.json({
-        success: true,
-        payment: paymentData,
-        message: "결제가 완료되었습니다. 크레딧은 수동으로 추가됩니다.",
-        warning: "자동 크레딧 충전에 실패했습니다.",
-        manualCreditInfo: {
-          creditAmount,
-          totalCredits: creditAmount,
-          packageName,
-          paymentKey,
-          orderId,
-          amount,
-        },
-      });
     }
   } catch (error) {
-    console.error("🔍 [DEBUG] 결제 승인 처리 중 오류:", error);
-    console.error("🔍 [DEBUG] 에러 타입:", typeof error);
-    console.error(
-      "🔍 [DEBUG] 에러 메시지:",
-      error instanceof Error ? error.message : String(error)
-    );
-    console.error(
-      "🔍 [DEBUG] 에러 스택:",
-      error instanceof Error ? error.stack : "No stack trace"
-    );
+    console.error(error);
 
     return NextResponse.json(
       {

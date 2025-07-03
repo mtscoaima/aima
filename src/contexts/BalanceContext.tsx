@@ -112,19 +112,21 @@ const transactionAPI = {
       throw new Error("인증 토큰이 필요합니다.");
     }
 
+    const requestBody = {
+      type,
+      amount,
+      description,
+      reference_id,
+      metadata,
+    };
+
     const response = await fetch("/api/transactions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        type,
-        amount,
-        description,
-        reference_id,
-        metadata,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -132,7 +134,9 @@ const transactionAPI = {
       throw new Error(errorData.error || "트랜잭션 생성에 실패했습니다.");
     }
 
-    return response.json();
+    const result = await response.json();
+
+    return result;
   },
 };
 
