@@ -108,6 +108,11 @@ body .main-content {
   flex-wrap: wrap;
 }
 
+/* 캠페인 현황 탭에서 액션 버튼이 없을 때 */
+.filter-and-actions:not(:has(.action-buttons-right)) {
+  justify-content: flex-start;
+}
+
 .filter-left {
   display: flex;
   align-items: center;
@@ -282,6 +287,17 @@ body .main-content {
   height: 100px;
 }
 
+/* 캠페인 현황 탭 - 7개 컬럼 레이아웃 */
+.table-container.campaign-status-tab .table-header {
+  grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1.2fr 1fr;
+}
+
+.table-container.campaign-status-tab .table-row {
+  grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1.2fr 1fr;
+  min-height: 100px;
+  height: 100px;
+}
+
 /* 테이블 행 호버 효과 */
 .table-row:hover {
   background-color: #f8f9fa;
@@ -308,6 +324,12 @@ body .main-content {
 .header-cell:nth-child(2),
 .header-cell:nth-child(3),
 .header-cell:nth-child(4) {
+  justify-content: flex-start;
+}
+
+/* 캠페인 현황 탭의 텍스트 컬럼 왼쪽 정렬 */
+.table-container.campaign-status-tab .header-cell:nth-child(1),
+.table-container.campaign-status-tab .header-cell:nth-child(2) {
   justify-content: flex-start;
 }
 
@@ -340,6 +362,16 @@ body .main-content {
 .table-cell:nth-child(3),
 .table-cell:nth-child(4) {
   justify-content: flex-start;
+}
+
+/* 캠페인 현황 탭의 텍스트 컬럼 왼쪽 정렬 */
+.table-container.campaign-status-tab .table-cell:nth-child(1),
+.table-container.campaign-status-tab .table-cell:nth-child(2) {
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .table-cell input[type="checkbox"] {
@@ -391,6 +423,43 @@ body .main-content {
 .status-text.template-rejected,
 .status-text.campaign-rejected {
   color: #858585;
+}
+
+/* 실제 캠페인 상태 색상 */
+.status-text.campaign-pending {
+  color: #ffa500; /* 주황색 - 승인대기 */
+}
+
+.status-text.campaign-approved {
+  color: #1681ff; /* 파란색 - 승인완료 */
+}
+
+.status-text.campaign-rejected {
+  color: #f00; /* 빨간색 - 승인거부 */
+}
+
+.status-text.campaign-active {
+  color: #11af22; /* 초록색 - 진행중 */
+}
+
+.status-text.campaign-paused {
+  color: #ff6b00; /* 주황색 - 일시정지 */
+}
+
+.status-text.campaign-completed {
+  color: #808080; /* 회색 - 완료 */
+}
+
+.status-text.campaign-cancelled {
+  color: #999; /* 연한 회색 - 취소 */
+}
+
+.status-text.campaign-draft {
+  color: #ccc; /* 연한 회색 - 임시저장 */
+}
+
+.status-text.campaign-unknown {
+  color: #858585; /* 기본 회색 */
 }
 
 /* 테이블 컬럼별 정렬 및 스타일 */
@@ -744,6 +813,14 @@ body .main-content {
       );
   }
 
+  .table-container.campaign-status-tab .table-header {
+    grid-template-columns: 1.8fr 1fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr;
+  }
+
+  .table-container.campaign-status-tab .table-row {
+    grid-template-columns: 1.8fr 1fr 0.8fr 0.8fr 0.8fr 1fr 0.8fr;
+  }
+
   .filter-and-actions {
     flex-direction: column;
     gap: 16px;
@@ -938,6 +1015,35 @@ body .main-content {
 
   .table-cell:nth-child(8)::before {
     content: "관리";
+  }
+
+  /* 캠페인 현황 탭 모바일 라벨 */
+  .table-container.campaign-status-tab .table-cell:nth-child(1)::before {
+    content: "캠페인명";
+  }
+
+  .table-container.campaign-status-tab .table-cell:nth-child(2)::before {
+    content: "설명";
+  }
+
+  .table-container.campaign-status-tab .table-cell:nth-child(3)::before {
+    content: "상태";
+  }
+
+  .table-container.campaign-status-tab .table-cell:nth-child(4)::before {
+    content: "대상자 수";
+  }
+
+  .table-container.campaign-status-tab .table-cell:nth-child(5)::before {
+    content: "발송 완료";
+  }
+
+  .table-container.campaign-status-tab .table-cell:nth-child(6)::before {
+    content: "예산";
+  }
+
+  .table-container.campaign-status-tab .table-cell:nth-child(7)::before {
+    content: "생성일";
   }
 
   .action-buttons-cell {
