@@ -199,13 +199,6 @@ export default function CampaignsPage() {
       );
 
       if (response.ok) {
-        // 승인된 캠페인 찾기
-        const approvedCampaign = campaigns.find((c) => c.id === campaignId);
-
-        if (approvedCampaign) {
-          console.log("전체 캠페인 객체:", approvedCampaign);
-        }
-
         // 즉시 테이블 업데이트 (네트워크 요청 없이)
         setCampaigns((prevCampaigns) =>
           prevCampaigns.map((campaign) =>

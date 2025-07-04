@@ -18,7 +18,13 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 // 트랜잭션 타입 정의
-type TransactionType = "charge" | "usage" | "refund" | "penalty";
+type TransactionType =
+  | "charge"
+  | "usage"
+  | "refund"
+  | "penalty"
+  | "reserve"
+  | "unreserve";
 
 // 시스템 설정 조회 함수
 async function getSystemSettings() {
@@ -237,6 +243,82 @@ function getUserIdFromToken(request: NextRequest): number | null {
   }
 }
 
+// 예약 크레딧 계산 함수
+async function getReservedAmount(userId: number): Promise<number> {
+  try {
+    // reserve 트랜잭션 총합
+    const { data: reserveData, error: reserveError } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("type", "reserve")
+      .eq("status", "completed");
+
+    if (reserveError) {
+      console.error("예약 크레딧 조회 오류:", reserveError);
+      return 0;
+    }
+
+    const reserveTotal =
+      reserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+
+    // unreserve 트랜잭션 총합
+    const { data: unreserveData, error: unreserveError } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("type", "unreserve")
+      .eq("status", "completed");
+
+    if (unreserveError) {
+      console.error("예약 해제 크레딧 조회 오류:", unreserveError);
+      return reserveTotal;
+    }
+
+    const unreserveTotal =
+      unreserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+
+    return Math.max(0, reserveTotal - unreserveTotal);
+  } catch (error) {
+    console.error("예약 크레딧 계산 중 오류:", error);
+    return 0;
+  }
+}
+
+// 사용 가능한 크레딧 계산 함수
+async function getAvailableBalance(userId: number): Promise<{
+  totalBalance: number;
+  reservedAmount: number;
+  availableBalance: number;
+}> {
+  try {
+    // 현재 잔액 조회
+    const { data: balanceData, error: balanceError } = await supabase
+      .from("user_balances")
+      .select("current_balance")
+      .eq("user_id", userId)
+      .single();
+
+    if (balanceError && balanceError.code !== "PGRST116") {
+      console.error("잔액 조회 오류:", balanceError);
+      return { totalBalance: 0, reservedAmount: 0, availableBalance: 0 };
+    }
+
+    const totalBalance = balanceData?.current_balance || 0;
+    const reservedAmount = await getReservedAmount(userId);
+    const availableBalance = totalBalance - reservedAmount;
+
+    return {
+      totalBalance,
+      reservedAmount,
+      availableBalance: Math.max(0, availableBalance),
+    };
+  } catch (error) {
+    console.error("사용 가능한 크레딧 계산 중 오류:", error);
+    return { totalBalance: 0, reservedAmount: 0, availableBalance: 0 };
+  }
+}
+
 // 트랜잭션 목록 조회 (GET)
 export async function GET(request: NextRequest) {
   try {
@@ -280,22 +362,14 @@ export async function GET(request: NextRequest) {
       console.error("트랜잭션 개수 조회 오류:", countError);
     }
 
-    // 현재 잔액 조회
-    const { data: balanceData, error: balanceError } = await supabase
-      .from("user_balances")
-      .select("current_balance")
-      .eq("user_id", userId)
-      .single();
-
-    if (balanceError && balanceError.code !== "PGRST116") {
-      console.error("잔액 조회 오류:", balanceError);
-    }
-
-    const currentBalance = balanceData?.current_balance || 0;
+    // 사용 가능한 크레딧 정보 조회
+    const balanceInfo = await getAvailableBalance(userId);
 
     return NextResponse.json({
       transactions: transactions || [],
-      currentBalance,
+      currentBalance: balanceInfo.totalBalance,
+      reservedAmount: balanceInfo.reservedAmount,
+      availableBalance: balanceInfo.availableBalance,
       total: count || 0,
     });
   } catch (error) {
@@ -332,7 +406,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["charge", "usage", "refund", "penalty"].includes(type)) {
+    if (
+      ![
+        "charge",
+        "usage",
+        "refund",
+        "penalty",
+        "reserve",
+        "unreserve",
+      ].includes(type)
+    ) {
       return NextResponse.json(
         { error: "유효하지 않은 트랜잭션 타입입니다." },
         { status: 400 }
@@ -346,31 +429,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 현재 잔액 조회
-    const { data: balanceData, error: balanceError } = await supabase
-      .from("user_balances")
-      .select("current_balance")
-      .eq("user_id", userId)
-      .single();
+    // 사용 가능한 크레딧 정보 조회
+    const balanceInfo = await getAvailableBalance(userId);
 
-    if (balanceError && balanceError.code !== "PGRST116") {
-      console.error("잔액 조회 오류:", balanceError);
-      return NextResponse.json(
-        { error: "잔액 조회에 실패했습니다." },
-        { status: 500 }
-      );
-    }
-
-    const currentBalance = balanceData?.current_balance || 0;
-
-    // 잔액 부족 검증 (사용/차감 트랜잭션인 경우)
+    // 잔액 부족 검증 (사용/차감/예약 트랜잭션인 경우)
     if (
       (type === "usage" || type === "penalty") &&
-      currentBalance < Math.abs(amount)
+      balanceInfo.totalBalance < Math.abs(amount)
     ) {
       return NextResponse.json(
         {
-          error: `잔액이 부족합니다. 현재 잔액: ${currentBalance.toLocaleString()}, 요청 금액: ${Math.abs(
+          error: `잔액이 부족합니다. 현재 잔액: ${balanceInfo.totalBalance.toLocaleString()}, 요청 금액: ${Math.abs(
+            amount
+          ).toLocaleString()}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 예약 트랜잭션인 경우 사용 가능한 크레딧 검증
+    if (type === "reserve" && balanceInfo.availableBalance < Math.abs(amount)) {
+      return NextResponse.json(
+        {
+          error: `사용 가능한 크레딧이 부족합니다. 사용 가능한 크레딧: ${balanceInfo.availableBalance.toLocaleString()}, 요청 금액: ${Math.abs(
             amount
           ).toLocaleString()}`,
         },
@@ -397,28 +478,14 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("🔍 [TRANS_DEBUG] === 트랜잭션 삽입 실패 ===");
-      console.error("트랜잭션 생성 오류:", insertError);
-      console.error("🔍 [TRANS_DEBUG] 삽입 시도한 데이터:", transactionData);
       return NextResponse.json(
         { error: "트랜잭션 생성에 실패했습니다." },
         { status: 500 }
       );
     }
 
-    // 업데이트된 잔액 조회
-    const { data: updatedBalanceData, error: updatedBalanceError } =
-      await supabase
-        .from("user_balances")
-        .select("current_balance")
-        .eq("user_id", userId)
-        .single();
-
-    if (updatedBalanceError) {
-      console.error("업데이트된 잔액 조회 오류:", updatedBalanceError);
-    }
-
-    const newBalance = updatedBalanceData?.current_balance || currentBalance;
+    // 업데이트된 잔액 정보 조회
+    const updatedBalanceInfo = await getAvailableBalance(userId);
 
     // usage 타입인 경우 추천 체인 리워드 처리
     let rewardTransactions: RewardTransaction[] = [];
@@ -437,7 +504,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       transaction: newTransaction,
-      newBalance,
+      newBalance: updatedBalanceInfo.totalBalance,
+      reservedAmount: updatedBalanceInfo.reservedAmount,
+      availableBalance: updatedBalanceInfo.availableBalance,
       rewardInfo:
         rewardTransactions.length > 0
           ? {

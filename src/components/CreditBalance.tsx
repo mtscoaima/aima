@@ -47,15 +47,11 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
   if (isLoading) {
     return (
       <section className="cm-balance-section">
-        <h3 className="cm-balance-title">현재 크레딧 잔액</h3>
+        <h3 className="cm-balance-title">크레딧 잔액 정보</h3>
         <div className="cm-balance-content">
           <div className="cm-balance-main">
             <span className="cm-balance-amount">로딩 중...</span>
             <span className="cm-balance-unit">크레딧</span>
-          </div>
-          <div className="cm-balance-usage">
-            <span className="cm-balance-usage-label">이번 달 사용량</span>
-            <span className="cm-balance-usage-amount">로딩 중...</span>
           </div>
         </div>
       </section>
@@ -64,14 +60,18 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
 
   return (
     <section className="cm-balance-section">
-      <h3 className="cm-balance-title">현재 크레딧 잔액</h3>
+      <h3 className="cm-balance-title">크레딧 잔액 정보</h3>
       <div className="cm-balance-content">
+        {/* 전체 크레딧 잔액 */}
         <div className="cm-balance-main">
           <span className="cm-balance-amount">
             {currentBalance.toLocaleString()}
           </span>
           <span className="cm-balance-unit">크레딧</span>
+          <span className="cm-balance-label">전체 잔액</span>
         </div>
+
+        {/* 이번 달 사용량 */}
         <div className="cm-balance-usage">
           <span className="cm-balance-usage-label">이번 달 사용량</span>
           <span className="cm-balance-usage-amount">

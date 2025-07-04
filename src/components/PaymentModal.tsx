@@ -62,6 +62,7 @@ interface PaymentModalProps {
   onClose: () => void;
   packageInfo: Package | null;
   onPaymentComplete: (packageInfo: Package) => void;
+  redirectUrl?: string; // 결제 완료 후 리디렉션할 URL
 }
 
 interface UserInfo {
@@ -75,6 +76,7 @@ export function PaymentModal({
   isOpen,
   onClose,
   packageInfo,
+  redirectUrl,
 }: PaymentModalProps) {
   const [step, setStep] = useState(1);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
@@ -236,8 +238,16 @@ export function PaymentModal({
       const orderName = `크레딧 ${packageInfo.credits.toLocaleString()}개 충전`;
 
       // 모든 결제를 payment/success 페이지로 통일하여 결제 승인 API 호출 보장
-      const successUrl = `${window.location.origin}/payment/success`;
-      const failUrl = `${window.location.origin}/payment/fail`;
+      // 리디렉션 URL 정보를 쿼리 파라미터로 전달
+      const redirectParam = redirectUrl
+        ? `redirectUrl=${encodeURIComponent(redirectUrl)}`
+        : "";
+      const successUrl = `${window.location.origin}/payment/success${
+        redirectParam ? `?${redirectParam}` : ""
+      }`;
+      const failUrl = `${window.location.origin}/payment/fail${
+        redirectParam ? `?${redirectParam}` : ""
+      }`;
 
       // 전화번호 형식 검증 및 정리
       const formatPhoneNumber = (phone?: string) => {

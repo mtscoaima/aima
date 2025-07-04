@@ -13,8 +13,12 @@ interface CreateCampaignRequest {
   content: string;
   imageUrl: string;
   sendPolicy: "realtime" | "batch";
-  validityPeriod?: string;
+  validityStartDate?: string;
+  validityEndDate?: string;
+  scheduledSendDate?: string; // 일괄 발송 날짜
+  scheduledSendTime?: string; // 일괄 발송 시간
   maxRecipients: string;
+  targetCount?: number; // 타겟 대상자 수
   targetFilters: {
     gender: string;
     ageGroup: string;
@@ -37,6 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     // Authorization 헤더에서 토큰 추출
     const authHeader = request.headers.get("authorization");
+
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         { success: false, message: "인증 토큰이 필요합니다." },
@@ -75,7 +80,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 사용자 권한 확인 (USER 또는 ADVERTISER 역할만 캠페인 생성 가능)
     if (user.role !== "USER" && user.role !== "ADVERTISER") {
       return NextResponse.json(
         { success: false, message: "캠페인 생성 권한이 없습니다." },
@@ -87,6 +91,7 @@ export async function POST(request: NextRequest) {
     const campaignData: CreateCampaignRequest = await request.json();
 
     // 필수 필드 검증
+
     if (
       !campaignData.content ||
       !campaignData.imageUrl ||
@@ -98,32 +103,104 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 예상 비용 계산
+    const campaignCost = campaignData.estimatedCost || 0;
+
+    // 사용 가능한 크레딧 확인
+    const { data: balanceData, error: balanceError } = await supabase
+      .from("user_balances")
+      .select("current_balance")
+      .eq("user_id", userId)
+      .single();
+
+    if (balanceError) {
+      console.error("잔액 조회 오류:", balanceError);
+      return NextResponse.json(
+        { success: false, message: "잔액 조회에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const currentBalance = balanceData?.current_balance || 0;
+
+    // 예약 크레딧 계산
+    const { data: reserveData, error: reserveError } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("type", "reserve")
+      .eq("status", "completed");
+
+    if (reserveError) {
+      console.error("예약 크레딧 조회 오류:", reserveError);
+      return NextResponse.json(
+        { success: false, message: "예약 크레딧 조회에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const reserveTotal =
+      reserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+
+    // 예약 해제 크레딧 계산
+    const { data: unreserveData, error: unreserveError } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", userId)
+      .eq("type", "unreserve")
+      .eq("status", "completed");
+
+    if (unreserveError) {
+      console.error("예약 해제 크레딧 조회 오류:", unreserveError);
+      return NextResponse.json(
+        { success: false, message: "예약 해제 크레딧 조회에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    const unreserveTotal =
+      unreserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+    const reservedAmount = Math.max(0, reserveTotal - unreserveTotal);
+    const availableBalance = currentBalance - reservedAmount;
+
+    // 사용 가능한 크레딧 부족 검증
+    if (availableBalance < campaignCost) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `사용 가능한 크레딧이 부족합니다. 예약된 크레딧: ${reservedAmount.toLocaleString()}원, 사용 가능한 크레딧: ${availableBalance.toLocaleString()}원`,
+        },
+        { status: 400 }
+      );
+    }
+
     // 현재 시간 (KST)
     const now = new Date();
     const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString();
 
     // 먼저 message_template 생성
+    const templateData = {
+      user_id: userId,
+      name: campaignData.title || "AI 생성 캠페인",
+      content: campaignData.content,
+      image_url: campaignData.imageUrl,
+      category: "AI_GENERATED",
+      is_ai_generated: true,
+      ai_model: "gpt-4",
+      is_active: true,
+      usage_count: 0,
+      created_at: kstTime,
+      updated_at: kstTime,
+      is_private: false,
+    };
+
     const { data: messageTemplate, error: templateError } = await supabase
       .from("message_templates")
-      .insert({
-        user_id: userId,
-        name: campaignData.title || "AI 생성 캠페인",
-        content: campaignData.content,
-        image_url: campaignData.imageUrl,
-        category: "AI_GENERATED",
-        is_ai_generated: true,
-        ai_model: "gpt-4",
-        is_active: true,
-        usage_count: 0,
-        created_at: kstTime,
-        updated_at: kstTime,
-        is_private: false,
-      })
+      .insert(templateData)
       .select()
       .single();
 
     if (templateError) {
-      console.error("템플릿 저장 오류:", templateError);
       return NextResponse.json(
         { success: false, message: "템플릿 저장에 실패했습니다." },
         { status: 500 }
@@ -134,8 +211,14 @@ export async function POST(request: NextRequest) {
     const targetCriteria = {
       ...campaignData.targetFilters,
       sendPolicy: campaignData.sendPolicy,
-      validityPeriod: campaignData.validityPeriod,
+      validityStartDate: campaignData.validityStartDate,
+      validityEndDate: campaignData.validityEndDate,
+      scheduledSendDate: campaignData.scheduledSendDate,
+      scheduledSendTime: campaignData.scheduledSendTime,
+      targetCount: campaignData.targetCount,
       maxRecipients: parseInt(campaignData.maxRecipients) || 30,
+      templateId: messageTemplate.id, // 템플릿 ID 저장
+      templateTitle: campaignData.title || messageTemplate.name, // 템플릿 제목 저장
     };
 
     // description을 템플릿 설명의 첫 문장으로 설정
@@ -145,6 +228,39 @@ export async function POST(request: NextRequest) {
       return sentences[0] || text;
     };
 
+    // 발송 시작 날짜 결정 (실시간: validityStartDate, 일괄: scheduledSendDate)
+    let scheduleStartDate = null;
+    if (
+      campaignData.sendPolicy === "realtime" &&
+      campaignData.validityStartDate
+    ) {
+      scheduleStartDate = new Date(
+        campaignData.validityStartDate
+      ).toISOString();
+    } else if (
+      campaignData.sendPolicy === "batch" &&
+      campaignData.scheduledSendDate
+    ) {
+      scheduleStartDate = new Date(
+        campaignData.scheduledSendDate
+      ).toISOString();
+    }
+
+    // 발송 종료 날짜 결정 (실시간 발송만, 일괄 발송은 당일 완료)
+    let scheduleEndDate = null;
+    if (
+      campaignData.sendPolicy === "realtime" &&
+      campaignData.validityEndDate
+    ) {
+      scheduleEndDate = new Date(campaignData.validityEndDate).toISOString();
+    } else if (
+      campaignData.sendPolicy === "batch" &&
+      campaignData.scheduledSendDate
+    ) {
+      // 일괄 발송은 같은 날에 완료
+      scheduleEndDate = new Date(campaignData.scheduledSendDate).toISOString();
+    }
+
     // 캠페인 데이터 준비 (실제 스키마에 맞게)
     const campaign = {
       user_id: userId,
@@ -152,19 +268,25 @@ export async function POST(request: NextRequest) {
       description: getFirstSentence(
         campaignData.templateDescription || campaignData.content
       ), // 템플릿 설명의 첫 문장 사용
-      template_id: messageTemplate.id,
+      template_id: messageTemplate.id, // 템플릿 ID 추가
       status: "PENDING_APPROVAL", // 승인 대기 상태
       total_recipients: parseInt(campaignData.maxRecipients) || 30,
+      sent_count: 0, // 기본값
+      success_count: 0, // 기본값
+      failed_count: 0, // 기본값
       budget: campaignData.estimatedCost || 0,
       target_criteria: targetCriteria,
       message_template: campaignData.content,
-      schedule_start_date: campaignData.validityPeriod
-        ? new Date(campaignData.validityPeriod).toISOString()
-        : null,
+      schedule_start_date: scheduleStartDate,
+      schedule_end_date: scheduleEndDate,
       schedule_send_time_start:
-        campaignData.targetFilters.cardTime.startTime + ":00",
+        campaignData.sendPolicy === "batch" && campaignData.scheduledSendTime
+          ? campaignData.scheduledSendTime + ":00"
+          : campaignData.targetFilters.cardTime.startTime + ":00",
       schedule_send_time_end:
-        campaignData.targetFilters.cardTime.endTime + ":00",
+        campaignData.sendPolicy === "batch" && campaignData.scheduledSendTime
+          ? campaignData.scheduledSendTime + ":00"
+          : campaignData.targetFilters.cardTime.endTime + ":00",
       schedule_timezone: "Asia/Seoul",
       schedule_days_of_week: [1, 2, 3, 4, 5, 6, 7], // 모든 요일
       created_at: kstTime,
@@ -179,8 +301,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("캠페인 저장 오류:", insertError);
-
       // 템플릿 삭제 (롤백)
       await supabase
         .from("message_templates")
@@ -188,9 +308,46 @@ export async function POST(request: NextRequest) {
         .eq("id", messageTemplate.id);
 
       return NextResponse.json(
-        { success: false, message: "캠페인 저장에 실패했습니다." },
+        {
+          success: false,
+          message: `캠페인 저장에 실패했습니다: ${insertError.message}`,
+          error: insertError.code,
+          details: insertError.details,
+        },
         { status: 500 }
       );
+    }
+
+    // 캠페인이 성공적으로 생성되었으면 예약 크레딧 차감
+    const reserveTransactionData = {
+      user_id: userId,
+      type: "reserve",
+      amount: campaignCost,
+      description: `캠페인 예약 (${campaign.name})`,
+      reference_id: `campaign_reserve_${newCampaign.id}`,
+      metadata: {
+        campaign_id: newCampaign.id,
+        campaign_name: campaign.name,
+        reserve_type: "campaign_approval",
+      },
+      status: "completed",
+    };
+
+    const { error: reserveTransactionError } = await supabase
+      .from("transactions")
+      .insert(reserveTransactionData);
+
+    if (reserveTransactionError) {
+      console.error("예약 크레딧 차감 오류:", reserveTransactionError);
+
+      // 캠페인 생성은 성공했으므로 경고 메시지와 함께 응답
+      return NextResponse.json({
+        success: true,
+        message:
+          "캠페인이 저장되었으나 예약 크레딧 차감에 실패했습니다. 관리자에게 문의해주세요.",
+        campaign: newCampaign,
+        warning: "예약 크레딧 차감 실패",
+      });
     }
 
     return NextResponse.json({
@@ -198,8 +355,7 @@ export async function POST(request: NextRequest) {
       message: "캠페인이 성공적으로 저장되었습니다.",
       campaign: newCampaign,
     });
-  } catch (error) {
-    console.error("캠페인 생성 오류:", error);
+  } catch {
     return NextResponse.json(
       { success: false, message: "서버 오류가 발생했습니다." },
       { status: 500 }
