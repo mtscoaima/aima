@@ -93,6 +93,11 @@ function TargetMarketingContent() {
   // 템플릿 제목 상태
   const [templateTitle, setTemplateTitle] = useState("AI 생성 콘텐츠");
 
+  // 기존 템플릿 ID 상태 (템플릿 사용하기로 온 경우)
+  const [existingTemplateId, setExistingTemplateId] = useState<number | null>(
+    null
+  );
+
   // 크레딧 관련 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
@@ -1017,6 +1022,11 @@ function TargetMarketingContent() {
           );
           setIsFromTemplate(true);
 
+          // 기존 템플릿 ID 설정
+          if (templateData.id) {
+            setExistingTemplateId(templateData.id);
+          }
+
           // localStorage에서 템플릿 데이터 제거
           localStorage.removeItem("selectedTemplate");
         } catch (error) {
@@ -1439,6 +1449,7 @@ function TargetMarketingContent() {
         scheduledSendTime: sendPolicy === "batch" ? batchSendTime : null,
         maxRecipients: actualMaxRecipients.toString(), // 실제 설정된 수신자 수
         targetCount: sendPolicy === "batch" ? targetCount : null, // 타겟 대상자 수
+        existingTemplateId: existingTemplateId, // 기존 템플릿 ID 전달
         targetFilters: {
           gender: targetGender,
           ageGroup: targetAge,

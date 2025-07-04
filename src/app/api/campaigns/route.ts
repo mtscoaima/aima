@@ -19,6 +19,7 @@ interface CreateCampaignRequest {
   scheduledSendTime?: string; // 일괄 발송 시간
   maxRecipients: string;
   targetCount?: number; // 타겟 대상자 수
+  existingTemplateId?: number; // 기존 템플릿 ID (템플릿 사용하기로 온 경우)
   targetFilters: {
     gender: string;
     ageGroup: string;
@@ -178,33 +179,63 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString();
 
-    // 먼저 message_template 생성
-    const templateData = {
-      user_id: userId,
-      name: campaignData.title || "AI 생성 캠페인",
-      content: campaignData.content,
-      image_url: campaignData.imageUrl,
-      category: "AI_GENERATED",
-      is_ai_generated: true,
-      ai_model: "gpt-4",
-      is_active: true,
-      usage_count: 0,
-      created_at: kstTime,
-      updated_at: kstTime,
-      is_private: false,
-    };
+    let messageTemplate;
 
-    const { data: messageTemplate, error: templateError } = await supabase
-      .from("message_templates")
-      .insert(templateData)
-      .select()
-      .single();
+    // 기존 템플릿 ID가 있으면 기존 템플릿 사용, 없으면 새로운 템플릿 생성
+    if (campaignData.existingTemplateId) {
+      // 기존 템플릿 사용
+      const { data: existingTemplate, error: existingTemplateError } =
+        await supabase
+          .from("message_templates")
+          .select("*")
+          .eq("id", campaignData.existingTemplateId)
+          .single();
 
-    if (templateError) {
-      return NextResponse.json(
-        { success: false, message: "템플릿 저장에 실패했습니다." },
-        { status: 500 }
-      );
+      if (existingTemplateError || !existingTemplate) {
+        return NextResponse.json(
+          { success: false, message: "기존 템플릿을 찾을 수 없습니다." },
+          { status: 404 }
+        );
+      }
+
+      messageTemplate = existingTemplate;
+
+      // 기존 템플릿의 사용 횟수 증가
+      await supabase
+        .from("message_templates")
+        .update({ usage_count: (existingTemplate.usage_count || 0) + 1 })
+        .eq("id", campaignData.existingTemplateId);
+    } else {
+      // 새로운 템플릿 생성
+      const templateData = {
+        user_id: userId,
+        name: campaignData.title || "AI 생성 캠페인",
+        content: campaignData.content,
+        image_url: campaignData.imageUrl,
+        category: "AI_GENERATED",
+        is_ai_generated: true,
+        ai_model: "gpt-4",
+        is_active: true,
+        usage_count: 0,
+        created_at: kstTime,
+        updated_at: kstTime,
+        is_private: false,
+      };
+
+      const { data: newTemplate, error: templateError } = await supabase
+        .from("message_templates")
+        .insert(templateData)
+        .select()
+        .single();
+
+      if (templateError) {
+        return NextResponse.json(
+          { success: false, message: "템플릿 저장에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+
+      messageTemplate = newTemplate;
     }
 
     // 타겟 조건 및 추가 설정을 포함한 JSON 데이터 준비
@@ -301,11 +332,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      // 템플릿 삭제 (롤백)
-      await supabase
-        .from("message_templates")
-        .delete()
-        .eq("id", messageTemplate.id);
+      // 새로운 템플릿을 생성한 경우에만 롤백 (기존 템플릿은 삭제하지 않음)
+      if (!campaignData.existingTemplateId) {
+        await supabase
+          .from("message_templates")
+          .delete()
+          .eq("id", messageTemplate.id);
+      }
 
       return NextResponse.json(
         {
