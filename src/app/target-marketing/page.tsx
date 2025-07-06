@@ -355,7 +355,7 @@ export default function TargetMarketingPage() {
       // 새로운 이미지가 선택된 경우 업로드
       if (selectedImageFile) {
         const formData = new FormData();
-        formData.append("image", selectedImageFile);
+        formData.append("file", selectedImageFile);
 
         const uploadResponse = await fetch("/api/templates/upload-image", {
           method: "POST",
@@ -367,7 +367,7 @@ export default function TargetMarketingPage() {
 
         if (uploadResponse.ok) {
           const uploadData = await uploadResponse.json();
-          imageUrl = uploadData.imageUrl;
+          imageUrl = uploadData.fileUrl;
         } else {
           throw new Error("이미지 업로드 실패");
         }
@@ -406,6 +406,33 @@ export default function TargetMarketingPage() {
 
         // 템플릿 목록 새로고침
         fetchTemplates(selectedCategory);
+      } else if (response.status === 403) {
+        // 권한이 없는 경우 새로운 템플릿 생성
+        const createResponse = await fetch("/api/templates", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: editFormData.name,
+            content: editFormData.content,
+            category: editFormData.category,
+            image_url: imageUrl,
+            is_private: true, // 항상 비공개로 생성
+          }),
+        });
+
+        if (createResponse.ok) {
+          handleCloseEditModal();
+          alert("다른 사용자의 템플릿이므로 새로운 템플릿으로 생성되었습니다!");
+
+          // 템플릿 목록 새로고침
+          fetchTemplates(selectedCategory);
+        } else {
+          const errorData = await createResponse.json();
+          throw new Error(errorData.message || "새 템플릿 생성 실패");
+        }
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "템플릿 수정 실패");
@@ -438,7 +465,7 @@ export default function TargetMarketingPage() {
       // 이미지가 선택된 경우 업로드
       if (selectedImageFile) {
         const formData = new FormData();
-        formData.append("image", selectedImageFile);
+        formData.append("file", selectedImageFile);
 
         const uploadResponse = await fetch("/api/templates/upload-image", {
           method: "POST",
@@ -450,7 +477,7 @@ export default function TargetMarketingPage() {
 
         if (uploadResponse.ok) {
           const uploadData = await uploadResponse.json();
-          imageUrl = uploadData.imageUrl;
+          imageUrl = uploadData.fileUrl;
         } else {
           console.warn("이미지 업로드 실패, 기본 이미지 사용");
         }
