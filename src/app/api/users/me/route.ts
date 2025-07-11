@@ -33,6 +33,8 @@ interface UpdateUserRequest {
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
   optOutNumber?: string;
+  email?: string;
+  marketingConsent?: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -102,7 +104,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from("users")
       .select(
-        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status"
+        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status, agree_marketing, agreement_info"
       )
       .eq("id", userId)
       .single();
@@ -227,6 +229,7 @@ export async function GET(request: NextRequest) {
       updatedAt: user.updated_at,
       lastLoginAt: user.last_login_at,
       approval_status: user.approval_status,
+      marketingConsent: user.agree_marketing || false,
       companyInfo: user.company_info,
       taxInvoiceInfo: user.tax_invoice_info,
       documents:
@@ -338,6 +341,24 @@ export async function PUT(request: NextRequest) {
     if (updateData.name) updateFields.name = updateData.name;
     if (updateData.phoneNumber)
       updateFields.phone_number = updateData.phoneNumber;
+    if (updateData.email) updateFields.email = updateData.email;
+    if (updateData.marketingConsent !== undefined) {
+      updateFields.agree_marketing = updateData.marketingConsent;
+
+      // agreement_info도 함께 업데이트
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("agreement_info")
+        .eq("id", userId)
+        .single();
+
+      const currentAgreementInfo = currentUser?.agreement_info || {};
+      updateFields.agreement_info = {
+        ...currentAgreementInfo,
+        marketing: updateData.marketingConsent,
+        agreedAt: new Date().toISOString(),
+      };
+    }
 
     // 기업 정보가 있는 경우 JSON 객체로 업데이트
     const companyFields = {

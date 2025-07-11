@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatKSTDateTime } from "@/lib/utils";
-import { getUserInfo, UserInfoResponse } from "@/lib/api";
+import { getUserInfo, UserInfoResponse, updateUserInfo } from "@/lib/api";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 
 // 회원정보 데이터 타입
@@ -14,6 +14,7 @@ interface UserProfileData {
   phoneNumber: string;
   joinDate: string;
   lastLoginDate?: string;
+  marketingConsent?: boolean;
 
   // 기업 정보
   companyName?: string;
@@ -44,10 +45,22 @@ interface UserProfileData {
   [key: string]: string | boolean | object | undefined;
 }
 
+// 수정 가능한 필드들을 위한 타입
+interface EditableUserData {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  marketingConsent: boolean;
+}
+
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 모달 상태 관리
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 사용자 프로필 데이터
   const [userData, setUserData] = useState<UserProfileData>({
@@ -56,6 +69,7 @@ export default function ProfilePage() {
     phoneNumber: "",
     joinDate: "",
     lastLoginDate: "",
+    marketingConsent: false,
     companyName: "아이마테크놀로지",
     representativeName: "김대표",
     businessNumber: "123-45-67890",
@@ -79,6 +93,14 @@ export default function ProfilePage() {
     },
   });
 
+  // 수정 가능한 필드들의 상태
+  const [editableData, setEditableData] = useState<EditableUserData>({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    marketingConsent: false,
+  });
+
   // 사용자 정보 로드
   useEffect(() => {
     const loadUserData = async () => {
@@ -99,6 +121,7 @@ export default function ProfilePage() {
           lastLoginDate: userInfo.lastLoginAt
             ? new Date(userInfo.lastLoginAt).toLocaleString("ko-KR")
             : "",
+          marketingConsent: userInfo.marketingConsent || false,
           // 기업 정보
           companyName: userInfo.companyInfo?.companyName || "아이마테크놀로지",
           representativeName: userInfo.companyInfo?.ceoName || "김대표",
@@ -144,6 +167,15 @@ export default function ProfilePage() {
         };
 
         setUserData(profileData);
+
+        // 수정 가능한 필드들 초기화
+        setEditableData({
+          name: profileData.name,
+          email: profileData.email,
+          phoneNumber: profileData.phoneNumber,
+          marketingConsent: profileData.marketingConsent || false,
+        });
+
         setError(null);
       } catch (err) {
         console.error("사용자 정보 로드 실패:", err);
@@ -157,6 +189,81 @@ export default function ProfilePage() {
       loadUserData();
     }
   }, [user, authLoading]);
+
+  // 모달 열기
+  const handleEditClick = () => {
+    setEditableData({
+      name: userData.name,
+      email: userData.email,
+      phoneNumber: userData.phoneNumber,
+      marketingConsent: userData.marketingConsent || false,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // 모달 닫기
+  const handleModalClose = () => {
+    setIsEditModalOpen(false);
+    setEditableData({
+      name: userData.name,
+      email: userData.email,
+      phoneNumber: userData.phoneNumber,
+      marketingConsent: userData.marketingConsent || false,
+    });
+  };
+
+  // 수정 가능한 필드 값 변경
+  const handleEditableDataChange = (
+    field: keyof EditableUserData,
+    value: string | boolean
+  ) => {
+    setEditableData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // 저장 처리
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+
+      // 입력 검증
+      if (!editableData.name.trim()) {
+        alert("이름을 입력해주세요.");
+        return;
+      }
+      if (!editableData.email.trim()) {
+        alert("이메일을 입력해주세요.");
+        return;
+      }
+      if (!editableData.phoneNumber.trim()) {
+        alert("휴대폰 번호를 입력해주세요.");
+        return;
+      }
+
+      // 실제 API 호출로 사용자 정보 업데이트
+      await updateUserInfo(editableData);
+
+      // 로컬 상태 업데이트
+      setUserData((prev) => ({
+        ...prev,
+        ...editableData,
+      }));
+
+      console.log("저장 완료:", editableData);
+
+      // 성공 메시지 표시 (실제 구현에서는 toast나 알림으로 표시)
+      alert("회원정보가 성공적으로 수정되었습니다.");
+
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error("회원정보 수정 실패:", error);
+      alert("회원정보 수정에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // 로딩 중이거나 인증되지 않은 경우
   if (authLoading || isLoading) {
@@ -237,10 +344,7 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-black">회원정보관리</h2>
             <button
-              onClick={() => {
-                // 회원정보 수정 기능 구현 예정
-                console.log("회원정보 수정 클릭");
-              }}
+              onClick={handleEditClick}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 text-sm font-medium"
             >
               회원정보 수정
@@ -427,6 +531,131 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* 회원정보 수정 모달 */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">
+                  회원정보 수정
+                </h2>
+                <button
+                  onClick={handleModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* 개인정보 섹션 */}
+                <div>
+                  <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+                    개인정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        이름 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editableData.name}
+                        onChange={(e) =>
+                          handleEditableDataChange("name", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="이름을 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        이메일 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={editableData.email}
+                        onChange={(e) =>
+                          handleEditableDataChange("email", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="이메일을 입력하세요"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        휴대폰 번호 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={editableData.phoneNumber}
+                        onChange={(e) =>
+                          handleEditableDataChange(
+                            "phoneNumber",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="휴대폰 번호를 입력하세요"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 마케팅 정보 수신 동의 */}
+                  <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editableData.marketingConsent}
+                        onChange={(e) =>
+                          handleEditableDataChange(
+                            "marketingConsent",
+                            e.target.checked
+                          )
+                        }
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        마케팅 정보 수신에 동의합니다.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handleModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "저장 중..." : "저장"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdvertiserLoginRequiredGuard>
   );

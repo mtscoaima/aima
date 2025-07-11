@@ -102,6 +102,7 @@ export interface UserInfoResponse {
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
+  marketingConsent?: boolean;
   companyInfo?: {
     companyName?: string;
     ceoName?: string;
@@ -142,6 +143,8 @@ export interface UpdateUserRequest {
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
   optOutNumber?: string;
+  email?: string;
+  marketingConsent?: boolean;
 }
 
 export interface UpdateUserResponse {
