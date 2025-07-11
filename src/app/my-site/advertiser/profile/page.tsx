@@ -8,8 +8,10 @@ import {
   UserInfoResponse,
   updateUserInfo,
   changePassword,
+  withdrawUser,
 } from "@/lib/api";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
+import { useRouter } from "next/navigation";
 
 // 회원정보 데이터 타입
 interface UserProfileData {
@@ -59,13 +61,15 @@ interface EditableUserData {
 }
 
 export default function ProfilePage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // 모달 상태 관리
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // 사용자 프로필 데이터
@@ -121,6 +125,31 @@ export default function ProfilePage() {
     confirmPassword: "",
     general: "",
   });
+
+  // 회원 탈퇴 관련 상태
+  const [withdrawalData, setWithdrawalData] = useState({
+    reason: "",
+    customReason: "",
+    password: "",
+    confirmText: "",
+  });
+
+  const [withdrawalErrors, setWithdrawalErrors] = useState({
+    reason: "",
+    password: "",
+    confirmText: "",
+    general: "",
+  });
+
+  // 탈퇴 사유 옵션
+  const withdrawalReasons = [
+    { value: "service_dissatisfaction", label: "서비스 불만족" },
+    { value: "lack_of_use", label: "사용 빈도 부족" },
+    { value: "personal_reasons", label: "개인적인 사유" },
+    { value: "business_closure", label: "사업 종료" },
+    { value: "cost_burden", label: "비용 부담" },
+    { value: "other", label: "기타" },
+  ];
 
   // 사용자 정보 로드
   useEffect(() => {
@@ -499,6 +528,197 @@ export default function ProfilePage() {
     }
   };
 
+  // 회원 탈퇴 모달 열기
+  const handleWithdrawalClick = () => {
+    setWithdrawalData({
+      reason: "",
+      customReason: "",
+      password: "",
+      confirmText: "",
+    });
+    setWithdrawalErrors({
+      reason: "",
+      password: "",
+      confirmText: "",
+      general: "",
+    });
+    setIsWithdrawalModalOpen(true);
+  };
+
+  // 회원 탈퇴 모달 닫기
+  const handleWithdrawalModalClose = () => {
+    setIsWithdrawalModalOpen(false);
+    setWithdrawalData({
+      reason: "",
+      customReason: "",
+      password: "",
+      confirmText: "",
+    });
+    setWithdrawalErrors({
+      reason: "",
+      password: "",
+      confirmText: "",
+      general: "",
+    });
+  };
+
+  // 회원 탈퇴 데이터 입력 처리
+  const handleWithdrawalDataChange = (
+    field: keyof typeof withdrawalData,
+    value: string
+  ) => {
+    setWithdrawalData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // 입력 시 해당 필드 에러 메시지 초기화
+    setWithdrawalErrors((prev) => ({
+      ...prev,
+      [field]: "",
+      general: "",
+    }));
+  };
+
+  // 회원 탈퇴 처리
+  const handleWithdrawal = async () => {
+    try {
+      setIsSaving(true);
+
+      // 에러 상태 초기화
+      setWithdrawalErrors({
+        reason: "",
+        password: "",
+        confirmText: "",
+        general: "",
+      });
+
+      let hasError = false;
+      const newErrors = {
+        reason: "",
+        password: "",
+        confirmText: "",
+        general: "",
+      };
+
+      // 입력 검증
+      if (!withdrawalData.reason) {
+        newErrors.reason = "탈퇴 사유를 선택해주세요.";
+        hasError = true;
+      }
+
+      if (
+        withdrawalData.reason === "other" &&
+        !withdrawalData.customReason.trim()
+      ) {
+        newErrors.reason = "기타 사유를 입력해주세요.";
+        hasError = true;
+      }
+
+      if (!withdrawalData.password.trim()) {
+        newErrors.password = "비밀번호를 입력해주세요.";
+        hasError = true;
+      }
+
+      if (withdrawalData.confirmText !== "회원탈퇴") {
+        newErrors.confirmText = "정확히 '회원탈퇴'를 입력해주세요.";
+        hasError = true;
+      }
+
+      if (hasError) {
+        setWithdrawalErrors(newErrors);
+        return;
+      }
+
+      // 확인 알림
+      const isConfirmed = window.confirm(
+        "정말로 회원 탈퇴를 하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      );
+
+      if (!isConfirmed) {
+        return;
+      }
+
+      // 실제 API 호출로 회원 탈퇴
+      const finalReason =
+        withdrawalData.reason === "other"
+          ? withdrawalData.customReason
+          : withdrawalReasons.find((r) => r.value === withdrawalData.reason)
+              ?.label || withdrawalData.reason;
+
+      await withdrawUser({
+        password: withdrawalData.password,
+        reason: finalReason,
+        customReason:
+          withdrawalData.reason === "other"
+            ? withdrawalData.customReason
+            : undefined,
+      });
+
+      // 성공 메시지 표시
+      alert("회원 탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다.");
+
+      // 로그아웃 처리
+      logout();
+
+      // 로그인 페이지로 이동
+      router.push("/login");
+    } catch (error) {
+      console.error("회원 탈퇴 실패:", error);
+
+      // API 에러 메시지 처리
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+
+        if (
+          errorMessage.includes("비밀번호가 올바르지 않습니다") ||
+          errorMessage.includes("password is incorrect")
+        ) {
+          setWithdrawalErrors({
+            reason: "",
+            password: "비밀번호가 올바르지 않습니다.",
+            confirmText: "",
+            general: "",
+          });
+        } else if (
+          errorMessage.includes("사용자를 찾을 수 없습니다") ||
+          errorMessage.includes("user not found")
+        ) {
+          setWithdrawalErrors({
+            reason: "",
+            password: "",
+            confirmText: "",
+            general: "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
+          });
+        } else if (errorMessage.includes("로그인이 필요합니다")) {
+          setWithdrawalErrors({
+            reason: "",
+            password: "",
+            confirmText: "",
+            general: "로그인이 필요합니다. 다시 로그인해주세요.",
+          });
+        } else {
+          setWithdrawalErrors({
+            reason: "",
+            password: "",
+            confirmText: "",
+            general:
+              error.message || "회원 탈퇴에 실패했습니다. 다시 시도해주세요.",
+          });
+        }
+      } else {
+        setWithdrawalErrors({
+          reason: "",
+          password: "",
+          confirmText: "",
+          general: "회원 탈퇴에 실패했습니다. 다시 시도해주세요.",
+        });
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 로딩 중이거나 인증되지 않은 경우
   if (authLoading || isLoading) {
     return (
@@ -648,8 +868,25 @@ export default function ProfilePage() {
               회원 탈퇴
             </h3>
 
-            <div className="flex items-center mt-4">
-              <span className="text-red-500 text-xl mr-2">✕</span>
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center">
+                <span className="text-red-500 text-xl mr-2">⚠️</span>
+                <div>
+                  <p className="text-gray-700 text-sm">
+                    회원 탈퇴 시 모든 개인 정보가 즉시 삭제되며, 복구가
+                    불가능합니다.
+                  </p>
+                  <p className="text-gray-600 text-xs mt-1">
+                    탈퇴 후에는 해당 계정으로 다시 로그인할 수 없습니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleWithdrawalClick}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+              >
+                회원 탈퇴
+              </button>
             </div>
           </div>
         </div>
@@ -1078,6 +1315,197 @@ export default function ProfilePage() {
                   className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors duration-200 disabled:bg-orange-300 disabled:cursor-not-allowed"
                 >
                   {isSaving ? "변경 중..." : "비밀번호 변경"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 회원 탈퇴 모달 */}
+        {isWithdrawalModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">회원 탈퇴</h2>
+                <button
+                  onClick={handleWithdrawalModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    탈퇴 사유 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={withdrawalData.reason}
+                    onChange={(e) =>
+                      handleWithdrawalDataChange("reason", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">탈퇴 사유를 선택해주세요</option>
+                    {withdrawalReasons.map((reason) => (
+                      <option key={reason.value} value={reason.value}>
+                        {reason.label}
+                      </option>
+                    ))}
+                  </select>
+                  {withdrawalData.reason === "other" && (
+                    <input
+                      type="text"
+                      value={withdrawalData.customReason}
+                      onChange={(e) =>
+                        handleWithdrawalDataChange(
+                          "customReason",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
+                      placeholder="탈퇴 사유를 입력해주세요"
+                    />
+                  )}
+                  {withdrawalErrors.reason && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {withdrawalErrors.reason}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    비밀번호 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={withdrawalData.password}
+                    onChange={(e) =>
+                      handleWithdrawalDataChange("password", e.target.value)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      withdrawalErrors.password
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="현재 비밀번호를 입력하세요"
+                  />
+                  {withdrawalErrors.password && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {withdrawalErrors.password}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    회원탈퇴 확인 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={withdrawalData.confirmText}
+                    onChange={(e) =>
+                      handleWithdrawalDataChange("confirmText", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="회원탈퇴"
+                  />
+                  {withdrawalErrors.confirmText && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {withdrawalErrors.confirmText}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* 일반 에러 메시지 */}
+              {withdrawalErrors.general && (
+                <div className="mt-4 p-4 bg-red-50 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="h-5 w-5 text-red-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-800">
+                        {withdrawalErrors.general}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 p-4 bg-yellow-50 rounded-md">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-yellow-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-800">
+                      회원 탈퇴 시 모든 개인 정보가 즉시 삭제되며, 복구가
+                      불가능합니다. 탈퇴 후에는 해당 계정으로 다시 로그인할 수
+                      없습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handleWithdrawalModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleWithdrawal}
+                  disabled={
+                    isSaving ||
+                    Object.values(withdrawalErrors).some(
+                      (error) => error !== ""
+                    ) ||
+                    !withdrawalData.reason ||
+                    (withdrawalData.reason === "other" &&
+                      !withdrawalData.customReason.trim()) ||
+                    !withdrawalData.password.trim() ||
+                    withdrawalData.confirmText !== "회원탈퇴"
+                  }
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 disabled:bg-red-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "탈퇴 중..." : "회원 탈퇴"}
                 </button>
               </div>
             </div>

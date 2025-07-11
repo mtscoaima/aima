@@ -169,6 +169,17 @@ export interface ChangePasswordResponse {
   timestamp: string;
 }
 
+export interface WithdrawUserRequest {
+  password: string;
+  reason: string;
+  customReason?: string;
+}
+
+export interface WithdrawUserResponse {
+  message: string;
+  timestamp: string;
+}
+
 export interface ApiError {
   message: string;
   error: string;
@@ -357,6 +368,24 @@ export async function changePassword(
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(passwordData),
+  });
+}
+
+// 회원 탈퇴 API 함수
+export async function withdrawUser(
+  withdrawData: WithdrawUserRequest
+): Promise<WithdrawUserResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  return apiCall<WithdrawUserResponse>("/api/users/withdraw", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(withdrawData),
   });
 }
 
