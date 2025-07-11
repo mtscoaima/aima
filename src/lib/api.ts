@@ -102,6 +102,8 @@ export interface UserInfoResponse {
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
+  marketingConsent?: boolean;
+  approval_status?: string;
   companyInfo?: {
     companyName?: string;
     ceoName?: string;
@@ -111,6 +113,9 @@ export interface UserInfoResponse {
     companyPhone?: string;
     toll080Number?: string;
     customerServiceNumber?: string;
+    businessType?: string;
+    faxNumber?: string;
+    homepage?: string;
   };
   taxInvoiceInfo?: {
     email?: string;
@@ -138,10 +143,18 @@ export interface UpdateUserRequest {
   department?: string;
   companyName?: string;
   representativeName?: string;
+  businessNumber?: string;
   address?: string;
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
   optOutNumber?: string;
+  email?: string;
+  marketingConsent?: boolean;
+  // 새로 추가되는 기업정보 필드들
+  businessType?: string;
+  faxNumber?: string;
+  homepage?: string;
+  approval_status?: string;
 }
 
 export interface UpdateUserResponse {
@@ -153,6 +166,28 @@ export interface UpdateUserResponse {
   createdAt: string;
   updatedAt: string;
   message: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+  timestamp: string;
+}
+
+export interface WithdrawUserRequest {
+  password: string;
+  reason: string;
+  customReason?: string;
+}
+
+export interface WithdrawUserResponse {
+  message: string;
+  timestamp: string;
 }
 
 export interface ApiError {
@@ -325,6 +360,42 @@ export async function updateUserInfo(
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(updateData),
+  });
+}
+
+// 비밀번호 변경 API 함수
+export async function changePassword(
+  passwordData: ChangePasswordRequest
+): Promise<ChangePasswordResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  return apiCall<ChangePasswordResponse>("/api/users/change-password", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(passwordData),
+  });
+}
+
+// 회원 탈퇴 API 함수
+export async function withdrawUser(
+  withdrawData: WithdrawUserRequest
+): Promise<WithdrawUserResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  return apiCall<WithdrawUserResponse>("/api/users/withdraw", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(withdrawData),
   });
 }
 

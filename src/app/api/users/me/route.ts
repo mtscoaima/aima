@@ -29,10 +29,18 @@ interface UpdateUserRequest {
   department?: string;
   companyName?: string;
   representativeName?: string;
+  businessNumber?: string;
   address?: string;
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
   optOutNumber?: string;
+  email?: string;
+  marketingConsent?: boolean;
+  // 새로 추가되는 기업정보 필드들
+  businessType?: string;
+  faxNumber?: string;
+  homepage?: string;
+  approval_status?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -102,7 +110,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from("users")
       .select(
-        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status"
+        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status, agree_marketing, agreement_info"
       )
       .eq("id", userId)
       .single();
@@ -227,6 +235,7 @@ export async function GET(request: NextRequest) {
       updatedAt: user.updated_at,
       lastLoginAt: user.last_login_at,
       approval_status: user.approval_status,
+      marketingConsent: user.agree_marketing || false,
       companyInfo: user.company_info,
       taxInvoiceInfo: user.tax_invoice_info,
       documents:
@@ -338,19 +347,39 @@ export async function PUT(request: NextRequest) {
     if (updateData.name) updateFields.name = updateData.name;
     if (updateData.phoneNumber)
       updateFields.phone_number = updateData.phoneNumber;
+    if (updateData.email) updateFields.email = updateData.email;
+    if (updateData.marketingConsent !== undefined) {
+      updateFields.agree_marketing = updateData.marketingConsent;
 
-    // 기업 정보가 있는 경우 JSON 객체로 업데이트
-    const companyFields = {
-      companyName: updateData.companyName,
-      representativeName: updateData.representativeName,
-      address: updateData.address,
-      phoneNumberCompany: updateData.phoneNumberCompany,
-      customerServiceNumber: updateData.customerServiceNumber,
-      optOutNumber: updateData.optOutNumber,
-    };
+      // agreement_info도 함께 업데이트
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("agreement_info")
+        .eq("id", userId)
+        .single();
+
+      const currentAgreementInfo = currentUser?.agreement_info || {};
+      updateFields.agreement_info = {
+        ...currentAgreementInfo,
+        marketing: updateData.marketingConsent,
+        agreedAt: new Date().toISOString(),
+      };
+    }
 
     // 기업 정보 중 하나라도 있으면 company_info 업데이트
-    if (Object.values(companyFields).some((value) => value !== undefined)) {
+    const hasCompanyData = [
+      updateData.companyName,
+      updateData.representativeName,
+      updateData.businessNumber,
+      updateData.address,
+      updateData.phoneNumberCompany,
+      updateData.customerServiceNumber,
+      updateData.businessType,
+      updateData.faxNumber,
+      updateData.homepage,
+    ].some((value) => value !== undefined);
+
+    if (hasCompanyData) {
       // 기존 company_info 가져오기
       const { data: currentUser } = await supabase
         .from("users")
@@ -363,14 +392,32 @@ export async function PUT(request: NextRequest) {
       // 새로운 정보로 업데이트
       const updatedCompanyInfo = {
         ...currentCompanyInfo,
-        ...Object.fromEntries(
-          Object.entries(companyFields).filter(
-            ([, value]) => value !== undefined
-          )
-        ),
+        // 필드명 매핑 수정
+        companyName: updateData.companyName || currentCompanyInfo.companyName,
+        ceoName: updateData.representativeName || currentCompanyInfo.ceoName,
+        businessNumber:
+          updateData.businessNumber || currentCompanyInfo.businessNumber,
+        companyAddress: updateData.address || currentCompanyInfo.companyAddress,
+        companyPhone:
+          updateData.phoneNumberCompany || currentCompanyInfo.companyPhone,
+        customerServiceNumber:
+          updateData.customerServiceNumber ||
+          currentCompanyInfo.customerServiceNumber,
+        businessType:
+          updateData.businessType || currentCompanyInfo.businessType,
+        faxNumber: updateData.faxNumber || currentCompanyInfo.faxNumber,
+        homepage: updateData.homepage || currentCompanyInfo.homepage,
       };
 
       updateFields.company_info = updatedCompanyInfo;
+
+      // 기업정보 수정 시 승인 상태를 PENDING으로 변경
+      updateFields.approval_status = "PENDING";
+    }
+
+    // 명시적으로 approval_status가 전달된 경우에만 업데이트
+    if (updateData.approval_status !== undefined) {
+      updateFields.approval_status = updateData.approval_status;
     }
 
     // 사용자 정보 업데이트
