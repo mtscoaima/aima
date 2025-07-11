@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import TermsModal, { TermsType } from "@/components/TermsModal";
 import styles from "./signup.module.css";
 
 export default function SignupPage() {
@@ -57,6 +58,11 @@ export default function SignupPage() {
   const [verificationTimer, setVerificationTimer] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentTermsType, setCurrentTermsType] =
+    useState<TermsType>("service");
 
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -814,6 +820,17 @@ export default function SignupPage() {
     }
   };
 
+  // 모달 열기 함수
+  const openTermsModal = (type: TermsType) => {
+    setCurrentTermsType(type);
+    setIsModalOpen(true);
+  };
+
+  // 모달 닫기 함수
+  const closeTermsModal = () => {
+    setIsModalOpen(false);
+  };
+
   // 전체 동의 상태 확인
   const isAllAgreed =
     formData.agreeTerms && formData.agreePrivacy && formData.agreeMarketing;
@@ -1344,9 +1361,13 @@ export default function SignupPage() {
                       <span className={styles.checkboxText}>
                         <strong>서비스 이용약관</strong>에 동의합니다 (필수)
                       </span>
-                      <Link href="/terms" className={styles.termsLink}>
+                      <button
+                        type="button"
+                        onClick={() => openTermsModal("service")}
+                        className={styles.termsLink}
+                      >
                         보기
-                      </Link>
+                      </button>
                     </label>
                     {errors.agreeTerms && (
                       <p className={styles.formError}>{errors.agreeTerms}</p>
@@ -1370,9 +1391,13 @@ export default function SignupPage() {
                         <strong>개인정보 수집 및 이용</strong>에 동의합니다
                         (필수)
                       </span>
-                      <Link href="/privacy" className={styles.termsLink}>
+                      <button
+                        type="button"
+                        onClick={() => openTermsModal("privacy")}
+                        className={styles.termsLink}
+                      >
                         보기
-                      </Link>
+                      </button>
                     </label>
                     {errors.agreePrivacy && (
                       <p className={styles.formError}>{errors.agreePrivacy}</p>
@@ -1391,9 +1416,13 @@ export default function SignupPage() {
                         <strong>마케팅 정보 수집 및 활용</strong>에 동의합니다
                         (선택)
                       </span>
-                      <Link href="/marketing" className={styles.termsLink}>
+                      <button
+                        type="button"
+                        onClick={() => openTermsModal("marketing")}
+                        className={styles.termsLink}
+                      >
                         보기
-                      </Link>
+                      </button>
                     </label>
                   </div>
                 </div>
@@ -1883,9 +1912,13 @@ export default function SignupPage() {
                       <span className={styles.checkboxText}>
                         <strong>서비스 이용약관</strong>에 동의합니다 (필수)
                       </span>
-                      <Link href="/terms" className={styles.termsLink}>
+                      <button
+                        type="button"
+                        onClick={() => openTermsModal("service")}
+                        className={styles.termsLink}
+                      >
                         보기
-                      </Link>
+                      </button>
                     </label>
                     {errors.agreeTerms && (
                       <p className={styles.formError}>{errors.agreeTerms}</p>
@@ -1909,9 +1942,13 @@ export default function SignupPage() {
                         <strong>개인정보 수집 및 이용</strong>에 동의합니다
                         (필수)
                       </span>
-                      <Link href="/privacy" className={styles.termsLink}>
+                      <button
+                        type="button"
+                        onClick={() => openTermsModal("privacy")}
+                        className={styles.termsLink}
+                      >
                         보기
-                      </Link>
+                      </button>
                     </label>
                     {errors.agreePrivacy && (
                       <p className={styles.formError}>{errors.agreePrivacy}</p>
@@ -1930,9 +1967,13 @@ export default function SignupPage() {
                         <strong>마케팅 정보 수집 및 활용</strong>에 동의합니다
                         (선택)
                       </span>
-                      <Link href="/marketing" className={styles.termsLink}>
+                      <button
+                        type="button"
+                        onClick={() => openTermsModal("marketing")}
+                        className={styles.termsLink}
+                      >
                         보기
-                      </Link>
+                      </button>
                     </label>
                   </div>
                 </div>
@@ -1981,6 +2022,13 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
+
+      {/* 약관 모달 */}
+      <TermsModal
+        isOpen={isModalOpen}
+        onClose={closeTermsModal}
+        type={currentTermsType}
+      />
     </div>
   );
 }
