@@ -29,12 +29,18 @@ interface UpdateUserRequest {
   department?: string;
   companyName?: string;
   representativeName?: string;
+  businessNumber?: string;
   address?: string;
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
   optOutNumber?: string;
   email?: string;
   marketingConsent?: boolean;
+  // 새로 추가되는 기업정보 필드들
+  businessType?: string;
+  faxNumber?: string;
+  homepage?: string;
+  approval_status?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -360,18 +366,20 @@ export async function PUT(request: NextRequest) {
       };
     }
 
-    // 기업 정보가 있는 경우 JSON 객체로 업데이트
-    const companyFields = {
-      companyName: updateData.companyName,
-      representativeName: updateData.representativeName,
-      address: updateData.address,
-      phoneNumberCompany: updateData.phoneNumberCompany,
-      customerServiceNumber: updateData.customerServiceNumber,
-      optOutNumber: updateData.optOutNumber,
-    };
-
     // 기업 정보 중 하나라도 있으면 company_info 업데이트
-    if (Object.values(companyFields).some((value) => value !== undefined)) {
+    const hasCompanyData = [
+      updateData.companyName,
+      updateData.representativeName,
+      updateData.businessNumber,
+      updateData.address,
+      updateData.phoneNumberCompany,
+      updateData.customerServiceNumber,
+      updateData.businessType,
+      updateData.faxNumber,
+      updateData.homepage,
+    ].some((value) => value !== undefined);
+
+    if (hasCompanyData) {
       // 기존 company_info 가져오기
       const { data: currentUser } = await supabase
         .from("users")
@@ -384,14 +392,32 @@ export async function PUT(request: NextRequest) {
       // 새로운 정보로 업데이트
       const updatedCompanyInfo = {
         ...currentCompanyInfo,
-        ...Object.fromEntries(
-          Object.entries(companyFields).filter(
-            ([, value]) => value !== undefined
-          )
-        ),
+        // 필드명 매핑 수정
+        companyName: updateData.companyName || currentCompanyInfo.companyName,
+        ceoName: updateData.representativeName || currentCompanyInfo.ceoName,
+        businessNumber:
+          updateData.businessNumber || currentCompanyInfo.businessNumber,
+        companyAddress: updateData.address || currentCompanyInfo.companyAddress,
+        companyPhone:
+          updateData.phoneNumberCompany || currentCompanyInfo.companyPhone,
+        customerServiceNumber:
+          updateData.customerServiceNumber ||
+          currentCompanyInfo.customerServiceNumber,
+        businessType:
+          updateData.businessType || currentCompanyInfo.businessType,
+        faxNumber: updateData.faxNumber || currentCompanyInfo.faxNumber,
+        homepage: updateData.homepage || currentCompanyInfo.homepage,
       };
 
       updateFields.company_info = updatedCompanyInfo;
+
+      // 기업정보 수정 시 승인 상태를 PENDING으로 변경
+      updateFields.approval_status = "PENDING";
+    }
+
+    // 명시적으로 approval_status가 전달된 경우에만 업데이트
+    if (updateData.approval_status !== undefined) {
+      updateFields.approval_status = updateData.approval_status;
     }
 
     // 사용자 정보 업데이트

@@ -103,6 +103,7 @@ export interface UserInfoResponse {
   updatedAt: string;
   lastLoginAt?: string;
   marketingConsent?: boolean;
+  approval_status?: string;
   companyInfo?: {
     companyName?: string;
     ceoName?: string;
@@ -112,6 +113,9 @@ export interface UserInfoResponse {
     companyPhone?: string;
     toll080Number?: string;
     customerServiceNumber?: string;
+    businessType?: string;
+    faxNumber?: string;
+    homepage?: string;
   };
   taxInvoiceInfo?: {
     email?: string;
@@ -139,12 +143,18 @@ export interface UpdateUserRequest {
   department?: string;
   companyName?: string;
   representativeName?: string;
+  businessNumber?: string;
   address?: string;
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
   optOutNumber?: string;
   email?: string;
   marketingConsent?: boolean;
+  // 새로 추가되는 기업정보 필드들
+  businessType?: string;
+  faxNumber?: string;
+  homepage?: string;
+  approval_status?: string;
 }
 
 export interface UpdateUserResponse {

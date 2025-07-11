@@ -184,9 +184,8 @@ export async function POST(request: NextRequest) {
     // 탈퇴 로그 테이블에 저장 (테이블이 있는 경우)
     try {
       await supabase.from("withdrawal_logs").insert(withdrawalLog);
-      console.log("Withdrawal log saved successfully");
     } catch (logError) {
-      console.log(
+      console.error(
         "Withdrawal log save failed (table may not exist):",
         logError
       );
@@ -212,10 +211,8 @@ export async function POST(request: NextRequest) {
 
       // 사용자의 리워드 내역 삭제 (있는 경우)
       await supabase.from("reward_transactions").delete().eq("user_id", userId);
-
-      console.log("Related user data deleted successfully");
     } catch (relatedDataError) {
-      console.log(
+      console.error(
         "Some related data deletion failed (tables may not exist):",
         relatedDataError
       );

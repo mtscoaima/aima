@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatKSTDateTime } from "@/lib/utils";
 import {
   getUserInfo,
   UserInfoResponse,
   updateUserInfo,
   changePassword,
   withdrawUser,
+  tokenManager,
 } from "@/lib/api";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 import { useRouter } from "next/navigation";
@@ -22,6 +22,7 @@ interface UserProfileData {
   joinDate: string;
   lastLoginDate?: string;
   marketingConsent?: boolean;
+  approval_status?: string;
 
   // 기업 정보
   companyName?: string;
@@ -41,7 +42,7 @@ interface UserProfileData {
       fileUrl: string;
       uploadedAt: string;
     };
-    businessNumberCertificate?: {
+    employmentCertificate?: {
       fileName: string;
       fileUrl: string;
       uploadedAt: string;
@@ -60,6 +61,19 @@ interface EditableUserData {
   marketingConsent: boolean;
 }
 
+// 기업정보 수정 가능한 필드들을 위한 타입
+interface EditableCompanyData {
+  companyName: string;
+  representativeName: string;
+  businessNumber: string;
+  address: string;
+  phoneNumberCompany: string;
+  customerServiceNumber: string;
+  faxNumber: string;
+  homepage: string;
+  businessType: string;
+}
+
 export default function ProfilePage() {
   const { user, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
@@ -68,6 +82,7 @@ export default function ProfilePage() {
 
   // 모달 상태 관리
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCompanyEditModalOpen, setIsCompanyEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,27 +95,16 @@ export default function ProfilePage() {
     joinDate: "",
     lastLoginDate: "",
     marketingConsent: false,
-    companyName: "아이마테크놀로지",
-    representativeName: "김대표",
-    businessNumber: "123-45-67890",
-    address: "서울특별시 강남구 테헤란로 123, 아이마빌딩 5층",
-    phoneNumberCompany: "02-1234-5678",
-    customerServiceNumber: "1588-1234",
-    faxNumber: "02-1234-5679",
-    homepage: "https://www.aimatech.co.kr",
-    businessType: "정보통신업",
-    documents: {
-      businessRegistration: {
-        fileName: "사업자등록증.pdf",
-        fileUrl: "/docs/business-registration.pdf",
-        uploadedAt: "2024-01-10T09:00:00Z",
-      },
-      businessNumberCertificate: {
-        fileName: "사업자등록번호부여서류.pdf",
-        fileUrl: "/docs/business-number-certificate.pdf",
-        uploadedAt: "2024-01-10T09:05:00Z",
-      },
-    },
+    companyName: "",
+    representativeName: "",
+    businessNumber: "",
+    address: "",
+    phoneNumberCompany: "",
+    customerServiceNumber: "",
+    faxNumber: "",
+    homepage: "",
+    businessType: "",
+    documents: {},
   });
 
   // 수정 가능한 필드들의 상태
@@ -110,6 +114,31 @@ export default function ProfilePage() {
     phoneNumber: "",
     marketingConsent: false,
   });
+
+  // 기업정보 수정 가능한 필드들의 상태
+  const [editableCompanyData, setEditableCompanyData] =
+    useState<EditableCompanyData>({
+      companyName: "",
+      representativeName: "",
+      businessNumber: "",
+      address: "",
+      phoneNumberCompany: "",
+      customerServiceNumber: "",
+      faxNumber: "",
+      homepage: "",
+      businessType: "",
+    });
+
+  // 파일 업로드 상태
+  const [uploadFiles, setUploadFiles] = useState<{
+    businessRegistration?: File;
+    employmentCertificate?: File;
+  }>({});
+
+  const [uploadProgress, setUploadProgress] = useState<{
+    businessRegistration?: boolean;
+    employmentCertificate?: boolean;
+  }>({});
 
   // 비밀번호 변경 모달 상태
   const [passwordData, setPasswordData] = useState({
@@ -151,6 +180,33 @@ export default function ProfilePage() {
     { value: "other", label: "기타" },
   ];
 
+  // 승인 상태 표시 함수
+  const getApprovalStatusText = (status?: string) => {
+    switch (status) {
+      case "APPROVED":
+        return "승인완료";
+      case "PENDING":
+        return "승인대기";
+      case "REJECTED":
+        return "승인거부";
+      default:
+        return "승인대기";
+    }
+  };
+
+  const getApprovalStatusColor = (status?: string) => {
+    switch (status) {
+      case "APPROVED":
+        return "bg-green-100 text-green-800";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800";
+      case "REJECTED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-yellow-100 text-yellow-800";
+    }
+  };
+
   // 사용자 정보 로드
   useEffect(() => {
     const loadUserData = async () => {
@@ -172,27 +228,23 @@ export default function ProfilePage() {
             ? new Date(userInfo.lastLoginAt).toLocaleString("ko-KR")
             : "",
           marketingConsent: userInfo.marketingConsent || false,
+          approval_status: userInfo.approval_status || "",
           // 기업 정보
-          companyName: userInfo.companyInfo?.companyName || "아이마테크놀로지",
-          representativeName: userInfo.companyInfo?.ceoName || "김대표",
-          businessNumber:
-            userInfo.companyInfo?.businessNumber || "123-45-67890",
-          address:
-            userInfo.companyInfo?.companyAddress ||
-            "서울특별시 강남구 테헤란로 123, 아이마빌딩 5층",
-          phoneNumberCompany:
-            userInfo.companyInfo?.companyPhone || "02-1234-5678",
+          companyName: userInfo.companyInfo?.companyName || "-",
+          representativeName: userInfo.companyInfo?.ceoName || "-",
+          businessNumber: userInfo.companyInfo?.businessNumber || "-",
+          address: userInfo.companyInfo?.companyAddress || "-",
+          phoneNumberCompany: userInfo.companyInfo?.companyPhone || "-",
           customerServiceNumber:
-            userInfo.companyInfo?.customerServiceNumber || "1588-1234",
-          faxNumber: "02-1234-5679", // API에 없는 필드는 기본값 사용
-          homepage: "https://www.aimatech.co.kr", // API에 없는 필드는 기본값 사용
-          businessType: "정보통신업", // API에 없는 필드는 기본값 사용
+            userInfo.companyInfo?.customerServiceNumber || "-",
+          faxNumber: userInfo.companyInfo?.faxNumber || "-",
+          homepage: userInfo.companyInfo?.homepage || "-",
+          businessType: userInfo.companyInfo?.businessType || "-",
           // 제출 서류 정보
           documents: userInfo.documents
             ? {
                 businessRegistration: userInfo.documents.businessRegistration,
-                businessNumberCertificate: userInfo.documents
-                  .employmentCertificate
+                employmentCertificate: userInfo.documents.employmentCertificate
                   ? {
                       fileName:
                         userInfo.documents.employmentCertificate.fileName,
@@ -208,7 +260,7 @@ export default function ProfilePage() {
                   fileUrl: "/docs/business-registration.pdf",
                   uploadedAt: "2024-01-10T09:00:00Z",
                 },
-                businessNumberCertificate: {
+                employmentCertificate: {
                   fileName: "사업자등록번호부여서류.pdf",
                   fileUrl: "/docs/business-number-certificate.pdf",
                   uploadedAt: "2024-01-10T09:05:00Z",
@@ -224,6 +276,19 @@ export default function ProfilePage() {
           email: profileData.email,
           phoneNumber: profileData.phoneNumber,
           marketingConsent: profileData.marketingConsent || false,
+        });
+
+        // 기업정보 수정 가능한 필드들 초기화
+        setEditableCompanyData({
+          companyName: profileData.companyName || "",
+          representativeName: profileData.representativeName || "",
+          businessNumber: profileData.businessNumber || "",
+          address: profileData.address || "",
+          phoneNumberCompany: profileData.phoneNumberCompany || "",
+          customerServiceNumber: profileData.customerServiceNumber || "",
+          faxNumber: profileData.faxNumber || "",
+          homepage: profileData.homepage || "",
+          businessType: profileData.businessType || "",
         });
 
         setError(null);
@@ -273,6 +338,239 @@ export default function ProfilePage() {
     }));
   };
 
+  // 기업정보 수정 모달 열기
+  const handleCompanyEditClick = () => {
+    setEditableCompanyData({
+      companyName: userData.companyName || "",
+      representativeName: userData.representativeName || "",
+      businessNumber: userData.businessNumber || "",
+      address: userData.address || "",
+      phoneNumberCompany: userData.phoneNumberCompany || "",
+      customerServiceNumber: userData.customerServiceNumber || "",
+      faxNumber: userData.faxNumber || "",
+      homepage: userData.homepage || "",
+      businessType: userData.businessType || "",
+    });
+    setIsCompanyEditModalOpen(true);
+  };
+
+  // 기업정보 수정 모달 닫기
+  const handleCompanyModalClose = () => {
+    setIsCompanyEditModalOpen(false);
+    setEditableCompanyData({
+      companyName: userData.companyName || "",
+      representativeName: userData.representativeName || "",
+      businessNumber: userData.businessNumber || "",
+      address: userData.address || "",
+      phoneNumberCompany: userData.phoneNumberCompany || "",
+      customerServiceNumber: userData.customerServiceNumber || "",
+      faxNumber: userData.faxNumber || "",
+      homepage: userData.homepage || "",
+      businessType: userData.businessType || "",
+    });
+  };
+
+  // 기업정보 수정 가능한 필드 값 변경
+  const handleEditableCompanyDataChange = (
+    field: keyof EditableCompanyData,
+    value: string
+  ) => {
+    setEditableCompanyData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // 파일 업로드 처리
+  const handleFileUpload = (
+    fileType: "businessRegistration" | "employmentCertificate",
+    file: File
+  ) => {
+    setUploadFiles((prev) => ({
+      ...prev,
+      [fileType]: file,
+    }));
+  };
+
+  // 파일 제거 처리
+  const handleFileRemove = (
+    fileType: "businessRegistration" | "employmentCertificate"
+  ) => {
+    setUploadFiles((prev) => {
+      const newFiles = { ...prev };
+      delete newFiles[fileType];
+      return newFiles;
+    });
+  };
+
+  // 파일 업로드 API 호출
+  const uploadFileToServer = async (files: {
+    businessRegistration?: File;
+    employmentCertificate?: File;
+  }): Promise<{
+    [key: string]: { fileName: string; fileUrl: string; uploadedAt: string };
+  }> => {
+    const token = tokenManager.getAccessToken();
+    if (!token) {
+      throw new Error("로그인이 필요합니다.");
+    }
+
+    const formData = new FormData();
+
+    if (files.businessRegistration) {
+      formData.append("businessRegistration", files.businessRegistration);
+    }
+    if (files.employmentCertificate) {
+      formData.append("employmentCertificate", files.employmentCertificate);
+    }
+
+    try {
+      const response = await fetch("/api/users/upload-documents", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("파일 업로드 실패");
+      }
+
+      const result = await response.json();
+      return result.documents;
+    } catch (error) {
+      console.error("파일 업로드 에러:", error);
+      throw error;
+    }
+  };
+
+  // 기업정보 저장 처리
+  const handleCompanySave = async () => {
+    try {
+      setIsSaving(true);
+
+      // 입력 검증
+      if (!editableCompanyData.companyName.trim()) {
+        alert("회사명을 입력해주세요.");
+        return;
+      }
+      if (!editableCompanyData.representativeName.trim()) {
+        alert("대표자명을 입력해주세요.");
+        return;
+      }
+      if (!editableCompanyData.businessNumber.trim()) {
+        alert("사업자등록번호를 입력해주세요.");
+        return;
+      }
+      if (!editableCompanyData.address.trim()) {
+        alert("주소를 입력해주세요.");
+        return;
+      }
+
+      // 파일 업로드 처리
+      let uploadedDocuments: {
+        businessRegistration?: {
+          fileName: string;
+          fileUrl: string;
+          uploadedAt: string;
+        };
+        employmentCertificate?: {
+          fileName: string;
+          fileUrl: string;
+          uploadedAt: string;
+        };
+      } = {};
+
+      // 업로드할 파일이 있는 경우
+      const filesToUpload: {
+        businessRegistration?: File;
+        employmentCertificate?: File;
+      } = {};
+
+      if (uploadFiles.businessRegistration) {
+        filesToUpload.businessRegistration = uploadFiles.businessRegistration;
+      }
+      if (uploadFiles.employmentCertificate) {
+        filesToUpload.employmentCertificate = uploadFiles.employmentCertificate;
+      }
+
+      if (Object.keys(filesToUpload).length > 0) {
+        setUploadProgress((prev) => ({
+          ...prev,
+          businessRegistration: !!filesToUpload.businessRegistration,
+          employmentCertificate: !!filesToUpload.employmentCertificate,
+        }));
+
+        try {
+          uploadedDocuments = await uploadFileToServer(filesToUpload);
+        } catch {
+          alert("파일 업로드에 실패했습니다.");
+          return;
+        } finally {
+          setUploadProgress((prev) => ({
+            ...prev,
+            businessRegistration: false,
+            employmentCertificate: false,
+          }));
+        }
+      }
+
+      const updatePayload = {
+        companyName: editableCompanyData.companyName,
+        representativeName: editableCompanyData.representativeName,
+        businessNumber: editableCompanyData.businessNumber,
+        address: editableCompanyData.address,
+        phoneNumberCompany: editableCompanyData.phoneNumberCompany,
+        customerServiceNumber: editableCompanyData.customerServiceNumber,
+        businessType: editableCompanyData.businessType,
+        faxNumber: editableCompanyData.faxNumber,
+        homepage: editableCompanyData.homepage,
+        documents:
+          Object.keys(uploadedDocuments).length > 0
+            ? uploadedDocuments
+            : undefined,
+      };
+
+      await updateUserInfo(updatePayload);
+
+      // 로컬 상태 업데이트
+      setUserData((prev) => ({
+        ...prev,
+        companyName: editableCompanyData.companyName,
+        representativeName: editableCompanyData.representativeName,
+        businessNumber: editableCompanyData.businessNumber,
+        address: editableCompanyData.address,
+        phoneNumberCompany: editableCompanyData.phoneNumberCompany,
+        customerServiceNumber: editableCompanyData.customerServiceNumber,
+        faxNumber: editableCompanyData.faxNumber,
+        homepage: editableCompanyData.homepage,
+        businessType: editableCompanyData.businessType,
+        approval_status: "PENDING", // 승인 상태도 업데이트
+        documents:
+          Object.keys(uploadedDocuments).length > 0
+            ? { ...prev.documents, ...uploadedDocuments }
+            : prev.documents,
+      }));
+
+      // 업로드된 파일 상태 초기화
+      setUploadFiles({});
+
+      // 성공 메시지 표시
+      alert("기업정보가 성공적으로 수정되었습니다.");
+
+      setIsCompanyEditModalOpen(false);
+
+      // 페이지 새로고침하여 최신 데이터 로드
+      window.location.reload();
+    } catch (error) {
+      console.error("기업정보 수정 실패:", error);
+      alert("기업정보 수정에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 저장 처리
   const handleSave = async () => {
     try {
@@ -300,8 +598,6 @@ export default function ProfilePage() {
         ...prev,
         ...editableData,
       }));
-
-      console.log("저장 완료:", editableData);
 
       // 성공 메시지 표시 (실제 구현에서는 toast나 알림으로 표시)
       alert("회원정보가 성공적으로 수정되었습니다.");
@@ -893,9 +1189,24 @@ export default function ProfilePage() {
 
         {/* 기업정보인증 섹션 */}
         <div className="bg-white rounded-lg shadow p-6 mb-6 border-t-4 border-t-green-500">
-          <h2 className="text-xl font-semibold mb-6 text-black">
-            기업정보인증
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold text-black">기업정보인증</h2>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
+                  userData.approval_status
+                )}`}
+              >
+                {getApprovalStatusText(userData.approval_status)}
+              </span>
+            </div>
+            <button
+              onClick={handleCompanyEditClick}
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 text-sm font-medium"
+            >
+              기업정보 수정
+            </button>
+          </div>
 
           {/* 인증 정보 */}
           <div className="mb-6">
@@ -926,6 +1237,20 @@ export default function ProfilePage() {
                   {userData.phoneNumberCompany}
                 </p>
               </div>
+              <div>
+                <p className="text-sm text-gray-600">업종</p>
+                <p className="font-medium text-black">
+                  {userData.businessType}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">팩스번호</p>
+                <p className="font-medium text-black">{userData.faxNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">홈페이지</p>
+                <p className="font-medium text-black">{userData.homepage}</p>
+              </div>
               <div className="md:col-span-2">
                 <p className="text-sm text-gray-600">회사주소</p>
                 <p className="font-medium text-black">{userData.address}</p>
@@ -938,75 +1263,83 @@ export default function ProfilePage() {
             <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
               제출 서류
             </h3>
-            <div className="space-y-4">
-              {userData.documents?.businessRegistration && (
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
-                  <div className="flex items-center">
-                    <svg
-                      className="w-8 h-8 text-red-500 mr-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <div>
-                      <p className="font-medium text-black">
-                        {userData.documents.businessRegistration.fileName}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        업로드일:{" "}
-                        {formatKSTDateTime(
-                          userData.documents.businessRegistration.uploadedAt
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-red-500 text-xl mr-2">✕</span>
-                  </div>
-                </div>
-              )}
 
-              {userData.documents?.businessNumberCertificate && (
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200">
-                  <div className="flex items-center">
-                    <svg
-                      className="w-8 h-8 text-blue-500 mr-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <div>
-                      <p className="font-medium text-black">
-                        {userData.documents.businessNumberCertificate.fileName}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        업로드일:{" "}
-                        {formatKSTDateTime(
-                          userData.documents.businessNumberCertificate
-                            .uploadedAt
-                        )}
-                      </p>
+            <div className="space-y-4">
+              {/* 사업자등록증 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  사업자등록증
+                </label>
+                {userData.documents?.businessRegistration ? (
+                  <div className="flex items-center p-3 bg-gray-50 rounded-md border border-gray-200">
+                    <div className="flex items-center">
+                      <svg
+                        className="w-8 h-8 text-red-500 mr-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <div>
+                        <p className="font-medium text-black">
+                          {userData.documents.businessRegistration.fileName}
+                        </p>
+                        <p className="text-sm text-gray-500">업로드 완료</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <span className="text-red-500 text-xl mr-2">✕</span>
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                    <p className="text-sm text-gray-500">
+                      파일이 업로드되지 않았습니다.
+                    </p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* 재직증명서 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  재직증명서
+                </label>
+                {userData.documents?.employmentCertificate ? (
+                  <div className="flex items-center p-3 bg-gray-50 rounded-md border border-gray-200">
+                    <div className="flex items-center">
+                      <svg
+                        className="w-8 h-8 text-blue-500 mr-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <div>
+                        <p className="font-medium text-black">
+                          {userData.documents.employmentCertificate.fileName}
+                        </p>
+                        <p className="text-sm text-gray-500">업로드 완료</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                    <p className="text-sm text-gray-500">
+                      파일이 업로드되지 않았습니다.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1315,6 +1648,544 @@ export default function ProfilePage() {
                   className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors duration-200 disabled:bg-orange-300 disabled:cursor-not-allowed"
                 >
                   {isSaving ? "변경 중..." : "비밀번호 변경"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 기업정보 수정 모달 */}
+        {isCompanyEditModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">
+                  기업정보 수정
+                </h2>
+                <button
+                  onClick={handleCompanyModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* 기업 기본 정보 */}
+                <div>
+                  <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+                    기업 기본 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        회사명 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editableCompanyData.companyName}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "companyName",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="회사명을 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        대표자명 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editableCompanyData.representativeName}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "representativeName",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="대표자명을 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        사업자등록번호 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editableCompanyData.businessNumber}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "businessNumber",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="사업자등록번호를 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        업종
+                      </label>
+                      <input
+                        type="text"
+                        value={editableCompanyData.businessType}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "businessType",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="업종을 입력하세요"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        회사주소 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editableCompanyData.address}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "address",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="회사주소를 입력하세요"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 연락처 정보 */}
+                <div>
+                  <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+                    연락처 정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        대표번호
+                      </label>
+                      <input
+                        type="tel"
+                        value={editableCompanyData.phoneNumberCompany}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "phoneNumberCompany",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="대표번호를 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        고객센터 번호
+                      </label>
+                      <input
+                        type="tel"
+                        value={editableCompanyData.customerServiceNumber}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "customerServiceNumber",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="고객센터 번호를 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        팩스번호
+                      </label>
+                      <input
+                        type="tel"
+                        value={editableCompanyData.faxNumber}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "faxNumber",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="팩스번호를 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        홈페이지
+                      </label>
+                      <input
+                        type="url"
+                        value={editableCompanyData.homepage}
+                        onChange={(e) =>
+                          handleEditableCompanyDataChange(
+                            "homepage",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="홈페이지 URL을 입력하세요"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 제출 서류 */}
+                <div>
+                  <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+                    제출 서류 변경
+                  </h3>
+
+                  {/* 안내문구 */}
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-start">
+                      <svg
+                        className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <div className="text-sm">
+                        <p className="font-medium text-blue-800 mb-1">
+                          제출 서류 안내
+                        </p>
+                        <ul className="text-blue-700 space-y-1">
+                          <li>
+                            • 90일 이내 발행된 사업자등록증을 첨부해주세요
+                          </li>
+                          <li>
+                            • 재직증명서는 최근 발급된 것으로 첨부해주세요 (ex.
+                            991234-*******표시 등)
+                          </li>
+                          <li>
+                            • 파일 형식: JPEG, JPG, PNG, PDF, TIF / 용량 20MB
+                            이하
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* 사업자등록증 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        사업자등록증
+                      </label>
+                      {userData.documents?.businessRegistration &&
+                      !uploadFiles.businessRegistration ? (
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 mb-2">
+                          <div className="flex items-center">
+                            <svg
+                              className="w-8 h-8 text-red-500 mr-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            <div>
+                              <p className="font-medium text-black">
+                                {
+                                  userData.documents.businessRegistration
+                                    .fileName
+                                }
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                현재 업로드된 파일
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {uploadFiles.businessRegistration ? (
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200">
+                          <div className="flex items-center">
+                            <svg
+                              className="w-8 h-8 text-blue-500 mr-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            <div>
+                              <p className="font-medium text-black">
+                                {uploadFiles.businessRegistration.name}
+                              </p>
+                              <p className="text-sm text-blue-600">
+                                업로드 대기 중
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              handleFileRemove("businessRegistration")
+                            }
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleFileUpload("businessRegistration", file);
+                              }
+                            }}
+                            className="hidden"
+                            id="businessRegistration"
+                          />
+                          <label
+                            htmlFor="businessRegistration"
+                            className="cursor-pointer flex flex-col items-center justify-center"
+                          >
+                            <svg
+                              className="w-12 h-12 text-gray-400 mb-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                              />
+                            </svg>
+                            <p className="text-sm text-gray-600">
+                              사업자등록증을 업로드하세요
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              PDF, JPG, PNG 파일 (최대 20MB)
+                            </p>
+                          </label>
+                        </div>
+                      )}
+                      {uploadProgress.businessRegistration && (
+                        <div className="mt-2">
+                          <div className="flex items-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                            <span className="text-sm text-blue-600">
+                              업로드 중...
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 재직증명서 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        재직증명서
+                      </label>
+                      {userData.documents?.employmentCertificate &&
+                      !uploadFiles.employmentCertificate ? (
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 mb-2">
+                          <div className="flex items-center">
+                            <svg
+                              className="w-8 h-8 text-blue-500 mr-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            <div>
+                              <p className="font-medium text-black">
+                                {
+                                  userData.documents.employmentCertificate
+                                    .fileName
+                                }
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                현재 업로드된 파일
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {uploadFiles.employmentCertificate ? (
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200">
+                          <div className="flex items-center">
+                            <svg
+                              className="w-8 h-8 text-blue-500 mr-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            <div>
+                              <p className="font-medium text-black">
+                                {uploadFiles.employmentCertificate.name}
+                              </p>
+                              <p className="text-sm text-blue-600">
+                                업로드 대기 중
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              handleFileRemove("employmentCertificate")
+                            }
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleFileUpload("employmentCertificate", file);
+                              }
+                            }}
+                            className="hidden"
+                            id="employmentCertificate"
+                          />
+                          <label
+                            htmlFor="employmentCertificate"
+                            className="cursor-pointer flex flex-col items-center justify-center"
+                          >
+                            <svg
+                              className="w-12 h-12 text-gray-400 mb-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                              />
+                            </svg>
+                            <p className="text-sm text-gray-600">
+                              재직증명서를 업로드하세요
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              PDF, JPG, PNG 파일 (최대 20MB)
+                            </p>
+                          </label>
+                        </div>
+                      )}
+                      {uploadProgress.employmentCertificate && (
+                        <div className="mt-2">
+                          <div className="flex items-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                            <span className="text-sm text-blue-600">
+                              업로드 중...
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handleCompanyModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCompanySave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:bg-green-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "저장 중..." : "저장"}
                 </button>
               </div>
             </div>

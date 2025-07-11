@@ -41,9 +41,6 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File;
     const templateId = formData.get("templateId") as string;
 
-    console.log("Received formData keys:", Array.from(formData.keys()));
-    console.log("File:", file);
-
     if (!file) {
       return NextResponse.json(
         {
