@@ -3,7 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatKSTDateTime } from "@/lib/utils";
-import { getUserInfo, UserInfoResponse, updateUserInfo } from "@/lib/api";
+import {
+  getUserInfo,
+  UserInfoResponse,
+  updateUserInfo,
+  changePassword,
+} from "@/lib/api";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 
 // 회원정보 데이터 타입
@@ -60,6 +65,7 @@ export default function ProfilePage() {
 
   // 모달 상태 관리
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // 사용자 프로필 데이터
@@ -99,6 +105,21 @@ export default function ProfilePage() {
     email: "",
     phoneNumber: "",
     marketingConsent: false,
+  });
+
+  // 비밀번호 변경 모달 상태
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // 비밀번호 변경 에러 상태
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+    general: "",
   });
 
   // 사용자 정보 로드
@@ -265,6 +286,219 @@ export default function ProfilePage() {
     }
   };
 
+  // 비밀번호 변경 모달 열기
+  const handlePasswordChangeClick = () => {
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    setPasswordErrors({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      general: "",
+    });
+    setIsPasswordModalOpen(true);
+  };
+
+  // 비밀번호 변경 모달 닫기
+  const handlePasswordModalClose = () => {
+    setIsPasswordModalOpen(false);
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    setPasswordErrors({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      general: "",
+    });
+  };
+
+  // 비밀번호 변경 데이터 입력 처리
+  const handlePasswordDataChange = (
+    field: keyof typeof passwordData,
+    value: string
+  ) => {
+    const newPasswordData = {
+      ...passwordData,
+      [field]: value,
+    };
+
+    setPasswordData(newPasswordData);
+
+    // 입력 시 해당 필드 에러 메시지 초기화
+    const newErrors = {
+      ...passwordErrors,
+      [field]: "",
+      general: "", // 일반 에러도 함께 초기화
+    };
+
+    // 실시간 검증 추가
+    if (field === "newPassword" && value.length > 0 && value.length < 8) {
+      newErrors.newPassword = "새 비밀번호는 8자 이상이어야 합니다.";
+    }
+
+    if (
+      field === "confirmPassword" &&
+      value.length > 0 &&
+      value !== newPasswordData.newPassword
+    ) {
+      newErrors.confirmPassword = "새 비밀번호가 일치하지 않습니다.";
+    }
+
+    // 새 비밀번호가 변경되면 확인 비밀번호도 다시 검증
+    if (
+      field === "newPassword" &&
+      passwordData.confirmPassword.length > 0 &&
+      value !== passwordData.confirmPassword
+    ) {
+      newErrors.confirmPassword = "새 비밀번호가 일치하지 않습니다.";
+    }
+
+    setPasswordErrors(newErrors);
+  };
+
+  // 비밀번호 변경 처리
+  const handlePasswordChange = async () => {
+    try {
+      setIsSaving(true);
+
+      // 에러 상태 초기화
+      setPasswordErrors({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+        general: "",
+      });
+
+      let hasError = false;
+      const newErrors = {
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+        general: "",
+      };
+
+      // 입력 검증
+      if (!passwordData.currentPassword.trim()) {
+        newErrors.currentPassword = "현재 비밀번호를 입력해주세요.";
+        hasError = true;
+      }
+      if (!passwordData.newPassword.trim()) {
+        newErrors.newPassword = "새 비밀번호를 입력해주세요.";
+        hasError = true;
+      } else if (passwordData.newPassword.length < 8) {
+        newErrors.newPassword = "새 비밀번호는 8자 이상이어야 합니다.";
+        hasError = true;
+      }
+      if (!passwordData.confirmPassword.trim()) {
+        newErrors.confirmPassword = "새 비밀번호 확인을 입력해주세요.";
+        hasError = true;
+      } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+        newErrors.confirmPassword = "새 비밀번호가 일치하지 않습니다.";
+        hasError = true;
+      }
+
+      if (hasError) {
+        setPasswordErrors(newErrors);
+        return;
+      }
+
+      // 실제 API 호출로 비밀번호 변경
+      await changePassword(passwordData);
+
+      // 성공 메시지 표시
+      alert(
+        "비밀번호가 성공적으로 변경되었습니다. 보안을 위해 다시 로그인해주세요."
+      );
+
+      setIsPasswordModalOpen(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      console.error("비밀번호 변경 실패:", error);
+
+      // API 에러 메시지 처리
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+
+        if (
+          errorMessage.includes("현재 비밀번호가 올바르지 않습니다") ||
+          errorMessage.includes("current password is incorrect")
+        ) {
+          setPasswordErrors({
+            currentPassword: "현재 비밀번호가 올바르지 않습니다.",
+            newPassword: "",
+            confirmPassword: "",
+            general: "",
+          });
+        } else if (
+          errorMessage.includes("사용자를 찾을 수 없습니다") ||
+          errorMessage.includes("user not found")
+        ) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+            general: "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
+          });
+        } else if (
+          errorMessage.includes("새 비밀번호가 일치하지 않습니다") ||
+          errorMessage.includes("password confirmation failed")
+        ) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "새 비밀번호가 일치하지 않습니다.",
+            general: "",
+          });
+        } else if (
+          errorMessage.includes("새 비밀번호는 8자 이상이어야 합니다") ||
+          errorMessage.includes("password too short")
+        ) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "새 비밀번호는 8자 이상이어야 합니다.",
+            confirmPassword: "",
+            general: "",
+          });
+        } else if (errorMessage.includes("로그인이 필요합니다")) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+            general: "로그인이 필요합니다. 다시 로그인해주세요.",
+          });
+        } else {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+            general:
+              error.message ||
+              "비밀번호 변경에 실패했습니다. 다시 시도해주세요.",
+          });
+        }
+      } else {
+        setPasswordErrors({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+          general: "비밀번호 변경에 실패했습니다. 다시 시도해주세요.",
+        });
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 로딩 중이거나 인증되지 않은 경우
   if (authLoading || isLoading) {
     return (
@@ -395,8 +629,16 @@ export default function ProfilePage() {
               비밀번호 변경
             </h3>
 
-            <div className="flex items-center mt-4">
-              <span className="text-red-500 text-xl mr-2">✕</span>
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-gray-600">
+                계정 보안을 위해 정기적으로 비밀번호를 변경해주세요.
+              </p>
+              <button
+                onClick={handlePasswordChangeClick}
+                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors duration-200 text-sm font-medium"
+              >
+                비밀번호 변경
+              </button>
             </div>
           </div>
 
@@ -651,6 +893,191 @@ export default function ProfilePage() {
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed"
                 >
                   {isSaving ? "저장 중..." : "저장"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 비밀번호 변경 모달 */}
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">
+                  비밀번호 변경
+                </h2>
+                <button
+                  onClick={handlePasswordModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    현재 비밀번호 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      handlePasswordDataChange(
+                        "currentPassword",
+                        e.target.value
+                      )
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      passwordErrors.currentPassword
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="현재 비밀번호를 입력하세요"
+                  />
+                  {passwordErrors.currentPassword && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {passwordErrors.currentPassword}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    새 비밀번호 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      handlePasswordDataChange("newPassword", e.target.value)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      passwordErrors.newPassword
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="새 비밀번호를 입력하세요 (8자 이상)"
+                  />
+                  {passwordErrors.newPassword && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {passwordErrors.newPassword}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    새 비밀번호 확인 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      handlePasswordDataChange(
+                        "confirmPassword",
+                        e.target.value
+                      )
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      passwordErrors.confirmPassword
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="새 비밀번호를 다시 입력하세요"
+                  />
+                  {passwordErrors.confirmPassword && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {passwordErrors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* 일반 에러 메시지 */}
+              {passwordErrors.general && (
+                <div className="mt-4 p-4 bg-red-50 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="h-5 w-5 text-red-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-800">
+                        {passwordErrors.general}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 p-4 bg-yellow-50 rounded-md">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-yellow-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-800">
+                      새 비밀번호는 8자 이상이어야 하며, 영문, 숫자, 특수문자를
+                      포함하는 것을 권장합니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handlePasswordModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handlePasswordChange}
+                  disabled={
+                    isSaving ||
+                    Object.values(passwordErrors).some(
+                      (error) => error !== ""
+                    ) ||
+                    !passwordData.currentPassword.trim() ||
+                    !passwordData.newPassword.trim() ||
+                    !passwordData.confirmPassword.trim()
+                  }
+                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors duration-200 disabled:bg-orange-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "변경 중..." : "비밀번호 변경"}
                 </button>
               </div>
             </div>

@@ -158,6 +158,17 @@ export interface UpdateUserResponse {
   message: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+  timestamp: string;
+}
+
 export interface ApiError {
   message: string;
   error: string;
@@ -328,6 +339,24 @@ export async function updateUserInfo(
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(updateData),
+  });
+}
+
+// 비밀번호 변경 API 함수
+export async function changePassword(
+  passwordData: ChangePasswordRequest
+): Promise<ChangePasswordResponse> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  return apiCall<ChangePasswordResponse>("/api/users/change-password", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(passwordData),
   });
 }
 
