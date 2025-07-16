@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import ConfirmDialog from "./ConfirmDialog";
 
 export default function Navigation() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function Navigation() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const isHomePage = pathname === "/";
   const isAdminPage = pathname.startsWith("/admin");
@@ -21,9 +23,18 @@ export default function Navigation() {
     : "navigation navigation-solid";
 
   const handleLogout = () => {
-    logout();
     setShowUserDropdown(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    logout();
+    setShowLogoutConfirm(false);
     router.push("/");
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutConfirm(false);
   };
 
   const toggleUserDropdown = () => {
@@ -142,12 +153,12 @@ export default function Navigation() {
                   >
                     조직도 보기
                   </Link>
-                  <Link
-                    href="/salesperson/profile"
-                    className="landing-nav-menu-item"
+                  <button
+                    onClick={() => handleNavClick("/support")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
                   >
-                    마이페이지
-                  </Link>
+                    고객센터
+                  </button>
                 </>
               ) : (
                 <>
@@ -225,13 +236,12 @@ export default function Navigation() {
                   >
                     조직도 보기
                   </Link>
-                  <Link
-                    href="/salesperson/profile"
-                    className="mobile-menu-item"
-                    onClick={() => setShowMobileMenu(false)}
+                  <button
+                    onClick={() => handleNavClick("/support")}
+                    className="mobile-menu-item mobile-menu-btn"
                   >
-                    마이페이지
-                  </Link>
+                    고객센터
+                  </button>
                 </>
               ) : (
                 <>
@@ -366,7 +376,32 @@ export default function Navigation() {
                     </div>
                     <div className="user-dropdown-divider"></div>
                     <div className="user-dropdown-menu">
-                      {user?.role !== "SALESPERSON" && (
+                      {user?.role === "SALESPERSON" ? (
+                        <>
+                          <Link
+                            href="/salesperson/profile"
+                            className="dropdown-menu-item"
+                            onClick={() => setShowUserDropdown(false)}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                            >
+                              <path
+                                d="M8 8C10.21 8 12 6.21 12 4C12 1.79 10.21 0 8 0C5.79 0 4 1.79 4 4C4 6.21 5.79 8 8 8Z"
+                                fill="currentColor"
+                              />
+                              <path
+                                d="M8 10C5.33 10 0 11.34 0 14V16H16V14C16 11.34 10.67 10 8 10Z"
+                                fill="currentColor"
+                              />
+                            </svg>
+                            마이페이지
+                          </Link>
+                        </>
+                      ) : (
                         <>
                           <Link
                             href="/my-site/advertiser/dashboard"
@@ -467,6 +502,17 @@ export default function Navigation() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={cancelLogout}
+        onConfirm={confirmLogout}
+        title="로그아웃"
+        message="정말 로그아웃 하시겠습니까?"
+        confirmText="로그아웃"
+        cancelText="취소"
+        type="info"
+      />
     </nav>
   );
 }

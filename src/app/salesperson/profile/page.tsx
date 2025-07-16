@@ -1,121 +1,1235 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { SalespersonGuard } from "@/components/RoleGuard";
+import {
+  getUserInfo,
+  updateUserInfo,
+  changePassword,
+  withdrawUser,
+  UserInfoResponse,
+} from "@/lib/api";
+import { useRouter } from "next/navigation";
+
+interface SalespersonProfileData {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  joinDate: string;
+  lastLoginDate?: string;
+  role: string;
+  [key: string]: string | boolean | object | undefined;
+}
+
+interface EditableUserData {
+  name: string;
+  email: string;
+  phoneNumber: string;
+}
 
 export default function SalespersonProfilePage() {
-  const { user } = useAuth();
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handlePasswordChange = () => {
-    // 비밀번호 변경 로직
-    console.log("비밀번호 변경");
+  // 모달 상태 관리
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 사용자 프로필 데이터
+  const [userData, setUserData] = useState<SalespersonProfileData>({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    joinDate: "",
+    lastLoginDate: "",
+    role: "영업사원",
+  });
+
+  // 수정 가능한 필드들의 상태
+  const [editableData, setEditableData] = useState<EditableUserData>({
+    name: "",
+    email: "",
+    phoneNumber: "",
+  });
+
+  // 비밀번호 변경 모달 상태
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // 비밀번호 변경 에러 상태
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+    general: "",
+  });
+
+  // 회원 탈퇴 관련 상태
+  const [withdrawalData, setWithdrawalData] = useState({
+    reason: "",
+    customReason: "",
+    password: "",
+    confirmText: "",
+  });
+
+  const [withdrawalErrors, setWithdrawalErrors] = useState({
+    reason: "",
+    password: "",
+    confirmText: "",
+    general: "",
+  });
+
+  // 탈퇴 사유 옵션
+  const withdrawalReasons = [
+    { value: "service_dissatisfaction", label: "서비스 불만족" },
+    { value: "lack_of_use", label: "사용 빈도 부족" },
+    { value: "personal_reasons", label: "개인적인 사유" },
+    { value: "business_closure", label: "영업 활동 종료" },
+    { value: "cost_burden", label: "비용 부담" },
+    { value: "other", label: "기타" },
+  ];
+
+  // 사용자 정보 로드
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+
+        const userInfo: UserInfoResponse = await getUserInfo();
+
+        const profileData: SalespersonProfileData = {
+          name: userInfo.name || "",
+          email: userInfo.email || "",
+          phoneNumber: userInfo.phoneNumber || "",
+          joinDate: userInfo.createdAt
+            ? new Date(userInfo.createdAt).toLocaleDateString("ko-KR")
+            : "",
+          lastLoginDate: userInfo.lastLoginAt
+            ? new Date(userInfo.lastLoginAt).toLocaleString("ko-KR")
+            : "",
+          role: "영업사원",
+        };
+
+        setUserData(profileData);
+
+        // 수정 가능한 필드들 초기화
+        setEditableData({
+          name: profileData.name,
+          email: profileData.email,
+          phoneNumber: profileData.phoneNumber,
+        });
+
+        setError(null);
+      } catch (err) {
+        console.error("사용자 정보 로드 실패:", err);
+        setError("사용자 정보를 불러오는데 실패했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      loadUserData();
+    }
+  }, [user]);
+
+  // 회원정보 수정 모달 열기
+  const handleEditClick = () => {
+    setEditableData({
+      name: userData.name,
+      email: userData.email,
+      phoneNumber: userData.phoneNumber,
+    });
+    setIsEditModalOpen(true);
   };
 
-  return (
-    <SalespersonGuard>
-      <div className="salesperson-page">
-        <div className="page-container">
-          <div className="page-header">
-            <h1>마이페이지</h1>
+  // 회원정보 수정 모달 닫기
+  const handleModalClose = () => {
+    setIsEditModalOpen(false);
+    setEditableData({
+      name: userData.name,
+      email: userData.email,
+      phoneNumber: userData.phoneNumber,
+    });
+  };
+
+  // 수정 가능한 필드 값 변경
+  const handleEditableDataChange = (
+    field: keyof EditableUserData,
+    value: string
+  ) => {
+    setEditableData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // 회원정보 저장 처리
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+
+      // 입력 검증
+      if (!editableData.name.trim()) {
+        alert("이름을 입력해주세요.");
+        return;
+      }
+      if (!editableData.email.trim()) {
+        alert("이메일을 입력해주세요.");
+        return;
+      }
+      if (!editableData.phoneNumber.trim()) {
+        alert("휴대폰 번호를 입력해주세요.");
+        return;
+      }
+
+      // 실제 API 호출로 사용자 정보 업데이트
+      await updateUserInfo(editableData);
+
+      // 로컬 상태 업데이트
+      setUserData((prev) => ({
+        ...prev,
+        ...editableData,
+      }));
+
+      alert("회원정보가 성공적으로 수정되었습니다.");
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error("회원정보 수정 실패:", error);
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+        if (errorMessage.includes("로그인이 필요합니다")) {
+          alert("로그인이 필요합니다. 다시 로그인해주세요.");
+          logout();
+          router.push("/login");
+        } else {
+          alert(
+            errorMessage || "회원정보 수정에 실패했습니다. 다시 시도해주세요."
+          );
+        }
+      } else {
+        alert("회원정보 수정에 실패했습니다. 다시 시도해주세요.");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 비밀번호 변경 모달 열기
+  const handlePasswordChangeClick = () => {
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    setPasswordErrors({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      general: "",
+    });
+    setIsPasswordModalOpen(true);
+  };
+
+  // 비밀번호 변경 모달 닫기
+  const handlePasswordModalClose = () => {
+    setIsPasswordModalOpen(false);
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    setPasswordErrors({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      general: "",
+    });
+  };
+
+  // 비밀번호 변경 데이터 입력 처리
+  const handlePasswordDataChange = (
+    field: keyof typeof passwordData,
+    value: string
+  ) => {
+    const newPasswordData = {
+      ...passwordData,
+      [field]: value,
+    };
+
+    setPasswordData(newPasswordData);
+
+    // 입력 시 해당 필드 에러 메시지 초기화
+    const newErrors = {
+      ...passwordErrors,
+      [field]: "",
+      general: "",
+    };
+
+    // 실시간 검증 추가
+    if (field === "newPassword" && value.length > 0 && value.length < 8) {
+      newErrors.newPassword = "새 비밀번호는 8자 이상이어야 합니다.";
+    }
+
+    if (
+      field === "confirmPassword" &&
+      value.length > 0 &&
+      value !== newPasswordData.newPassword
+    ) {
+      newErrors.confirmPassword = "새 비밀번호가 일치하지 않습니다.";
+    }
+
+    // 새 비밀번호가 변경되면 확인 비밀번호도 다시 검증
+    if (
+      field === "newPassword" &&
+      passwordData.confirmPassword.length > 0 &&
+      value !== passwordData.confirmPassword
+    ) {
+      newErrors.confirmPassword = "새 비밀번호가 일치하지 않습니다.";
+    }
+
+    setPasswordErrors(newErrors);
+  };
+
+  // 비밀번호 변경 처리
+  const handlePasswordChange = async () => {
+    try {
+      setIsSaving(true);
+
+      // 에러 상태 초기화
+      setPasswordErrors({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+        general: "",
+      });
+
+      let hasError = false;
+      const newErrors = {
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+        general: "",
+      };
+
+      // 입력 검증
+      if (!passwordData.currentPassword.trim()) {
+        newErrors.currentPassword = "현재 비밀번호를 입력해주세요.";
+        hasError = true;
+      }
+      if (!passwordData.newPassword.trim()) {
+        newErrors.newPassword = "새 비밀번호를 입력해주세요.";
+        hasError = true;
+      } else if (passwordData.newPassword.length < 8) {
+        newErrors.newPassword = "새 비밀번호는 8자 이상이어야 합니다.";
+        hasError = true;
+      }
+      if (!passwordData.confirmPassword.trim()) {
+        newErrors.confirmPassword = "새 비밀번호 확인을 입력해주세요.";
+        hasError = true;
+      } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+        newErrors.confirmPassword = "새 비밀번호가 일치하지 않습니다.";
+        hasError = true;
+      }
+
+      if (hasError) {
+        setPasswordErrors(newErrors);
+        return;
+      }
+
+      // 실제 API 호출로 비밀번호 변경
+      await changePassword(passwordData);
+
+      alert(
+        "비밀번호가 성공적으로 변경되었습니다. 보안을 위해 다시 로그인해주세요."
+      );
+
+      setIsPasswordModalOpen(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      console.error("비밀번호 변경 실패:", error);
+
+      // API 에러 메시지 처리
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+
+        if (
+          errorMessage.includes("현재 비밀번호가 올바르지 않습니다") ||
+          errorMessage.includes("current password is incorrect")
+        ) {
+          setPasswordErrors({
+            currentPassword: "현재 비밀번호가 올바르지 않습니다.",
+            newPassword: "",
+            confirmPassword: "",
+            general: "",
+          });
+        } else if (
+          errorMessage.includes("사용자를 찾을 수 없습니다") ||
+          errorMessage.includes("user not found")
+        ) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+            general: "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
+          });
+        } else if (
+          errorMessage.includes("새 비밀번호가 일치하지 않습니다") ||
+          errorMessage.includes("password confirmation failed")
+        ) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "새 비밀번호가 일치하지 않습니다.",
+            general: "",
+          });
+        } else if (
+          errorMessage.includes("새 비밀번호는 8자 이상이어야 합니다") ||
+          errorMessage.includes("password too short")
+        ) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "새 비밀번호는 8자 이상이어야 합니다.",
+            confirmPassword: "",
+            general: "",
+          });
+        } else if (errorMessage.includes("로그인이 필요합니다")) {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+            general: "로그인이 필요합니다. 다시 로그인해주세요.",
+          });
+        } else {
+          setPasswordErrors({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+            general:
+              error.message ||
+              "비밀번호 변경에 실패했습니다. 다시 시도해주세요.",
+          });
+        }
+      } else {
+        setPasswordErrors({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+          general: "비밀번호 변경에 실패했습니다. 다시 시도해주세요.",
+        });
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 회원 탈퇴 모달 열기
+  const handleWithdrawalClick = () => {
+    setWithdrawalData({
+      reason: "",
+      customReason: "",
+      password: "",
+      confirmText: "",
+    });
+    setWithdrawalErrors({
+      reason: "",
+      password: "",
+      confirmText: "",
+      general: "",
+    });
+    setIsWithdrawalModalOpen(true);
+  };
+
+  // 회원 탈퇴 모달 닫기
+  const handleWithdrawalModalClose = () => {
+    setIsWithdrawalModalOpen(false);
+    setWithdrawalData({
+      reason: "",
+      customReason: "",
+      password: "",
+      confirmText: "",
+    });
+    setWithdrawalErrors({
+      reason: "",
+      password: "",
+      confirmText: "",
+      general: "",
+    });
+  };
+
+  // 회원 탈퇴 데이터 입력 처리
+  const handleWithdrawalDataChange = (
+    field: keyof typeof withdrawalData,
+    value: string
+  ) => {
+    setWithdrawalData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // 입력 시 해당 필드 에러 메시지 초기화
+    setWithdrawalErrors((prev) => ({
+      ...prev,
+      [field]: "",
+      general: "",
+    }));
+  };
+
+  // 회원 탈퇴 처리
+  const handleWithdrawal = async () => {
+    try {
+      setIsSaving(true);
+
+      // 에러 상태 초기화
+      setWithdrawalErrors({
+        reason: "",
+        password: "",
+        confirmText: "",
+        general: "",
+      });
+
+      let hasError = false;
+      const newErrors = {
+        reason: "",
+        password: "",
+        confirmText: "",
+        general: "",
+      };
+
+      // 입력 검증
+      if (!withdrawalData.reason) {
+        newErrors.reason = "탈퇴 사유를 선택해주세요.";
+        hasError = true;
+      }
+
+      if (
+        withdrawalData.reason === "other" &&
+        !withdrawalData.customReason.trim()
+      ) {
+        newErrors.reason = "기타 사유를 입력해주세요.";
+        hasError = true;
+      }
+
+      if (!withdrawalData.password.trim()) {
+        newErrors.password = "비밀번호를 입력해주세요.";
+        hasError = true;
+      }
+
+      if (withdrawalData.confirmText !== "회원탈퇴") {
+        newErrors.confirmText = "정확히 '회원탈퇴'를 입력해주세요.";
+        hasError = true;
+      }
+
+      if (hasError) {
+        setWithdrawalErrors(newErrors);
+        return;
+      }
+
+      // 확인 알림
+      const isConfirmed = window.confirm(
+        "정말로 회원 탈퇴를 하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      );
+
+      if (!isConfirmed) {
+        return;
+      }
+
+      // 실제 API 호출로 회원 탈퇴
+      const finalReason =
+        withdrawalData.reason === "other"
+          ? withdrawalData.customReason
+          : withdrawalReasons.find((r) => r.value === withdrawalData.reason)
+              ?.label || withdrawalData.reason;
+
+      await withdrawUser({
+        password: withdrawalData.password,
+        reason: finalReason,
+        customReason:
+          withdrawalData.reason === "other"
+            ? withdrawalData.customReason
+            : undefined,
+      });
+
+      alert("회원 탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다.");
+
+      // 로그아웃 처리
+      logout();
+
+      // 로그인 페이지로 이동
+      router.push("/login");
+    } catch (error) {
+      console.error("회원 탈퇴 실패:", error);
+
+      // API 에러 메시지 처리
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+
+        if (
+          errorMessage.includes("비밀번호가 올바르지 않습니다") ||
+          errorMessage.includes("password is incorrect")
+        ) {
+          setWithdrawalErrors({
+            reason: "",
+            password: "비밀번호가 올바르지 않습니다.",
+            confirmText: "",
+            general: "",
+          });
+        } else if (
+          errorMessage.includes("사용자를 찾을 수 없습니다") ||
+          errorMessage.includes("user not found")
+        ) {
+          setWithdrawalErrors({
+            reason: "",
+            password: "",
+            confirmText: "",
+            general: "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
+          });
+        } else if (errorMessage.includes("로그인이 필요합니다")) {
+          setWithdrawalErrors({
+            reason: "",
+            password: "",
+            confirmText: "",
+            general: "로그인이 필요합니다. 다시 로그인해주세요.",
+          });
+        } else {
+          setWithdrawalErrors({
+            reason: "",
+            password: "",
+            confirmText: "",
+            general:
+              error.message || "회원 탈퇴에 실패했습니다. 다시 시도해주세요.",
+          });
+        }
+      } else {
+        setWithdrawalErrors({
+          reason: "",
+          password: "",
+          confirmText: "",
+          general: "회원 탈퇴에 실패했습니다. 다시 시도해주세요.",
+        });
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 로딩 중이거나 인증되지 않은 경우
+  if (isLoading) {
+    return (
+      <div className="p-4 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">사용자 정보를 불러오는 중...</p>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          <div className="profile-content">
-            {/* 개인정보 섹션 */}
-            <div className="profile-section">
-              <h3>개인정보</h3>
-              <div className="profile-info-container">
-                <div className="profile-avatar">
-                  <div className="avatar-circle">
-                    {(user?.name || user?.email || "").charAt(0).toUpperCase()}
-                  </div>
-                </div>
-                <div className="profile-details">
-                  <div className="profile-item">
-                    <span className="profile-label">이름</span>
-                    <span className="profile-value">김영업</span>
-                  </div>
-                  <div className="profile-item">
-                    <span className="profile-label">이메일</span>
-                    <span className="profile-value">kim.sales@example.com</span>
-                  </div>
-                  <div className="profile-item">
-                    <span className="profile-label">영업사원 등급</span>
-                    <span className="profile-value">최우수 파트너</span>
-                  </div>
-                  <div className="profile-item">
-                    <span className="profile-label">가입일</span>
-                    <span className="profile-value">2023-01-15</span>
-                  </div>
-                  <button className="edit-profile-btn">개인정보 수정</button>
-                </div>
-              </div>
+  // 에러 발생 시
+  if (error) {
+    return (
+      <div className="p-4 max-w-7xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-red-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </div>
-
-            {/* 계정 설정 섹션 */}
-            <div className="account-section">
-              <h3>계정 설정</h3>
-              <div className="password-form">
-                <div className="form-group">
-                  <label>현재 비밀번호</label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="현재 비밀번호"
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>새 비밀번호</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="새 비밀번호 입력"
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>새 비밀번호 확인</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="새 비밀번호 다시 입력"
-                    className="form-input"
-                  />
-                </div>
-                <button onClick={handlePasswordChange} className="save-btn">
-                  비밀번호 변경
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">오류 발생</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
+                  onClick={() => window.location.reload()}
+                >
+                  다시 시도
                 </button>
-              </div>
-            </div>
-
-            {/* 활동 로그 섹션 */}
-            <div className="activity-log-section">
-              <h3>활동 로그</h3>
-              <div className="log-info">
-                <p>최근 로그인 기록 및 주요 활동 로그를 여기서 표시합니다.</p>
-              </div>
-              <div className="log-entries">
-                <div className="log-entry">
-                  <span className="log-label">로그인</span>
-                  <span className="log-value">
-                    2025년 6월 19일 09:27 AM (IP: 123.45.67.89)
-                  </span>
-                </div>
-                <div className="log-entry">
-                  <span className="log-label">최대 활동 생성</span>
-                  <span className="log-value">2025년 6월 18일 03:15 PM</span>
-                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <SalespersonGuard>
+      <div className="p-4 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1
+            className="text-2xl font-semibold"
+            style={{
+              color: "#1681ff",
+              fontFamily: '"Noto Sans KR"',
+              fontSize: "24px",
+              fontWeight: 600,
+              lineHeight: "120%",
+              letterSpacing: "-0.48px",
+              margin: 0,
+            }}
+          >
+            마이페이지
+          </h1>
+        </div>
+
+        {/* 개인정보 관리 섹션 */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6 border-t-4 border-t-blue-500">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-black">개인정보 관리</h2>
+            <button
+              onClick={handleEditClick}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 text-sm font-medium"
+            >
+              개인정보 수정
+            </button>
+          </div>
+
+          {/* 개인정보 현황 */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+              개인정보 현황
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">이름</p>
+                <p className="font-medium text-black">{userData.name || "-"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">이메일</p>
+                <p className="font-medium text-black">
+                  {userData.email || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">휴대폰 번호</p>
+                <p className="font-medium text-black">
+                  {userData.phoneNumber || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">가입일</p>
+                <p className="font-medium text-black">
+                  {userData.joinDate || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">최근 로그인</p>
+                <p className="font-medium text-black">
+                  {userData.lastLoginDate || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">역할</p>
+                <p className="font-medium text-black">{userData.role}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 비밀번호 변경 */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+              비밀번호 변경
+            </h3>
+
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-gray-600">
+                계정 보안을 위해 정기적으로 비밀번호를 변경해주세요.
+              </p>
+              <button
+                onClick={handlePasswordChangeClick}
+                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors duration-200 text-sm font-medium"
+              >
+                비밀번호 변경
+              </button>
+            </div>
+          </div>
+
+          {/* 회원 탈퇴 */}
+          <div>
+            <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+              회원 탈퇴
+            </h3>
+
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center">
+                <span className="text-red-500 text-xl mr-2">⚠️</span>
+                <div>
+                  <p className="text-gray-700 text-sm">
+                    회원 탈퇴 시 모든 개인 정보가 즉시 삭제되며, 복구가
+                    불가능합니다.
+                  </p>
+                  <p className="text-gray-600 text-xs mt-1">
+                    탈퇴 후에는 해당 계정으로 다시 로그인할 수 없습니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleWithdrawalClick}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 text-sm font-medium"
+              >
+                회원 탈퇴
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 개인정보 수정 모달 */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">
+                  개인정보 수정
+                </h2>
+                <button
+                  onClick={handleModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
+                    개인정보
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        이름 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editableData.name}
+                        onChange={(e) =>
+                          handleEditableDataChange("name", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="이름을 입력하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        이메일 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={editableData.email}
+                        onChange={(e) =>
+                          handleEditableDataChange("email", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="이메일을 입력하세요"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        휴대폰 번호 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={editableData.phoneNumber}
+                        onChange={(e) =>
+                          handleEditableDataChange(
+                            "phoneNumber",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="휴대폰 번호를 입력하세요"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handleModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "저장 중..." : "저장"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 비밀번호 변경 모달 */}
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">
+                  비밀번호 변경
+                </h2>
+                <button
+                  onClick={handlePasswordModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    현재 비밀번호 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      handlePasswordDataChange(
+                        "currentPassword",
+                        e.target.value
+                      )
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      passwordErrors.currentPassword
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="현재 비밀번호를 입력하세요"
+                  />
+                  {passwordErrors.currentPassword && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {passwordErrors.currentPassword}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    새 비밀번호 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      handlePasswordDataChange("newPassword", e.target.value)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      passwordErrors.newPassword
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="새 비밀번호를 입력하세요 (8자 이상)"
+                  />
+                  {passwordErrors.newPassword && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {passwordErrors.newPassword}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    새 비밀번호 확인 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      handlePasswordDataChange(
+                        "confirmPassword",
+                        e.target.value
+                      )
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      passwordErrors.confirmPassword
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="새 비밀번호를 다시 입력하세요"
+                  />
+                  {passwordErrors.confirmPassword && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {passwordErrors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+
+                {passwordErrors.general && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    <p className="text-red-700 text-sm">
+                      {passwordErrors.general}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handlePasswordModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handlePasswordChange}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors duration-200 disabled:bg-orange-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "변경 중..." : "비밀번호 변경"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 회원 탈퇴 모달 */}
+        {isWithdrawalModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">회원 탈퇴</h2>
+                <button
+                  onClick={handleWithdrawalModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    탈퇴 사유 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={withdrawalData.reason}
+                    onChange={(e) =>
+                      handleWithdrawalDataChange("reason", e.target.value)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      withdrawalErrors.reason
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                  >
+                    <option value="">사유를 선택하세요</option>
+                    {withdrawalReasons.map((reason) => (
+                      <option key={reason.value} value={reason.value}>
+                        {reason.label}
+                      </option>
+                    ))}
+                  </select>
+                  {withdrawalErrors.reason && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {withdrawalErrors.reason}
+                    </p>
+                  )}
+                </div>
+
+                {withdrawalData.reason === "other" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      기타 사유 <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={withdrawalData.customReason}
+                      onChange={(e) =>
+                        handleWithdrawalDataChange(
+                          "customReason",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="탈퇴 사유를 입력하세요"
+                      rows={3}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    비밀번호 확인 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={withdrawalData.password}
+                    onChange={(e) =>
+                      handleWithdrawalDataChange("password", e.target.value)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      withdrawalErrors.password
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="비밀번호를 입력하세요"
+                  />
+                  {withdrawalErrors.password && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {withdrawalErrors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    확인 문구 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={withdrawalData.confirmText}
+                    onChange={(e) =>
+                      handleWithdrawalDataChange("confirmText", e.target.value)
+                    }
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      withdrawalErrors.confirmText
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
+                    placeholder="'회원탈퇴'를 입력하세요"
+                  />
+                  {withdrawalErrors.confirmText && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {withdrawalErrors.confirmText}
+                    </p>
+                  )}
+                  <p className="text-gray-600 text-xs mt-1">
+                    탈퇴를 확인하기 위해 정확히 &apos;회원탈퇴&apos;를
+                    입력해주세요.
+                  </p>
+                </div>
+
+                {withdrawalErrors.general && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    <p className="text-red-700 text-sm">
+                      {withdrawalErrors.general}
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="h-5 w-5 text-red-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">
+                        회원 탈퇴 시 주의사항
+                      </h3>
+                      <div className="mt-2 text-sm text-red-700">
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>모든 개인정보가 즉시 삭제됩니다.</li>
+                          <li>리워드 및 포인트가 모두 소멸됩니다.</li>
+                          <li>탈퇴 후 복구가 불가능합니다.</li>
+                          <li>동일한 이메일로 재가입이 제한될 수 있습니다.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handleWithdrawalModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleWithdrawal}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 disabled:bg-red-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "탈퇴 처리 중..." : "회원 탈퇴"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </SalespersonGuard>
   );
