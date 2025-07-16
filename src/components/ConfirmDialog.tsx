@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, X } from "lucide-react";
 
 interface ConfirmDialogProps {
@@ -41,10 +42,10 @@ export default function ConfirmDialog({
     }
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center"
-      style={{ zIndex: 1001, backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+      style={{ zIndex: 9999, backgroundColor: "rgba(0, 0, 0, 0.5)" }}
       onClick={handleBackdropClick}
     >
       <div
@@ -91,6 +92,7 @@ export default function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
