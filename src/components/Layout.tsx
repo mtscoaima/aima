@@ -38,7 +38,8 @@ export default function Layout({ children }: LayoutProps) {
     pathname === "/support" ||
     pathname.startsWith("/target-marketing/") ||
     pathname === "/my-site/advertiser/profile" ||
-    pathname === "/my-site/advertiser/dashboard";
+    pathname === "/my-site/advertiser/dashboard" ||
+    pathname.startsWith("/salesperson/");
 
   // 로딩 중일 때 스피너 표시
   if (isLoading) {
