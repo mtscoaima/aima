@@ -13,6 +13,14 @@ interface Announcement {
   isImportant: boolean;
 }
 
+interface FAQ {
+  id: number;
+  question: string;
+  answer: string;
+  category: string;
+  displayOrder: number;
+}
+
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -27,8 +35,11 @@ const SupportPage = () => {
     "faq" | "announcement" | "contact"
   >("faq");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(false);
+  const [faqLoading, setFaqLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [faqError, setFaqError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] =
@@ -55,6 +66,25 @@ const SupportPage = () => {
     }
   };
 
+  // FAQ 데이터 가져오기
+  const fetchFaqs = async () => {
+    setFaqLoading(true);
+    setFaqError(null);
+    try {
+      const response = await fetch("/api/faqs");
+      if (!response.ok) {
+        throw new Error("Failed to fetch FAQs");
+      }
+      const data = await response.json();
+      setFaqs(data);
+    } catch (err) {
+      setFaqError("FAQ를 불러오는데 실패했습니다.");
+      console.error("Error fetching FAQs:", err);
+    } finally {
+      setFaqLoading(false);
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     fetchAnnouncements(page);
@@ -73,8 +103,10 @@ const SupportPage = () => {
   useEffect(() => {
     if (activeTab === "announcement") {
       fetchAnnouncements(currentPage);
+    } else if (activeTab === "faq") {
+      fetchFaqs();
     }
-  }, [activeTab]);
+  }, [activeTab, currentPage]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -83,50 +115,25 @@ const SupportPage = () => {
           <div className="support-section">
             <h2>자주 묻는 질문 (FAQ)</h2>
             <div className="faq-grid">
-              <div className="faq-item">
-                <h3>MMS 발송은 어떻게 하나요?</h3>
-                <p>
-                  &quot;문자&quot; 메뉴에서 &quot;MMS&quot; 탭을 선택하고,
-                  수신자를 추가한 후 메시지와 이미지를 첨부하여 발송할 수
-                  있습니다.
-                </p>
-              </div>
-              <div className="faq-item">
-                <h3>광고성 문자 발송 시 주의사항은 무엇인가요?</h3>
-                <p>
-                  정보통신망법에 따라 광고성 문자 발송 시에는 (광고) 문구를
-                  표시하고, 수신 거부 방법을 안내해야 합니다.
-                </p>
-              </div>
-              <div className="faq-item">
-                <h3>발송 비용은 어떻게 결제되나요?</h3>
-                <p>
-                  &quot;요금제&quot; 메뉴에서 원하시는 플랜을 선택하여 결제할 수
-                  있습니다. 충전형 또는 월정액 요금제를 제공합니다.
-                </p>
-              </div>
-              <div className="faq-item">
-                <h3>발송 실패 시 비용은 환불되나요?</h3>
-                <p>
-                  네, 통신사 사정이나 번호 오류 등으로 발송에 실패한 건에
-                  대해서는 비용이 자동으로 환불 처리됩니다.
-                </p>
-              </div>
-              <div className="faq-item">
-                <h3>크레딧은 언제 충전하면 되나요?</h3>
-                <p>
-                  잔여 크레딧이 부족할 때 언제든지 충전 가능합니다. 자동 충전
-                  기능을 설정하시면 잔액이 일정 수준 이하로 떨어질 때 자동으로
-                  충전됩니다.
-                </p>
-              </div>
-              <div className="faq-item">
-                <h3>메시지 발송 제한이 있나요?</h3>
-                <p>
-                  스팸 방지를 위해 시간당 발송량에 제한이 있습니다. 대량 발송이
-                  필요한 경우 고객센터로 별도 문의 부탁드립니다.
-                </p>
-              </div>
+              {faqLoading ? (
+                <div className="loading-message">FAQ를 불러오는 중...</div>
+              ) : faqError ? (
+                <div className="error-message">
+                  {faqError}
+                  <button onClick={fetchFaqs} className="retry-button">
+                    다시 시도
+                  </button>
+                </div>
+              ) : faqs.length === 0 ? (
+                <div className="no-announcements">등록된 FAQ가 없습니다.</div>
+              ) : (
+                faqs.map((faq) => (
+                  <div key={faq.id} className="faq-item">
+                    <h3>{faq.question}</h3>
+                    <p>{faq.answer}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         );
