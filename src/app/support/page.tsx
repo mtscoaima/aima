@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import AnnouncementModal from "../../components/AnnouncementModal";
+import Pagination from "../../components/Pagination";
 import "./styles.css";
 
 interface Announcement {
@@ -11,46 +13,68 @@ interface Announcement {
   isImportant: boolean;
 }
 
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  limit: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 const SupportPage = () => {
   const [activeTab, setActiveTab] = useState<
     "faq" | "announcement" | "contact"
   >("faq");
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] =
+    useState<Announcement | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 공지사항 더미 데이터
-  const announcements: Announcement[] = [
-    {
-      id: 1,
-      title: "시스템 정기 점검 안내",
-      content:
-        "2024년 1월 30일 오전 2시부터 6시까지 시스템 정기 점검을 진행합니다. 해당 시간 동안 서비스 이용이 제한될 수 있습니다.",
-      createdAt: "2024-01-25",
-      isImportant: true,
-    },
-    {
-      id: 2,
-      title: "MMS 발송 요금 인하 안내",
-      content:
-        "2024년 2월 1일부터 MMS 발송 요금이 기존 대비 10% 인하됩니다. 더 저렴한 가격으로 서비스를 이용해보세요.",
-      createdAt: "2024-01-20",
-      isImportant: false,
-    },
-    {
-      id: 3,
-      title: "새로운 템플릿 기능 출시",
-      content:
-        "AI 기반 메시지 템플릿 생성 기능이 추가되었습니다. '메시지 작성' 페이지에서 새로운 기능을 확인해보세요.",
-      createdAt: "2024-01-15",
-      isImportant: false,
-    },
-    {
-      id: 4,
-      title: "고객센터 운영시간 변경 안내",
-      content:
-        "2024년 1월부터 고객센터 운영시간이 평일 오전 9시 - 오후 7시로 변경됩니다.",
-      createdAt: "2024-01-10",
-      isImportant: false,
-    },
-  ];
+  // 공지사항 데이터 가져오기
+  const fetchAnnouncements = async (page: number = 1) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/announcements?page=${page}&limit=10`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch announcements");
+      }
+      const data = await response.json();
+      setAnnouncements(data.announcements || []);
+      setPagination(data.pagination);
+    } catch (err) {
+      setError("공지사항을 불러오는데 실패했습니다.");
+      console.error("Error fetching announcements:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchAnnouncements(page);
+  };
+
+  const handleAnnouncementClick = (announcement: Announcement) => {
+    setSelectedAnnouncement(announcement);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedAnnouncement(null);
+  };
+
+  useEffect(() => {
+    if (activeTab === "announcement") {
+      fetchAnnouncements(currentPage);
+    }
+  }, [activeTab]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -111,28 +135,59 @@ const SupportPage = () => {
           <div className="support-section">
             <h2>공지사항</h2>
             <div className="announcement-list">
-              {announcements.map((announcement) => (
-                <div key={announcement.id} className="announcement-item">
-                  <div className="announcement-header">
-                    <div className="announcement-title-row">
-                      <h3 className="announcement-title">
-                        {announcement.isImportant && (
-                          <span className="announcement-important-badge">
-                            중요
-                          </span>
-                        )}
-                        {announcement.title}
-                      </h3>
-                      <span className="announcement-date">
-                        {announcement.createdAt}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="announcement-content">
-                    <p>{announcement.content}</p>
-                  </div>
+              {loading ? (
+                <div className="loading-message">공지사항을 불러오는 중...</div>
+              ) : error ? (
+                <div className="error-message">
+                  {error}
+                  <button
+                    onClick={() => fetchAnnouncements(currentPage)}
+                    className="retry-button"
+                  >
+                    다시 시도
+                  </button>
                 </div>
-              ))}
+              ) : announcements.length === 0 ? (
+                <div className="no-announcements">
+                  등록된 공지사항이 없습니다.
+                </div>
+              ) : (
+                <>
+                  {announcements.map((announcement) => (
+                    <div
+                      key={announcement.id}
+                      className="announcement-item clickable"
+                      onClick={() => handleAnnouncementClick(announcement)}
+                    >
+                      <div className="announcement-header">
+                        <div className="announcement-title-row">
+                          <h3 className="announcement-title">
+                            {announcement.isImportant && (
+                              <span className="announcement-important-badge">
+                                중요
+                              </span>
+                            )}
+                            {announcement.title}
+                          </h3>
+                          <span className="announcement-date">
+                            {announcement.createdAt}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {pagination && (
+                    <Pagination
+                      currentPage={pagination.currentPage}
+                      totalPages={pagination.totalPages}
+                      totalItems={pagination.totalItems}
+                      onPageChange={handlePageChange}
+                      className="announcement-pagination"
+                    />
+                  )}
+                </>
+              )}
             </div>
           </div>
         );
@@ -211,6 +266,12 @@ const SupportPage = () => {
 
         <div className="cm-content">{renderTabContent()}</div>
       </div>
+
+      <AnnouncementModal
+        announcement={selectedAnnouncement}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 };
