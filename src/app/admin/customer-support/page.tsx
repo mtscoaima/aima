@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/AdminHeader";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -93,70 +93,82 @@ export default function CustomerSupportPage() {
     setIsSidebarOpen(false);
   };
 
+  const fetchFaqs = useCallback(
+    async (page: number = 1) => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `/api/faqs?include_inactive=true&page=${page}&limit=${faqPagination.limit}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+
+          setFaqs(data.faqs || []);
+
+          if (data.pagination) {
+            setFaqPagination({
+              currentPage: data.pagination.currentPage,
+              totalPages: data.pagination.totalPages,
+              totalItems: data.pagination.totalItems,
+              limit: data.pagination.limit,
+              hasNext: data.pagination.hasNext,
+              hasPrev: data.pagination.hasPrev,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("FAQ 조회 실패:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [faqPagination.limit]
+  );
+
+  const fetchAnnouncements = useCallback(
+    async (page: number = 1) => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `/api/announcements?page=${page}&limit=${announcementPagination.limit}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setAnnouncements(data.announcements || []);
+
+          if (data.pagination) {
+            setAnnouncementPagination({
+              currentPage: data.pagination.currentPage,
+              totalPages: data.pagination.totalPages,
+              totalItems: data.pagination.totalItems,
+              limit: data.pagination.limit,
+              hasNext: data.pagination.hasNext,
+              hasPrev: data.pagination.hasPrev,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("공지사항 조회 실패:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [announcementPagination.limit]
+  );
+
   useEffect(() => {
     if (activeTab === "faqs") {
       fetchFaqs(faqPagination.currentPage);
     } else {
       fetchAnnouncements(announcementPagination.currentPage);
     }
-  }, [activeTab]);
-
-  const fetchFaqs = async (page: number = 1) => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `/api/faqs?include_inactive=true&page=${page}&limit=${faqPagination.limit}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-
-        setFaqs(data.faqs || []);
-
-        if (data.pagination) {
-          setFaqPagination({
-            currentPage: data.pagination.currentPage,
-            totalPages: data.pagination.totalPages,
-            totalItems: data.pagination.totalItems,
-            limit: data.pagination.limit,
-            hasNext: data.pagination.hasNext,
-            hasPrev: data.pagination.hasPrev,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("FAQ 조회 실패:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAnnouncements = async (page: number = 1) => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `/api/announcements?page=${page}&limit=${announcementPagination.limit}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setAnnouncements(data.announcements || []);
-
-        if (data.pagination) {
-          setAnnouncementPagination({
-            currentPage: data.pagination.currentPage,
-            totalPages: data.pagination.totalPages,
-            totalItems: data.pagination.totalItems,
-            limit: data.pagination.limit,
-            hasNext: data.pagination.hasNext,
-            hasPrev: data.pagination.hasPrev,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("공지사항 조회 실패:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [
+    activeTab,
+    faqPagination.currentPage,
+    announcementPagination.currentPage,
+    fetchFaqs,
+    fetchAnnouncements,
+  ]);
 
   const handleFaqPageChange = (page: number) => {
     fetchFaqs(page);
