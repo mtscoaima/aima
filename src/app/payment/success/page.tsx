@@ -40,12 +40,34 @@ function PaymentSuccessContent() {
         return;
       }
 
+      // localStorage에서 리다이렉트 URL 확인
+      const redirectUrl = localStorage.getItem("payment_redirect_url");
+
+      // 결제 완료 플래그 설정 (타겟마케팅 페이지로 돌아갈 때만)
+      if (redirectUrl && redirectUrl.includes("/target-marketing")) {
+        localStorage.setItem("payment_completed", "true");
+        localStorage.setItem(
+          "payment_completed_timestamp",
+          Date.now().toString()
+        );
+        localStorage.removeItem("payment_redirect_url"); // 사용 후 제거
+      }
+
       const isValidRelative = url && url.startsWith("/");
       const isValidAbsolute = url && /^https?:\/\//.test(url);
 
-      // URL 안전성 확보
-      const finalUrl =
-        isValidRelative || isValidAbsolute ? url : "/credit-management";
+      // URL 우선순위: 직접 전달된 URL > 저장된 리다이렉트 URL > 기본 크레딧 관리
+      let finalUrl = "/credit-management";
+
+      if (isValidRelative || isValidAbsolute) {
+        finalUrl = url;
+      } else if (
+        redirectUrl &&
+        (redirectUrl.startsWith("/") || /^https?:\/\//.test(redirectUrl))
+      ) {
+        finalUrl = redirectUrl;
+        localStorage.removeItem("payment_redirect_url"); // 사용 후 제거
+      }
 
       console.log("페이지 이동:", finalUrl);
       window.location.href = finalUrl;
@@ -141,7 +163,7 @@ function PaymentSuccessContent() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          safeNavigate("/credit-management"); // 명시적으로 경로 지정
+          safeNavigate(); // 리다이렉트 URL 자동 처리
           return 0;
         }
         return prev - 1;
@@ -271,10 +293,10 @@ function PaymentSuccessContent() {
           </h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => safeNavigate("/credit-management")}
+            onClick={() => safeNavigate()}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            크레딧 관리로 돌아가기
+            이전 페이지로 돌아가기
           </button>
         </div>
       </div>
@@ -331,15 +353,15 @@ function PaymentSuccessContent() {
 
         <div className="space-y-3">
           <button
-            onClick={() => safeNavigate("/credit-management")}
+            onClick={() => safeNavigate()}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            크레딧 관리로 이동
+            이전 페이지로 이동
           </button>
 
           {countdown > 0 && (
             <p className="text-sm text-gray-500">
-              {countdown}초 후 자동으로 크레딧 관리 페이지로 이동합니다...
+              {countdown}초 후 자동으로 이전 페이지로 이동합니다...
             </p>
           )}
         </div>
