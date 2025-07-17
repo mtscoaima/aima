@@ -110,15 +110,33 @@ export function PaymentModal({
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
+        const token = localStorage.getItem("accessToken");
+
         const response = await fetch("/api/users/me", {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
         if (response.ok) {
           const data = await response.json();
-          setUserInfo(data.user);
+
+          // API가 직접 사용자 정보를 반환하므로 data를 바로 사용
+          // phoneNumber -> phone 매핑
+          const mappedUserInfo = {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            phone: data.phoneNumber, // phoneNumber -> phone 매핑
+          };
+
+          setUserInfo(mappedUserInfo);
+        } else {
+          console.error(
+            "API 응답 실패:",
+            response.status,
+            await response.text()
+          );
         }
       } catch (error) {
         console.error("사용자 정보 조회 실패:", error);
@@ -162,6 +180,12 @@ export function PaymentModal({
       return;
     }
 
+    // 사용자 정보가 로드되지 않았으면 대기
+    if (!userInfo) {
+      alert("사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
     try {
       setIsProcessingPayment(true);
       setStep(4);
@@ -190,6 +214,13 @@ export function PaymentModal({
       const formattedPhone = formatPhoneNumber(userInfo?.phone);
       const formattedEmail = formatEmail(userInfo?.email);
 
+      // redirectUrl을 localStorage에 저장 (success 페이지에서 사용)
+      if (redirectUrl) {
+        localStorage.setItem("payment_redirect_url", redirectUrl);
+      } else {
+        localStorage.removeItem("payment_redirect_url");
+      }
+
       // KG이니시스 결제 요청 데이터 생성
       const paymentData = {
         price: packageInfo.price.toString(),
@@ -206,7 +237,7 @@ export function PaymentModal({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
         body: JSON.stringify(paymentData),
       });

@@ -48,22 +48,54 @@ export async function POST(request: NextRequest) {
     let creditAmount = 0;
     let packageName = "크레딧 충전";
 
-    // 패키지 정보를 orderId나 결제 금액으로 추정 (1원당 1크레딧)
-    const packageMap: Record<number, { credits: number; name: string }> = {
-      10000: { credits: 10000, name: "크레딧 10,000개 패키지" },
-      28000: { credits: 28000, name: "크레딧 28,000개 패키지" },
-      45000: { credits: 45000, name: "크레딧 45,000개 패키지" },
-      50000: { credits: 50000, name: "크레딧 50,000개 패키지" },
-      85000: { credits: 85000, name: "크레딧 85,000개 패키지" },
+    // KG이니시스 결제 데이터에서 크레딧 수량 추출
+    const extractCreditsFromGoodName = (goodName: string): number => {
+      // "크레딧 10,000개 충전" 같은 형식에서 숫자 추출
+      const match = goodName.match(/크레딧\s*([\d,]+)개/);
+      if (match) {
+        const creditStr = match[1].replace(/,/g, ""); // 콤마 제거
+        return parseInt(creditStr);
+      }
+      return 0;
     };
 
-    const packageInfo = packageMap[amount];
-    if (packageInfo) {
-      creditAmount = packageInfo.credits;
-      packageName = packageInfo.name;
-    } else {
-      // 기본 계산: 1원당 1크레딧
-      creditAmount = amount;
+    // 1순위: paymentData의 goodName/goodsName에서 크레딧 수량 추출
+    if (finalPaymentData?.goodName) {
+      const extractedCredits = extractCreditsFromGoodName(
+        finalPaymentData.goodName
+      );
+      if (extractedCredits > 0) {
+        creditAmount = extractedCredits;
+        packageName = finalPaymentData.goodName;
+      }
+    } else if (finalPaymentData?.goodsName) {
+      const extractedCredits = extractCreditsFromGoodName(
+        finalPaymentData.goodsName
+      );
+      if (extractedCredits > 0) {
+        creditAmount = extractedCredits;
+        packageName = finalPaymentData.goodsName;
+      }
+    }
+
+    // 2순위: 패키지 정보를 결제 금액으로 추정 (기존 로직)
+    if (creditAmount === 0) {
+      const packageMap: Record<number, { credits: number; name: string }> = {
+        10000: { credits: 10000, name: "크레딧 10,000개 패키지" },
+        28000: { credits: 28000, name: "크레딧 28,000개 패키지" },
+        45000: { credits: 45000, name: "크레딧 45,000개 패키지" },
+        50000: { credits: 50000, name: "크레딧 50,000개 패키지" },
+        85000: { credits: 85000, name: "크레딧 85,000개 패키지" },
+      };
+
+      const packageInfo = packageMap[amount];
+      if (packageInfo) {
+        creditAmount = packageInfo.credits;
+        packageName = packageInfo.name;
+      } else {
+        // 마지막 수단: 1원당 1크레딧
+        creditAmount = amount;
+      }
     }
 
     try {
@@ -71,15 +103,19 @@ export async function POST(request: NextRequest) {
       // 토스페이먼츠 결제 데이터에서 고객 정보 찾기
       let customerEmail = null;
 
-      // 다양한 경로에서 이메일 추출 시도
-      if (paymentData.checkout?.customer?.email) {
+      // 다양한 경로에서 이메일 추출 시도 (paymentData 안전성 체크)
+      if (paymentData?.checkout?.customer?.email) {
         customerEmail = paymentData.checkout.customer.email;
-      } else if (paymentData.customer?.email) {
+      } else if (paymentData?.customer?.email) {
         customerEmail = paymentData.customer.email;
-      } else if (paymentData.customerEmail) {
+      } else if (paymentData?.customerEmail) {
         customerEmail = paymentData.customerEmail;
-      } else if (paymentData.receipt?.customerEmail) {
+      } else if (paymentData?.receipt?.customerEmail) {
         customerEmail = paymentData.receipt.customerEmail;
+      } else if (paymentData?.buyerEmail) {
+        customerEmail = paymentData.buyerEmail;
+      } else if (paymentData?.custEmail) {
+        customerEmail = paymentData.custEmail;
       }
 
       // 이메일이 없는 경우 orderId에서 사용자 정보 추출 시도
@@ -97,7 +133,11 @@ export async function POST(request: NextRequest) {
       let userError = null;
 
       // 1. 이메일로 사용자 조회 시도
-      if (customerEmail && customerEmail !== "unknown@example.com") {
+      if (
+        customerEmail &&
+        customerEmail !== "unknown@example.com" &&
+        customerEmail !== "customer@example.com"
+      ) {
         const result = await supabase
           .from("users")
           .select("id, email, name")
@@ -121,8 +161,14 @@ export async function POST(request: NextRequest) {
       }
 
       if (userError || !userData) {
-        console.error(userError);
-        return;
+        console.error("사용자 조회 실패:", userError);
+        return NextResponse.json(
+          {
+            error: "사용자 정보를 찾을 수 없습니다.",
+            details: userError?.message || "사용자 조회 실패",
+          },
+          { status: 404 }
+        );
       }
 
       const userId = userData.id;
@@ -169,6 +215,29 @@ export async function POST(request: NextRequest) {
 
       if (existingTransaction && !existingError) {
         transaction = existingTransaction;
+
+        // 이미 처리된 경우, 현재 잔액만 조회해서 반환
+        const { data: currentBalance } = await supabase
+          .from("user_balances")
+          .select("current_balance")
+          .eq("user_id", userId)
+          .single();
+
+        const newBalance = currentBalance?.current_balance || 0;
+
+        return NextResponse.json({
+          success: true,
+          payment: finalPaymentData,
+          message: "이미 처리된 결제입니다.",
+          creditInfo: {
+            userId,
+            creditAmount: existingTransaction.amount,
+            totalCredits: existingTransaction.amount,
+            newBalance,
+            packageName: existingTransaction.description,
+            transaction: existingTransaction,
+          },
+        });
       } else {
         // 크레딧 충전 트랜잭션 생성
         const transactionData = {
@@ -233,10 +302,23 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(responseData);
     } catch (creditError) {
-      console.error(creditError);
+      console.error("크레딧 충전 처리 오류:", creditError);
 
       // 크레딧 충전 실패해도 결제는 성공했으므로 성공으로 응답
       // 수동으로 크레딧을 추가할 수 있도록 정보 제공
+      return NextResponse.json({
+        success: true,
+        payment: finalPaymentData,
+        message:
+          "결제는 성공했으나 크레딧 충전에 문제가 발생했습니다. 관리자에게 문의하세요.",
+        error:
+          creditError instanceof Error
+            ? creditError.message
+            : "크레딧 충전 오류",
+        paymentKey,
+        orderId,
+        amount,
+      });
     }
   } catch (error) {
     console.error(error);

@@ -1,5 +1,15 @@
-// API 기본 설정
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+// API 기본 설정 - 안전한 URL 설정
+const getApiBaseUrl = (): string => {
+  // 클라이언트 사이드에서는 상대 경로 사용
+  if (typeof window !== "undefined") {
+    return "";
+  }
+
+  // 서버 사이드에서는 절대 URL 필요
+  return process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // API 응답 타입 정의
 export interface LoginRequest {

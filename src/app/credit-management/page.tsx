@@ -9,16 +9,16 @@ import RoleGuard from "@/components/RoleGuard";
 import "./styles.css";
 
 interface Package {
-  id: number;
+  id: string;
+  name: string;
   credits: number;
   price: number;
   bonus: number;
-  popular?: boolean;
+  isPopular?: boolean;
 }
 
 const CreditManagementPage = () => {
-  const { addTransaction, getTransactionHistory, refreshTransactions } =
-    useBalance();
+  const { getTransactionHistory, refreshTransactions } = useBalance();
   const [activeTab, setActiveTab] = useState<
     "charge" | "all" | "history" | "usage"
   >("charge");
@@ -107,35 +107,6 @@ const CreditManagementPage = () => {
   const handleCharge = (packageInfo: Package) => {
     setSelectedPackage(packageInfo);
     setIsPaymentModalOpen(true);
-  };
-
-  const handlePaymentComplete = async (packageInfo: Package) => {
-    try {
-      const totalCredits = packageInfo.credits;
-      const packageName = `크레딧 ${totalCredits.toLocaleString()}개 패키지`;
-      const description = `${packageName} 충전: ${totalCredits}크레딧`;
-
-      await addTransaction(
-        "charge",
-        totalCredits,
-        description,
-        `package_${packageInfo.id}_${Date.now()}`,
-        {
-          packageId: packageInfo.id,
-          packagePrice: packageInfo.price,
-          paymentMethod: "card",
-          totalCredits: totalCredits,
-          packageName: packageName,
-        }
-      );
-
-      setRefreshKey((prev) => prev + 1);
-      alert(`${totalCredits.toLocaleString()}크레딧이 충전되었습니다!`);
-    } catch (error) {
-      alert(
-        error instanceof Error ? error.message : "충전 중 오류가 발생했습니다."
-      );
-    }
   };
 
   const handleClosePaymentModal = () => {
@@ -812,7 +783,6 @@ const CreditManagementPage = () => {
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
           packageInfo={selectedPackage}
-          onPaymentComplete={handlePaymentComplete}
         />
       </div>
     </RoleGuard>

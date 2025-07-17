@@ -28,11 +28,12 @@ interface GeneratedTemplate {
 }
 
 interface Package {
-  id: number;
+  id: string;
+  name: string;
   credits: number;
   price: number;
   bonus: number;
-  popular?: boolean;
+  isPopular?: boolean;
 }
 
 // useSearchParams를 사용하는 컴포넌트를 별도로 분리
@@ -526,34 +527,18 @@ function TargetMarketingContent() {
       // 가장 적합한 패키지 자동 선택
       const recommendedPackage = suitablePackages[0];
       const packageInfo: Package = {
-        id: recommendedPackage.id,
+        id: recommendedPackage.id.toString(),
+        name: recommendedPackage.name,
         credits: recommendedPackage.credits,
         price: recommendedPackage.price,
         bonus: recommendedPackage.bonus_credits || 0,
-        popular: recommendedPackage.is_popular || false,
+        isPopular: recommendedPackage.is_popular || false,
       };
 
       await handleCharge(packageInfo);
     } catch (error) {
       console.error("자동 패키지 선택 오류:", error);
       alert("패키지 정보를 가져오는 중 오류가 발생했습니다.");
-    }
-  };
-
-  // 결제 완료 처리
-  const handlePaymentComplete = async (packageInfo: Package) => {
-    try {
-      // 실제 최신 크레딧 정보를 API에서 다시 가져오기
-      await refreshTransactions();
-
-      alert(`${packageInfo.credits.toLocaleString()}크레딧이 충전되었습니다!`);
-
-      // 모달 닫기
-      setIsPaymentModalOpen(false);
-      setSelectedPackage(null);
-    } catch (error) {
-      console.error("결제 완료 처리 오류:", error);
-      alert("결제 완료 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -2194,7 +2179,6 @@ function TargetMarketingContent() {
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
           packageInfo={selectedPackage}
-          onPaymentComplete={handlePaymentComplete}
           redirectUrl={window.location.pathname}
         />
       </div>
