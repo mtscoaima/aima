@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
 import { useBalance } from "@/contexts/BalanceContext";
+import dynamicImport from "next/dynamic";
+
+// Next.js에게 이 페이지를 완전히 동적으로 처리하도록 강제
+export const dynamic = "force-dynamic";
 
 interface CreditInfo {
   userId: number;
@@ -11,178 +14,261 @@ interface CreditInfo {
   packageName: string;
 }
 
-export default function PaymentSuccessPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+interface PaymentParams {
+  paymentKey: string;
+  orderId: string;
+  amount: string;
+}
+
+// 서버 사이드 렌더링 방지를 위한 컴포넌트
+function PaymentSuccessContent() {
   const { refreshTransactions } = useBalance();
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creditInfo, setCreditInfo] = useState<CreditInfo | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [processingMessage, setProcessingMessage] =
-    useState("결제를 확인하는 중...");
+  const [countdown, setCountdown] = useState(5);
+  const [params, setParams] = useState<PaymentParams | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isParamsReady, setIsParamsReady] = useState(false); // 파싱 완료 상태 추가
 
-  useEffect(() => {
-    let isProcessed = false; // 중복 요청 방지
+  // 안전한 페이지 이동 함수 - useCallback으로 메모이제이션
+  const safeNavigate = useCallback((url?: string) => {
+    try {
+      // 클라이언트에서만 실행
+      if (typeof window === "undefined") {
+        console.warn("서버에서 safeNavigate 호출 시도");
+        return;
+      }
 
-    const confirmPayment = async (attempt: number = 1) => {
-      if (isProcessed) return; // 이미 처리된 경우 중단
+      // localStorage에서 리다이렉트 URL 확인
+      const redirectUrl = localStorage.getItem("payment_redirect_url");
 
-      try {
-        const paymentKey = searchParams.get("paymentKey");
-        const orderId = searchParams.get("orderId");
-        const amount = searchParams.get("amount");
-
-        if (!paymentKey || !orderId || !amount) {
-          throw new Error("결제 정보가 누락되었습니다.");
-        }
-
-        setRetryCount(attempt - 1);
-
-        if (attempt > 1) {
-          setProcessingMessage(`결제 승인 재시도 중... (${attempt}회차)`);
-        }
-
-        // 결제 승인 API 호출
-        const requestBody = {
-          paymentKey,
-          orderId,
-          amount: Number(amount),
-        };
-
-        const response = await fetch("/api/payment/confirm", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        let responseData;
-        try {
-          responseData = await response.json();
-        } catch {
-          // 200 응답이면 성공으로 간주
-          if (response.status === 200) {
-            responseData = {
-              success: true,
-              message: "결제가 성공적으로 처리되었습니다.",
-            };
-          } else {
-            throw new Error("결제 승인 응답을 처리할 수 없습니다.");
-          }
-        }
-
-        // 일시적 오류 체크 및 재시도 로직
-        const isTemporaryError = (responseData: {
-          message?: string;
-          code?: string;
-        }) => {
-          const message = responseData.message || "";
-          return (
-            message.includes("잠시 후 다시 이용해 주시기 바랍니다") ||
-            message.includes("일시적인 오류") ||
-            message.includes("서버가 응답하지 않습니다") ||
-            response.status === 500 ||
-            response.status === 502 ||
-            response.status === 503 ||
-            response.status === 504
-          );
-        };
-
-        if (!response.ok) {
-          // S008 에러 (중복 요청) 및 ALREADY_PROCESSED_PAYMENT 에러는 성공으로 처리
-          if (
-            responseData.code === "S008" ||
-            responseData.code === "ALREADY_PROCESSED_PAYMENT" ||
-            (responseData.message &&
-              responseData.message.includes("기존 요청을 처리중")) ||
-            (responseData.message &&
-              responseData.message.includes("이미 처리")) ||
-            (responseData.message && responseData.message.includes("이미 승인"))
-          ) {
-            responseData = {
-              success: true,
-              message: "결제가 성공적으로 처리되었습니다.",
-            };
-          }
-          // 일시적 오류이고 재시도 횟수가 3회 미만인 경우 재시도
-          else if (isTemporaryError(responseData) && attempt < 3) {
-            setTimeout(() => {
-              confirmPayment(attempt + 1);
-            }, 3000);
-            return;
-          } else {
-            throw new Error(
-              responseData.message || "결제 승인에 실패했습니다."
-            );
-          }
-        }
-
-        const result = responseData;
-
-        // 성공적으로 처리되었음을 표시
-        isProcessed = true;
-
-        // 크레딧 정보가 있으면 저장
-        if (result.creditInfo) {
-          setCreditInfo(result.creditInfo);
-        }
-
-        // 결제 완료 후 BalanceContext 새로고침
-        try {
-          await refreshTransactions();
-        } catch (refreshError) {
-          console.error("잔액 정보 업데이트 실패:", refreshError);
-        }
-
-        // 결제 완료 플래그를 로컬 스토리지에 저장
+      // 결제 완료 플래그 설정 (타겟마케팅 페이지로 돌아갈 때만)
+      if (redirectUrl && redirectUrl.includes("/target-marketing")) {
         localStorage.setItem("payment_completed", "true");
         localStorage.setItem(
           "payment_completed_timestamp",
           Date.now().toString()
         );
+        localStorage.removeItem("payment_redirect_url"); // 사용 후 제거
+      }
 
-        // 5초 후 리디렉션 (redirectUrl이 있으면 해당 페이지로, 없으면 크레딧 관리 페이지로)
-        setTimeout(() => {
-          const redirectUrl = searchParams.get("redirectUrl");
-          if (redirectUrl) {
-            router.push(redirectUrl);
-          } else {
-            router.push("/credit-management");
-          }
-        }, 5000);
+      const isValidRelative = url && url.startsWith("/");
+      const isValidAbsolute = url && /^https?:\/\//.test(url);
+
+      // URL 우선순위: 직접 전달된 URL > 저장된 리다이렉트 URL > 기본 크레딧 관리
+      let finalUrl = "/credit-management";
+
+      if (isValidRelative || isValidAbsolute) {
+        finalUrl = url;
+      } else if (
+        redirectUrl &&
+        (redirectUrl.startsWith("/") || /^https?:\/\//.test(redirectUrl))
+      ) {
+        finalUrl = redirectUrl;
+        localStorage.removeItem("payment_redirect_url"); // 사용 후 제거
+      }
+
+      console.log("페이지 이동:", finalUrl);
+      window.location.href = finalUrl;
+    } catch (error) {
+      console.error("페이지 이동 오류:", error);
+      if (typeof window !== "undefined") {
+        window.location.href = "/credit-management";
+      }
+    }
+  }, []);
+
+  // 컴포넌트 마운트 상태 추적
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // URL 파라미터 안전 파싱 - 완전한 클라이언트 전용 처리
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const parseParams = () => {
+      try {
+        // 클라이언트 측에서만 실행 - 철저한 체크
+        if (typeof window === "undefined") {
+          console.warn("서버 사이드에서 window 접근 시도");
+          return;
+        }
+
+        // window.location이 유효한지 확인
+        if (!window.location || !window.location.search) {
+          console.warn("window.location.search가 유효하지 않음");
+          setError("URL 정보를 읽을 수 없습니다.");
+          setIsProcessing(false);
+          return;
+        }
+
+        // URLSearchParams를 사용한 안전한 파싱
+        const searchParams = new URLSearchParams(window.location.search);
+        const paymentKey = searchParams.get("paymentKey");
+        const orderId = searchParams.get("orderId");
+        const amount = searchParams.get("amount");
+
+        // 파라미터 유효성 검증 - 더 엄격한 체크
+        if (!paymentKey || paymentKey === "null" || paymentKey.trim() === "") {
+          throw new Error("paymentKey가 유효하지 않습니다.");
+        }
+
+        if (!orderId || orderId === "null" || orderId.trim() === "") {
+          throw new Error("orderId가 유효하지 않습니다.");
+        }
+
+        if (
+          !amount ||
+          amount === "null" ||
+          isNaN(Number(amount)) ||
+          Number(amount) <= 0
+        ) {
+          throw new Error("amount가 유효하지 않습니다.");
+        }
+
+        // 추가 형식 검증
+        if (!/^[a-zA-Z0-9_]+$/.test(paymentKey)) {
+          throw new Error("paymentKey 형식이 올바르지 않습니다.");
+        }
+
+        if (!/^credit_\d+_\d+_[a-zA-Z0-9]+$/.test(orderId)) {
+          throw new Error("orderId 형식이 올바르지 않습니다.");
+        }
+
+        setParams({ paymentKey, orderId, amount });
+        setIsParamsReady(true); // 파싱 완료 상태 설정
+        setError(null);
       } catch (error) {
+        console.error("파라미터 파싱 오류:", error);
         setError(
           error instanceof Error
-            ? error.message
-            : "알 수 없는 오류가 발생했습니다."
+            ? `결제 정보 오류: ${error.message}`
+            : "결제 정보를 읽을 수 없습니다."
         );
-      } finally {
+        setIsProcessing(false);
+        setIsParamsReady(false);
+      }
+    };
+
+    // requestAnimationFrame을 사용하여 렌더 프레임 완료 후 실행
+    const frame = requestAnimationFrame(parseParams);
+    return () => cancelAnimationFrame(frame);
+  }, [isMounted]);
+
+  // 카운트다운 시작 - useCallback으로 메모이제이션
+  const startCountdown = useCallback(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          safeNavigate(); // 리다이렉트 URL 자동 처리
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [safeNavigate]);
+
+  // 결제 확인 처리 - 명확한 조건 체크
+  useEffect(() => {
+    // 모든 조건이 명확히 충족되었을 때만 실행
+    if (!isParamsReady || !params || !isMounted) {
+      return;
+    }
+
+    const confirmPayment = async () => {
+      try {
+        const { paymentKey, orderId, amount } = params;
+
+        // 중복 처리 방지
+        const processedKey = `payment_processed_${paymentKey}`;
+        const alreadyProcessed = localStorage.getItem(processedKey);
+
+        if (alreadyProcessed) {
+          setIsProcessing(false);
+          await refreshTransactions().catch(console.error);
+          startCountdown();
+          return;
+        }
+
+        // fetch URL 안전성 확보
+        const confirmUrl = "/api/payment/confirm";
+        const response = await fetch(confirmUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentKey,
+            orderId,
+            amount: Number(amount),
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `API 오류: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // 처리 완료 표시
+        localStorage.setItem(processedKey, "true");
+
+        if (result.creditInfo) {
+          setCreditInfo(result.creditInfo);
+        }
+
+        // 잔액 새로고침
+        await refreshTransactions().catch(console.error);
+
+        setIsProcessing(false);
+        startCountdown();
+      } catch (error) {
+        console.error("결제 확인 오류:", error);
+        setError(
+          error instanceof Error ? error.message : "결제 확인에 실패했습니다."
+        );
         setIsProcessing(false);
       }
     };
 
     confirmPayment();
-  }, [searchParams, router, refreshTransactions]);
+  }, [isParamsReady, params, isMounted, refreshTransactions, startCountdown]); // 의존성 명확히 정리
 
-  if (isProcessing) {
+  // 서버 사이드 렌더링 중에는 로딩 표시
+  if (!isMounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {processingMessage}
+            페이지를 로드하는 중...
           </h2>
-          <p className="text-gray-600">
-            잠시만 기다려주세요.
-            {retryCount > 0 && ` (${retryCount + 1}회차 시도)`}
-          </p>
+          <p className="text-gray-600">잠시만 기다려주세요.</p>
         </div>
       </div>
     );
   }
 
+  // 로딩 상태
+  if (isProcessing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            결제를 확인하는 중...
+          </h2>
+          <p className="text-gray-600">잠시만 기다려주세요.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -207,25 +293,17 @@ export default function PaymentSuccessPage() {
           </h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => {
-              const redirectUrl = searchParams.get("redirectUrl");
-              if (redirectUrl) {
-                router.push(redirectUrl);
-              } else {
-                router.push("/credit-management");
-              }
-            }}
+            onClick={() => safeNavigate()}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            {searchParams.get("redirectUrl")
-              ? "이전 페이지로 돌아가기"
-              : "크레딧 관리로 돌아가기"}
+            이전 페이지로 돌아가기
           </button>
         </div>
       </div>
     );
   }
 
+  // 성공 상태
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
@@ -273,14 +351,42 @@ export default function PaymentSuccessPage() {
           </div>
         )}
 
-        <p className="text-sm text-gray-500">
-          5초 후 자동으로{" "}
-          {searchParams.get("redirectUrl")
-            ? "이전 페이지로"
-            : "크레딧 관리 페이지로"}{" "}
-          이동합니다...
-        </p>
+        <div className="space-y-3">
+          <button
+            onClick={() => safeNavigate()}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            이전 페이지로 이동
+          </button>
+
+          {countdown > 0 && (
+            <p className="text-sm text-gray-500">
+              {countdown}초 후 자동으로 이전 페이지로 이동합니다...
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+// 동적 import로 클라이언트에서만 렌더링되도록 강제
+const PaymentSuccessPage = dynamicImport(
+  () => Promise.resolve(PaymentSuccessContent),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            페이지를 로드하는 중...
+          </h2>
+          <p className="text-gray-600">잠시만 기다려주세요.</p>
+        </div>
+      </div>
+    ),
+  }
+);
+
+export default PaymentSuccessPage;

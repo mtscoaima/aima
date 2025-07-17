@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 
-// Simple icon components to replace lucide-react
+// KG이니시스 타입 정의
+declare global {
+  interface Window {
+    INIStdPay?: {
+      pay: (formId: string) => void;
+    };
+  }
+}
+
+// Simple icon components
 const XIcon = () => (
   <svg
     className="h-5 w-5"
@@ -18,9 +26,19 @@ const XIcon = () => (
   </svg>
 );
 
+const CheckIcon = () => (
+  <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+    <path
+      fillRule="evenodd"
+      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
 const CreditCardIcon = () => (
   <svg
-    className="h-6 w-6"
+    className="h-6 w-6 text-blue-600"
     fill="none"
     viewBox="0 0 24 24"
     stroke="currentColor"
@@ -34,42 +52,43 @@ const CreditCardIcon = () => (
   </svg>
 );
 
-const CheckIcon = () => (
-  <svg
-    className="h-4 w-4"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5 13l4 4L19 7"
-    />
-  </svg>
-);
+interface UserInfo {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+}
 
-interface Package {
-  id: number;
+interface PackageInfo {
+  id: string;
+  name: string;
   credits: number;
   price: number;
-  bonus: number;
+  isPopular?: boolean;
+  bonus?: number;
 }
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  packageInfo: Package | null;
-  onPaymentComplete: (packageInfo: Package) => void;
-  redirectUrl?: string; // 결제 완료 후 리디렉션할 URL
+  packageInfo: PackageInfo | null;
+  redirectUrl?: string;
 }
 
-interface UserInfo {
-  id: string;
-  email: string;
-  name: string;
-  phone?: string;
+interface InicisPaymentData {
+  mid: string;
+  oid: string;
+  price: string;
+  timestamp: string;
+  mKey: string;
+  signature: string;
+  verification: string;
+  goodname: string;
+  buyername: string;
+  buyertel: string;
+  buyeremail: string;
+  returnUrl: string;
+  closeUrl: string;
 }
 
 export function PaymentModal({
@@ -79,63 +98,48 @@ export function PaymentModal({
   redirectUrl,
 }: PaymentModalProps) {
   const [step, setStep] = useState(1);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [widgets, setWidgets] = useState<any>(null);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<string>("inicis");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [paymentForm, setPaymentForm] = useState<InicisPaymentData | null>(
+    null
+  );
 
   // 사용자 정보 가져오기
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        // 로컬 스토리지에서 토큰 가져오기
         const token = localStorage.getItem("accessToken");
 
-        const headers: HeadersInit = {
-          "Content-Type": "application/json",
-        };
-
-        // 토큰이 있으면 Authorization 헤더에 추가
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
         const response = await fetch("/api/users/me", {
-          headers,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (response.ok) {
           const data = await response.json();
 
-          // API 응답 구조 확인 후 매핑
-          let userData;
-          if (data.user) {
-            // data.user가 있는 경우
-            userData = data.user;
-          } else if (data.id) {
-            // data에 직접 사용자 정보가 있는 경우
-            userData = data;
-          } else {
-            console.error(data);
-            return;
-          }
-
+          // API가 직접 사용자 정보를 반환하므로 data를 바로 사용
+          // phoneNumber -> phone 매핑
           const mappedUserInfo = {
-            id: userData.id,
-            email: userData.email,
-            name: userData.name,
-            phone: userData.phone_number || userData.phone, // phone_number 또는 phone
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            phone: data.phoneNumber, // phoneNumber -> phone 매핑
           };
+
           setUserInfo(mappedUserInfo);
-        } else if (response.status === 401) {
-          // 인증 실패 시 기본값 사용 (로그인하지 않은 사용자도 결제 가능)
-          await response.text();
         } else {
-          await response.text();
+          console.error(
+            "API 응답 실패:",
+            response.status,
+            await response.text()
+          );
         }
       } catch (error) {
-        console.error(error);
+        console.error("사용자 정보 조회 실패:", error);
       }
     };
 
@@ -144,63 +148,14 @@ export function PaymentModal({
     }
   }, [isOpen]);
 
-  // 토스페이먼츠 SDK 초기화
+  // 결제 단계 리셋
   useEffect(() => {
-    if (!isOpen || !packageInfo) {
-      return;
+    if (isOpen) {
+      setStep(1);
+      setIsProcessingPayment(false);
+      setPaymentForm(null);
     }
-
-    const initializeTossPayments = async () => {
-      try {
-        // 토스페이먼츠 클라이언트 키 (환경변수에서 가져오기)
-        const envClientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
-        const fallbackClientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
-        const clientKey = envClientKey || fallbackClientKey;
-
-        if (!clientKey) {
-          throw new Error("토스페이먼츠 클라이언트 키가 설정되지 않았습니다.");
-        }
-
-        // 사용자 ID가 있으면 사용, 없으면 임시 키 생성
-        const customerKey = userInfo?.id
-          ? `customer_${userInfo.id}_${Date.now()}`
-          : `customer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        const tossPayments = await loadTossPayments(clientKey);
-
-        const widgetsInstance = tossPayments.widgets({ customerKey });
-
-        await widgetsInstance.setAmount({
-          currency: "KRW",
-          value: packageInfo.price,
-        });
-
-        setWidgets(widgetsInstance);
-      } catch {
-        // 사용자에게 에러 표시
-        alert("결제 시스템 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.");
-      }
-    };
-
-    initializeTossPayments();
-  }, [isOpen, packageInfo, userInfo]);
-
-  // 3단계에서 결제 위젯 렌더링
-  useEffect(() => {
-    if (step === 3 && widgets) {
-      const renderPaymentWidget = async () => {
-        try {
-          await widgets.renderPaymentMethods({
-            selector: "#payment-method",
-            variantKey: "DEFAULT",
-          });
-        } catch (error) {
-          console.error(error);
-        }
-      };
-      renderPaymentWidget();
-    }
-  }, [step, widgets]);
+  }, [isOpen]);
 
   const generateOrderId = () => {
     const timestamp = Date.now();
@@ -213,20 +168,21 @@ export function PaymentModal({
 
   const paymentMethods = [
     {
-      id: "toss",
-      name: "토스페이먼츠",
+      id: "inicis",
+      name: "KG이니시스",
       icon: CreditCardIcon,
       description: "카드, 간편결제, 계좌이체 등",
     },
   ];
 
-  const handleTossPayment = async () => {
+  const handleInicisPayment = async () => {
     if (isProcessingPayment) {
       return;
     }
 
-    if (!widgets) {
-      alert("결제 시스템을 초기화하는 중입니다. 잠시 후 다시 시도해주세요.");
+    // 사용자 정보가 로드되지 않았으면 대기
+    if (!userInfo) {
+      alert("사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
       return;
     }
 
@@ -237,35 +193,15 @@ export function PaymentModal({
       const orderId = generateOrderId();
       const orderName = `크레딧 ${packageInfo.credits.toLocaleString()}개 충전`;
 
-      // 모든 결제를 payment/success 페이지로 통일하여 결제 승인 API 호출 보장
-      // 리디렉션 URL 정보를 쿼리 파라미터로 전달
-      const redirectParam = redirectUrl
-        ? `redirectUrl=${encodeURIComponent(redirectUrl)}`
-        : "";
-      const successUrl = `${window.location.origin}/payment/success${
-        redirectParam ? `?${redirectParam}` : ""
-      }`;
-      const failUrl = `${window.location.origin}/payment/fail${
-        redirectParam ? `?${redirectParam}` : ""
-      }`;
-
       // 전화번호 형식 검증 및 정리
       const formatPhoneNumber = (phone?: string) => {
-        if (!phone) return "01000000000"; // 기본 전화번호
-
-        // 숫자만 추출
+        if (!phone) return "01000000000";
         const cleaned = phone.replace(/\D/g, "");
-
-        // 한국 휴대폰 번호 형식 검증 (010, 011, 016, 017, 018, 019로 시작하는 11자리)
         if (cleaned.length === 11 && /^01[0-9]/.test(cleaned)) {
           return cleaned;
         }
-
-        // 형식이 맞지 않으면 기본값 반환
         return "01000000000";
       };
-
-      const formattedPhone = formatPhoneNumber(userInfo?.phone);
 
       // 이메일 형식 검증
       const formatEmail = (email?: string) => {
@@ -275,49 +211,145 @@ export function PaymentModal({
         return email;
       };
 
+      const formattedPhone = formatPhoneNumber(userInfo?.phone);
       const formattedEmail = formatEmail(userInfo?.email);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const paymentData: any = {
-        orderId,
-        orderName,
-        successUrl,
-        failUrl,
-        customerEmail: formattedEmail,
-        customerName: userInfo?.name || "고객",
+      // redirectUrl을 localStorage에 저장 (success 페이지에서 사용)
+      if (redirectUrl) {
+        localStorage.setItem("payment_redirect_url", redirectUrl);
+      } else {
+        localStorage.removeItem("payment_redirect_url");
+      }
+
+      // KG이니시스 결제 요청 데이터 생성
+      const paymentData = {
+        price: packageInfo.price.toString(),
+        goodname: orderName,
+        buyername: userInfo?.name || "고객",
+        buyertel: formattedPhone,
+        buyeremail: formattedEmail,
+        oid: orderId,
+        redirectUrl: redirectUrl,
       };
 
-      // 전화번호가 유효한 경우에만 추가
-      if (userInfo?.phone && userInfo.phone.trim()) {
-        paymentData.customerMobilePhone = formattedPhone;
+      // 결제 요청 API 호출하여 결제 폼 데이터 받기
+      const response = await fetch("/api/payment/inicis/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify(paymentData),
+      });
+
+      if (!response.ok) {
+        throw new Error("결제 요청에 실패했습니다.");
       }
 
-      await widgets.requestPayment(paymentData);
-
-      // Promise 방식에서는 결과가 바로 반환되지 않으므로
-      // successUrl로 리다이렉트됩니다.
+      const result = await response.json();
+      setPaymentForm(result.paymentForm);
+      setStep(3); // 결제창 단계로 이동
     } catch (error) {
       console.error(error);
-
       const errorMessage =
         error instanceof Error ? error.message : "알 수 없는 오류";
-
-      // S008 에러 (중복 요청)는 무시하고 성공으로 처리
-      if (
-        errorMessage.includes("S008") ||
-        errorMessage.includes("기존 요청을 처리중")
-      ) {
-        // 결제 성공 페이지로 리다이렉트하지 않고 모달만 닫기
-        alert("결제가 처리되었습니다. 결제 결과를 확인해주세요.");
-        onClose();
-        return;
-      }
-
       alert(`결제에 실패했습니다: ${errorMessage}`);
       setStep(2);
     } finally {
       setIsProcessingPayment(false);
     }
+  };
+
+  // KG이니시스 결제창 열기 (JavaScript SDK 방식)
+  const openPaymentWindow = () => {
+    if (!paymentForm) return;
+
+    // KG이니시스 JavaScript SDK 로드
+    const loadInicisScript = () => {
+      return new Promise<void>((resolve, reject) => {
+        // 이미 로드된 경우
+        if (window.INIStdPay) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://stgstdpay.inicis.com/stdjs/INIStdPay.js";
+        script.charset = "UTF-8";
+        script.onload = () => resolve();
+        script.onerror = () =>
+          reject(new Error("KG이니시스 스크립트 로드 실패"));
+        document.head.appendChild(script);
+      });
+    };
+
+    // 결제 폼 생성
+    const createPaymentForm = () => {
+      // 기존 폼이 있으면 제거
+      const existingForm = document.getElementById("inicis-payment-form");
+      if (existingForm) {
+        existingForm.remove();
+      }
+
+      const form = document.createElement("form");
+      form.id = "inicis-payment-form";
+      form.method = "POST";
+      form.style.display = "none";
+
+      // 결제 폼 데이터 추가
+      Object.entries(paymentForm).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      // 추가 필드
+      const additionalFields = {
+        version: "1.0",
+        gopaymethod: "Card:DirectBank:VBank:HPP",
+        currency: "WON",
+        acceptmethod: "HPP(1):va_receipt:below1000:centerCd(Y)",
+      };
+
+      Object.entries(additionalFields).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      return form;
+    };
+
+    // 결제 실행
+    const executePayment = async () => {
+      try {
+        await loadInicisScript();
+
+        createPaymentForm();
+
+        // INIStdPay.pay() 호출
+        if (window.INIStdPay) {
+          window.INIStdPay.pay("inicis-payment-form");
+          // 결제창이 열렸으므로 모달 닫기
+          onClose();
+        } else {
+          throw new Error("KG이니시스 결제 시스템을 로드할 수 없습니다.");
+        }
+      } catch (error) {
+        console.error("결제 실행 오류:", error);
+        alert(
+          "결제창을 열 수 없습니다. 브라우저 팝업 차단을 해제하고 다시 시도해주세요."
+        );
+        setStep(2);
+      }
+    };
+
+    executePayment();
   };
 
   const renderStep = () => {
@@ -327,22 +359,29 @@ export function PaymentModal({
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                패키지 선택 확인
+                충전할 크레딧 확인
               </h3>
-              <p className="text-gray-600">
-                선택하신 패키지가 맞는지 확인해주세요.
-              </p>
+              <p className="text-gray-600">선택하신 패키지를 확인해주세요.</p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600 mb-2">
-                  {packageInfo.credits.toLocaleString()}
+                <div className="text-2xl font-bold text-blue-900 mb-2">
+                  {packageInfo.name}
                 </div>
-                <div className="text-gray-600 mb-4">크레딧</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  ₩{packageInfo.price.toLocaleString()}
+                <div className="text-lg text-blue-800 mb-1">
+                  <strong>충전 크레딧:</strong>{" "}
+                  {packageInfo.credits.toLocaleString()}개
                 </div>
+                <div className="text-lg text-blue-800">
+                  <strong>결제 금액:</strong> ₩
+                  {packageInfo.price.toLocaleString()}
+                </div>
+                {/* {packageInfo.bonus && packageInfo.bonus > 0 && (
+                  <div className="text-sm text-green-600 mt-2">
+                    + 보너스 {packageInfo.bonus.toLocaleString()}개 크레딧
+                  </div>
+                )} */}
               </div>
             </div>
 
@@ -371,7 +410,7 @@ export function PaymentModal({
                 결제 방법 선택
               </h3>
               <p className="text-gray-600">
-                토스페이먼츠를 통해 안전하게 결제하세요.
+                KG이니시스를 통해 안전하게 결제하세요.
               </p>
             </div>
 
@@ -406,19 +445,21 @@ export function PaymentModal({
               ))}
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="text-sm text-yellow-800">
-                <strong>안전한 결제:</strong> 토스페이먼츠는 PCI-DSS 인증을 받은
-                안전한 결제 시스템입니다. 카드정보는 암호화되어 전송되며,
-                당사에서는 카드정보를 저장하지 않습니다.
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="text-sm text-blue-800">
+                <strong>결제 금액:</strong> ₩
+                {packageInfo.price.toLocaleString()}
+                <br />
+                <strong>충전 크레딧:</strong>{" "}
+                {packageInfo.credits.toLocaleString()}개
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-sm text-blue-800">
-                <strong>테스트 모드:</strong> 현재 테스트 환경에서 실행
-                중입니다. 실제 결제는 이루어지지 않으며, 테스트용 카드번호를
-                사용할 수 있습니다.
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="text-sm text-yellow-800">
+                <strong>주의사항:</strong> 팝업 차단이 해제되어 있어야 결제창이
+                정상적으로 열립니다. 브라우저 주소창 우측의 팝업 차단 아이콘을
+                클릭하여 허용해주세요.
               </div>
             </div>
 
@@ -430,11 +471,11 @@ export function PaymentModal({
                 이전
               </button>
               <button
-                onClick={() => setStep(3)}
-                disabled={!selectedPaymentMethod || !widgets}
+                onClick={handleInicisPayment}
+                disabled={!selectedPaymentMethod || isProcessingPayment}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                {widgets ? "다음" : "결제 시스템 준비중..."}
+                {isProcessingPayment ? "결제 준비 중..." : "결제하기"}
               </button>
             </div>
           </div>
@@ -445,15 +486,12 @@ export function PaymentModal({
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                결제 정보 입력
+                결제 준비 완료
               </h3>
               <p className="text-gray-600">
-                결제 방법을 선택하고 정보를 입력해주세요.
+                결제창을 열어 결제를 진행해주세요.
               </p>
             </div>
-
-            {/* 토스페이먼츠 결제 위젯이 렌더링될 영역 */}
-            <div id="payment-method" className="min-h-[200px]"></div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-sm text-blue-800">
@@ -462,6 +500,17 @@ export function PaymentModal({
                 <br />
                 <strong>충전 크레딧:</strong>{" "}
                 {packageInfo.credits.toLocaleString()}개
+                <br />
+                <strong>결제 방법:</strong> KG이니시스
+              </div>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="text-sm text-green-800">
+                <strong>결제 준비 완료!</strong>
+                <br />
+                아래 버튼을 클릭하면 KG이니시스 결제창이 새 창에서 열립니다.
+                결제 완료 후 자동으로 크레딧이 충전됩니다.
               </div>
             </div>
 
@@ -473,15 +522,11 @@ export function PaymentModal({
                 이전
               </button>
               <button
-                onClick={handleTossPayment}
-                disabled={!widgets || isProcessingPayment}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                onClick={openPaymentWindow}
+                disabled={!paymentForm}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-lg font-semibold"
               >
-                {isProcessingPayment
-                  ? "결제 처리 중..."
-                  : widgets
-                  ? "결제하기"
-                  : "결제 시스템 준비중..."}
+                🚀 결제창 열기
               </button>
             </div>
           </div>
@@ -495,14 +540,12 @@ export function PaymentModal({
             </div>
             <div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                결제 처리 중
+                결제 준비 중
               </h3>
               <p className="text-gray-600">
-                토스페이먼츠에서 결제를 처리하고 있습니다...
+                KG이니시스 결제 정보를 준비하고 있습니다...
               </p>
-              <p className="text-sm text-gray-500 mt-2">
-                잠시만 기다려주세요. 결제창으로 이동합니다.
-              </p>
+              <p className="text-sm text-gray-500 mt-2">잠시만 기다려주세요.</p>
             </div>
           </div>
         );

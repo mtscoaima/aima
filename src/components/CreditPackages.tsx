@@ -14,11 +14,12 @@ export function CreditPackages({
   onCharge,
 }: {
   onCharge: (packageInfo: {
-    id: number;
+    id: string;
+    name: string;
     credits: number;
     price: number;
     bonus: number;
-    popular?: boolean;
+    isPopular?: boolean;
   }) => void;
 }) {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -115,11 +116,12 @@ export function CreditPackages({
               <button
                 onClick={() =>
                   onCharge({
-                    id: pkg.id,
+                    id: pkg.id.toString(),
+                    name: pkg.name,
                     credits: pkg.credits,
                     price: pkg.price,
                     bonus: 0,
-                    popular: pkg.is_popular,
+                    isPopular: pkg.is_popular,
                   })
                 }
                 className="w-full mt-2 bg-[#1681ff] text-white py-2 px-4 rounded-md hover:bg-[#1366cc] transition-colors"
