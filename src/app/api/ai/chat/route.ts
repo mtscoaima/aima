@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
               {
                 role: "user",
                 content: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
+                이미지를 생성할 때는 글자를 절대 생성하지 마세요
                 응답은 다음 JSON 형식으로 포함해주세요:
                 {
                   "response": "마케팅 조언 및 설명",
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
               {
                 type: "image_generation",
                 partial_images: 3,
-                quality: "low",
+                quality: "high",
               },
             ],
             stream: true,
