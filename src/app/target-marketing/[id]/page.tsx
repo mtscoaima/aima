@@ -7,6 +7,15 @@ import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import SuccessModal from "@/components/SuccessModal";
 import { PaymentModal } from "@/components/PaymentModal";
 import { useBalance } from "@/contexts/BalanceContext";
+import { 
+  targetOptions, 
+  generateTimeOptions, 
+  generateBatchTimeOptions, 
+  batchSendDateOptions,
+  getAmountDisplayText,
+  getDistrictsByCity,
+  getIndustriesByTopLevel
+} from "@/lib/targetOptions";
 import styles from "./styles.module.css";
 
 interface Message {
@@ -76,14 +85,16 @@ function TargetMarketingContent() {
   >("week");
 
   // 타겟 필터 상태들 추가
-  const [targetGender, setTargetGender] = useState("female");
-  const [targetAge, setTargetAge] = useState("thirties");
-  const [targetCity, setTargetCity] = useState("seoul");
-  const [targetDistrict, setTargetDistrict] = useState("gangnam");
+  const [targetGender, setTargetGender] = useState("all");
+  const [targetAge, setTargetAge] = useState("all");
+  const [targetCity, setTargetCity] = useState("all");
+  const [targetDistrict, setTargetDistrict] = useState("all");
+  const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
+  const [targetIndustry, setTargetIndustry] = useState("all");
   const [cardAmount, setCardAmount] = useState("10000");
+  const [customAmount, setCustomAmount] = useState("50");
   const [cardStartTime, setCardStartTime] = useState("08:00");
-  const [cardEndTime, setCardEndTime] = useState("12:00");
-  const [cardTimePeriod, setCardTimePeriod] = useState("오전");
+  const [cardEndTime, setCardEndTime] = useState("18:00");
 
   // 승인 신청 처리 상태
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
@@ -309,6 +320,65 @@ function TargetMarketingContent() {
         setCardAmount("10000");
       }
 
+      // 업종 분석
+      if (
+        lowerContent.includes("카페") ||
+        lowerContent.includes("커피") ||
+        lowerContent.includes("음식점") ||
+        lowerContent.includes("식당") ||
+        lowerContent.includes("레스토랑") ||
+        lowerContent.includes("외식")
+      ) {
+        setTargetTopLevelIndustry("1"); // 서비스업
+        setTargetIndustry("109"); // 외식업·식음료
+      } else if (
+        lowerContent.includes("헤어샵") ||
+        lowerContent.includes("미용실") ||
+        lowerContent.includes("뷰티") ||
+        lowerContent.includes("네일") ||
+        lowerContent.includes("피부")
+      ) {
+        setTargetTopLevelIndustry("1"); // 서비스업
+        setTargetIndustry("122"); // 뷰티·미용
+      } else if (
+        lowerContent.includes("병원") ||
+        lowerContent.includes("의원") ||
+        lowerContent.includes("의료")
+      ) {
+        setTargetTopLevelIndustry("7"); // 의료·제약·복지
+        setTargetIndustry("701"); // 의료(진료과목별)
+      } else if (
+        lowerContent.includes("학원") ||
+        lowerContent.includes("교육") ||
+        lowerContent.includes("어학원")
+      ) {
+        setTargetTopLevelIndustry("6"); // 교육업
+        setTargetIndustry("602"); // 학원·어학원
+      } else if (
+        lowerContent.includes("호텔") ||
+        lowerContent.includes("여행") ||
+        lowerContent.includes("펜션")
+      ) {
+        setTargetTopLevelIndustry("1"); // 서비스업
+        setTargetIndustry("108"); // 호텔·여행·항공
+      } else if (
+        lowerContent.includes("쇼핑몰") ||
+        lowerContent.includes("옷가게") ||
+        lowerContent.includes("의류") ||
+        lowerContent.includes("패션")
+      ) {
+        setTargetTopLevelIndustry("8"); // 판매·유통
+        setTargetIndustry("802"); // 판매(상품품목별)
+      } else if (
+        lowerContent.includes("IT") ||
+        lowerContent.includes("개발") ||
+        lowerContent.includes("웹") ||
+        lowerContent.includes("앱")
+      ) {
+        setTargetTopLevelIndustry("3"); // IT·웹·통신
+        setTargetIndustry("301"); // 솔루션·SI·ERP·CRM
+      }
+
       // 시간대 분석
       if (
         lowerContent.includes("아침") ||
@@ -316,14 +386,12 @@ function TargetMarketingContent() {
         lowerContent.includes("모닝") ||
         lowerContent.includes("브런치")
       ) {
-        setCardTimePeriod("오전");
         setCardStartTime("08:00");
         setCardEndTime("12:00");
       } else if (
         lowerContent.includes("점심") ||
         lowerContent.includes("런치")
       ) {
-        setCardTimePeriod("오후");
         setCardStartTime("12:00");
         setCardEndTime("14:00");
       } else if (
@@ -331,7 +399,6 @@ function TargetMarketingContent() {
         lowerContent.includes("디너") ||
         lowerContent.includes("나이트")
       ) {
-        setCardTimePeriod("오후");
         setCardStartTime("18:00");
         setCardEndTime("22:00");
       }
@@ -339,74 +406,62 @@ function TargetMarketingContent() {
     [generateTemplateTitle]
   );
 
-  // 시간대 변경시 시간 옵션 업데이트
+  // 시간 옵션 생성 함수 (0-23시)
+  const getAllTimeOptions = () => {
+    const options = [];
+    for (let hour = 0; hour < 24; hour++) {
+      const hourStr = hour.toString().padStart(2, "0");
+      options.push({
+        value: `${hourStr}:00`,
+        label: `${hourStr}:00`
+      });
+    }
+    return options;
+  };
+
+  // 시간 유효성 검증
   useEffect(() => {
-    const timeOptions = getTimeOptions(cardTimePeriod);
-
-    // 현재 선택된 시간이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
-    const validStartTime = timeOptions.find(
-      (option) => option.value === cardStartTime
-    );
-    const validEndTime = timeOptions.find(
-      (option) => option.value === cardEndTime
-    );
-
-    if (!validStartTime && timeOptions.length > 0) {
-      setCardStartTime(timeOptions[0].value);
+    const startHour = parseInt(cardStartTime.split(':')[0]);
+    const endHour = parseInt(cardEndTime.split(':')[0]);
+    
+    // 시작 시간이 종료 시간보다 크거나 같으면 종료 시간을 시작 시간 + 1로 설정
+    if (startHour >= endHour) {
+      const newEndHour = Math.min(startHour + 1, 23);
+      setCardEndTime(`${newEndHour.toString().padStart(2, "0")}:00`);
     }
+  }, [cardStartTime, cardEndTime]);
 
-    if (!validEndTime && timeOptions.length > 0) {
-      setCardEndTime(timeOptions[timeOptions.length - 1].value);
+  // 도시 변경시 구/군 옵션 업데이트
+  useEffect(() => {
+    const districts = getDistrictsByCity(targetCity);
+    
+    // 현재 선택된 구가 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
+    const validDistrict = districts.find(
+      (option) => option.value === targetDistrict
+    );
+
+    if (!validDistrict && districts.length > 0) {
+      setTargetDistrict(districts[0].value);
     }
-  }, [cardTimePeriod, cardStartTime, cardEndTime]);
+  }, [targetCity, targetDistrict]);
+
+  // 상위 업종 변경시 세부 업종 옵션 업데이트
+  useEffect(() => {
+    const industries = getIndustriesByTopLevel(targetTopLevelIndustry);
+    
+    // 현재 선택된 업종이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
+    const validIndustry = industries.find(
+      (option) => option.value === targetIndustry
+    );
+
+    if (!validIndustry && industries.length > 0) {
+      setTargetIndustry(industries[0].value);
+    }
+  }, [targetTopLevelIndustry, targetIndustry]);
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
-  // 카드 금액을 표시용 텍스트로 변환
-  const getAmountDisplayText = (amount: string) => {
-    switch (amount) {
-      case "10000":
-        return "1만원";
-      case "50000":
-        return "5만원";
-      case "100000":
-        return "10만원";
-      case "all":
-        return "전체";
-      default:
-        return "1만원";
-    }
-  };
-
-  // 시간대별 시간 옵션 생성
-  const getTimeOptions = (period: string) => {
-    const options: { value: string; label: string }[] = [];
-
-    let startHour = 0;
-    let endHour = 23;
-
-    if (period === "오전") {
-      startHour = 0;
-      endHour = 12;
-    } else if (period === "오후") {
-      startHour = 12;
-      endHour = 23;
-    } else if (period === "전체") {
-      startHour = 0;
-      endHour = 23;
-    }
-
-    for (let hour = startHour; hour <= endHour; hour++) {
-      const hourStr = hour.toString().padStart(2, "0");
-
-      options.push({
-        value: `${hourStr}:00`,
-        label: `${hourStr}:00`,
-      });
-    }
-
-    return options;
-  };
+  // JSON 옵션들을 사용하므로 함수들은 제거됨
 
   // 유효기간 설정 함수
   const setPeriod = (period: "week" | "month" | "year") => {
@@ -439,20 +494,7 @@ function TargetMarketingContent() {
     setSelectedPeriod(period);
   };
 
-  // 일괄발송 시간 옵션 생성 (00:00 ~ 23:00)
-  const getBatchTimeOptions = () => {
-    const options: { value: string; label: string }[] = [];
-
-    for (let hour = 0; hour < 24; hour++) {
-      const hourStr = hour.toString().padStart(2, "0");
-      options.push({
-        value: `${hourStr}:00`,
-        label: `${hourStr}:00`,
-      });
-    }
-
-    return options;
-  };
+  // JSON 옵션을 사용하므로 함수 제거됨
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevMessagesLengthRef = useRef(0);
@@ -558,10 +600,12 @@ function TargetMarketingContent() {
       targetAge,
       targetCity,
       targetDistrict,
+      targetTopLevelIndustry,
+      targetIndustry,
       cardAmount,
+      customAmount,
       cardStartTime,
       cardEndTime,
-      cardTimePeriod,
       maxRecipients,
       sendPolicy,
       validityStartDate,
@@ -594,14 +638,16 @@ function TargetMarketingContent() {
       setTemplateTitle(state.templateTitle || "AI 생성 콘텐츠");
       setSmsTextContent(state.smsTextContent || "");
       setCurrentGeneratedImage(state.currentGeneratedImage || null);
-      setTargetGender(state.targetGender || "female");
-      setTargetAge(state.targetAge || "thirties");
-      setTargetCity(state.targetCity || "seoul");
-      setTargetDistrict(state.targetDistrict || "gangnam");
+      setTargetGender(state.targetGender || "all");
+      setTargetAge(state.targetAge || "all");
+      setTargetCity(state.targetCity || "all");
+      setTargetDistrict(state.targetDistrict || "all");
+      setTargetTopLevelIndustry(state.targetTopLevelIndustry || "all");
+      setTargetIndustry(state.targetIndustry || "all");
       setCardAmount(state.cardAmount || "10000");
+      setCustomAmount(state.customAmount || "50");
       setCardStartTime(state.cardStartTime || "08:00");
-      setCardEndTime(state.cardEndTime || "12:00");
-      setCardTimePeriod(state.cardTimePeriod || "오전");
+      setCardEndTime(state.cardEndTime || "18:00");
       setMaxRecipients(state.maxRecipients || "30");
       setSendPolicy(state.sendPolicy || "realtime");
       // validityStartDate는 읽기 전용이므로 제외
@@ -1466,11 +1512,14 @@ function TargetMarketingContent() {
             city: targetCity,
             district: targetDistrict,
           },
-          cardAmount: cardAmount,
+          industry: {
+            topLevel: targetTopLevelIndustry,
+            specific: targetIndustry,
+          },
+          cardAmount: cardAmount === "custom" ? `${customAmount}0000` : cardAmount,
           cardTime: {
             startTime: cardStartTime,
             endTime: cardEndTime,
-            period: cardTimePeriod,
           },
         },
         estimatedCost: totalCost, // 실제 계산된 예상 금액 사용
@@ -1731,27 +1780,31 @@ function TargetMarketingContent() {
                 <div className={styles.sectionTitle}>타겟 설정</div>
                 <div className={styles.filterRow}>
                   <div className={styles.filterGroup}>
+                    <div className={styles.filterLabel}>성별</div>
                     <select
                       className={styles.filterSelect}
                       value={targetGender}
                       onChange={(e) => setTargetGender(e.target.value)}
                     >
-                      <option value="female">여성</option>
-                      <option value="male">남성</option>
-                      <option value="all">전체</option>
+                      {targetOptions.gender.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className={styles.filterGroup}>
+                    <div className={styles.filterLabel}>연령대</div>
                     <select
                       className={styles.filterSelect}
                       value={targetAge}
                       onChange={(e) => setTargetAge(e.target.value)}
                     >
-                      <option value="thirties">30대</option>
-                      <option value="teens">10대</option>
-                      <option value="twenties">20대</option>
-                      <option value="forties">40대</option>
-                      <option value="fifties">50대+</option>
+                      {targetOptions.age.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1762,88 +1815,128 @@ function TargetMarketingContent() {
                 <div className={styles.sectionTitle}>카드 사용 위치</div>
                 <div className={styles.filterRow}>
                   <div className={styles.filterGroup}>
+                    <div className={styles.filterLabel}>시/도</div>
                     <select
                       className={styles.filterSelect}
                       value={targetCity}
                       onChange={(e) => setTargetCity(e.target.value)}
                     >
-                      <option value="seoul">서울시</option>
-                      <option value="busan">부산광역시</option>
-                      <option value="daegu">대구광역시</option>
-                      <option value="incheon">인천광역시</option>
-                      <option value="gwangju">광주광역시</option>
+                      {targetOptions.cities.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className={styles.filterGroup}>
+                    <div className={styles.filterLabel}>시/군/구</div>
                     <select
                       className={styles.filterSelect}
                       value={targetDistrict}
                       onChange={(e) => setTargetDistrict(e.target.value)}
                     >
-                      <option value="gangnam">강남구</option>
-                      <option value="gangdong">강동구</option>
-                      <option value="gangbuk">강북구</option>
-                      <option value="gangseo">강서구</option>
-                      <option value="seocho">서초구</option>
-                      <option value="mapo">마포구</option>
+                      {getDistrictsByCity(targetCity).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
               </div>
 
-              {/* 카드 송신 금액 */}
-              <div className={styles.cardAmountSection}>
-                <div className={styles.sectionTitle}>카드 송신 금액</div>
-                <div className={styles.amountInputSection}>
-                  <input
-                    type="text"
-                    value={getAmountDisplayText(cardAmount)}
-                    className={styles.amountInput}
-                    readOnly
-                  />
-                  <span className={styles.amountLabel}>
-                    {cardAmount === "all" ? "" : "미만"}
-                  </span>
-                </div>
-                <div className={styles.amountOptions}>
-                  <button
-                    className={`${styles.amountButton} ${
-                      cardAmount === "10000" ? styles.active : ""
-                    }`}
-                    onClick={() => setCardAmount("10000")}
-                  >
-                    1만원 미만
-                  </button>
-                  <button
-                    className={`${styles.amountButton} ${
-                      cardAmount === "50000" ? styles.active : ""
-                    }`}
-                    onClick={() => setCardAmount("50000")}
-                  >
-                    5만원 미만
-                  </button>
-                  <button
-                    className={`${styles.amountButton} ${
-                      cardAmount === "100000" ? styles.active : ""
-                    }`}
-                    onClick={() => setCardAmount("100000")}
-                  >
-                    10만원 미만
-                  </button>
-                  <button
-                    className={`${styles.amountButton} ${
-                      cardAmount === "all" ? styles.active : ""
-                    }`}
-                    onClick={() => setCardAmount("all")}
-                  >
-                    전체
-                  </button>
+              {/* 타겟 업종 */}
+              <div className={styles.targetFiltersSection}>
+                <div className={styles.sectionTitle}>타겟 업종</div>
+                <div className={styles.filterRow}>
+                  <div className={styles.filterGroup}>
+                    <div className={styles.filterLabel}>대분류</div>
+                    <select
+                      className={styles.filterSelect}
+                      value={targetTopLevelIndustry}
+                      onChange={(e) => setTargetTopLevelIndustry(e.target.value)}
+                    >
+                      {targetOptions.topLevelIndustries.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.filterGroup}>
+                    <div className={styles.filterLabel}>세부업종</div>
+                    <select
+                      className={styles.filterSelect}
+                      value={targetIndustry}
+                      onChange={(e) => setTargetIndustry(e.target.value)}
+                    >
+                      {getIndustriesByTopLevel(targetTopLevelIndustry).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* 카드 송신 시간 */}
+              {/* 카드 승인 금액 */}
+              <div className={styles.cardAmountSection}>
+                <div className={styles.sectionTitle}>카드 승인 금액</div>
+                <div className={styles.amountCardOptions}>
+                  {targetOptions.cardAmounts.map((option) => (
+                    <div
+                      key={option.value}
+                      className={`${styles.amountCard} ${
+                        cardAmount === option.value ? styles.selected : ""
+                      }`}
+                      onClick={() => setCardAmount(option.value)}
+                    >
+                      <div className={styles.amountCardLabel}>
+                        {option.label}
+                      </div>
+                      <div className={styles.amountCardRadio}>
+                        <div 
+                          className={`${styles.radioCircle} ${
+                            cardAmount === option.value ? styles.checked : ""
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* 직접 입력 필드 */}
+                {cardAmount === "custom" && (
+                  <div className={styles.customAmountInput}>
+                    <div className={styles.customAmountWrapper}>
+                      <input
+                        type="number"
+                        value={customAmount}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // 숫자만 입력되도록 하고, 최대 1000만원으로 제한
+                          if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 1000)) {
+                            setCustomAmount(value);
+                          }
+                        }}
+                        placeholder="50"
+                        className={styles.customAmountField}
+                        min="1"
+                        max="1000"
+                      />
+                      <span className={styles.customAmountUnit}>만원</span>
+                    </div>
+                    <div className={styles.customAmountHint}>
+                      1만원 ~ 1,000만원 사이로 입력해주세요
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 카드 승인 시간 */}
               <div className={styles.cardTimeSection}>
-                <div className={styles.sectionTitle}>카드 송신 시간</div>
+                <div className={styles.sectionTitle}>카드 승인 시간</div>
                 <div className={styles.timeSelectors}>
                   <div className={styles.timeGroup}>
                     <select
@@ -1851,7 +1944,7 @@ function TargetMarketingContent() {
                       value={cardStartTime}
                       onChange={(e) => setCardStartTime(e.target.value)}
                     >
-                      {getTimeOptions(cardTimePeriod).map((option) => (
+                      {getAllTimeOptions().map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -1865,39 +1958,13 @@ function TargetMarketingContent() {
                       value={cardEndTime}
                       onChange={(e) => setCardEndTime(e.target.value)}
                     >
-                      {getTimeOptions(cardTimePeriod).map((option) => (
+                      {getAllTimeOptions().map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
                       ))}
                     </select>
                   </div>
-                </div>
-                <div className={styles.timeOptions}>
-                  <button
-                    className={`${styles.timeButton} ${
-                      cardTimePeriod === "오전" ? styles.active : ""
-                    }`}
-                    onClick={() => setCardTimePeriod("오전")}
-                  >
-                    오전
-                  </button>
-                  <button
-                    className={`${styles.timeButton} ${
-                      cardTimePeriod === "오후" ? styles.active : ""
-                    }`}
-                    onClick={() => setCardTimePeriod("오후")}
-                  >
-                    오후
-                  </button>
-                  <button
-                    className={`${styles.timeButton} ${
-                      cardTimePeriod === "전체" ? styles.active : ""
-                    }`}
-                    onClick={() => setCardTimePeriod("전체")}
-                  >
-                    전체
-                  </button>
                 </div>
               </div>
             </div>
@@ -2056,16 +2123,18 @@ function TargetMarketingContent() {
                           value={batchSendDate}
                           onChange={(e) => setBatchSendDate(e.target.value)}
                         >
-                          <option value="오늘+3일">오늘+3일</option>
-                          <option value="오늘+7일">오늘+7일</option>
-                          <option value="오늘+14일">오늘+14일</option>
+                          {batchSendDateOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
                         <select
                           className={styles.batchSelect}
                           value={batchSendTime}
                           onChange={(e) => setBatchSendTime(e.target.value)}
                         >
-                          {getBatchTimeOptions().map((option) => (
+                          {generateBatchTimeOptions().map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>
