@@ -1,0 +1,576 @@
+/* 모달 오버레이 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+/* 모달 콘텐츠 */
+.modalContent {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* 모달 헤더 */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px 0 32px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 0;
+}
+
+.modalTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.closeButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 진행 단계 표시 */
+.progressSection {
+  padding: 16px 32px 24px 32px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #0070f3, #0051cc);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.stepText {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0070f3;
+}
+
+/* 회원가입 폼 */
+.signupForm {
+  padding: 24px 32px 32px 32px;
+}
+
+/* 카카오 정보 섹션 */
+.kakaoInfo {
+  background: #fef7e6;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.kakaoLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 12px;
+}
+
+.kakaoDetails {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profileImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fed7aa;
+}
+
+.accountInfo {
+  flex: 1;
+}
+
+.infoItem {
+  display: flex;
+  margin-bottom: 4px;
+}
+
+.infoItem:last-child {
+  margin-bottom: 0;
+}
+
+.infoLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #92400e;
+  min-width: 50px;
+}
+
+.infoValue {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+/* 폼 그룹 */
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.formInput,
+.formSelect {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 16px;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.formInput:focus,
+.formSelect:focus {
+  outline: none;
+  border-color: #0070f3;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.1);
+}
+
+.formInput::placeholder {
+  color: #9ca3af;
+}
+
+.inputError {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.inputError:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.formInput:disabled,
+.formSelect:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* 파일 입력 */
+.formInput[type="file"] {
+  padding: 10px 12px;
+  font-size: 14px;
+  background: white;
+}
+
+.fileInfo {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* 섹션 제목 */
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 32px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+/* 선택 섹션 */
+.optionalSection {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.optionalText {
+  font-size: 14px;
+  color: #0369a1;
+  margin: 0;
+  text-align: center;
+}
+
+/* 약관 동의 섹션 */
+.agreementSection {
+  margin-bottom: 32px;
+}
+
+.agreementTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 16px 0;
+}
+
+.checkboxGroup {
+  margin-bottom: 12px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+  gap: 10px;
+}
+
+.checkboxInput {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #0070f3;
+  cursor: pointer;
+}
+
+.checkboxInput:disabled {
+  cursor: not-allowed;
+}
+
+.checkboxText {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.4;
+  user-select: none;
+}
+
+/* 에러 메시지 */
+.errorMessage {
+  display: block;
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* 버튼 그룹 */
+.buttonGroup {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.previousButton {
+  flex: 1;
+  padding: 16px;
+  border: 2px solid #6b7280;
+  background: white;
+  color: #374151;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.previousButton:hover {
+  border-color: #4b5563;
+  background: #f9fafb;
+}
+
+.previousButton:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.cancelButton {
+  flex: 1;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.cancelButton:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.cancelButton:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.nextButton {
+  flex: 2;
+  padding: 16px;
+  background: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.nextButton:hover {
+  background: #0051cc;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 112, 243, 0.3);
+}
+
+.nextButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.submitButton {
+  flex: 2;
+  padding: 16px;
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.submitButton:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.3);
+}
+
+.submitButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .modalOverlay {
+    padding: 16px;
+  }
+
+  .modalContent {
+    max-height: 95vh;
+    max-width: 100%;
+  }
+
+  .modalHeader {
+    padding: 20px 24px 0 24px;
+  }
+
+  .modalTitle {
+    font-size: 18px;
+  }
+
+  .progressSection {
+    padding: 12px 24px 20px 24px;
+  }
+
+  .signupForm {
+    padding: 20px 24px 24px 24px;
+  }
+
+  .kakaoInfo {
+    padding: 16px;
+  }
+
+  .kakaoDetails {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .profileImage {
+    align-self: center;
+  }
+
+  .formInput,
+  .formSelect {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  .buttonGroup {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .previousButton,
+  .cancelButton,
+  .nextButton,
+  .submitButton {
+    padding: 14px;
+    font-size: 15px;
+    min-width: auto;
+  }
+
+  .sectionTitle {
+    font-size: 16px;
+    margin: 24px 0 12px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .modalOverlay {
+    padding: 12px;
+  }
+
+  .modalHeader {
+    padding: 16px 20px 0 20px;
+  }
+
+  .modalTitle {
+    font-size: 16px;
+  }
+
+  .progressSection {
+    padding: 10px 20px 16px 20px;
+  }
+
+  .signupForm {
+    padding: 16px 20px 20px 20px;
+  }
+
+  .kakaoInfo {
+    padding: 12px;
+  }
+
+  .formInput,
+  .formSelect {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .formInput[type="file"] {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .previousButton,
+  .cancelButton,
+  .nextButton,
+  .submitButton {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .sectionTitle {
+    font-size: 14px;
+    margin: 20px 0 10px 0;
+  }
+
+  .agreementTitle {
+    font-size: 16px;
+  }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  .formInput,
+  .formSelect {
+    font-size: 16px; /* iOS 줌 방지 */
+    min-height: 44px;
+  }
+
+  .previousButton,
+  .cancelButton,
+  .nextButton,
+  .submitButton {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .checkboxInput {
+    min-width: 20px;
+    min-height: 20px;
+  }
+}
+
+/* 그리드 레이아웃 (2열) */
+@media (min-width: 600px) {
+  .formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .formGroup.fullWidth {
+    grid-column: 1 / -1;
+  }
+}

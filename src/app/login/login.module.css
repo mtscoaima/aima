@@ -200,6 +200,125 @@
   color: #0051cc;
 }
 
+/* SNS 로그인 섹션 */
+.snsLoginSection {
+  margin-bottom: 24px;
+}
+
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 24px 0;
+}
+
+.divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.dividerText {
+  background: white;
+  padding: 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.snsButtonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.snsButton {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.snsButtonContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.snsIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+/* 카카오 버튼 */
+.kakaoButton {
+  background: #fee500;
+  color: #000000;
+  border: 1px solid #fee500;
+}
+
+.kakaoButton:hover {
+  background: #fdd835;
+  border-color: #fdd835;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(254, 229, 0, 0.3);
+}
+
+.kakaoButton .snsIcon {
+  color: #000000;
+}
+
+/* 네이버 버튼 */
+.naverButton {
+  background: #03c75a;
+  color: #ffffff;
+  border: 1px solid #03c75a;
+}
+
+.naverButton:hover {
+  background: #02b351;
+  border-color: #02b351;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(3, 199, 90, 0.3);
+}
+
+.naverButton .snsIcon {
+  color: #ffffff;
+}
+
+/* 구글 버튼 */
+.googleButton {
+  background: #ffffff;
+  color: #1f2937;
+  border: 2px solid #e5e7eb;
+}
+
+.googleButton:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.googleButton .snsIcon {
+  color: inherit;
+}
+
 @media (max-width: 768px) {
   .loginContainer {
     min-height: calc(100vh - 100px);
@@ -247,6 +366,59 @@
   .loginButton {
     padding: 14px;
     font-size: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .snsButton {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .snsButtonContent {
+    gap: 10px;
+  }
+
+  .snsIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .divider {
+    margin: 20px 0;
+  }
+
+  .dividerText {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .snsButton {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .snsButtonContent {
+    gap: 8px;
+  }
+
+  .snsIcon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .divider {
+    margin: 16px 0;
+  }
+
+  .dividerText {
+    font-size: 12px;
+    padding: 0 12px;
+  }
+
+  .snsButtonGroup {
+    gap: 10px;
   }
 }
 
@@ -703,6 +875,20 @@
     min-height: 44px;
     display: flex;
     align-items: center;
+  }
+}
+
+/* 터치 디바이스에서 SNS 버튼 최적화 */
+@media (hover: none) and (pointer: coarse) {
+  .snsButton {
+    min-height: 44px;
+    font-size: 16px; /* iOS 줌 방지 */
+    padding: 14px 16px;
+  }
+
+  .snsIcon {
+    min-width: 20px;
+    min-height: 20px;
   }
 }
 
