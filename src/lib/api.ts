@@ -114,6 +114,10 @@ export interface UserInfoResponse {
   lastLoginAt?: string;
   marketingConsent?: boolean;
   approval_status?: string;
+  // SNS 연동 정보
+  kakao_user_id?: string;
+  naver_user_id?: string;
+  google_user_id?: string;
   companyInfo?: {
     companyName?: string;
     ceoName?: string;
