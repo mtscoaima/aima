@@ -103,6 +103,10 @@ export async function POST(request: NextRequest) {
     const referrerName = formData.get("referrerName") as string;
     const referrerCode = formData.get("referrerCode") as string;
 
+    // 소셜 로그인 정보
+    const socialLoginType = formData.get("socialLoginType") as string;
+    const socialUserId = formData.get("socialUserId") as string;
+
     // 마케팅 동의
     const agreeMarketing = formData.get("agreeMarketing") === "true";
 
@@ -332,6 +336,10 @@ export async function POST(request: NextRequest) {
         last_login_at: now,
         email_verified: false,
         referral_code: referralCode, // 영업사원인 경우 추천 코드 저장
+        // 소셜 로그인 사용자 ID 저장
+        kakao_user_id: socialLoginType === "kakao" ? socialUserId : null,
+        naver_user_id: socialLoginType === "naver" ? socialUserId : null,
+        google_user_id: socialLoginType === "google" ? socialUserId : null,
         // JSON 객체로 저장
         company_info: companyInfo,
         tax_invoice_info: taxInvoiceInfo,

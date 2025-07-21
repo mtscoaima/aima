@@ -28,29 +28,21 @@ interface NaverUserInfo {
   resultcode: string;
   message: string;
   response: {
-    id: string;
-    nickname: string;
-    name: string;
-    email: string;
-    gender: string;
-    age: string;
-    birthday: string;
-    profile_image: string;
-    birthyear: string;
-    mobile: string;
+    id: string; // 필수: 네이버 사용자 고유 ID
+    nickname?: string; // 선택적
+    name?: string; // 선택적
+    email?: string; // 선택적
+    gender?: string; // 선택적
+    age?: string; // 선택적
+    birthday?: string; // 선택적
+    profile_image?: string; // 선택적
+    birthyear?: string; // 선택적
+    mobile?: string; // 선택적
   };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔵 네이버 로그인 API 호출 시작");
-
-    // 환경 변수 확인
-    console.log("🔵 환경 변수 체크:");
-    console.log("- NEXT_PUBLIC_SUPABASE_URL:", !!supabaseUrl);
-    console.log("- SUPABASE_SERVICE_ROLE_KEY:", !!supabaseServiceKey);
-    console.log("- JWT_SECRET:", !!JWT_SECRET);
-
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("❌ Supabase 환경 변수가 설정되지 않았습니다");
       return NextResponse.json(
@@ -66,7 +58,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log("🔵 요청 본문:", { hasAccessToken: !!body.accessToken });
 
     const { accessToken } = body;
 
@@ -84,8 +75,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("🔵 네이버 사용자 정보 요청 시작");
-
     // 네이버 API를 통해 사용자 정보 가져오기
     const naverResponse = await fetch("https://openapi.naver.com/v1/nid/me", {
       method: "GET",
@@ -93,8 +82,6 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-
-    console.log("🔵 네이버 API 응답 상태:", naverResponse.status);
 
     if (!naverResponse.ok) {
       const errorText = await naverResponse.text();
@@ -112,11 +99,6 @@ export async function POST(request: NextRequest) {
     }
 
     const naverUser: NaverUserInfo = await naverResponse.json();
-    console.log("🔵 네이버 사용자 정보 받음:", {
-      resultcode: naverUser.resultcode,
-      hasResponse: !!naverUser.response,
-      fullResponse: naverUser, // 전체 응답 구조 확인용
-    });
 
     // 네이버 API 응답 확인
     if (naverUser.resultcode !== "00" || !naverUser.response) {
@@ -133,44 +115,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 이메일 정보 확인
-    if (!naverUser.response.email) {
-      console.error("❌ 네이버 계정에 이메일 정보가 없습니다");
-      return NextResponse.json(
-        {
-          message:
-            "네이버 계정에 이메일 정보가 없습니다. 네이버 로그인 시 이메일 제공에 동의해주세요.",
-          error: "No email provided",
-          status: 400,
-          timestamp: getKSTISOString(),
-          path: "/api/auth/naver-login",
-        },
-        { status: 400 }
-      );
-    }
+    // 네이버 사용자 ID 추출 (필수)
+    const naverUserId = naverUser.response.id;
 
-    const email = naverUser.response.email;
-    const name = naverUser.response.name || naverUser.response.nickname;
+    // 이메일 정보 추출 (선택적 - 사용자가 동의하지 않으면 없을 수 있음)
+    const email = naverUser.response.email || null;
 
-    console.log("🔵 데이터베이스에서 기존 사용자 확인 시작");
-    console.log("- 이메일:", email);
+    // 기존 사용자 확인 (네이버 ID 우선, 이메일 보조)
+    let existingUser = null;
 
-    // 기존 사용자 확인
-    const { data: existingUser, error: userError } = await supabase
+    // 1. 네이버 사용자 ID로 조회
+    const { data: userByNaverId, error: naverIdError } = await supabase
       .from("users")
       .select("*")
-      .eq("email", email)
-      .single();
+      .eq("naver_user_id", naverUserId)
+      .maybeSingle();
 
-    console.log("🔵 사용자 조회 결과:", {
-      userFound: !!existingUser,
-      errorCode: userError?.code,
-      errorMessage: userError?.message,
-    });
-
-    if (userError && userError.code !== "PGRST116") {
-      // PGRST116은 "No rows found" 에러
-      console.error("❌ 데이터베이스 오류:", userError);
+    if (naverIdError) {
+      console.error(
+        "❌ 네이버 ID로 사용자 조회 중 데이터베이스 오류:",
+        naverIdError
+      );
       return NextResponse.json(
         {
           message: "데이터베이스 오류가 발생했습니다.",
@@ -181,6 +146,46 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    if (userByNaverId) {
+      existingUser = userByNaverId;
+    } else if (email) {
+      // 2. 이메일로 조회 (네이버 ID가 없는 기존 사용자 대응)
+      const { data: userByEmail, error: emailError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (emailError) {
+        console.error(
+          "❌ 이메일로 사용자 조회 중 데이터베이스 오류:",
+          emailError
+        );
+        return NextResponse.json(
+          {
+            message: "데이터베이스 오류가 발생했습니다.",
+            error: "Database error",
+            status: 500,
+            timestamp: getKSTISOString(),
+            path: "/api/auth/naver-login",
+          },
+          { status: 500 }
+        );
+      }
+
+      if (userByEmail) {
+        existingUser = userByEmail;
+
+        // 기존 사용자에 네이버 ID 업데이트
+        await supabase
+          .from("users")
+          .update({ naver_user_id: naverUserId })
+          .eq("id", userByEmail.id);
+
+        existingUser.naver_user_id = naverUserId;
+      }
     }
 
     if (existingUser) {
@@ -297,11 +302,8 @@ export async function POST(request: NextRequest) {
         {
           message: "새로운 사용자입니다. 회원가입이 필요합니다.",
           needsSignup: true,
-          naverInfo: {
-            email: email,
-            name: name,
-            profileImage: naverUser.response.profile_image,
-          },
+          redirectToSignup: true,
+          socialUserId: naverUserId, // 네이버 사용자 ID 전달
           timestamp: getKSTISOString(),
           path: "/api/auth/naver-login",
         },

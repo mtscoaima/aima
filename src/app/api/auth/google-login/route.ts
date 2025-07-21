@@ -24,45 +24,30 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
-interface KakaoUserInfo {
-  id: number;
-  connected_at: string;
-  properties: {
-    nickname: string;
-    profile_image?: string;
-    thumbnail_image?: string;
-  };
-  kakao_account: {
-    profile_nickname_needs_agreement: boolean;
-    profile_image_needs_agreement: boolean;
-    profile: {
-      nickname: string;
-      thumbnail_image_url?: string;
-      profile_image_url?: string;
-      is_default_image: boolean;
-    };
-    has_email: boolean;
-    email_needs_agreement: boolean;
-    is_email_valid: boolean;
-    is_email_verified: boolean;
-    email: string;
-    has_phone_number?: boolean;
-    phone_number_needs_agreement?: boolean;
-    phone_number?: string;
-  };
+interface GoogleUserInfo {
+  id: string; // 필수: 구글 사용자 고유 ID
+  email?: string; // 선택적
+  verified_email?: boolean; // 선택적
+  name?: string; // 선택적
+  given_name?: string; // 선택적
+  family_name?: string; // 선택적
+  picture?: string; // 선택적
+  locale?: string; // 선택적
 }
 
 export async function POST(request: NextRequest) {
   try {
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("❌ Supabase 환경 변수가 설정되지 않았습니다");
+      console.error(
+        "❌ [구글 로그인] Supabase 환경 변수가 설정되지 않았습니다"
+      );
       return NextResponse.json(
         {
           message: "서버 설정 오류가 발생했습니다.",
           error: "Missing Supabase configuration",
           status: 500,
           timestamp: getKSTISOString(),
-          path: "/api/auth/kakao-login",
+          path: "/api/auth/google-login",
         },
         { status: 500 }
       );
@@ -73,72 +58,67 @@ export async function POST(request: NextRequest) {
     const { accessToken } = body;
 
     if (!accessToken) {
-      console.error("❌ 액세스 토큰이 없습니다");
+      console.error("❌ [구글 로그인] 액세스 토큰이 없습니다");
       return NextResponse.json(
         {
-          message: "카카오 액세스 토큰이 필요합니다.",
-          error: "Missing Kakao access token",
+          message: "구글 액세스 토큰이 필요합니다.",
+          error: "Missing Google access token",
           status: 400,
           timestamp: getKSTISOString(),
-          path: "/api/auth/kakao-login",
+          path: "/api/auth/google-login",
         },
         { status: 400 }
       );
     }
 
-    // 카카오 API를 통해 사용자 정보 가져오기
-    const kakaoResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-      },
-    });
+    // 구글 API를 통해 사용자 정보 가져오기
+    const googleResponse = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-    if (!kakaoResponse.ok) {
-      const errorText = await kakaoResponse.text();
-      console.error("❌ 카카오 API 오류:", errorText);
+    if (!googleResponse.ok) {
+      const errorText = await googleResponse.text();
+      console.error("❌ [구글 로그인] 구글 API 오류:", errorText);
       return NextResponse.json(
         {
-          message: "카카오 사용자 정보를 가져올 수 없습니다.",
-          error: "Failed to fetch Kakao user info",
+          message: "구글 사용자 정보를 가져올 수 없습니다.",
+          error: "Failed to fetch Google user info",
           status: 401,
           timestamp: getKSTISOString(),
-          path: "/api/auth/kakao-login",
+          path: "/api/auth/google-login",
         },
         { status: 401 }
       );
     }
 
-    const kakaoUser: KakaoUserInfo = await kakaoResponse.json();
+    const googleUser: GoogleUserInfo = await googleResponse.json();
 
-    // 카카오 사용자 ID 추출 (필수)
-    const kakaoUserId = kakaoUser.id.toString();
+    // 구글 사용자 ID 추출 (필수)
+    const googleUserId = googleUser.id;
 
-    // 이메일 정보 추출 (선택적)
-    let email = null;
-    if (
-      kakaoUser.kakao_account &&
-      kakaoUser.kakao_account.has_email &&
-      kakaoUser.kakao_account.email
-    ) {
-      email = kakaoUser.kakao_account.email;
-    }
+    // 이메일 정보 추출 (선택적 - 사용자가 동의하지 않으면 없을 수 있음)
+    const email = googleUser.email || null;
 
-    // 기존 사용자 확인 (카카오 ID 우선, 이메일 보조)
+    // 기존 사용자 확인 (구글 ID 우선, 이메일 보조)
     let existingUser = null;
 
-    // 1. 카카오 사용자 ID로 조회
-    const { data: userByKakaoId, error: kakaoIdError } = await supabase
+    // 1. 구글 사용자 ID로 조회
+    const { data: userByGoogleId, error: googleIdError } = await supabase
       .from("users")
       .select("*")
-      .eq("kakao_user_id", kakaoUserId)
+      .eq("google_user_id", googleUserId)
       .maybeSingle();
 
-    if (kakaoIdError) {
+    if (googleIdError) {
       console.error(
-        "❌ 카카오 ID로 사용자 조회 중 데이터베이스 오류:",
-        kakaoIdError
+        "❌ [구글 로그인] 구글 ID로 사용자 조회 중 데이터베이스 오류:",
+        googleIdError
       );
       return NextResponse.json(
         {
@@ -146,16 +126,16 @@ export async function POST(request: NextRequest) {
           error: "Database error",
           status: 500,
           timestamp: getKSTISOString(),
-          path: "/api/auth/kakao-login",
+          path: "/api/auth/google-login",
         },
         { status: 500 }
       );
     }
 
-    if (userByKakaoId) {
-      existingUser = userByKakaoId;
+    if (userByGoogleId) {
+      existingUser = userByGoogleId;
     } else if (email) {
-      // 2. 이메일로 조회 (카카오 ID가 없는 기존 사용자 대응)
+      // 2. 이메일로 조회 (구글 ID가 없는 기존 사용자 대응)
       const { data: userByEmail, error: emailError } = await supabase
         .from("users")
         .select("*")
@@ -164,7 +144,7 @@ export async function POST(request: NextRequest) {
 
       if (emailError) {
         console.error(
-          "❌ 이메일로 사용자 조회 중 데이터베이스 오류:",
+          "❌ [구글 로그인] 이메일로 사용자 조회 중 데이터베이스 오류:",
           emailError
         );
         return NextResponse.json(
@@ -173,7 +153,7 @@ export async function POST(request: NextRequest) {
             error: "Database error",
             status: 500,
             timestamp: getKSTISOString(),
-            path: "/api/auth/kakao-login",
+            path: "/api/auth/google-login",
           },
           { status: 500 }
         );
@@ -182,13 +162,13 @@ export async function POST(request: NextRequest) {
       if (userByEmail) {
         existingUser = userByEmail;
 
-        // 기존 사용자에 카카오 ID 업데이트
+        // 기존 사용자에 구글 ID 업데이트
         await supabase
           .from("users")
-          .update({ kakao_user_id: kakaoUserId })
+          .update({ google_user_id: googleUserId })
           .eq("id", userByEmail.id);
 
-        existingUser.kakao_user_id = kakaoUserId;
+        existingUser.google_user_id = googleUserId;
       }
     }
 
@@ -203,7 +183,7 @@ export async function POST(request: NextRequest) {
             error: "Account deactivated",
             status: 401,
             timestamp: getKSTISOString(),
-            path: "/api/auth/kakao-login",
+            path: "/api/auth/google-login",
           },
           { status: 401 }
         );
@@ -307,22 +287,28 @@ export async function POST(request: NextRequest) {
           message: "새로운 사용자입니다. 회원가입이 필요합니다.",
           needsSignup: true,
           redirectToSignup: true,
-          socialUserId: kakaoUserId, // 카카오 사용자 ID 전달
+          socialUserId: googleUserId, // 구글 사용자 ID 전달
           timestamp: getKSTISOString(),
-          path: "/api/auth/kakao-login",
+          path: "/api/auth/google-login",
         },
         { status: 200 }
       );
     }
   } catch (error) {
-    console.error("카카오 로그인 에러:", error);
+    console.error("❌ [구글 로그인] 전체 에러:", error);
+    console.error("❌ [구글 로그인] 에러 타입:", typeof error);
+    console.error(
+      "❌ [구글 로그인] 에러 스택:",
+      error instanceof Error ? error.stack : "스택 없음"
+    );
+
     return NextResponse.json(
       {
         message: "서버 내부 오류가 발생했습니다.",
         error: "Internal server error",
         status: 500,
         timestamp: getKSTISOString(),
-        path: "/api/auth/kakao-login",
+        path: "/api/auth/google-login",
       },
       { status: 500 }
     );

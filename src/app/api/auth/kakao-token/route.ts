@@ -49,7 +49,6 @@ export async function POST(request: NextRequest) {
         client_id: kakaoAppKey,
         redirect_uri: redirectUri,
         code: code,
-        scope: "account_email,profile_nickname", // 이메일과 닉네임 scope 추가
       }),
     });
 

@@ -58,6 +58,8 @@ export default function SignupPage() {
   const [verificationTimer, setVerificationTimer] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [socialLoginType, setSocialLoginType] = useState<string | null>(null);
+  const [socialUserId, setSocialUserId] = useState<string | null>(null);
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,6 +75,19 @@ export default function SignupPage() {
       router.replace("/");
     }
   }, [isAuthenticated, router]);
+
+  // URL에서 social 파라미터와 socialUserId 확인
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const social = urlParams.get("social");
+    const userId = urlParams.get("socialUserId");
+    if (social && ["kakao", "naver", "google"].includes(social)) {
+      setSocialLoginType(social);
+      if (userId) {
+        setSocialUserId(userId);
+      }
+    }
+  }, []);
 
   // URL에서 code 파라미터 확인하고 referral_views 업데이트 및 추천인 정보 자동 채우기
   useEffect(() => {
@@ -735,6 +750,14 @@ export default function SignupPage() {
       formDataToSend.append("agreeTerms", formData.agreeTerms.toString());
       formDataToSend.append("agreePrivacy", formData.agreePrivacy.toString());
 
+      // 소셜 로그인 정보 추가
+      if (socialLoginType) {
+        formDataToSend.append("socialLoginType", socialLoginType);
+      }
+      if (socialUserId) {
+        formDataToSend.append("socialUserId", socialUserId);
+      }
+
       // 파일 추가
       if (formData.businessRegistration) {
         formDataToSend.append(
@@ -919,6 +942,16 @@ export default function SignupPage() {
               <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
             </div>
             <h2 className={styles.signupTitle}>회원가입</h2>
+            {socialLoginType && (
+              <div className={styles.socialNotice}>
+                <p>
+                  {socialLoginType === "kakao" && "카카오"}
+                  {socialLoginType === "naver" && "네이버"}
+                  {socialLoginType === "google" && "구글"}
+                  로그인으로 회원가입을 진행하고 있습니다.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* 진행 상태 표시 - 회원 유형 선택 시에는 숨김 */}
