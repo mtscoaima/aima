@@ -4,7 +4,47 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import KakaoSignupModal from "@/components/KakaoSignupModal";
 import styles from "./login.module.css";
+
+interface KakaoAuthObject {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+}
+
+interface KakaoAuthError {
+  error: string;
+  error_description?: string;
+}
+
+declare global {
+  interface Window {
+    Kakao: {
+      isInitialized(): boolean;
+      init(appKey: string): void;
+      Auth: {
+        login(options: {
+          success: (authObj: KakaoAuthObject) => void;
+          fail: (err: KakaoAuthError) => void;
+        }): void;
+        authorize(options: {
+          redirectUri: string;
+          success: (authObj: KakaoAuthObject) => void;
+          fail: (err: KakaoAuthError) => void;
+        }): void;
+      };
+    };
+  }
+}
+
+interface KakaoInfo {
+  email: string;
+  name: string;
+  profileImage?: string;
+}
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -13,8 +53,71 @@ export default function LoginPage() {
     rememberMe: false,
   });
 
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [kakaoInfo, setKakaoInfo] = useState<KakaoInfo | null>(null);
+  const [kakaoSignupLoading, setKakaoSignupLoading] = useState(false);
+
   const { login, isLoading, error, isAuthenticated } = useAuth();
   const router = useRouter();
+
+  // 카카오 SDK 초기화
+  useEffect(() => {
+    const initKakaoSDK = async () => {
+      if (typeof window === "undefined") return;
+
+      const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
+
+      if (!kakaoAppKey || kakaoAppKey === "your-kakao-javascript-key-here") {
+        console.error("❌ 카카오 앱 키가 설정되지 않았습니다.");
+
+        return;
+      }
+
+      // 카카오 SDK 로딩 대기 (더 안정적인 방법)
+      let retryCount = 0;
+      const maxRetries = 100; // 10초 대기 (100ms * 100)
+
+      const waitForKakaoSDK = () => {
+        return new Promise<void>((resolve, reject) => {
+          const checkSDK = () => {
+            if (window.Kakao && window.Kakao.isInitialized !== undefined) {
+              resolve();
+              return;
+            }
+
+            retryCount++;
+            if (retryCount >= maxRetries) {
+              console.error("❌ 카카오 SDK 로딩 타임아웃");
+
+              reject(new Error("카카오 SDK 로딩 실패"));
+              return;
+            }
+
+            setTimeout(checkSDK, 100);
+          };
+
+          checkSDK();
+        });
+      };
+
+      try {
+        await waitForKakaoSDK();
+
+        if (!window.Kakao.isInitialized()) {
+          window.Kakao.init(kakaoAppKey);
+        }
+      } catch (error) {
+        console.error("❌ 카카오 SDK 초기화 실패:", error);
+      }
+    };
+
+    // 컴포넌트 마운트 후 지연을 두고 초기화
+    const timer = setTimeout(initKakaoSDK, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
 
   // 이미 로그인된 사용자는 루트 페이지로 리다이렉트
   useEffect(() => {
@@ -67,6 +170,274 @@ export default function LoginPage() {
       // 에러는 AuthContext에서 처리됨
       console.error("로그인 실패:", err);
     }
+  };
+
+  const handleKakaoLogin = async () => {
+    try {
+      // 카카오 SDK 상태 확인
+      if (typeof window === "undefined") {
+        console.error("❌ 브라우저 환경이 아님");
+        alert("브라우저 환경에서만 사용 가능합니다.");
+        return;
+      }
+
+      if (!window.Kakao) {
+        console.error("❌ 카카오 SDK가 로드되지 않았습니다");
+        alert("카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.");
+        return;
+      }
+
+      if (!window.Kakao.isInitialized()) {
+        console.error("❌ 카카오 SDK가 초기화되지 않았습니다");
+        alert("카카오 SDK가 초기화되지 않았습니다. 페이지를 새로고침해주세요.");
+        return;
+      }
+
+      // Auth 메서드 존재 확인
+      if (!window.Kakao.Auth) {
+        console.error("❌ 카카오 Auth 객체가 없습니다");
+        alert(
+          "카카오 로그인 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요."
+        );
+        return;
+      }
+
+      // 카카오 로그인 - 팝업 방식
+      try {
+        // 카카오 로그인 팝업 열기
+        const authCode = await new Promise<string>((resolve, reject) => {
+          const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
+          const redirectUri = `${window.location.origin}`;
+
+          // 팝업 창으로 카카오 로그인 (scope에 이메일 포함)
+          const popup = window.open(
+            `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoAppKey}&redirect_uri=${encodeURIComponent(
+              redirectUri
+            )}&response_type=code&scope=account_email,profile_nickname&prompt=login`,
+            "kakaoLogin",
+            "width=500,height=600,scrollbars=yes,resizable=yes"
+          );
+
+          if (!popup) {
+            reject(new Error("팝업이 차단되었습니다"));
+            return;
+          }
+
+          // 팝업에서 코드 받기
+          const checkClosed = setInterval(() => {
+            try {
+              if (popup.closed) {
+                clearInterval(checkClosed);
+                reject(new Error("로그인이 취소되었습니다"));
+                return;
+              }
+
+              // URL에서 code 파라미터 확인
+              const url = popup.location.href;
+              if (url.includes("code=")) {
+                const urlParams = new URLSearchParams(popup.location.search);
+                const code = urlParams.get("code");
+                if (code) {
+                  popup.close();
+                  clearInterval(checkClosed);
+                  resolve(code);
+                }
+              }
+            } catch {
+              // 팝업이 다른 도메인에 있을 때는 접근할 수 없음 (정상)
+            }
+          }, 1000);
+        });
+
+        // 인증 코드로 액세스 토큰 요청
+        const tokenResponse = await fetch("/api/auth/kakao-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ code: authCode }),
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error("토큰 요청 실패");
+        }
+
+        const tokenData = await tokenResponse.json();
+
+        // 기존 로그인 API 호출
+        const response = await fetch("/api/auth/kakao-login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            accessToken: tokenData.access_token,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          if (data.needsSignup) {
+            // 신규 사용자 - 회원가입 모달 표시
+            setKakaoInfo(data.kakaoInfo);
+            setShowSignupModal(true);
+          } else {
+            // 기존 사용자 - 로그인 처리
+            const { tokenManager } = await import("@/lib/api");
+            tokenManager.setTokens(data.accessToken, data.refreshToken);
+
+            // 페이지 새로고침으로 인증 상태 업데이트
+            window.location.href = "/";
+          }
+        } else {
+          console.error("🔴 카카오 로그인 API 오류:", data);
+          alert(data.message || "카카오 로그인에 실패했습니다.");
+        }
+      } catch (loginError) {
+        console.error("🔴 카카오 로그인 과정 오류:", loginError);
+        if (loginError instanceof Error) {
+          alert(loginError.message);
+        } else {
+          alert("카카오 로그인 중 오류가 발생했습니다.");
+        }
+      }
+    } catch (error) {
+      console.error("🔴 카카오 로그인 전체 오류:", error);
+      console.error(
+        "🔴 오류 스택:",
+        error instanceof Error ? error.stack : "스택 없음"
+      );
+      alert("카카오 로그인 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleKakaoSignup = async (signupData: {
+    email: string;
+    name: string;
+    phoneNumber: string;
+    userType: "general" | "salesperson";
+    // 기업 정보
+    companyName?: string;
+    ceoName?: string;
+    businessNumber?: string;
+    companyAddress?: string;
+    companyAddressDetail?: string;
+    companyPhone?: string;
+    toll080Number?: string;
+    customerServiceNumber?: string;
+    // 제출 서류
+    businessRegistration?: File | null;
+    employmentCertificate?: File | null;
+    // 세금계산서 정보
+    taxInvoiceEmail?: string;
+    taxInvoiceManager?: string;
+    taxInvoiceContact?: string;
+    // 추천인 정보
+    referrerName?: string;
+    referrerCode?: string;
+    // 약관 동의
+    agreeTerms: boolean;
+    agreePrivacy: boolean;
+    agreeMarketing: boolean;
+  }) => {
+    setKakaoSignupLoading(true);
+
+    try {
+      // FormData 생성
+      const formData = new FormData();
+
+      // 카카오 기본 정보
+      formData.append("email", signupData.email);
+      formData.append("name", signupData.name);
+      formData.append("phoneNumber", signupData.phoneNumber);
+      formData.append("userType", signupData.userType);
+
+      // 기업 정보 (일반회원인 경우)
+      if (signupData.userType === "general") {
+        if (signupData.companyName)
+          formData.append("companyName", signupData.companyName);
+        if (signupData.ceoName) formData.append("ceoName", signupData.ceoName);
+        if (signupData.businessNumber)
+          formData.append("businessNumber", signupData.businessNumber);
+        if (signupData.companyAddress)
+          formData.append("companyAddress", signupData.companyAddress);
+        if (signupData.companyAddressDetail)
+          formData.append(
+            "companyAddressDetail",
+            signupData.companyAddressDetail
+          );
+        if (signupData.companyPhone)
+          formData.append("companyPhone", signupData.companyPhone);
+        if (signupData.toll080Number)
+          formData.append("toll080Number", signupData.toll080Number);
+        if (signupData.customerServiceNumber)
+          formData.append(
+            "customerServiceNumber",
+            signupData.customerServiceNumber
+          );
+
+        // 파일 업로드
+        if (signupData.businessRegistration) {
+          formData.append(
+            "businessRegistration",
+            signupData.businessRegistration
+          );
+        }
+        if (signupData.employmentCertificate) {
+          formData.append(
+            "employmentCertificate",
+            signupData.employmentCertificate
+          );
+        }
+
+        // 세금계산서 정보
+        if (signupData.taxInvoiceEmail)
+          formData.append("taxInvoiceEmail", signupData.taxInvoiceEmail);
+        if (signupData.taxInvoiceManager)
+          formData.append("taxInvoiceManager", signupData.taxInvoiceManager);
+        if (signupData.taxInvoiceContact)
+          formData.append("taxInvoiceContact", signupData.taxInvoiceContact);
+      }
+
+      // 추천인 정보
+      if (signupData.referrerName)
+        formData.append("referrerName", signupData.referrerName);
+      if (signupData.referrerCode)
+        formData.append("referrerCode", signupData.referrerCode);
+
+      // 약관 동의
+      formData.append("agreeTerms", signupData.agreeTerms.toString());
+      formData.append("agreePrivacy", signupData.agreePrivacy.toString());
+      formData.append("agreeMarketing", signupData.agreeMarketing.toString());
+
+      const response = await fetch("/api/auth/kakao-signup", {
+        method: "POST",
+        body: formData, // JSON 대신 FormData 사용
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.");
+        setShowSignupModal(false);
+        setKakaoInfo(null);
+        // 카카오 로그인 재시도
+        handleKakaoLogin();
+      } else {
+        alert(data.message || "회원가입에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("카카오 회원가입 실패:", error);
+      alert("회원가입 중 오류가 발생했습니다.");
+    } finally {
+      setKakaoSignupLoading(false);
+    }
+  };
+
+  const closeSignupModal = () => {
+    setShowSignupModal(false);
+    setKakaoInfo(null);
   };
 
   return (
@@ -152,12 +523,12 @@ export default function LoginPage() {
             <div className={styles.divider}>
               <span className={styles.dividerText}>또는</span>
             </div>
-            
+
             <div className={styles.snsButtonGroup}>
               <button
                 type="button"
                 className={`${styles.snsButton} ${styles.kakaoButton}`}
-                onClick={() => console.log('카카오 로그인 클릭')}
+                onClick={handleKakaoLogin}
               >
                 <div className={styles.snsButtonContent}>
                   <div className={styles.snsIcon}>
@@ -175,7 +546,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 className={`${styles.snsButton} ${styles.naverButton}`}
-                onClick={() => console.log('네이버 로그인 클릭')}
+                onClick={() => console.log("네이버 로그인 클릭")}
               >
                 <div className={styles.snsButtonContent}>
                   <div className={styles.snsIcon}>
@@ -193,7 +564,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 className={`${styles.snsButton} ${styles.googleButton}`}
-                onClick={() => console.log('구글 로그인 클릭')}
+                onClick={() => console.log("구글 로그인 클릭")}
               >
                 <div className={styles.snsButtonContent}>
                   <div className={styles.snsIcon}>
@@ -231,6 +602,16 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {showSignupModal && kakaoInfo && (
+        <KakaoSignupModal
+          isOpen={showSignupModal}
+          onClose={closeSignupModal}
+          kakaoInfo={kakaoInfo}
+          onSignup={handleKakaoSignup}
+          isLoading={kakaoSignupLoading}
+        />
+      )}
     </div>
   );
 }
