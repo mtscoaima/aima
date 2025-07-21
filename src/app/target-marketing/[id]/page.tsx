@@ -631,7 +631,7 @@ function TargetMarketingContent() {
 
   // 초기 메시지에 대한 AI 응답 처리 (실제 AI API 호출)
   const handleInitialResponse = React.useCallback(
-    async (userMessage: string, currentMessages: Message[]) => {
+    async (userMessage: string, currentMessages: Message[], initialImage?: string | null) => {
       setShowTypingIndicator(true);
 
       try {
@@ -655,15 +655,22 @@ function TargetMarketingContent() {
         setMessages(initialMessages);
 
         // 실제 AI API 호출
+        const requestBody: any = {
+          message: userMessage,
+          previousMessages: [],
+        };
+
+        // 초기 이미지가 있으면 요청에 포함
+        if (initialImage) {
+          requestBody.initialImage = initialImage;
+        }
+
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            message: userMessage,
-            previousMessages: [],
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -821,8 +828,10 @@ function TargetMarketingContent() {
 
                   if (data.imageUrl) {
                     setCurrentGeneratedImage(data.imageUrl);
-                    setIsImageGenerating(false);
                   }
+
+                  // 응답이 완료되면 이미지 생성 로딩 상태를 항상 해제
+                  setIsImageGenerating(false);
 
                   if (data.templateData && data.templateData.title) {
                     setTemplateTitle(data.templateData.title);
@@ -872,6 +881,7 @@ function TargetMarketingContent() {
         );
       } finally {
         setShowTypingIndicator(false);
+        setIsImageGenerating(false);
       }
     },
     [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent]
@@ -890,8 +900,9 @@ function TargetMarketingContent() {
         status: "생성완료",
       };
 
-      // 세션 스토리지에서 초기 메시지 확인
+      // 세션 스토리지에서 초기 메시지 및 이미지 확인
       const savedInitialMessage = sessionStorage.getItem("initialMessage");
+      const savedInitialImage = sessionStorage.getItem("initialImage");
 
       const initialMessages: Message[] = [];
 
@@ -908,6 +919,11 @@ function TargetMarketingContent() {
 
         // 세션 스토리지에서 제거
         sessionStorage.removeItem("initialMessage");
+        
+        // 초기 이미지가 있으면 세션 스토리지에서 제거 (사용 후)
+        if (savedInitialImage) {
+          sessionStorage.removeItem("initialImage");
+        }
 
         prevMessagesLengthRef.current = 1;
       } else {
@@ -917,13 +933,20 @@ function TargetMarketingContent() {
       // 한 번에 모든 상태 설정
       setMessages(initialMessages);
       setTemplates([initialTemplate]);
+      
+      // 초기 이미지가 있으면 현재 생성된 이미지로 설정
+      if (savedInitialImage) {
+        setCurrentGeneratedImage(savedInitialImage);
+      }
+      
       setIsInitialized(true);
 
       // 초기 메시지가 있는 경우에만 AI 응답 처리 (비동기 처리)
       if (savedInitialMessage && savedInitialMessage.trim()) {
         // 상태 설정 후 약간의 지연을 두고 AI 응답 처리
         setTimeout(() => {
-          handleInitialResponse(savedInitialMessage.trim(), initialMessages);
+          // 초기 이미지도 함께 전달
+          handleInitialResponse(savedInitialMessage.trim(), initialMessages, savedInitialImage);
         }, 1000);
       }
     }
@@ -1261,9 +1284,10 @@ function TargetMarketingContent() {
                 // 생성된 이미지를 우측 첨부 영역에 표시
                 if (data.imageUrl) {
                   setCurrentGeneratedImage(data.imageUrl);
-                  // 이미지 생성 완료 시 로딩 상태 해제
-                  setIsImageGenerating(false);
                 }
+
+                // 응답이 완료되면 이미지 생성 로딩 상태를 항상 해제
+                setIsImageGenerating(false);
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
                 if (data.templateData && data.templateData.title) {
