@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const naverClientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
+    const naverClientId = process.env.NAVER_CLIENT_ID;
     const naverClientSecret = process.env.NAVER_CLIENT_SECRET;
     const redirectUri =
-      process.env.NEXT_PUBLIC_NAVER_REDIRECT_URI ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.NAVER_REDIRECT_URI ||
+      process.env.SITE_URL ||
       "http://localhost:3000";
 
     if (!naverClientId || !naverClientSecret) {

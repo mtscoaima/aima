@@ -303,26 +303,36 @@ export default function ProfilePage() {
 
   // 카카오 액세스 토큰 획득
   const getKakaoAccessToken = async (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
-      const redirectUri = `${window.location.origin}`;
+    return new Promise(async (resolve, reject) => {
+      let popup: Window | null = null;
 
-      const popup = window.open(
-        `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoAppKey}&redirect_uri=${encodeURIComponent(
-          redirectUri
-        )}&response_type=code`,
-        "kakaoAuth",
-        "width=500,height=600,scrollbars=yes,resizable=yes"
-      );
+      try {
+        // 카카오 인증 URL 가져오기
+        const authUrlResponse = await fetch("/api/auth/kakao-auth-url");
+        if (!authUrlResponse.ok) {
+          reject(new Error("카카오 인증 URL을 가져올 수 없습니다"));
+          return;
+        }
+        const { authUrl } = await authUrlResponse.json();
 
-      if (!popup) {
-        reject(new Error("팝업이 차단되었습니다"));
+        popup = window.open(
+          authUrl,
+          "kakaoAuth",
+          "width=500,height=600,scrollbars=yes,resizable=yes"
+        );
+
+        if (!popup) {
+          reject(new Error("팝업이 차단되었습니다"));
+          return;
+        }
+      } catch (error) {
+        reject(error);
         return;
       }
 
       const checkClosed = setInterval(async () => {
         try {
-          if (popup.closed) {
+          if (!popup || popup.closed) {
             clearInterval(checkClosed);
             reject(new Error("인증이 취소되었습니다"));
             return;
@@ -362,27 +372,38 @@ export default function ProfilePage() {
 
   // 네이버 액세스 토큰 획득
   const getNaverAccessToken = async (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const naverClientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
-      const redirectUri = `${window.location.origin}`;
-      const state = Math.random().toString(36).substring(2, 15);
+    return new Promise(async (resolve, reject) => {
+      let popup: Window | null = null;
+      let state: string = "";
 
-      const popup = window.open(
-        `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${naverClientId}&redirect_uri=${encodeURIComponent(
-          redirectUri
-        )}&state=${state}`,
-        "naverAuth",
-        "width=500,height=600,scrollbars=yes,resizable=yes"
-      );
+      try {
+        // 네이버 인증 URL 가져오기
+        const authUrlResponse = await fetch("/api/auth/naver-auth-url");
+        if (!authUrlResponse.ok) {
+          reject(new Error("네이버 인증 URL을 가져올 수 없습니다"));
+          return;
+        }
+        const authUrlData = await authUrlResponse.json();
+        state = authUrlData.state;
 
-      if (!popup) {
-        reject(new Error("팝업이 차단되었습니다"));
+        popup = window.open(
+          authUrlData.authUrl,
+          "naverAuth",
+          "width=500,height=600,scrollbars=yes,resizable=yes"
+        );
+
+        if (!popup) {
+          reject(new Error("팝업이 차단되었습니다"));
+          return;
+        }
+      } catch (error) {
+        reject(error);
         return;
       }
 
       const checkClosed = setInterval(async () => {
         try {
-          if (popup.closed) {
+          if (!popup || popup.closed) {
             clearInterval(checkClosed);
             reject(new Error("인증이 취소되었습니다"));
             return;
@@ -394,7 +415,7 @@ export default function ProfilePage() {
             const code = urlParams.get("code");
             const returnedState = urlParams.get("state");
 
-            if (code && returnedState === state) {
+            if (code && returnedState && returnedState === state) {
               popup.close();
               clearInterval(checkClosed);
 
@@ -424,26 +445,36 @@ export default function ProfilePage() {
 
   // 구글 액세스 토큰 획득
   const getGoogleAccessToken = async (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-      const redirectUri = `${window.location.origin}`;
+    return new Promise(async (resolve, reject) => {
+      let popup: Window | null = null;
 
-      const popup = window.open(
-        `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
-          redirectUri
-        )}&scope=email%20profile&access_type=offline`,
-        "googleAuth",
-        "width=500,height=600,scrollbars=yes,resizable=yes"
-      );
+      try {
+        // 구글 인증 URL 가져오기
+        const authUrlResponse = await fetch("/api/auth/google-auth-url");
+        if (!authUrlResponse.ok) {
+          reject(new Error("구글 인증 URL을 가져올 수 없습니다"));
+          return;
+        }
+        const { authUrl } = await authUrlResponse.json();
 
-      if (!popup) {
-        reject(new Error("팝업이 차단되었습니다"));
+        popup = window.open(
+          authUrl,
+          "googleAuth",
+          "width=500,height=600,scrollbars=yes,resizable=yes"
+        );
+
+        if (!popup) {
+          reject(new Error("팝업이 차단되었습니다"));
+          return;
+        }
+      } catch (error) {
+        reject(error);
         return;
       }
 
       const checkClosed = setInterval(async () => {
         try {
-          if (popup.closed) {
+          if (!popup || popup.closed) {
             clearInterval(checkClosed);
             reject(new Error("인증이 취소되었습니다"));
             return;

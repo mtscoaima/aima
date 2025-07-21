@@ -19,10 +19,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
+    const kakaoAppKey = process.env.KAKAO_APP_KEY;
     const redirectUri =
-      process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.KAKAO_REDIRECT_URI ||
+      process.env.SITE_URL ||
       "http://localhost:3000";
 
     if (!kakaoAppKey) {

@@ -54,13 +54,8 @@ export default function LoginPage() {
     const initKakaoSDK = async () => {
       if (typeof window === "undefined") return;
 
-      const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
-
-      if (!kakaoAppKey || kakaoAppKey === "your-kakao-javascript-key-here") {
-        console.error("❌ 카카오 앱 키가 설정되지 않았습니다.");
-
-        return;
-      }
+      // 카카오 SDK는 클라이언트에서 초기화만 하고, 실제 인증은 서버 API를 통해 처리
+      // 따라서 SDK 초기화는 유지하되, 앱키는 서버에서만 사용
 
       // 카카오 SDK 로딩 대기 (더 안정적인 방법)
       let retryCount = 0;
@@ -92,9 +87,8 @@ export default function LoginPage() {
       try {
         await waitForKakaoSDK();
 
-        if (!window.Kakao.isInitialized()) {
-          window.Kakao.init(kakaoAppKey);
-        }
+        // SDK 초기화는 서버에서 인증 URL을 받아온 후에 처리하므로 여기서는 생략
+        // 실제 카카오 로그인은 서버 API를 통해 처리됨
       } catch (error) {
         console.error("❌ 카카오 SDK 초기화 실패:", error);
       }
@@ -193,16 +187,17 @@ export default function LoginPage() {
 
       // 카카오 로그인 - 팝업 방식
       try {
+        // 카카오 인증 URL 가져오기
+        const authUrlResponse = await fetch("/api/auth/kakao-auth-url");
+        if (!authUrlResponse.ok) {
+          throw new Error("카카오 인증 URL을 가져올 수 없습니다");
+        }
+        const { authUrl } = await authUrlResponse.json();
+
         // 카카오 로그인 팝업 열기
         const authCode = await new Promise<string>((resolve, reject) => {
-          const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
-          const redirectUri = `${window.location.origin}`;
-
-          // 팝업 창으로 카카오 로그인 (scope에 이메일 포함)
           const popup = window.open(
-            `https://kauth.kakao.com/oauth/authorize?client_id=${kakaoAppKey}&redirect_uri=${encodeURIComponent(
-              redirectUri
-            )}&response_type=code&prompt=login`,
+            authUrl + "&prompt=login",
             "kakaoLogin",
             "width=500,height=600,scrollbars=yes,resizable=yes"
           );
@@ -307,26 +302,16 @@ export default function LoginPage() {
 
   const handleNaverLogin = async () => {
     try {
+      // 네이버 인증 URL 가져오기
+      const authUrlResponse = await fetch("/api/auth/naver-auth-url");
+      if (!authUrlResponse.ok) {
+        throw new Error("네이버 인증 URL을 가져올 수 없습니다");
+      }
+      const { authUrl, state } = await authUrlResponse.json();
+
       // 네이버 로그인 팝업 열기
       const authResult = await new Promise<{ code: string; state: string }>(
         (resolve, reject) => {
-          const naverClientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
-          const redirectUri = `${window.location.origin}`;
-          const state = Math.random().toString(36).substring(2, 15);
-
-          if (!naverClientId) {
-            console.error(
-              "❌ [네이버 OAuth] 클라이언트 ID가 설정되지 않았습니다"
-            );
-            reject(new Error("네이버 클라이언트 ID가 설정되지 않았습니다"));
-            return;
-          }
-
-          // 네이버 로그인 URL (최소한의 권한만 요청 - 사용자 ID만 필수)
-          const authUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${naverClientId}&redirect_uri=${encodeURIComponent(
-            redirectUri
-          )}&state=${state}`;
-
           // 팝업 창으로 네이버 로그인
           const popup = window.open(
             authUrl,
@@ -357,7 +342,7 @@ export default function LoginPage() {
                 const code = urlParams.get("code");
                 const returnedState = urlParams.get("state");
 
-                if (code && returnedState === state) {
+                if (code && returnedState && returnedState === state) {
                   popup.close();
                   clearInterval(checkClosed);
                   resolve({ code, state: returnedState });
@@ -455,22 +440,19 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     try {
+      // 구글 인증 URL 가져오기
+      const authUrlResponse = await fetch("/api/auth/google-auth-url");
+      if (!authUrlResponse.ok) {
+        throw new Error("구글 인증 URL을 가져올 수 없습니다");
+      }
+      const { authUrl } = await authUrlResponse.json();
+
       // 구글 로그인 팝업 열기
       const authResult = await new Promise<{ code: string }>(
         (resolve, reject) => {
-          const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-          const redirectUri = `${window.location.origin}`;
-
-          if (!googleClientId) {
-            reject(new Error("구글 클라이언트 ID가 설정되지 않았습니다"));
-            return;
-          }
-
           // 팝업 창으로 구글 로그인
           const popup = window.open(
-            `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
-              redirectUri
-            )}&scope=email%20profile&access_type=offline&prompt=consent`,
+            authUrl,
             "googleLogin",
             "width=500,height=600,scrollbars=yes,resizable=yes"
           );
