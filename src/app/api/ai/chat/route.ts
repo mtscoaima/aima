@@ -7,7 +7,7 @@ const client = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, previousMessages } = await request.json();
+    const { message, previousMessages, initialImage } = await request.json();
 
     if (!message) {
       return NextResponse.json(
@@ -20,13 +20,46 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const conversationHistory = previousMessages.map((msg: any) => ({
       role: msg.role,
-      content: msg.content,
+      content: [
+        {
+          type: "input_text",
+          text: msg.content,
+        },
+      ],
     }));
 
     // 스트리밍 응답 생성
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // 사용자 입력 컨텐츠 구성
+          const userContent = [];
+          
+          // 텍스트 추가
+          userContent.push({
+            type: "input_text",
+            text: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
+            never contain text in image
+            응답은 다음 JSON 형식으로 포함해주세요:
+            {
+              "response": "마케팅 조언 및 설명",
+              "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내)"
+            }
+            
+            ${initialImage ? "첨부된 이미지를 참고하여 " : ""}사용자 요청: ${message}`,
+          });
+
+          // 초기 이미지가 있으면 추가 - 올바른 형식으로 수정
+          if (initialImage) {
+            // base64 데이터에서 data URL 접두사 제거
+            const base64Data = initialImage.replace(/^data:image\/[^;]+;base64,/, "");
+            
+            userContent.push({
+              type: "input_image",
+              image_url: `data:image/png;base64,${base64Data}`,
+            });
+          }
+
           // OpenAI 스트리밍 응답 생성
           const response = await client.responses.create({
             model: "gpt-4.1-mini",
@@ -34,22 +67,15 @@ export async function POST(request: NextRequest) {
               ...conversationHistory,
               {
                 role: "user",
-                content: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
-                이미지를 생성할 때는 글자를 절대 생성하지 마세요
-                응답은 다음 JSON 형식으로 포함해주세요:
-                {
-                  "response": "마케팅 조언 및 설명",
-                  "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내)"
-                }
-                
-                사용자 요청: ${message}`,
+                content: userContent,
               },
             ],
             tools: [
               {
                 type: "image_generation",
                 partial_images: 3,
-                quality: "high",
+                quality: "low",
+                size: "1024x1024",
               },
             ],
             stream: true,

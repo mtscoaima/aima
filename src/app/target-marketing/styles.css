@@ -167,6 +167,119 @@ body .main-content {
   font-weight: 500;
 }
 
+/* 메인 이미지 미리보기 */
+.main-image-preview {
+  position: relative;
+  width: 80px;
+  height: 60px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.main-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-main-image-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s;
+}
+
+.remove-main-image-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* 컨트롤 영역 */
+.input-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.add-image-btn {
+  width: 44px;
+  height: 44px;
+  background: #1681ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.add-image-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.add-image-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.quick-start-badges {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.quick-start-badges::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-badge {
+  background: #f2f4f6;
+  color: #6d6d6d;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.quick-badge:hover:not(:disabled) {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.quick-badge:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 템플릿 섹션 */
 .template-section {
   width: 100%;
@@ -623,6 +736,27 @@ body .main-content {
     padding: 12px;
   }
 
+  /* 반응형: 컨트롤 영역 세로 배치 */
+  .input-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .quick-start-badges {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .quick-badge {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .add-image-btn {
+    align-self: center;
+  }
+
   .template-section {
     padding: 15px 0;
   }
@@ -731,6 +865,18 @@ body .main-content {
     min-height: 70px;
     font-size: 14px;
     padding: 10px;
+  }
+
+  /* 소형 화면: 더 작은 컨트롤 */
+  .quick-badge {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  .add-image-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
   }
 
   .templates-grid {
@@ -937,6 +1083,16 @@ body .main-content {
 
   .template-card:hover {
     transform: none;
+  }
+
+  .add-image-btn,
+  .quick-badge {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .quick-badge {
+    font-size: 14px;
   }
 }
 

@@ -40,6 +40,11 @@ export default function TargetMarketingPage() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // 메인 페이지용 이미지 상태 (템플릿용과 분리)
+  const [mainSelectedImage, setMainSelectedImage] = useState<File | null>(null);
+  const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
+  const mainFileInputRef = useRef<HTMLInputElement>(null);
+
   // 템플릿 관련 상태
   const [selectedCategory, setSelectedCategory] = useState("추천");
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -141,6 +146,72 @@ export default function TargetMarketingPage() {
     fetchTemplates(selectedCategory);
   }, [selectedCategory]);
 
+  // 메인 이미지 관리 함수들
+  const handleMainImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // 이미지 압축
+      const compressedFile = await compressImage(file, 300);
+      setMainSelectedImage(compressedFile);
+      setMainImagePreview(URL.createObjectURL(compressedFile));
+    } catch (error) {
+      console.error("Error processing image:", error);
+      alert("이미지 처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleAddImageClick = () => {
+    mainFileInputRef.current?.click();
+  };
+
+  const removeMainImage = () => {
+    setMainSelectedImage(null);
+    setMainImagePreview(null);
+    if (mainFileInputRef.current) {
+      mainFileInputRef.current.value = "";
+    }
+  };
+
+  // 빠른 시작 텍스트 추가 및 바로 생성 함수
+  const addQuickText = async (text: string) => {
+    let finalText = text;
+    if (inputValue.trim()) {
+      finalText = inputValue + "\n" + text;
+    }
+    
+    setIsLoading(true);
+
+    try {
+      // 고유한 채팅 ID 생성
+      const chatId = Date.now().toString();
+
+      // 이미지가 있으면 이미지 관련 프롬프트 추가
+      if (mainSelectedImage) {
+        const initialMessage = `이 이미지를 기반으로 새 이미지를 생성해주세요. ${finalText}`;
+        
+        // 이미지를 Base64로 변환하여 저장
+        const reader = new FileReader();
+        reader.onload = () => {
+          sessionStorage.setItem("initialImage", reader.result as string);
+          sessionStorage.setItem("initialMessage", initialMessage);
+          
+          // 동적 라우트로 이동
+          router.push(`/target-marketing/${chatId}`);
+        };
+        reader.readAsDataURL(mainSelectedImage);
+      } else {
+        sessionStorage.setItem("initialMessage", finalText);
+        // 동적 라우트로 이동
+        router.push(`/target-marketing/${chatId}`);
+      }
+    } catch (error) {
+      console.error("채팅 시작 중 오류:", error);
+      setIsLoading(false);
+    }
+  };
+
   const handleStartChat = async () => {
     if (!inputValue.trim()) return;
 
@@ -151,10 +222,27 @@ export default function TargetMarketingPage() {
       const chatId = Date.now().toString();
 
       // 초기 메시지를 세션 스토리지에 저장
-      sessionStorage.setItem("initialMessage", inputValue);
-
-      // 동적 라우트로 이동
-      router.push(`/target-marketing/${chatId}`);
+      let initialMessage = inputValue;
+      
+      // 이미지가 있으면 이미지 관련 프롬프트 추가
+      if (mainSelectedImage) {
+        initialMessage = `이 이미지를 기반으로 새 이미지를 생성해주세요. ${inputValue}`;
+        
+        // 이미지를 Base64로 변환하여 저장
+        const reader = new FileReader();
+        reader.onload = () => {
+          sessionStorage.setItem("initialImage", reader.result as string);
+          sessionStorage.setItem("initialMessage", initialMessage);
+          
+          // 동적 라우트로 이동
+          router.push(`/target-marketing/${chatId}`);
+        };
+        reader.readAsDataURL(mainSelectedImage);
+      } else {
+        sessionStorage.setItem("initialMessage", initialMessage);
+        // 동적 라우트로 이동
+        router.push(`/target-marketing/${chatId}`);
+      }
     } catch (error) {
       console.error("채팅 시작 중 오류:", error);
       setIsLoading(false);
@@ -600,17 +688,81 @@ export default function TargetMarketingPage() {
                   rows={3}
                   disabled={isLoading}
                 />
-                <button
-                  onClick={handleStartChat}
-                  disabled={!inputValue.trim() || isLoading}
-                  className="start-chat-btn"
-                >
-                  {isLoading ? (
-                    <div className="loading-spinner-small" />
-                  ) : (
-                    "생성"
-                  )}
-                </button>
+                
+                {/* 이미지 미리보기 (선택했을 때만) */}
+                {mainImagePreview && (
+                  <div className="main-image-preview">
+                    <img src={mainImagePreview} alt="선택된 이미지" />
+                    <button 
+                      onClick={removeMainImage}
+                      className="remove-main-image-btn"
+                      type="button"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+                
+                {/* 컨트롤 영역 - 한 줄 배치 */}
+                <div className="input-controls">
+                  <button
+                    onClick={handleAddImageClick}
+                    className="add-image-btn"
+                    type="button"
+                    disabled={isLoading}
+                    title="이미지 추가"
+                  >
+                    +
+                  </button>
+                  
+                  <div className="quick-start-badges">
+                    <button 
+                      onClick={() => addQuickText("런칭 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성")}
+                      className="quick-badge"
+                      type="button"
+                      disabled={isLoading}
+                    >
+                      런칭 이벤트
+                    </button>
+                    <button 
+                      onClick={() => addQuickText("할인 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성")}
+                      className="quick-badge"
+                      type="button"
+                      disabled={isLoading}
+                    >
+                      할인 이벤트
+                    </button>
+                    <button 
+                      onClick={() => addQuickText("고객유지 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성")}
+                      className="quick-badge"
+                      type="button"
+                      disabled={isLoading}
+                    >
+                      고객유지 이벤트
+                    </button>
+                  </div>
+                  
+                  <button
+                    onClick={handleStartChat}
+                    disabled={!inputValue.trim() || isLoading}
+                    className="start-chat-btn"
+                  >
+                    {isLoading ? (
+                      <div className="loading-spinner-small" />
+                    ) : (
+                      "생성"
+                    )}
+                  </button>
+                </div>
+                
+                {/* 숨겨진 파일 입력 */}
+                <input
+                  ref={mainFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleMainImageSelect}
+                  style={{ display: "none" }}
+                />
               </div>
             </div>
           </div>

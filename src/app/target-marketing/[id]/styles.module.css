@@ -1300,6 +1300,56 @@ body .main-content {
   .modalFooter button {
     width: 100%;
   }
+
+  /* 카드 승인 금액 모바일 반응형 */
+  .amountCardOptions {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .amountCard {
+    min-height: 50px;
+    padding: 12px;
+  }
+
+  .amountCardLabel {
+    font-size: 13px;
+  }
+
+  .radioCircle {
+    width: 18px;
+    height: 18px;
+  }
+
+  .radioCircle.checked::after {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* 커스텀 금액 입력 모바일 */
+  .customAmountInput {
+    margin-top: 12px;
+    padding: 12px;
+  }
+
+  .customAmountWrapper {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .customAmountField {
+    font-size: 14px;
+    padding: 10px 12px;
+    max-width: 100px;
+  }
+
+  .customAmountUnit {
+    font-size: 14px;
+  }
+
+  .customAmountHint {
+    font-size: 11px;
+  }
 }
 
 /* 타겟 추천 결과 카드 */
@@ -1340,6 +1390,18 @@ body .main-content {
   letter-spacing: -0.28px;
 }
 
+.filterLabel {
+  color: #666;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  margin-bottom: 4px;
+}
+
 .filterSelect {
   padding: 10px 12px;
   border-radius: 8px;
@@ -1374,63 +1436,145 @@ body .main-content {
   margin-bottom: 12px;
 }
 
-/* 카드 송신 금액 섹션 */
+/* 카드 승인 금액 섹션 */
 .cardAmountSection {
   padding-top: 20px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.amountCardOptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
 
-.amountInputSection {
+.amountCard {
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #e6e6e6;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 60px;
+}
+
+.amountCard:hover {
+  border-color: #1681ff;
+  box-shadow: 0 2px 8px rgba(22, 129, 255, 0.1);
+}
+
+.amountCard.selected {
+  border-color: #1681ff;
+  background: #f0f7ff;
+  box-shadow: 0 2px 8px rgba(22, 129, 255, 0.15);
+}
+
+.amountCardLabel {
+  color: #000;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 120%;
+  letter-spacing: -0.28px;
+}
+
+.amountCard.selected .amountCardLabel {
+  color: #1681ff;
+  font-weight: 600;
+}
+
+.amountCardRadio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radioCircle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #e6e6e6;
+  background: #fff;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.radioCircle.checked {
+  border-color: #1681ff;
+  background: #1681ff;
+}
+
+.radioCircle.checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* 커스텀 금액 입력 */
+.customAmountInput {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e6e6e6;
+}
+
+.customAmountWrapper {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
-.amountInput {
-  padding: 10px 12px;
+.customAmountField {
+  flex: 1;
+  padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid #c7c7c7;
   background: #fff;
   color: #000;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
-  font-size: 14px;
+  font-size: 16px;
   font-style: normal;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 120%;
-  letter-spacing: -0.28px;
+  letter-spacing: -0.32px;
   outline: none;
-  width: 120px;
+  text-align: right;
+  max-width: 120px;
 }
 
-.amountInput:focus {
+.customAmountField:focus {
   border-color: #1681ff;
+  box-shadow: 0 0 0 3px rgba(22, 129, 255, 0.1);
 }
 
-.amountLabel {
-  color: #666;
+.customAmountUnit {
+  color: #000;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
-  font-size: 14px;
+  font-size: 16px;
   font-style: normal;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 120%;
-  letter-spacing: -0.28px;
+  letter-spacing: -0.32px;
 }
 
-.amountOptions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.amountButton {
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid #e6e6e6;
-  background: #fff;
+.customAmountHint {
   color: #666;
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
@@ -1439,23 +1583,9 @@ body .main-content {
   font-weight: 400;
   line-height: 120%;
   letter-spacing: -0.24px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
 }
 
-.amountButton:hover {
-  border-color: #1681ff;
-  color: #1681ff;
-}
-
-.amountButton.active {
-  background: #1681ff;
-  border-color: #1681ff;
-  color: #fff;
-}
-
-/* 카드 송신 시간 섹션 */
+/* 카드 승인 시간 섹션 */
 .cardTimeSection {
   padding-top: 20px;
   display: flex;
