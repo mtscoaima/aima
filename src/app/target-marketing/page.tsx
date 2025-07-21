@@ -147,7 +147,9 @@ export default function TargetMarketingPage() {
   }, [selectedCategory]);
 
   // 메인 이미지 관리 함수들
-  const handleMainImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainImageSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -180,7 +182,7 @@ export default function TargetMarketingPage() {
     if (inputValue.trim()) {
       finalText = inputValue + "\n" + text;
     }
-    
+
     setIsLoading(true);
 
     try {
@@ -190,13 +192,13 @@ export default function TargetMarketingPage() {
       // 이미지가 있으면 이미지 관련 프롬프트 추가
       if (mainSelectedImage) {
         const initialMessage = `이 이미지를 기반으로 새 이미지를 생성해주세요. ${finalText}`;
-        
+
         // 이미지를 Base64로 변환하여 저장
         const reader = new FileReader();
         reader.onload = () => {
           sessionStorage.setItem("initialImage", reader.result as string);
           sessionStorage.setItem("initialMessage", initialMessage);
-          
+
           // 동적 라우트로 이동
           router.push(`/target-marketing/${chatId}`);
         };
@@ -223,17 +225,17 @@ export default function TargetMarketingPage() {
 
       // 초기 메시지를 세션 스토리지에 저장
       let initialMessage = inputValue;
-      
+
       // 이미지가 있으면 이미지 관련 프롬프트 추가
       if (mainSelectedImage) {
         initialMessage = `이 이미지를 기반으로 새 이미지를 생성해주세요. ${inputValue}`;
-        
+
         // 이미지를 Base64로 변환하여 저장
         const reader = new FileReader();
         reader.onload = () => {
           sessionStorage.setItem("initialImage", reader.result as string);
           sessionStorage.setItem("initialMessage", initialMessage);
-          
+
           // 동적 라우트로 이동
           router.push(`/target-marketing/${chatId}`);
         };
@@ -688,12 +690,18 @@ export default function TargetMarketingPage() {
                   rows={3}
                   disabled={isLoading}
                 />
-                
+
                 {/* 이미지 미리보기 (선택했을 때만) */}
                 {mainImagePreview && (
                   <div className="main-image-preview">
-                    <img src={mainImagePreview} alt="선택된 이미지" />
-                    <button 
+                    <Image
+                      src={mainImagePreview}
+                      alt="선택된 이미지"
+                      width={200}
+                      height={150}
+                      style={{ objectFit: "cover" }}
+                    />
+                    <button
                       onClick={removeMainImage}
                       className="remove-main-image-btn"
                       type="button"
@@ -702,7 +710,7 @@ export default function TargetMarketingPage() {
                     </button>
                   </div>
                 )}
-                
+
                 {/* 컨트롤 영역 - 한 줄 배치 */}
                 <div className="input-controls">
                   <button
@@ -714,26 +722,38 @@ export default function TargetMarketingPage() {
                   >
                     +
                   </button>
-                  
+
                   <div className="quick-start-badges">
-                    <button 
-                      onClick={() => addQuickText("런칭 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성")}
+                    <button
+                      onClick={() =>
+                        addQuickText(
+                          "런칭 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성"
+                        )
+                      }
                       className="quick-badge"
                       type="button"
                       disabled={isLoading}
                     >
                       런칭 이벤트
                     </button>
-                    <button 
-                      onClick={() => addQuickText("할인 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성")}
+                    <button
+                      onClick={() =>
+                        addQuickText(
+                          "할인 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성"
+                        )
+                      }
                       className="quick-badge"
                       type="button"
                       disabled={isLoading}
                     >
                       할인 이벤트
                     </button>
-                    <button 
-                      onClick={() => addQuickText("고객유지 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성")}
+                    <button
+                      onClick={() =>
+                        addQuickText(
+                          "고객유지 이벤트와 관련한 홍보 문구를 생성하고 이를 바탕으로 이미지 생성"
+                        )
+                      }
                       className="quick-badge"
                       type="button"
                       disabled={isLoading}
@@ -741,7 +761,7 @@ export default function TargetMarketingPage() {
                       고객유지 이벤트
                     </button>
                   </div>
-                  
+
                   <button
                     onClick={handleStartChat}
                     disabled={!inputValue.trim() || isLoading}
@@ -754,7 +774,7 @@ export default function TargetMarketingPage() {
                     )}
                   </button>
                 </div>
-                
+
                 {/* 숨겨진 파일 입력 */}
                 <input
                   ref={mainFileInputRef}

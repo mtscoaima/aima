@@ -1,20 +1,19 @@
 "use client";
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
+import Image from "next/image";
 import { Sparkles, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import SuccessModal from "@/components/SuccessModal";
 import { PaymentModal } from "@/components/PaymentModal";
 import { useBalance } from "@/contexts/BalanceContext";
-import { 
-  targetOptions, 
-  generateTimeOptions, 
-  generateBatchTimeOptions, 
+import {
+  targetOptions,
+  generateBatchTimeOptions,
   batchSendDateOptions,
-  getAmountDisplayText,
   getDistrictsByCity,
-  getIndustriesByTopLevel
+  getIndustriesByTopLevel,
 } from "@/lib/targetOptions";
 import styles from "./styles.module.css";
 
@@ -413,7 +412,7 @@ function TargetMarketingContent() {
       const hourStr = hour.toString().padStart(2, "0");
       options.push({
         value: `${hourStr}:00`,
-        label: `${hourStr}:00`
+        label: `${hourStr}:00`,
       });
     }
     return options;
@@ -421,9 +420,9 @@ function TargetMarketingContent() {
 
   // 시간 유효성 검증
   useEffect(() => {
-    const startHour = parseInt(cardStartTime.split(':')[0]);
-    const endHour = parseInt(cardEndTime.split(':')[0]);
-    
+    const startHour = parseInt(cardStartTime.split(":")[0]);
+    const endHour = parseInt(cardEndTime.split(":")[0]);
+
     // 시작 시간이 종료 시간보다 크거나 같으면 종료 시간을 시작 시간 + 1로 설정
     if (startHour >= endHour) {
       const newEndHour = Math.min(startHour + 1, 23);
@@ -434,7 +433,7 @@ function TargetMarketingContent() {
   // 도시 변경시 구/군 옵션 업데이트
   useEffect(() => {
     const districts = getDistrictsByCity(targetCity);
-    
+
     // 현재 선택된 구가 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
     const validDistrict = districts.find(
       (option) => option.value === targetDistrict
@@ -448,7 +447,7 @@ function TargetMarketingContent() {
   // 상위 업종 변경시 세부 업종 옵션 업데이트
   useEffect(() => {
     const industries = getIndustriesByTopLevel(targetTopLevelIndustry);
-    
+
     // 현재 선택된 업종이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
     const validIndustry = industries.find(
       (option) => option.value === targetIndustry
@@ -677,7 +676,11 @@ function TargetMarketingContent() {
 
   // 초기 메시지에 대한 AI 응답 처리 (실제 AI API 호출)
   const handleInitialResponse = React.useCallback(
-    async (userMessage: string, currentMessages: Message[], initialImage?: string | null) => {
+    async (
+      userMessage: string,
+      currentMessages: Message[],
+      initialImage?: string | null
+    ) => {
       setShowTypingIndicator(true);
 
       try {
@@ -701,7 +704,11 @@ function TargetMarketingContent() {
         setMessages(initialMessages);
 
         // 실제 AI API 호출
-        const requestBody: any = {
+        const requestBody: {
+          message: string;
+          previousMessages: Message[];
+          initialImage?: string;
+        } = {
           message: userMessage,
           previousMessages: [],
         };
@@ -965,7 +972,7 @@ function TargetMarketingContent() {
 
         // 세션 스토리지에서 제거
         sessionStorage.removeItem("initialMessage");
-        
+
         // 초기 이미지가 있으면 세션 스토리지에서 제거 (사용 후)
         if (savedInitialImage) {
           sessionStorage.removeItem("initialImage");
@@ -979,12 +986,12 @@ function TargetMarketingContent() {
       // 한 번에 모든 상태 설정
       setMessages(initialMessages);
       setTemplates([initialTemplate]);
-      
+
       // 초기 이미지가 있으면 현재 생성된 이미지로 설정
       if (savedInitialImage) {
         setCurrentGeneratedImage(savedInitialImage);
       }
-      
+
       setIsInitialized(true);
 
       // 초기 메시지가 있는 경우에만 AI 응답 처리 (비동기 처리)
@@ -992,7 +999,11 @@ function TargetMarketingContent() {
         // 상태 설정 후 약간의 지연을 두고 AI 응답 처리
         setTimeout(() => {
           // 초기 이미지도 함께 전달
-          handleInitialResponse(savedInitialMessage.trim(), initialMessages, savedInitialImage);
+          handleInitialResponse(
+            savedInitialMessage.trim(),
+            initialMessages,
+            savedInitialImage
+          );
         }, 1000);
       }
     }
@@ -1516,7 +1527,8 @@ function TargetMarketingContent() {
             topLevel: targetTopLevelIndustry,
             specific: targetIndustry,
           },
-          cardAmount: cardAmount === "custom" ? `${customAmount}0000` : cardAmount,
+          cardAmount:
+            cardAmount === "custom" ? `${customAmount}0000` : cardAmount,
           cardTime: {
             startTime: cardStartTime,
             endTime: cardEndTime,
@@ -1590,8 +1602,13 @@ function TargetMarketingContent() {
                 <div className={styles.messageContent}>
                   {message.imageUrl && (
                     <div className={styles.messageImage}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={message.imageUrl} alt="Generated content" />
+                      <Image
+                        src={message.imageUrl}
+                        alt="Generated content"
+                        width={300}
+                        height={200}
+                        style={{ objectFit: "cover" }}
+                      />
                       {message.isImageLoading && (
                         <div className={styles.imageLoadingOverlay}>
                           <div className={styles.loadingSpinner}></div>
@@ -1653,10 +1670,12 @@ function TargetMarketingContent() {
               <div className={styles.templateCardContent}>
                 {currentGeneratedImage ? (
                   <div className={styles.templateImage}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={currentGeneratedImage}
                       alt="생성된 템플릿 이미지"
+                      width={300}
+                      height={200}
+                      style={{ objectFit: "cover" }}
                     />
                     {isImageGenerating && (
                       <div className={styles.imageGeneratingOverlay}>
@@ -1854,7 +1873,9 @@ function TargetMarketingContent() {
                     <select
                       className={styles.filterSelect}
                       value={targetTopLevelIndustry}
-                      onChange={(e) => setTargetTopLevelIndustry(e.target.value)}
+                      onChange={(e) =>
+                        setTargetTopLevelIndustry(e.target.value)
+                      }
                     >
                       {targetOptions.topLevelIndustries.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -1870,11 +1891,13 @@ function TargetMarketingContent() {
                       value={targetIndustry}
                       onChange={(e) => setTargetIndustry(e.target.value)}
                     >
-                      {getIndustriesByTopLevel(targetTopLevelIndustry).map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                      {getIndustriesByTopLevel(targetTopLevelIndustry).map(
+                        (option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1896,7 +1919,7 @@ function TargetMarketingContent() {
                         {option.label}
                       </div>
                       <div className={styles.amountCardRadio}>
-                        <div 
+                        <div
                           className={`${styles.radioCircle} ${
                             cardAmount === option.value ? styles.checked : ""
                           }`}
@@ -1905,7 +1928,7 @@ function TargetMarketingContent() {
                     </div>
                   ))}
                 </div>
-                
+
                 {/* 직접 입력 필드 */}
                 {cardAmount === "custom" && (
                   <div className={styles.customAmountInput}>
@@ -1916,7 +1939,10 @@ function TargetMarketingContent() {
                         onChange={(e) => {
                           const value = e.target.value;
                           // 숫자만 입력되도록 하고, 최대 1000만원으로 제한
-                          if (value === "" || (parseInt(value) >= 1 && parseInt(value) <= 1000)) {
+                          if (
+                            value === "" ||
+                            (parseInt(value) >= 1 && parseInt(value) <= 1000)
+                          ) {
                             setCustomAmount(value);
                           }
                         }}
