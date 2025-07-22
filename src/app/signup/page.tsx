@@ -13,6 +13,7 @@ export default function SignupPage() {
     userType: "" as "general" | "salesperson" | "",
 
     // 기본 정보
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -251,6 +252,49 @@ export default function SignupPage() {
     return () => clearTimeout(timeoutId);
   }, [formData.email]);
 
+  // 아이디 실시간 유효성 검사 (디바운스)
+  useEffect(() => {
+    const checkUsername = async () => {
+      if (formData.username) {
+        // 아이디 형식 검증 (영문, 숫자, 언더스코어만 허용, 3-20자)
+        if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username)) {
+          setErrors((prev) => ({
+            ...prev,
+            username:
+              "아이디는 영문, 숫자, 언더스코어만 사용하여 3-20자로 입력하세요.",
+          }));
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/auth/check-username", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              username: formData.username,
+            }),
+          });
+
+          if (!response.ok && response.status === 409) {
+            setErrors((prev) => ({
+              ...prev,
+              username: "이미 사용 중인 아이디입니다.",
+            }));
+          } else if (response.ok) {
+            setErrors((prev) => ({ ...prev, username: "" }));
+          }
+        } catch (error) {
+          console.error("아이디 확인 오류:", error);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(checkUsername, 1000); // 1초 디바운스
+    return () => clearTimeout(timeoutId);
+  }, [formData.username]);
+
   // 로그인된 사용자에게는 로딩 화면 표시
   if (isAuthenticated) {
     return (
@@ -297,6 +341,7 @@ export default function SignupPage() {
 
     // 이메일이나 비밀번호가 변경되면 해당 에러 초기화
     if (
+      name === "username" ||
       name === "email" ||
       name === "password" ||
       name === "name" ||
@@ -493,7 +538,42 @@ export default function SignupPage() {
           break;
         }
 
-        // 본인인증이 완료된 경우에만 이메일과 비밀번호 검증
+        // 본인인증이 완료된 경우에만 아이디, 이메일, 비밀번호 검증
+        // 아이디 검증
+        if (!formData.username) {
+          newErrors.username = "아이디를 입력해주세요.";
+        } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username)) {
+          newErrors.username =
+            "아이디는 영문, 숫자, 언더스코어만 사용하여 3-20자로 입력하세요.";
+        } else {
+          // 아이디 중복 확인
+          try {
+            const response = await fetch("/api/auth/check-username", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                username: formData.username,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              if (response.status === 409) {
+                newErrors.username = "이미 사용 중인 아이디입니다.";
+              } else {
+                newErrors.username =
+                  data.message || "아이디 확인 중 오류가 발생했습니다.";
+              }
+            }
+          } catch (error) {
+            console.error("아이디 중복 확인 오류:", error);
+            newErrors.username = "아이디 확인 중 오류가 발생했습니다.";
+          }
+        }
+
         if (!formData.email) {
           newErrors.email = "이메일을 입력해주세요.";
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -733,6 +813,7 @@ export default function SignupPage() {
       formDataToSend.append("userType", formData.userType);
 
       // 기본 정보
+      formDataToSend.append("username", formData.username);
       formDataToSend.append("email", formData.email);
       formDataToSend.append("password", formData.password);
       formDataToSend.append("name", formData.name);
@@ -1170,9 +1251,39 @@ export default function SignupPage() {
                   </>
                 )}
 
-                {/* 이메일과 비밀번호는 본인인증 완료 후에만 입력 가능 */}
+                {/* 아이디, 이메일과 비밀번호는 본인인증 완료 후에만 입력 가능 */}
                 {formData.identityVerified && (
                   <>
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label
+                          htmlFor="username"
+                          className={`${styles.formLabel} ${styles.required}`}
+                        >
+                          아이디
+                        </label>
+                        <input
+                          type="text"
+                          id="username"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleInputChange}
+                          className={`${styles.formInput} ${
+                            errors.username ? styles.error : ""
+                          }`}
+                          placeholder="영문, 숫자, 언더스코어 3-20자"
+                          required
+                          disabled={isLoading}
+                        />
+                        {errors.username && (
+                          <p className={styles.formError}>{errors.username}</p>
+                        )}
+                        <p className={styles.passwordHint}>
+                          영문, 숫자, 언더스코어만 사용 가능 (3-20자)
+                        </p>
+                      </div>
+                    </div>
+
                     <div className={styles.formRow}>
                       <div className={styles.formGroup}>
                         <label

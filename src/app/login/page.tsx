@@ -41,7 +41,7 @@ declare global {
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
     rememberMe: false,
   });
@@ -143,7 +143,7 @@ export default function LoginPage() {
 
     try {
       await login({
-        email: formData.email,
+        username: formData.username,
         password: formData.password,
       });
 
@@ -567,17 +567,17 @@ export default function LoginPage() {
           {/* 로그인 폼 */}
           <form onSubmit={handleSubmit} className={styles.loginForm}>
             <div className={styles.formGroup}>
-              <label htmlFor="email" className={styles.formLabel}>
-                이메일 주소
+              <label htmlFor="username" className={styles.formLabel}>
+                아이디
               </label>
               <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
                 onChange={handleInputChange}
                 className={styles.formInput}
-                placeholder="example@email.com"
+                placeholder="아이디를 입력하세요"
                 required
                 disabled={isLoading}
               />

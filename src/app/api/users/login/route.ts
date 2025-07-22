@@ -31,22 +31,22 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { username, password } = body;
 
     // 입력 검증
-    if (!email || !password) {
+    if (!username || !password) {
       return NextResponse.json(
         {
-          message: "이메일과 비밀번호는 필수입니다.",
+          message: "아이디와 비밀번호는 필수입니다.",
           error: "Missing required fields",
           status: 400,
           timestamp: getKSTISOString(),
           path: "/api/users/login",
           fieldErrors: [
             {
-              field: !email ? "email" : "password",
-              message: !email
-                ? "이메일은 필수입니다."
+              field: !username ? "username" : "password",
+              message: !username
+                ? "아이디는 필수입니다."
                 : "비밀번호는 필수입니다.",
             },
           ],
@@ -55,20 +55,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 이메일 형식 검증
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // 아이디 형식 검증
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
       return NextResponse.json(
         {
-          message: "올바른 이메일 형식이 아닙니다.",
-          error: "Invalid email format",
+          message: "올바른 아이디 형식이 아닙니다.",
+          error: "Invalid username format",
           status: 400,
           timestamp: getKSTISOString(),
           path: "/api/users/login",
           fieldErrors: [
             {
-              field: "email",
-              message: "올바른 이메일 형식을 입력해주세요.",
+              field: "username",
+              message:
+                "아이디는 영문, 숫자, 언더스코어만 사용하여 3-20자로 입력하세요.",
             },
           ],
         },
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from("users")
       .select("*")
-      .eq("email", email)
+      .eq("username", username)
       .single();
 
     if (userError || !user) {
@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
           path: "/api/users/login",
           fieldErrors: [
             {
-              field: "email",
-              message: "등록되지 않은 이메일입니다.",
+              field: "username",
+              message: "등록되지 않은 아이디입니다.",
             },
           ],
         },
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           path: "/api/users/login",
           fieldErrors: [
             {
-              field: "email",
+              field: "username",
               message: "계정이 비활성화되어 있습니다. 관리자에게 문의하세요.",
             },
           ],
@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
     const accessToken = jwt.sign(
       {
         userId: user.id,
+        username: user.username,
         email: user.email,
         name: user.name,
         phoneNumber: user.phone_number,
@@ -160,6 +161,7 @@ export async function POST(request: NextRequest) {
     const refreshToken = jwt.sign(
       {
         userId: user.id,
+        username: user.username,
         email: user.email,
         name: user.name,
         phoneNumber: user.phone_number,
@@ -245,6 +247,7 @@ export async function POST(request: NextRequest) {
         expiresIn: 3600,
         user: {
           id: updatedUser.id,
+          username: updatedUser.username,
           email: updatedUser.email,
           name: updatedUser.name,
           phoneNumber: updatedUser.phone_number,

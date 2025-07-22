@@ -13,7 +13,7 @@ const API_BASE_URL = getApiBaseUrl();
 
 // API 응답 타입 정의
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 

@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
 
     // 기본 정보 추출
     const userType = formData.get("userType") as string;
+    const username = formData.get("username") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const name = formData.get("name") as string;
@@ -196,6 +197,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (!username || !username.trim()) {
+      fieldErrors.push({
+        field: "username",
+        message: "아이디를 입력해주세요.",
+      });
+    } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      fieldErrors.push({
+        field: "username",
+        message:
+          "아이디는 영문, 숫자, 언더스코어만 사용하여 3-20자로 입력하세요.",
+      });
+    }
+
     if (!email || !email.includes("@")) {
       fieldErrors.push({
         field: "email",
@@ -282,6 +296,39 @@ export async function POST(request: NextRequest) {
         fieldErrors,
       };
       return NextResponse.json(errorResponse, { status: 400 });
+    }
+
+    // 아이디 중복 확인
+    const { data: existingUsername, error: usernameCheckError } = await supabase
+      .from("users")
+      .select("username")
+      .eq("username", username)
+      .maybeSingle();
+
+    if (usernameCheckError) {
+      console.error("Username check error:", usernameCheckError);
+      const errorResponse: ErrorResponse = {
+        message: "아이디 확인 중 오류가 발생했습니다",
+        error: `Database Error: ${usernameCheckError.message}`,
+        status: 500,
+        timestamp: getKSTISOString(),
+        path: "/api/users/signup-with-files",
+      };
+      return NextResponse.json(errorResponse, { status: 500 });
+    }
+
+    if (existingUsername) {
+      const errorResponse: ErrorResponse = {
+        message: "아이디 중복",
+        error: "string",
+        status: 409,
+        timestamp: getKSTISOString(),
+        path: "/api/users/signup-with-files",
+        fieldErrors: [
+          { field: "username", message: "이미 사용 중인 아이디입니다." },
+        ],
+      };
+      return NextResponse.json(errorResponse, { status: 409 });
     }
 
     // 이메일 중복 확인
@@ -388,6 +435,7 @@ export async function POST(request: NextRequest) {
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
+        username,
         email,
         password: hashedPassword,
         name,
