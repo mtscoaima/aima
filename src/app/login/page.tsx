@@ -612,9 +612,15 @@ export default function LoginPage() {
                 />
                 <span className={styles.checkboxText}>로그인 상태 유지</span>
               </label>
-              <Link href="/forgot-password" className={styles.forgotLink}>
-                비밀번호 찾기
-              </Link>
+              <div className={styles.findLinks}>
+                <Link href="/auth/find-username" className={styles.forgotLink}>
+                  아이디 찾기
+                </Link>
+                <span className={styles.linkSeparator}>|</span>
+                <Link href="/auth/find-password" className={styles.forgotLink}>
+                  비밀번호 찾기
+                </Link>
+              </div>
             </div>
 
             <button

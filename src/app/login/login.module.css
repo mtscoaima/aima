@@ -129,6 +129,17 @@
   color: #0051cc;
 }
 
+.findLinks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.linkSeparator {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
 .loginButton {
   width: 100%;
   background: #0070f3;
