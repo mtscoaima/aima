@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 새 비밀번호 길이 검증
+    // 새 비밀번호 검증
     if (newPassword.length < 8) {
       return NextResponse.json(
         {
@@ -136,6 +136,79 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    if (newPassword.length > 20) {
+      return NextResponse.json(
+        {
+          message: "새 비밀번호는 20자 이하여야 합니다",
+          error: "Password too long",
+          status: 400,
+          timestamp: getKSTISOString(),
+          path: "/api/users/change-password",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 영문, 숫자, 특수기호 조합 검증
+    const hasLetter = /[a-zA-Z]/.test(newPassword);
+    const hasNumber = /\d/.test(newPassword);
+    const hasSpecialChar = /[~!@#$%^&*()_\-=+[{\]}'"\\;:/?.>,<]/.test(
+      newPassword
+    );
+
+    if (!(hasLetter && hasNumber && hasSpecialChar)) {
+      return NextResponse.json(
+        {
+          message: "새 비밀번호는 영문, 숫자, 특수기호를 모두 포함해야 합니다",
+          error: "Password complexity not met",
+          status: 400,
+          timestamp: getKSTISOString(),
+          path: "/api/users/change-password",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 동일한 문자 4개 이상 검증
+    if (/(.)\1{3,}/.test(newPassword)) {
+      return NextResponse.json(
+        {
+          message: "동일한 문자가 4개 이상 연속으로 사용될 수 없습니다",
+          error: "Repeated characters not allowed",
+          status: 400,
+          timestamp: getKSTISOString(),
+          path: "/api/users/change-password",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 연속된 문자 4개 이상 검증
+    for (let i = 0; i <= newPassword.length - 4; i++) {
+      const slice = newPassword.slice(i, i + 4);
+      let isConsecutive = true;
+
+      for (let j = 1; j < slice.length; j++) {
+        if (slice.charCodeAt(j) !== slice.charCodeAt(j - 1) + 1) {
+          isConsecutive = false;
+          break;
+        }
+      }
+
+      if (isConsecutive) {
+        return NextResponse.json(
+          {
+            message: "연속된 문자가 4개 이상 사용될 수 없습니다",
+            error: "Sequential characters not allowed",
+            status: 400,
+            timestamp: getKSTISOString(),
+            path: "/api/users/change-password",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // 현재 사용자 정보 조회

@@ -614,8 +614,51 @@ export default function SalespersonProfilePage() {
     };
 
     // 실시간 검증 추가
-    if (field === "newPassword" && value.length > 0 && value.length < 8) {
-      newErrors.newPassword = "새 비밀번호는 8자 이상이어야 합니다.";
+    if (field === "newPassword" && value.length > 0) {
+      if (value.length < 8) {
+        newErrors.newPassword = "새 비밀번호는 8자 이상이어야 합니다.";
+      } else if (value.length > 20) {
+        newErrors.newPassword = "새 비밀번호는 20자 이하여야 합니다.";
+      } else {
+        // 영문, 숫자, 특수기호 조합 검증
+        const hasLetter = /[a-zA-Z]/.test(value);
+        const hasNumber = /\d/.test(value);
+        const hasSpecialChar = /[~!@#$%^&*()_\-=+[{\]}'"\\;:/?.>,<]/.test(
+          value
+        );
+
+        if (!(hasLetter && hasNumber && hasSpecialChar)) {
+          newErrors.newPassword =
+            "영문, 숫자, 특수기호를 모두 포함해야 합니다.";
+        } else if (/(.)\1{3,}/.test(value)) {
+          newErrors.newPassword =
+            "동일한 문자가 4개 이상 연속으로 사용될 수 없습니다.";
+        } else {
+          // 연속된 문자 검증
+          let hasConsecutive = false;
+          for (let i = 0; i <= value.length - 4; i++) {
+            const slice = value.slice(i, i + 4);
+            let isConsecutive = true;
+
+            for (let j = 1; j < slice.length; j++) {
+              if (slice.charCodeAt(j) !== slice.charCodeAt(j - 1) + 1) {
+                isConsecutive = false;
+                break;
+              }
+            }
+
+            if (isConsecutive) {
+              hasConsecutive = true;
+              break;
+            }
+          }
+
+          if (hasConsecutive) {
+            newErrors.newPassword =
+              "연속된 문자가 4개 이상 사용될 수 없습니다.";
+          }
+        }
+      }
     }
 
     if (
@@ -670,6 +713,46 @@ export default function SalespersonProfilePage() {
       } else if (passwordData.newPassword.length < 8) {
         newErrors.newPassword = "새 비밀번호는 8자 이상이어야 합니다.";
         hasError = true;
+      } else if (passwordData.newPassword.length > 20) {
+        newErrors.newPassword = "새 비밀번호는 20자 이하여야 합니다.";
+        hasError = true;
+      } else {
+        // 영문, 숫자, 특수기호 조합 검증
+        const hasLetter = /[a-zA-Z]/.test(passwordData.newPassword);
+        const hasNumber = /\d/.test(passwordData.newPassword);
+        const hasSpecialChar = /[~!@#$%^&*()_\-=+[{\]}'"\\;:/?.>,<]/.test(
+          passwordData.newPassword
+        );
+
+        if (!(hasLetter && hasNumber && hasSpecialChar)) {
+          newErrors.newPassword =
+            "영문, 숫자, 특수기호를 모두 포함해야 합니다.";
+          hasError = true;
+        } else if (/(.)\1{3,}/.test(passwordData.newPassword)) {
+          newErrors.newPassword =
+            "동일한 문자가 4개 이상 연속으로 사용될 수 없습니다.";
+          hasError = true;
+        } else {
+          // 연속된 문자 검증
+          for (let i = 0; i <= passwordData.newPassword.length - 4; i++) {
+            const slice = passwordData.newPassword.slice(i, i + 4);
+            let isConsecutive = true;
+
+            for (let j = 1; j < slice.length; j++) {
+              if (slice.charCodeAt(j) !== slice.charCodeAt(j - 1) + 1) {
+                isConsecutive = false;
+                break;
+              }
+            }
+
+            if (isConsecutive) {
+              newErrors.newPassword =
+                "연속된 문자가 4개 이상 사용될 수 없습니다.";
+              hasError = true;
+              break;
+            }
+          }
+        }
       }
       if (!passwordData.confirmPassword.trim()) {
         newErrors.confirmPassword = "새 비밀번호 확인을 입력해주세요.";
@@ -1480,7 +1563,7 @@ export default function SalespersonProfilePage() {
                         ? "border-red-300 focus:ring-red-500"
                         : "border-gray-300 focus:ring-blue-500"
                     }`}
-                    placeholder="새 비밀번호를 입력하세요 (8자 이상)"
+                    placeholder="8~20자의 영문, 숫자, 특수기호 조합"
                   />
                   {passwordErrors.newPassword && (
                     <p className="text-red-500 text-sm mt-1">

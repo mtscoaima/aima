@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import TermsModal, { TermsType } from "@/components/TermsModal";
+import { passwordValidation } from "@/lib/utils";
 import styles from "./signup.module.css";
 
 export default function SignupPage() {
@@ -611,30 +612,13 @@ export default function SignupPage() {
 
         if (!formData.password) {
           newErrors.password = "비밀번호를 입력해주세요.";
-        } else if (formData.password.length < 6) {
-          newErrors.password = "비밀번호는 최소 6자 이상이어야 합니다.";
-        } else if (formData.password.length > 20) {
-          newErrors.password = "비밀번호는 최대 20자까지 입력 가능합니다.";
         } else {
-          // 비밀번호 강도 검증
-          const hasUpperCase = /[A-Z]/.test(formData.password);
-          const hasLowerCase = /[a-z]/.test(formData.password);
-          const hasNumbers = /\d/.test(formData.password);
-          const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(
+          // 새로운 비밀번호 검증 로직 사용
+          const validation = passwordValidation.validatePassword(
             formData.password
           );
-
-          if (formData.password.length >= 8) {
-            const strengthCount = [
-              hasUpperCase,
-              hasLowerCase,
-              hasNumbers,
-              hasSpecialChar,
-            ].filter(Boolean).length;
-            if (strengthCount < 2) {
-              newErrors.password =
-                "비밀번호는 영문 대소문자, 숫자, 특수문자 중 2가지 이상을 포함해야 합니다.";
-            }
+          if (!validation.isValid) {
+            newErrors.password = validation.errors[0]; // 첫 번째 에러 메시지만 표시
           }
         }
 
@@ -925,29 +909,10 @@ export default function SignupPage() {
     }
   };
 
-  // 비밀번호 강도 계산
-  const getPasswordStrength = (password: string) => {
-    if (!password) return { strength: 0, text: "", color: "" };
-
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-    let strength = 0;
-    if (password.length >= 6) strength += 1;
-    if (password.length >= 8) strength += 1;
-    if (hasUpperCase) strength += 1;
-    if (hasLowerCase) strength += 1;
-    if (hasNumbers) strength += 1;
-    if (hasSpecialChar) strength += 1;
-
-    if (strength <= 2) return { strength: 1, text: "약함", color: "#ef4444" };
-    if (strength <= 4) return { strength: 2, text: "보통", color: "#f59e0b" };
-    return { strength: 3, text: "강함", color: "#10b981" };
-  };
-
-  const passwordStrength = getPasswordStrength(formData.password);
+  // 비밀번호 강도 계산 (새로운 유틸리티 함수 사용)
+  const passwordStrength = passwordValidation.getPasswordStrength(
+    formData.password
+  );
 
   // 전체 동의 처리 함수
   const handleAgreeAll = (checked: boolean) => {
@@ -1328,7 +1293,7 @@ export default function SignupPage() {
                           className={`${styles.formInput} ${
                             errors.password ? styles.error : ""
                           }`}
-                          placeholder="6자 이상의 비밀번호"
+                          placeholder="8~20자의 영문, 숫자, 특수기호 조합"
                           required
                           disabled={isLoading}
                         />
@@ -1356,9 +1321,22 @@ export default function SignupPage() {
                         {errors.password && (
                           <p className={styles.formError}>{errors.password}</p>
                         )}
-                        <p className={styles.passwordHint}>
-                          영문 대소문자, 숫자, 특수문자 중 2가지 이상 포함
-                        </p>
+                        <div className={styles.passwordHint}>
+                          {passwordValidation
+                            .getPasswordRules()
+                            .map((rule, index) => (
+                              <p
+                                key={index}
+                                style={{
+                                  margin: "2px 0",
+                                  fontSize: "12px",
+                                  color: "#666",
+                                }}
+                              >
+                                • {rule}
+                              </p>
+                            ))}
+                        </div>
                       </div>
                     </div>
 

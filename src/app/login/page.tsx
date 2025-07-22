@@ -594,7 +594,7 @@ export default function LoginPage() {
                 value={formData.password}
                 onChange={handleInputChange}
                 className={styles.formInput}
-                placeholder="비밀번호를 입력하세요"
+                placeholder="8~20자의 영문, 숫자, 특수기호 조합"
                 required
                 disabled={isLoading}
               />
@@ -632,71 +632,63 @@ export default function LoginPage() {
               <span className={styles.dividerText}>또는</span>
             </div>
 
+            <div className={styles.socialLoginHeader}>
+              <span className={styles.socialLoginText}>간편 로그인</span>
+            </div>
+
             <div className={styles.snsButtonGroup}>
               <button
                 type="button"
                 className={`${styles.snsButton} ${styles.kakaoButton}`}
                 onClick={handleKakaoLogin}
+                title="카카오로 로그인"
               >
-                <div className={styles.snsButtonContent}>
-                  <div className={styles.snsIcon}>
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                      <path
-                        d="M10 3.33333C14.6024 3.33333 18.3333 6.30952 18.3333 10C18.3333 12.5476 16.6548 14.7857 14.1667 16.0714L13.3333 18.3333L10.8333 16.6667H10C5.39762 16.6667 1.66667 13.6905 1.66667 10C1.66667 6.30952 5.39762 3.33333 10 3.33333Z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </div>
-                  <span>카카오로 로그인</span>
-                </div>
+                <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
+                  <path
+                    d="M10 3.33333C14.6024 3.33333 18.3333 6.30952 18.3333 10C18.3333 12.5476 16.6548 14.7857 14.1667 16.0714L13.3333 18.3333L10.8333 16.6667H10C5.39762 16.6667 1.66667 13.6905 1.66667 10C1.66667 6.30952 5.39762 3.33333 10 3.33333Z"
+                    fill="currentColor"
+                  />
+                </svg>
               </button>
 
               <button
                 type="button"
                 className={`${styles.snsButton} ${styles.naverButton}`}
                 onClick={handleNaverLogin}
+                title="네이버로 로그인"
               >
-                <div className={styles.snsButtonContent}>
-                  <div className={styles.snsIcon}>
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                      <path
-                        d="M13.6667 10.5833L6.33333 5.83333V10.5833H4.16667V14.1667H6.33333V18.3333H13.6667V14.1667H15.8333V10.5833H13.6667ZM11.5 12.75H8.5V7.25L11.5 10.5833V12.75Z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </div>
-                  <span>네이버로 로그인</span>
-                </div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M16.273 12.845L7.376 0H0V24H7.727V11.155L16.624 24H24V0H16.273V12.845Z"
+                    fill="currentColor"
+                  />
+                </svg>
               </button>
 
               <button
                 type="button"
                 className={`${styles.snsButton} ${styles.googleButton}`}
                 onClick={handleGoogleLogin}
+                title="구글로 로그인"
               >
-                <div className={styles.snsButtonContent}>
-                  <div className={styles.snsIcon}>
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                      <path
-                        d="M18.1613 8.20166H17.5V8.16683H10V11.6668H14.7096C14.023 13.6069 12.1742 15.0002 10 15.0002C7.23833 15.0002 5 12.7618 5 10.0002C5 7.23849 7.23833 5.00016 10 5.00016C11.2746 5.00016 12.4342 5.48099 13.3171 6.26599L15.6742 3.90882C14.1858 2.52216 12.1921 1.66683 10 1.66683C5.39833 1.66683 1.66667 5.39849 1.66667 10.0002C1.66667 14.6018 5.39833 18.3335 10 18.3335C14.6017 18.3335 18.3333 14.6018 18.3333 10.0002C18.3333 9.39849 18.275 8.81266 18.1613 8.20166Z"
-                        fill="#4285F4"
-                      />
-                      <path
-                        d="M2.87744 6.12148L5.65827 8.12898C6.40577 6.29481 8.05827 5.00015 9.99994 5.00015C11.2745 5.00015 12.4341 5.48098 13.317 6.26598L15.6741 3.90881C14.1858 2.52215 12.192 1.66681 9.99994 1.66681C6.79827 1.66681 4.02327 3.47398 2.87744 6.12148Z"
-                        fill="#EA4335"
-                      />
-                      <path
-                        d="M9.99994 18.3335C12.1528 18.3335 14.1095 17.5098 15.587 16.1723L13.0062 13.9815C12.1429 14.6098 11.0971 15.0007 9.99994 15.0002C7.83244 15.0002 5.98744 13.6185 5.29661 11.6885L2.83411 13.7835C3.96744 16.4727 6.76161 18.3335 9.99994 18.3335Z"
-                        fill="#34A853"
-                      />
-                      <path
-                        d="M18.1612 8.20166H17.5V8.16683H10V11.6668H14.7096C14.3809 12.5902 13.7889 13.3972 13.0054 13.9818L13.0062 13.9815L15.5879 16.1723C15.4104 16.3357 18.3333 14.1668 18.3333 10.0002C18.3333 9.39849 18.275 8.81266 18.1612 8.20166Z"
-                        fill="#FBBC05"
-                      />
-                    </svg>
-                  </div>
-                  <span>구글로 로그인</span>
-                </div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
               </button>
             </div>
           </div>

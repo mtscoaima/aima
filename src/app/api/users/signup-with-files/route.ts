@@ -217,11 +217,67 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!password || password.length < 6) {
+    if (!password) {
       fieldErrors.push({
         field: "password",
-        message: "비밀번호는 최소 6자 이상이어야 합니다.",
+        message: "비밀번호를 입력해주세요.",
       });
+    } else {
+      // 비밀번호 검증 로직 (간단화된 버전)
+      if (password.length < 8) {
+        fieldErrors.push({
+          field: "password",
+          message: "비밀번호는 최소 8자 이상이어야 합니다.",
+        });
+      } else if (password.length > 20) {
+        fieldErrors.push({
+          field: "password",
+          message: "비밀번호는 최대 20자까지 입력 가능합니다.",
+        });
+      } else {
+        // 영문, 숫자, 특수기호 조합 검증
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecialChar = /[~!@#$%^&*()_\-=+[{\]}'"\\;:/?.>,<]/.test(
+          password
+        );
+
+        if (!(hasLetter && hasNumber && hasSpecialChar)) {
+          fieldErrors.push({
+            field: "password",
+            message: "영문, 숫자, 특수기호를 모두 포함해야 합니다.",
+          });
+        }
+
+        // 동일한 문자 4개 이상 검증
+        if (/(.)\1{3,}/.test(password)) {
+          fieldErrors.push({
+            field: "password",
+            message: "동일한 문자가 4개 이상 연속으로 사용될 수 없습니다.",
+          });
+        }
+
+        // 연속된 문자 4개 이상 검증
+        for (let i = 0; i <= password.length - 4; i++) {
+          const slice = password.slice(i, i + 4);
+          let isConsecutive = true;
+
+          for (let j = 1; j < slice.length; j++) {
+            if (slice.charCodeAt(j) !== slice.charCodeAt(j - 1) + 1) {
+              isConsecutive = false;
+              break;
+            }
+          }
+
+          if (isConsecutive) {
+            fieldErrors.push({
+              field: "password",
+              message: "연속된 문자가 4개 이상 사용될 수 없습니다.",
+            });
+            break;
+          }
+        }
+      }
     }
 
     if (!name || name.trim().length === 0) {
