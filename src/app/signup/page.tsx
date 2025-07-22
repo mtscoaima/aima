@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import TermsModal, { TermsType } from "@/components/TermsModal";
+import { passwordValidation } from "@/lib/utils";
 import styles from "./signup.module.css";
 
 export default function SignupPage() {
@@ -13,12 +14,16 @@ export default function SignupPage() {
     userType: "" as "general" | "salesperson" | "",
 
     // 기본 정보
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
     name: "",
     phone: "",
+    birthDate: "", // 생년월일 추가
     phoneVerified: false,
+    identityVerified: false, // 본인인증 완료 여부 추가
+    ci: "", // CI 값 추가
 
     // 기업 정보
     companyName: "",
@@ -52,14 +57,13 @@ export default function SignupPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSuccess, setIsSuccess] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [isVerificationLoading, setIsVerificationLoading] = useState(false);
   const [verificationTimer, setVerificationTimer] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [socialLoginType, setSocialLoginType] = useState<string | null>(null);
   const [socialUserId, setSocialUserId] = useState<string | null>(null);
+  const [verificationId, setVerificationId] = useState<string | null>(null); // 본인인증 ID 추가
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -150,16 +154,71 @@ export default function SignupPage() {
     }
   }, []);
 
-  // 타이머 효과
+  // 타이머 관리
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let timer: NodeJS.Timeout;
     if (verificationTimer > 0) {
-      interval = setInterval(() => {
+      timer = setTimeout(() => {
         setVerificationTimer((prev) => prev - 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => clearTimeout(timer);
   }, [verificationTimer]);
+
+  // 본인인증 팝업 메시지 리스너
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === "inicis-auth-success") {
+        // 본인인증 성공
+        const { userInfo, verificationId: vId } = event.data;
+        setFormData((prev) => ({
+          ...prev,
+          name: userInfo.name,
+          phone: userInfo.phoneNumber,
+          birthDate: userInfo.birthDate,
+          phoneVerified: true,
+          identityVerified: true,
+        }));
+        setVerificationId(vId);
+        alert("본인인증이 완료되었습니다.");
+      } else if (event.data.type === "inicis-auth-failed") {
+        // 본인인증 실패
+        alert(`본인인증에 실패했습니다: ${event.data.resultMsg}`);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  // URL에서 본인인증 정보 확인
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const verified = urlParams.get("verified");
+    const vId = urlParams.get("verificationId");
+
+    if (verified === "true" && vId) {
+      // 서버에서 인증 정보 가져오기
+      fetch(`/api/auth/inicis-auth/verify?id=${vId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.userInfo) {
+            setFormData((prev) => ({
+              ...prev,
+              name: data.userInfo.name,
+              phone: data.userInfo.phoneNumber,
+              birthDate: data.userInfo.birthDate,
+              phoneVerified: true,
+              identityVerified: true,
+            }));
+            setVerificationId(vId);
+          }
+        })
+        .catch(console.error);
+    }
+  }, []);
 
   // 이메일 실시간 유효성 검사 (디바운스)
   useEffect(() => {
@@ -193,6 +252,49 @@ export default function SignupPage() {
     const timeoutId = setTimeout(checkEmail, 1000); // 1초 디바운스
     return () => clearTimeout(timeoutId);
   }, [formData.email]);
+
+  // 아이디 실시간 유효성 검사 (디바운스)
+  useEffect(() => {
+    const checkUsername = async () => {
+      if (formData.username) {
+        // 아이디 형식 검증 (영문, 숫자, 언더스코어만 허용, 3-20자)
+        if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username)) {
+          setErrors((prev) => ({
+            ...prev,
+            username:
+              "아이디는 영문, 숫자, 언더스코어만 사용하여 3-20자로 입력하세요.",
+          }));
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/auth/check-username", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              username: formData.username,
+            }),
+          });
+
+          if (!response.ok && response.status === 409) {
+            setErrors((prev) => ({
+              ...prev,
+              username: "이미 사용 중인 아이디입니다.",
+            }));
+          } else if (response.ok) {
+            setErrors((prev) => ({ ...prev, username: "" }));
+          }
+        } catch (error) {
+          console.error("아이디 확인 오류:", error);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(checkUsername, 1000); // 1초 디바운스
+    return () => clearTimeout(timeoutId);
+  }, [formData.username]);
 
   // 로그인된 사용자에게는 로딩 화면 표시
   if (isAuthenticated) {
@@ -235,13 +337,12 @@ export default function SignupPage() {
     // 휴대폰 번호가 변경되면 인증 상태 초기화
     if (name === "phone") {
       setFormData((prev) => ({ ...prev, phoneVerified: false }));
-      setIsVerificationSent(false);
-      setVerificationCode("");
       setVerificationTimer(0);
     }
 
     // 이메일이나 비밀번호가 변경되면 해당 에러 초기화
     if (
+      name === "username" ||
       name === "email" ||
       name === "password" ||
       name === "name" ||
@@ -318,81 +419,73 @@ export default function SignupPage() {
     }
   };
 
-  const handlePhoneVerification = async () => {
-    if (!formData.phone.trim()) {
-      setErrors((prev) => ({ ...prev, phone: "휴대폰 번호를 입력해주세요." }));
-      return;
-    }
-
+  const handleIdentityVerification = async () => {
     setIsVerificationLoading(true);
     setErrors((prev) => ({ ...prev, phone: "" }));
 
     try {
-      const response = await fetch("/api/auth/send-verification", {
+      // 본인인증 요청 API 호출
+      const response = await fetch("/api/auth/inicis-auth/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phoneNumber: formData.phone,
+          // 사용자가 이미 입력한 정보가 있으면 전달 (선택사항)
+          name: formData.name || undefined,
+          phoneNumber: formData.phone || undefined,
+          birthDate: formData.birthDate || undefined,
         }),
       });
 
+      if (!response.ok) {
+        throw new Error("본인인증 요청에 실패했습니다.");
+      }
+
       const data = await response.json();
 
-      if (response.ok) {
-        setIsVerificationSent(true);
-        setVerificationTimer(300); // 5분 타이머 시작
-        alert("인증번호가 발송되었습니다.");
-      } else {
-        setErrors((prev) => ({
-          ...prev,
-          phone: data.message || "인증번호 발송에 실패했습니다.",
-        }));
+      // 팝업창 열기
+      const width = 400;
+      const height = 640;
+      const left = (window.innerWidth - width) / 2;
+      const top = (window.innerHeight - height) / 2;
+
+      const popup = window.open(
+        "",
+        "inicis_identity_auth",
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      );
+
+      // 팝업 차단 확인
+      if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        alert("팝업이 차단되었습니다. 팝업 차단을 해제해주세요.");
+        return;
       }
-    } catch (error) {
-      console.error("인증번호 발송 오류:", error);
-      setErrors((prev) => ({
-        ...prev,
-        phone: "인증번호 발송 중 오류가 발생했습니다.",
-      }));
-    } finally {
-      setIsVerificationLoading(false);
-    }
-  };
 
-  const handleVerifyCode = async () => {
-    if (!verificationCode.trim() || verificationCode.length !== 6) {
-      alert("6자리 인증번호를 입력해주세요.");
-      return;
-    }
+      // 폼 생성 및 제출
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = data.authUrl;
+      form.target = "inicis_identity_auth";
 
-    setIsVerificationLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/send-verification", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phoneNumber: formData.phone,
-          code: verificationCode,
-        }),
+      // 파라미터 추가
+      Object.entries(data.params).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value as string;
+        form.appendChild(input);
       });
 
-      const data = await response.json();
+      // 폼을 body에 추가하고 제출
+      document.body.appendChild(form);
+      form.submit();
 
-      if (response.ok) {
-        setFormData((prev) => ({ ...prev, phoneVerified: true }));
-        setVerificationTimer(0);
-        alert("휴대폰 인증이 완료되었습니다.");
-      } else {
-        alert(data.message || "인증번호가 일치하지 않습니다.");
-      }
+      // 폼 제거
+      document.body.removeChild(form);
     } catch (error) {
-      console.error("인증번호 확인 오류:", error);
-      alert("인증번호 확인 중 오류가 발생했습니다.");
+      console.error("본인인증 요청 오류:", error);
+      alert("본인인증 요청 중 오류가 발생했습니다.");
     } finally {
       setIsVerificationLoading(false);
     }
@@ -440,6 +533,48 @@ export default function SignupPage() {
 
       case 2:
         // 기본 정보 검증
+        // 먼저 본인인증이 완료되었는지 확인
+        if (!formData.identityVerified) {
+          newErrors.identityVerified = "본인인증을 완료해주세요.";
+          break;
+        }
+
+        // 본인인증이 완료된 경우에만 아이디, 이메일, 비밀번호 검증
+        // 아이디 검증
+        if (!formData.username) {
+          newErrors.username = "아이디를 입력해주세요.";
+        } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(formData.username)) {
+          newErrors.username =
+            "아이디는 영문, 숫자, 언더스코어만 사용하여 3-20자로 입력하세요.";
+        } else {
+          // 아이디 중복 확인
+          try {
+            const response = await fetch("/api/auth/check-username", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                username: formData.username,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              if (response.status === 409) {
+                newErrors.username = "이미 사용 중인 아이디입니다.";
+              } else {
+                newErrors.username =
+                  data.message || "아이디 확인 중 오류가 발생했습니다.";
+              }
+            }
+          } catch (error) {
+            console.error("아이디 중복 확인 오류:", error);
+            newErrors.username = "아이디 확인 중 오류가 발생했습니다.";
+          }
+        }
+
         if (!formData.email) {
           newErrors.email = "이메일을 입력해주세요.";
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -473,53 +608,17 @@ export default function SignupPage() {
           }
         }
 
-        if (!formData.name.trim()) {
-          newErrors.name = "이름을 입력해주세요.";
-        } else if (formData.name.trim().length < 2) {
-          newErrors.name = "이름은 최소 2자 이상이어야 합니다.";
-        } else if (formData.name.trim().length > 20) {
-          newErrors.name = "이름은 최대 20자까지 입력 가능합니다.";
-        }
-
-        if (!formData.phone.trim()) {
-          newErrors.phone = "전화번호를 입력해주세요.";
-        } else {
-          // 휴대폰 번호 형식 검증
-          const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
-          if (!phoneRegex.test(formData.phone.replace(/-/g, ""))) {
-            newErrors.phone =
-              "올바른 휴대폰 번호 형식이 아닙니다. (예: 010-1234-5678)";
-          } else if (!formData.phoneVerified) {
-            newErrors.phone = "휴대폰 인증을 완료해주세요.";
-          }
-        }
+        // 이름, 생년월일, 휴대폰번호는 본인인증으로 자동 입력되므로 검증 불필요
 
         if (!formData.password) {
           newErrors.password = "비밀번호를 입력해주세요.";
-        } else if (formData.password.length < 6) {
-          newErrors.password = "비밀번호는 최소 6자 이상이어야 합니다.";
-        } else if (formData.password.length > 20) {
-          newErrors.password = "비밀번호는 최대 20자까지 입력 가능합니다.";
         } else {
-          // 비밀번호 강도 검증
-          const hasUpperCase = /[A-Z]/.test(formData.password);
-          const hasLowerCase = /[a-z]/.test(formData.password);
-          const hasNumbers = /\d/.test(formData.password);
-          const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(
+          // 새로운 비밀번호 검증 로직 사용
+          const validation = passwordValidation.validatePassword(
             formData.password
           );
-
-          if (formData.password.length >= 8) {
-            const strengthCount = [
-              hasUpperCase,
-              hasLowerCase,
-              hasNumbers,
-              hasSpecialChar,
-            ].filter(Boolean).length;
-            if (strengthCount < 2) {
-              newErrors.password =
-                "비밀번호는 영문 대소문자, 숫자, 특수문자 중 2가지 이상을 포함해야 합니다.";
-            }
+          if (!validation.isValid) {
+            newErrors.password = validation.errors[0]; // 첫 번째 에러 메시지만 표시
           }
         }
 
@@ -698,10 +797,20 @@ export default function SignupPage() {
       formDataToSend.append("userType", formData.userType);
 
       // 기본 정보
+      formDataToSend.append("username", formData.username);
       formDataToSend.append("email", formData.email);
       formDataToSend.append("password", formData.password);
       formDataToSend.append("name", formData.name);
       formDataToSend.append("phoneNumber", formData.phone);
+      formDataToSend.append("birthDate", formData.birthDate);
+
+      // 본인인증 정보
+      if (verificationId) {
+        formDataToSend.append("verificationId", verificationId);
+      }
+      if (formData.ci) {
+        formDataToSend.append("ci", formData.ci);
+      }
 
       // 기업 정보
       if (formData.companyName)
@@ -800,29 +909,10 @@ export default function SignupPage() {
     }
   };
 
-  // 비밀번호 강도 계산
-  const getPasswordStrength = (password: string) => {
-    if (!password) return { strength: 0, text: "", color: "" };
-
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-    let strength = 0;
-    if (password.length >= 6) strength += 1;
-    if (password.length >= 8) strength += 1;
-    if (hasUpperCase) strength += 1;
-    if (hasLowerCase) strength += 1;
-    if (hasNumbers) strength += 1;
-    if (hasSpecialChar) strength += 1;
-
-    if (strength <= 2) return { strength: 1, text: "약함", color: "#ef4444" };
-    if (strength <= 4) return { strength: 2, text: "보통", color: "#f59e0b" };
-    return { strength: 3, text: "강함", color: "#10b981" };
-  };
-
-  const passwordStrength = getPasswordStrength(formData.password);
+  // 비밀번호 강도 계산 (새로운 유틸리티 함수 사용)
+  const passwordStrength = passwordValidation.getPasswordStrength(
+    formData.password
+  );
 
   // 전체 동의 처리 함수
   const handleAgreeAll = (checked: boolean) => {
@@ -1044,244 +1134,242 @@ export default function SignupPage() {
               <div className={styles.formSection}>
                 <h3 className={styles.sectionTitle}>기본 정보</h3>
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="email"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      이메일 주소
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.email ? styles.error : ""
-                      }`}
-                      placeholder="example@email.com"
-                      required
-                      disabled={isLoading}
-                    />
-                    {errors.email && (
-                      <p className={styles.formError}>{errors.email}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="name"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      이름
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.name ? styles.error : ""
-                      }`}
-                      placeholder="홍길동"
-                      required
-                      disabled={isLoading}
-                    />
-                    {errors.name && (
-                      <p className={styles.formError}>{errors.name}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="phone"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      휴대폰 번호
-                    </label>
-                    <div className={styles.phoneInputGroup}>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className={`${styles.formInput} ${
-                          errors.phone ? styles.error : ""
-                        }`}
-                        placeholder="010-1234-5678"
-                        required
-                        disabled={isLoading || formData.phoneVerified}
-                      />
-                      {!formData.phoneVerified && (
-                        <button
-                          type="button"
-                          onClick={handlePhoneVerification}
-                          className={styles.verifyButton}
-                          disabled={
-                            !formData.phone ||
-                            isLoading ||
-                            isVerificationLoading ||
-                            verificationTimer > 0
-                          }
-                        >
-                          {isVerificationLoading
-                            ? "발송 중..."
-                            : verificationTimer > 0
-                            ? `재발송 (${Math.floor(verificationTimer / 60)}:${(
-                                verificationTimer % 60
-                              )
-                                .toString()
-                                .padStart(2, "0")})`
-                            : "인증번호 발송"}
-                        </button>
-                      )}
+                {/* 본인인증 섹션 */}
+                {!formData.identityVerified && (
+                  <div className={styles.identityVerificationSection}>
+                    <div className={styles.verificationInfo}>
+                      <h4>본인인증이 필요합니다</h4>
+                      <p>회원가입을 위해 본인인증을 진행해주세요.</p>
+                      <p className={styles.subText}>
+                        본인인증을 통해 이름, 생년월일, 휴대폰번호가 자동으로
+                        입력됩니다.
+                      </p>
                     </div>
-                    {errors.phone && (
-                      <p className={styles.formError}>{errors.phone}</p>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleIdentityVerification}
+                      className={styles.identityVerifyButton}
+                      disabled={isLoading || isVerificationLoading}
+                    >
+                      {isVerificationLoading ? "처리 중..." : "본인인증 하기"}
+                    </button>
                   </div>
-                </div>
+                )}
 
-                {isVerificationSent && !formData.phoneVerified && (
-                  <div className={styles.formRow}>
-                    <div className={styles.formGroup}>
-                      <label
-                        htmlFor="verificationCode"
-                        className={styles.formLabel}
-                      >
-                        인증번호{" "}
-                        {verificationTimer > 0 && (
-                          <span className={styles.timer}>
-                            ({Math.floor(verificationTimer / 60)}:
-                            {(verificationTimer % 60)
-                              .toString()
-                              .padStart(2, "0")}
-                            )
-                          </span>
-                        )}
-                      </label>
-                      <div className={styles.phoneInputGroup}>
+                {/* 본인인증 완료 후 정보 표시 */}
+                {formData.identityVerified && (
+                  <>
+                    <div className={styles.verifiedMessage}>
+                      ✅ 본인인증이 완료되었습니다.
+                    </div>
+
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label htmlFor="name" className={styles.formLabel}>
+                          이름
+                        </label>
                         <input
                           type="text"
-                          id="verificationCode"
-                          value={verificationCode}
-                          onChange={(e) => setVerificationCode(e.target.value)}
+                          id="name"
+                          name="name"
+                          value={formData.name}
                           className={styles.formInput}
-                          placeholder="인증번호 6자리"
-                          maxLength={6}
-                          disabled={isVerificationLoading}
+                          disabled
+                          readOnly
                         />
-                        <button
-                          type="button"
-                          onClick={handleVerifyCode}
-                          className={styles.verifyButton}
-                          disabled={
-                            verificationCode.length !== 6 ||
-                            isVerificationLoading
-                          }
-                        >
-                          {isVerificationLoading ? "확인 중..." : "확인"}
-                        </button>
                       </div>
-                      {verificationTimer === 0 && (
-                        <p className={styles.timerExpired}>
-                          인증번호가 만료되었습니다. 다시 발송해주세요.
-                        </p>
-                      )}
                     </div>
-                  </div>
-                )}
 
-                {formData.phoneVerified && (
-                  <div className={styles.verifiedMessage}>
-                    ✅ 휴대폰 인증이 완료되었습니다.
-                  </div>
-                )}
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="password"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      비밀번호
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.password ? styles.error : ""
-                      }`}
-                      placeholder="6자 이상의 비밀번호"
-                      required
-                      disabled={isLoading}
-                    />
-                    {formData.password && passwordStrength.strength > 0 && (
-                      <div className={styles.passwordStrength}>
-                        <div className={styles.strengthBar}>
-                          <div
-                            className={styles.strengthFill}
-                            style={{
-                              width: `${
-                                (passwordStrength.strength / 3) * 100
-                              }%`,
-                              backgroundColor: passwordStrength.color,
-                            }}
-                          />
-                        </div>
-                        <span
-                          className={styles.strengthText}
-                          style={{ color: passwordStrength.color }}
-                        >
-                          {passwordStrength.text}
-                        </span>
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label htmlFor="birthDate" className={styles.formLabel}>
+                          생년월일
+                        </label>
+                        <input
+                          type="text"
+                          id="birthDate"
+                          name="birthDate"
+                          value={formData.birthDate}
+                          className={styles.formInput}
+                          disabled
+                          readOnly
+                        />
                       </div>
-                    )}
-                    {errors.password && (
-                      <p className={styles.formError}>{errors.password}</p>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label
-                      htmlFor="confirmPassword"
-                      className={`${styles.formLabel} ${styles.required}`}
-                    >
-                      비밀번호 확인
-                    </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      className={`${styles.formInput} ${
-                        errors.confirmPassword ? styles.error : ""
-                      }`}
-                      placeholder="비밀번호를 다시 입력하세요"
-                      required
-                      disabled={isLoading}
-                    />
-                    {errors.confirmPassword && (
-                      <p className={styles.formError}>
-                        {errors.confirmPassword}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label htmlFor="phone" className={styles.formLabel}>
+                          휴대폰 번호
+                        </label>
+                        <input
+                          type="tel"
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          className={styles.formInput}
+                          disabled
+                          readOnly
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* 아이디, 이메일과 비밀번호는 본인인증 완료 후에만 입력 가능 */}
+                {formData.identityVerified && (
+                  <>
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label
+                          htmlFor="username"
+                          className={`${styles.formLabel} ${styles.required}`}
+                        >
+                          아이디
+                        </label>
+                        <input
+                          type="text"
+                          id="username"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleInputChange}
+                          className={`${styles.formInput} ${
+                            errors.username ? styles.error : ""
+                          }`}
+                          placeholder="영문, 숫자, 언더스코어 3-20자"
+                          required
+                          disabled={isLoading}
+                        />
+                        {errors.username && (
+                          <p className={styles.formError}>{errors.username}</p>
+                        )}
+                        <p className={styles.passwordHint}>
+                          영문, 숫자, 언더스코어만 사용 가능 (3-20자)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label
+                          htmlFor="email"
+                          className={`${styles.formLabel} ${styles.required}`}
+                        >
+                          이메일 주소
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          className={`${styles.formInput} ${
+                            errors.email ? styles.error : ""
+                          }`}
+                          placeholder="example@email.com"
+                          required
+                          disabled={isLoading}
+                        />
+                        {errors.email && (
+                          <p className={styles.formError}>{errors.email}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label
+                          htmlFor="password"
+                          className={`${styles.formLabel} ${styles.required}`}
+                        >
+                          비밀번호
+                        </label>
+                        <input
+                          type="password"
+                          id="password"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          className={`${styles.formInput} ${
+                            errors.password ? styles.error : ""
+                          }`}
+                          placeholder="8~20자의 영문, 숫자, 특수기호 조합"
+                          required
+                          disabled={isLoading}
+                        />
+                        {formData.password && passwordStrength.strength > 0 && (
+                          <div className={styles.passwordStrength}>
+                            <div className={styles.strengthBar}>
+                              <div
+                                className={styles.strengthFill}
+                                style={{
+                                  width: `${
+                                    (passwordStrength.strength / 4) * 100
+                                  }%`,
+                                  backgroundColor: passwordStrength.color,
+                                }}
+                              />
+                            </div>
+                            <span
+                              className={styles.strengthText}
+                              style={{ color: passwordStrength.color }}
+                            >
+                              {passwordStrength.text}
+                            </span>
+                          </div>
+                        )}
+                        {errors.password && (
+                          <p className={styles.formError}>{errors.password}</p>
+                        )}
+                        <div className={styles.passwordHint}>
+                          {passwordValidation
+                            .getPasswordRules()
+                            .map((rule, index) => (
+                              <p
+                                key={index}
+                                style={{
+                                  margin: "2px 0",
+                                  fontSize: "12px",
+                                  color: "#666",
+                                }}
+                              >
+                                • {rule}
+                              </p>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={styles.formRow}>
+                      <div className={styles.formGroup}>
+                        <label
+                          htmlFor="confirmPassword"
+                          className={`${styles.formLabel} ${styles.required}`}
+                        >
+                          비밀번호 확인
+                        </label>
+                        <input
+                          type="password"
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          value={formData.confirmPassword}
+                          onChange={handleInputChange}
+                          className={`${styles.formInput} ${
+                            errors.confirmPassword ? styles.error : ""
+                          }`}
+                          placeholder="비밀번호를 다시 입력해주세요"
+                          required
+                          disabled={isLoading}
+                        />
+                        {errors.confirmPassword && (
+                          <p className={styles.formError}>
+                            {errors.confirmPassword}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

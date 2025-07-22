@@ -1,0 +1,482 @@
+.container {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  padding-top: max(140px, calc(100vh * 0.15));
+}
+
+.wrapper {
+  width: 100%;
+  max-width: 440px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 32px;
+  margin: 20px 0;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logoSection {
+  margin-bottom: 24px;
+}
+
+.logoText {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0070f3;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* 단계 표시 */
+.stepIndicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 0 20px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.step.active {
+  color: #0070f3;
+}
+
+.stepNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #e5e7eb;
+  color: #6b7280;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.step.active .stepNumber {
+  background: #0070f3;
+  color: white;
+}
+
+.stepText {
+  font-weight: 500;
+}
+
+.content {
+  margin-bottom: 32px;
+}
+
+/* 인증방법 선택 */
+.methodSelection,
+.phoneVerification,
+.emailVerification {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.methodButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.methodButton {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.methodButton:hover {
+  border-color: #0070f3;
+  color: #0070f3;
+}
+
+.methodButton.selected {
+  border-color: #0070f3;
+  background: #eff6ff;
+  color: #0070f3;
+}
+
+.methodDescription {
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* 폼 스타일 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.formInput {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: #0070f3;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.1);
+}
+
+.formInput::placeholder {
+  color: #9ca3af;
+}
+
+.submitButton {
+  width: 100%;
+  background: #0070f3;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+/* 결과 표시 스타일 */
+.resultSection {
+  text-align: center;
+  padding: 32px 0;
+}
+
+.resultMessage {
+  margin-bottom: 24px;
+}
+
+.resultMessage p {
+  font-size: 16px;
+  color: #374151;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.usernameList {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.usernameItem {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.usernameItem:last-child {
+  border-bottom: none;
+}
+
+.usernameLabel {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.username {
+  font-size: 18px;
+  color: #0070f3;
+  font-weight: 700;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid #0070f3;
+}
+
+.resultActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.resetButton {
+  background: #f8fafc;
+  color: #374151;
+  border: 2px solid #e5e7eb;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.resetButton:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+.loginButton {
+  background: #0070f3;
+  color: white;
+  border: 2px solid #0070f3;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.loginButton:hover {
+  background: #0051cc;
+  border-color: #0051cc;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 112, 243, 0.3);
+}
+
+.submitButton:hover {
+  background: #0051cc;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 112, 243, 0.3);
+}
+
+.submitButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.backLink {
+  color: #0070f3;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+  color: #0051cc;
+}
+
+.findPasswordLink {
+  color: #64748b;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.findPasswordLink:hover {
+  text-decoration: underline;
+  color: #475569;
+}
+
+@media (max-width: 768px) {
+  .container {
+    min-height: calc(100vh - 100px);
+    padding: 16px;
+    padding-top: 120px;
+  }
+
+  .card {
+    padding: 24px;
+  }
+
+  .logoText {
+    font-size: 28px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .methodButtons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .methodButton {
+    padding: 14px 16px;
+  }
+
+  .links {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .backLink,
+  .findPasswordLink {
+    text-align: center;
+    padding: 8px 0;
+  }
+
+  .stepIndicator {
+    padding: 0 10px;
+  }
+
+  .step {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    min-height: calc(100vh - 80px);
+    padding: 12px;
+    padding-top: 100px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .logoText {
+    font-size: 24px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .formInput {
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  .submitButton {
+    padding: 14px;
+    font-size: 15px;
+  }
+
+  .methodDescription {
+    font-size: 13px;
+    padding: 12px;
+  }
+
+  .methodButton {
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+
+  .stepIndicator {
+    gap: 12px;
+  }
+
+  .stepNumber {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  .step {
+    font-size: 11px;
+  }
+
+  /* 결과 표시 모바일 대응 */
+  .resultSection {
+    padding: 24px 0;
+  }
+
+  .resultMessage p {
+    font-size: 14px;
+  }
+
+  .usernameList {
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+
+  .username {
+    font-size: 16px;
+    padding: 6px 12px;
+  }
+
+  .resultActions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .resetButton,
+  .loginButton {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+}

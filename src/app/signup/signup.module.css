@@ -1712,3 +1712,67 @@
     padding: 8px 0;
   }
 }
+
+/* 본인인증 섹션 */
+.identityVerificationSection {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.verificationInfo {
+  margin-bottom: 20px;
+}
+
+.verificationInfo h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #1e293b;
+}
+
+.verificationInfo p {
+  margin: 0 0 4px 0;
+  color: #475569;
+  font-size: 14px;
+}
+
+.verificationInfo .subText {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.identityVerifyButton {
+  background: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.identityVerifyButton:hover:not(:disabled) {
+  background: #0051c7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 112, 243, 0.3);
+}
+
+.identityVerifyButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 비밀번호 힌트 */
+.passwordHint {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
 import { getKSTISOString, generateReferralCode } from "@/lib/utils";
+import { cookies } from "next/headers";
 
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -77,10 +78,16 @@ export async function POST(request: NextRequest) {
 
     // 기본 정보 추출
     const userType = formData.get("userType") as string;
+    const username = formData.get("username") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const name = formData.get("name") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
+    const birthDate = formData.get("birthDate") as string;
+
+    // 본인인증 정보 추출
+    const verificationId = formData.get("verificationId") as string;
+    const ci = formData.get("ci") as string;
 
     // 기업 정보 추출
     const companyName = formData.get("companyName") as string;
@@ -125,10 +132,81 @@ export async function POST(request: NextRequest) {
     // 입력 값 검증
     const fieldErrors: Array<{ field: string; message: string }> = [];
 
+    // 본인인증 검증
+    if (verificationId) {
+      // 쿠키에서 본인인증 정보 가져오기
+      const cookieStore = await cookies();
+      const verificationCookie = cookieStore.get("inicis_verification");
+
+      if (!verificationCookie) {
+        fieldErrors.push({
+          field: "verification",
+          message: "본인인증 정보가 만료되었습니다. 다시 인증해주세요.",
+        });
+      } else {
+        try {
+          const verificationData = JSON.parse(verificationCookie.value);
+
+          // verificationId 일치 확인
+          if (verificationData.verificationId !== verificationId) {
+            fieldErrors.push({
+              field: "verification",
+              message: "유효하지 않은 본인인증 정보입니다.",
+            });
+          }
+
+          // 30분 이내인지 확인
+          const elapsed = Date.now() - verificationData.timestamp;
+          if (elapsed > 30 * 60 * 1000) {
+            fieldErrors.push({
+              field: "verification",
+              message: "본인인증 정보가 만료되었습니다. 다시 인증해주세요.",
+            });
+          }
+
+          // 본인인증 정보와 입력 정보 일치 확인
+          if (
+            verificationData.userInfo.name !== name ||
+            verificationData.userInfo.phoneNumber !== phoneNumber ||
+            verificationData.userInfo.birthDate !== birthDate
+          ) {
+            fieldErrors.push({
+              field: "verification",
+              message: "본인인증 정보와 입력 정보가 일치하지 않습니다.",
+            });
+          }
+        } catch (error) {
+          console.error("본인인증 정보 파싱 오류:", error);
+          fieldErrors.push({
+            field: "verification",
+            message: "본인인증 정보 처리 중 오류가 발생했습니다.",
+          });
+        }
+      }
+    } else {
+      fieldErrors.push({
+        field: "verification",
+        message: "본인인증을 완료해주세요.",
+      });
+    }
+
     if (!userType || (userType !== "general" && userType !== "salesperson")) {
       fieldErrors.push({
         field: "userType",
         message: "회원 유형을 선택해주세요.",
+      });
+    }
+
+    if (!username || !username.trim()) {
+      fieldErrors.push({
+        field: "username",
+        message: "아이디를 입력해주세요.",
+      });
+    } else if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      fieldErrors.push({
+        field: "username",
+        message:
+          "아이디는 영문, 숫자, 언더스코어만 사용하여 3-20자로 입력하세요.",
       });
     }
 
@@ -139,11 +217,67 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!password || password.length < 6) {
+    if (!password) {
       fieldErrors.push({
         field: "password",
-        message: "비밀번호는 최소 6자 이상이어야 합니다.",
+        message: "비밀번호를 입력해주세요.",
       });
+    } else {
+      // 비밀번호 검증 로직 (간단화된 버전)
+      if (password.length < 8) {
+        fieldErrors.push({
+          field: "password",
+          message: "비밀번호는 최소 8자 이상이어야 합니다.",
+        });
+      } else if (password.length > 20) {
+        fieldErrors.push({
+          field: "password",
+          message: "비밀번호는 최대 20자까지 입력 가능합니다.",
+        });
+      } else {
+        // 영문, 숫자, 특수기호 조합 검증
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecialChar = /[~!@#$%^&*()_\-=+[{\]}'"\\;:/?.>,<]/.test(
+          password
+        );
+
+        if (!(hasLetter && hasNumber && hasSpecialChar)) {
+          fieldErrors.push({
+            field: "password",
+            message: "영문, 숫자, 특수기호를 모두 포함해야 합니다.",
+          });
+        }
+
+        // 동일한 문자 4개 이상 검증
+        if (/(.)\1{3,}/.test(password)) {
+          fieldErrors.push({
+            field: "password",
+            message: "동일한 문자가 4개 이상 연속으로 사용될 수 없습니다.",
+          });
+        }
+
+        // 연속된 문자 4개 이상 검증
+        for (let i = 0; i <= password.length - 4; i++) {
+          const slice = password.slice(i, i + 4);
+          let isConsecutive = true;
+
+          for (let j = 1; j < slice.length; j++) {
+            if (slice.charCodeAt(j) !== slice.charCodeAt(j - 1) + 1) {
+              isConsecutive = false;
+              break;
+            }
+          }
+
+          if (isConsecutive) {
+            fieldErrors.push({
+              field: "password",
+              message: "연속된 문자가 4개 이상 사용될 수 없습니다.",
+            });
+            break;
+          }
+        }
+      }
     }
 
     if (!name || name.trim().length === 0) {
@@ -218,6 +352,39 @@ export async function POST(request: NextRequest) {
         fieldErrors,
       };
       return NextResponse.json(errorResponse, { status: 400 });
+    }
+
+    // 아이디 중복 확인
+    const { data: existingUsername, error: usernameCheckError } = await supabase
+      .from("users")
+      .select("username")
+      .eq("username", username)
+      .maybeSingle();
+
+    if (usernameCheckError) {
+      console.error("Username check error:", usernameCheckError);
+      const errorResponse: ErrorResponse = {
+        message: "아이디 확인 중 오류가 발생했습니다",
+        error: `Database Error: ${usernameCheckError.message}`,
+        status: 500,
+        timestamp: getKSTISOString(),
+        path: "/api/users/signup-with-files",
+      };
+      return NextResponse.json(errorResponse, { status: 500 });
+    }
+
+    if (existingUsername) {
+      const errorResponse: ErrorResponse = {
+        message: "아이디 중복",
+        error: "string",
+        status: 409,
+        timestamp: getKSTISOString(),
+        path: "/api/users/signup-with-files",
+        fieldErrors: [
+          { field: "username", message: "이미 사용 중인 아이디입니다." },
+        ],
+      };
+      return NextResponse.json(errorResponse, { status: 409 });
     }
 
     // 이메일 중복 확인
@@ -324,10 +491,13 @@ export async function POST(request: NextRequest) {
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
+        username,
         email,
         password: hashedPassword,
         name,
         phone_number: phoneNumber,
+        birth_date: birthDate, // 생년월일 추가
+        ci: ci || null, // CI 값 추가 (본인인증 시에만 존재)
         role: userRole,
         approval_status: approvalStatus, // 영업사원은 승인됨, 일반사원은 승인 대기
         is_active: true,
