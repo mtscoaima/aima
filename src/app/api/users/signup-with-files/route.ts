@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
 import { getKSTISOString, generateReferralCode } from "@/lib/utils";
+import { cookies } from "next/headers";
 
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -81,6 +82,11 @@ export async function POST(request: NextRequest) {
     const password = formData.get("password") as string;
     const name = formData.get("name") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
+    const birthDate = formData.get("birthDate") as string;
+
+    // 본인인증 정보 추출
+    const verificationId = formData.get("verificationId") as string;
+    const ci = formData.get("ci") as string;
 
     // 기업 정보 추출
     const companyName = formData.get("companyName") as string;
@@ -124,6 +130,64 @@ export async function POST(request: NextRequest) {
 
     // 입력 값 검증
     const fieldErrors: Array<{ field: string; message: string }> = [];
+
+    // 본인인증 검증
+    if (verificationId) {
+      // 쿠키에서 본인인증 정보 가져오기
+      const cookieStore = await cookies();
+      const verificationCookie = cookieStore.get("inicis_verification");
+
+      if (!verificationCookie) {
+        fieldErrors.push({
+          field: "verification",
+          message: "본인인증 정보가 만료되었습니다. 다시 인증해주세요.",
+        });
+      } else {
+        try {
+          const verificationData = JSON.parse(verificationCookie.value);
+
+          // verificationId 일치 확인
+          if (verificationData.verificationId !== verificationId) {
+            fieldErrors.push({
+              field: "verification",
+              message: "유효하지 않은 본인인증 정보입니다.",
+            });
+          }
+
+          // 30분 이내인지 확인
+          const elapsed = Date.now() - verificationData.timestamp;
+          if (elapsed > 30 * 60 * 1000) {
+            fieldErrors.push({
+              field: "verification",
+              message: "본인인증 정보가 만료되었습니다. 다시 인증해주세요.",
+            });
+          }
+
+          // 본인인증 정보와 입력 정보 일치 확인
+          if (
+            verificationData.userInfo.name !== name ||
+            verificationData.userInfo.phoneNumber !== phoneNumber ||
+            verificationData.userInfo.birthDate !== birthDate
+          ) {
+            fieldErrors.push({
+              field: "verification",
+              message: "본인인증 정보와 입력 정보가 일치하지 않습니다.",
+            });
+          }
+        } catch (error) {
+          console.error("본인인증 정보 파싱 오류:", error);
+          fieldErrors.push({
+            field: "verification",
+            message: "본인인증 정보 처리 중 오류가 발생했습니다.",
+          });
+        }
+      }
+    } else {
+      fieldErrors.push({
+        field: "verification",
+        message: "본인인증을 완료해주세요.",
+      });
+    }
 
     if (!userType || (userType !== "general" && userType !== "salesperson")) {
       fieldErrors.push({
@@ -328,6 +392,8 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         phone_number: phoneNumber,
+        birth_date: birthDate, // 생년월일 추가
+        ci: ci || null, // CI 값 추가 (본인인증 시에만 존재)
         role: userRole,
         approval_status: approvalStatus, // 영업사원은 승인됨, 일반사원은 승인 대기
         is_active: true,
