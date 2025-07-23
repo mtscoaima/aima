@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from("users")
       .select(
-        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status, agree_marketing, agreement_info, kakao_user_id, naver_user_id, google_user_id"
+        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status, agree_marketing, agreement_info, kakao_user_id, naver_user_id, google_user_id, payment_mode"
       )
       .eq("id", userId)
       .single();
@@ -236,6 +236,7 @@ export async function GET(request: NextRequest) {
       lastLoginAt: user.last_login_at,
       approval_status: user.approval_status,
       marketingConsent: user.agree_marketing || false,
+      payment_mode: user.payment_mode,
       // SNS 연동 정보 추가
       kakao_user_id: user.kakao_user_id,
       naver_user_id: user.naver_user_id,

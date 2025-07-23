@@ -456,7 +456,7 @@ export default function Navigation() {
                                   fill="currentColor"
                                 />
                               </svg>
-                              회원정보
+                              마이페이지
                             </Link>
                           </>
                         )}
