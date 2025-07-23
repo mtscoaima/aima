@@ -967,22 +967,6 @@ export default function ProfilePage() {
     }
   };
 
-  // 비밀번호 변경 모달 열기
-  const handlePasswordChangeClick = () => {
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    setPasswordErrors({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-      general: "",
-    });
-    setIsPasswordModalOpen(true);
-  };
-
   // 비밀번호 변경 모달 닫기
   const handlePasswordModalClose = () => {
     setIsPasswordModalOpen(false);
@@ -1680,7 +1664,7 @@ export default function ProfilePage() {
         회원님의 사업자 정보를 확인 및 변경하실 수 있습니다.
       </p>
 
-      <div className="bg-white rounded-lg shadow p-6 border-t-4 border-t-green-500">
+      <div className="bg-white rounded-lg shadow p-6 border-t-4 border-t-orange-500">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-semibold text-black">기업정보인증</h2>
@@ -1848,18 +1832,13 @@ export default function ProfilePage() {
         안전한 서비스 이용을 위해 비밀번호를 변경해주세요.
       </p>
 
-      <div className="bg-white rounded-lg shadow p-6 border-t-4 border-t-orange-500">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="mb-6">
           <h2 className="text-xl font-semibold text-black">비밀번호 변경</h2>
-          <button
-            onClick={handlePasswordChangeClick}
-            className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors duration-200 text-sm font-medium"
-          >
-            비밀번호 변경
-          </button>
         </div>
 
-        <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+        {/* 비밀번호 변경 수칙 */}
+        <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
           <div className="flex items-start">
             <svg
               className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0"
@@ -1874,40 +1853,132 @@ export default function ProfilePage() {
             </svg>
             <div className="text-sm">
               <p className="font-medium text-yellow-800 mb-1">
-                비밀번호 보안 안내
+                비밀번호 변경 수칙
               </p>
               <ul className="text-yellow-700 space-y-1">
-                <li>• 8자 이상의 영문, 숫자, 특수문자 조합을 사용하세요</li>
-                <li>• 개인정보와 관련된 비밀번호는 피해주세요</li>
-                <li>• 정기적으로 비밀번호를 변경하여 보안을 강화하세요</li>
-                <li>• 다른 사이트에서 사용하는 비밀번호와 다르게 설정하세요</li>
+                <li>• 수기적인(3~6개월) 비밀번호 변경</li>
+                <li>• 다른 아이디/사이트에서 사용한 적 없는 비밀번호</li>
+                <li>• 이전에 사용한 적 없는 비밀번호</li>
               </ul>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-start">
-            <svg
-              className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-            <div className="text-sm">
-              <p className="font-medium text-blue-800 mb-1">계정 보안 현황</p>
-              <p className="text-blue-700">
-                현재 계정이 안전하게 보호되고 있습니다. 정기적인 비밀번호
-                변경으로 보안을 더욱 강화할 수 있습니다.
+        {/* 비밀번호 변경 폼 */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              현재 비밀번호 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={passwordData.currentPassword}
+              onChange={(e) =>
+                handlePasswordDataChange("currentPassword", e.target.value)
+              }
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                passwordErrors.currentPassword
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+              placeholder="현재 비밀번호 입력"
+            />
+            {passwordErrors.currentPassword && (
+              <p className="mt-2 text-sm text-red-600">
+                {passwordErrors.currentPassword}
               </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              새 비밀번호 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={passwordData.newPassword}
+              onChange={(e) =>
+                handlePasswordDataChange("newPassword", e.target.value)
+              }
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                passwordErrors.newPassword
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+              placeholder="8~20자 영문, 숫자, 특수기호 조합"
+            />
+            {passwordErrors.newPassword && (
+              <p className="mt-2 text-sm text-red-600">
+                {passwordErrors.newPassword}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              새 비밀번호 확인 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={passwordData.confirmPassword}
+              onChange={(e) =>
+                handlePasswordDataChange("confirmPassword", e.target.value)
+              }
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                passwordErrors.confirmPassword
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+              placeholder="새 비밀번호와 동일하게 입력"
+            />
+            {passwordErrors.confirmPassword && (
+              <p className="mt-2 text-sm text-red-600">
+                {passwordErrors.confirmPassword}
+              </p>
+            )}
+          </div>
+
+          {/* 일반 에러 메시지 */}
+          {passwordErrors.general && (
+            <div className="p-4 bg-red-50 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-800">
+                    {passwordErrors.general}
+                  </p>
+                </div>
+              </div>
             </div>
+          )}
+
+          {/* 변경 버튼 */}
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={handlePasswordChange}
+              disabled={
+                isSaving ||
+                Object.values(passwordErrors).some((error) => error !== "") ||
+                !passwordData.currentPassword.trim() ||
+                !passwordData.newPassword.trim() ||
+                !passwordData.confirmPassword.trim()
+              }
+              className="px-8 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+            >
+              {isSaving ? "변경 중..." : "변경"}
+            </button>
           </div>
         </div>
       </div>
