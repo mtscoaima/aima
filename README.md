@@ -588,3 +588,135 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## 메시징 발송 포탈
+
+메시징 서비스를 위한 Next.js 기반 웹 애플리케이션입니다.
+
+## 시작하기
+
+### 환경변수 설정
+
+프로젝트 루트에 `.env.local` 파일을 생성하고 다음 환경변수들을 설정해주세요:
+
+```bash
+# 공공데이터 포털 API 키 (사업자등록번호 검증용) - 필수
+ODCLOUD_SERVICE_KEY=your_service_key_here
+
+# 기타 환경변수들...
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 공공데이터 포털 API 키 발급 방법
+
+사업자등록번호 검증 기능을 사용하려면 **반드시** 공공데이터 포털에서 API 키를 발급받아야 합니다:
+
+1. [공공데이터 포털](https://data.go.kr) 접속
+2. 회원가입 및 로그인
+3. "국세청\_사업자등록정보 진위확인 및 상태조회 서비스" 검색
+4. 활용신청 후 승인 대기 (보통 1-2일 소요)
+5. 승인 완료 후 일반인증키(인코딩) 복사
+6. `.env.local` 파일의 `ODCLOUD_SERVICE_KEY`에 설정
+
+> ⚠️ **중요**: API 키 없이는 사업자등록번호 검증 기능을 사용할 수 없습니다.
+
+### 설치 및 실행
+
+```bash
+# 의존성 설치
+npm install
+
+# 개발 서버 실행
+npm run dev
+
+# 빌드
+npm run build
+
+# 프로덕션 서버 실행
+npm start
+```
+
+## 주요 기능
+
+### 사업자등록번호 검증
+
+- 실시간 사업자등록번호 유효성 검증
+- 국세청 공공데이터 포털 API 연동
+- 사업자 상태 확인 (계속사업자, 휴업자, 폐업자)
+- 자동 하이픈 포맷팅 (123-45-67890)
+
+### 사용 방법
+
+1. 사업자 인증 페이지(`/my-site/advertiser/business-verification`)에서
+2. 사업자등록번호를 입력 (자동으로 하이픈 포맷팅됨)
+3. "확인" 버튼 클릭
+4. 국세청 데이터베이스에서 실시간 검증
+5. 검증 결과 모달 확인
+6. 성공 시 폼 하단에 성공 메시지 표시
+
+### 검증 가능한 정보
+
+- **계속사업자**: 정상 운영 중인 사업자
+- **휴업자**: 일시적으로 휴업 신고된 사업자
+- **폐업자**: 폐업 처리된 사업자
+- **등록되지 않음**: 국세청에 등록되지 않은 번호
+
+## API 참고 문서
+
+- [공공데이터 포털 사업자등록정보 API](https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15081808)
+- [사업자등록번호 검증 가이드](https://jongs-story.tistory.com/entry/jQuery-%EA%B3%B5%EA%B3%B5%EB%8D%B0%EC%9D%B4%ED%84%B0-%ED%8F%AC%ED%84%B8-api%EB%A5%BC-%EC%82%AC%EC%9A%A9%ED%95%B4%EC%84%9C-%EC%82%AC%EC%97%85%EC%9E%90-%EB%93%B1%EB%A1%9D-%EC%A0%95%EB%B3%B4-%ED%99%95%EC%9D%B8%ED%95%98%EB%8A%94-%EB%B0%A9%EB%B2%95-api-%EC%82%AC%EC%9A%A9%EB%B0%A9%EB%B2%95-%EC%82%AC%EC%97%85%EC%9E%90%EB%B2%88%ED%98%B8-%EC%A1%B0%ED%9A%8C)
+
+## 기술 스택
+
+- **Frontend**: Next.js 14, React, TypeScript
+- **Styling**: CSS Modules, Styled JSX
+- **API**: Next.js API Routes
+- **External APIs**: 국세청 공공데이터 포털 API
+
+## 디렉토리 구조
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── business-verification/
+│   │       └── verify-business-number/
+│   │           └── route.ts              # 사업자등록번호 검증 API
+│   ├── my-site/
+│   │   └── advertiser/
+│   │       └── business-verification/
+│   │           └── page.tsx              # 사업자 인증 페이지
+│   └── ...
+├── components/
+└── ...
+```
+
+## 주의사항
+
+1. **API 키 필수**: 공공데이터 포털 API 키 없이는 검증 기능 사용 불가
+2. **API 호출 제한**: 1회 호출당 최대 100개의 사업자번호 처리 가능
+3. **서비스 키 보안**: 환경변수로 관리하고 클라이언트에 노출되지 않도록 주의
+4. **에러 처리**: 네트워크 오류, API 한도 초과 등 다양한 에러 상황 고려
+5. **승인 소요시간**: API 키 승인까지 1-2일 소요될 수 있음
+
+## 트러블슈팅
+
+### API 키 관련 오류
+
+- **오류**: "서비스 설정 오류입니다"
+- **해결**: `.env.local` 파일에 `ODCLOUD_SERVICE_KEY` 설정 확인
+
+### 검증 실패
+
+- **오류**: "국세청에 등록되지 않은 사업자등록번호입니다"
+- **해결**: 실제 존재하는 사업자등록번호인지 확인
+
+### API 호출 한도 초과
+
+- **오류**: "요청 한도를 초과했습니다"
+- **해결**: 잠시 후 다시 시도하거나 API 키 사용량 확인
+
+## 라이선스
+
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.

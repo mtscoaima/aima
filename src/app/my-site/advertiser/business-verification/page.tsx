@@ -4,6 +4,45 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 
+// 모달 컴포넌트
+interface AlertModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onClose: () => void;
+}
+
+const AlertModal: React.FC<AlertModalProps> = ({
+  isOpen,
+  title,
+  message,
+  onClose,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3>{title}</h3>
+        </div>
+        <div className="modal-body">
+          <p>{message}</p>
+        </div>
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="modal-confirm-button"
+            onClick={onClose}
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function BusinessVerificationPage() {
   const [businessType, setBusinessType] = useState("individual");
   const [businessName, setBusinessName] = useState("");
@@ -17,10 +56,161 @@ export default function BusinessVerificationPage() {
   const [managerEmail, setManagerEmail] = useState("");
   const [usePersonalInfo, setUsePersonalInfo] = useState(false);
 
+  // 사업자등록번호 검증 관련 상태
+  const [isBusinessNumberVerified, setIsBusinessNumberVerified] =
+    useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+
+  // 사업자등록번호 포맷팅 (숫자만 입력, 하이픈 자동 추가)
+  const formatBusinessNumber = (value: string) => {
+    const numbers = value.replace(/[^0-9]/g, "");
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 5)
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 5)}-${numbers.slice(
+      5,
+      10
+    )}`;
+  };
+
+  // 사업자등록번호 입력 핸들러
+  const handleBusinessNumberChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const formatted = formatBusinessNumber(e.target.value);
+    setBusinessNumber(formatted);
+    // 번호가 변경되면 검증 상태 초기화
+    if (isBusinessNumberVerified) {
+      setIsBusinessNumberVerified(false);
+      setVerificationMessage("");
+    }
+  };
+
+  // 사업자등록번호 검증 함수
+  const verifyBusinessNumber = async () => {
+    // 입력값 검증
+    const cleanNumber = businessNumber.replace(/[^0-9]/g, "");
+
+    if (!cleanNumber) {
+      showAlertModal("알림", "사업자등록번호를 입력해주세요.");
+      return;
+    }
+
+    if (cleanNumber.length !== 10) {
+      showAlertModal("알림", "사업자등록번호는 10자리 숫자여야 합니다.");
+      return;
+    }
+
+    setIsVerifying(true);
+
+    try {
+      // 공공데이터 포털 API 호출
+      const data = {
+        b_no: [cleanNumber],
+      };
+
+      const response = await fetch(
+        "/api/business-verification/verify-business-number", // 프록시 API 엔드포인트
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok && result.match_cnt > 0) {
+        // 검증 성공
+        const businessInfo = result.data[0];
+        let statusMessage = "";
+        let detailMessage = "";
+
+        // 사업자 상태에 따른 메시지 설정
+        if (businessInfo.b_stt_cd === "01") {
+          statusMessage = "정상운영중";
+          detailMessage =
+            "사업자등록번호가 확인되었습니다.\n현재 정상적으로 운영 중인 사업자입니다.";
+        } else if (businessInfo.b_stt_cd === "02") {
+          statusMessage = "일시 휴업 상태";
+          detailMessage =
+            "사업자등록번호가 확인되었습니다.\n현재 일시적으로 휴업 신고된 상태입니다.";
+        } else if (businessInfo.b_stt_cd === "03") {
+          statusMessage = "폐업 상태";
+          detailMessage =
+            "사업자등록번호가 확인되었습니다.\n현재 폐업 처리된 상태입니다.";
+        } else {
+          statusMessage = "확인 완료";
+          detailMessage = "사업자등록번호가 확인되었습니다.";
+        }
+
+        setIsBusinessNumberVerified(true);
+        setVerificationMessage(`사업자등록번호 확인 완료 - ${statusMessage}`);
+        showAlertModal("사업자 정보 확인", detailMessage);
+      } else {
+        // 검증 실패
+        setIsBusinessNumberVerified(false);
+        setVerificationMessage("");
+        showAlertModal(
+          "알림",
+          "국세청에 등록되지 않은 사업자등록번호입니다.\n올바른 사업자등록번호를 입력해주세요."
+        );
+      }
+    } catch (error) {
+      console.error("사업자등록번호 검증 오류:", error);
+      setIsBusinessNumberVerified(false);
+      setVerificationMessage("");
+      showAlertModal(
+        "오류",
+        "사업자등록번호 확인 중 오류가 발생했습니다.\n잠시 후 다시 시도해주세요."
+      );
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // 모달 표시 함수
+  const showAlertModal = (title: string, message: string) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setShowModal(true);
+  };
+
+  // 모달 닫기 함수
+  const closeModal = () => {
+    setShowModal(false);
+    setModalTitle("");
+    setModalMessage("");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 필수 항목 검증
+    if (!businessName.trim()) {
+      showAlertModal("알림", "사업자명을 입력해주세요.");
+      return;
+    }
+
+    if (!representativeName.trim()) {
+      showAlertModal("알림", "대표자명을 입력해주세요.");
+      return;
+    }
+
+    if (!isBusinessNumberVerified) {
+      showAlertModal("알림", "사업자등록번호 확인을 완료해주세요.");
+      return;
+    }
+
     // 인증 제출 로직
     console.log("인증 정보 제출");
+    showAlertModal("알림", "사업자 인증 신청이 완료되었습니다.");
   };
 
   const handleFileUpload = (type: string) => {
@@ -102,17 +292,29 @@ export default function BusinessVerificationPage() {
                   <input
                     type="text"
                     value={businessNumber}
-                    onChange={(e) => setBusinessNumber(e.target.value)}
+                    onChange={handleBusinessNumberChange}
                     className="form-input"
-                    placeholder="사업자번호 확인"
+                    placeholder="사업자등록번호를 입력해주세요 (예: 123-45-67890)"
+                    maxLength={12}
                   />
-                  <button type="button" className="verify-button">
-                    확인
+                  <button
+                    type="button"
+                    className="verify-button"
+                    onClick={verifyBusinessNumber}
+                    disabled={isVerifying}
+                  >
+                    {isVerifying ? "확인중..." : "확인"}
                   </button>
                 </div>
-                <div className="business-status">
-                  사업자등록번호 확인이 완료되었습니다.
-                </div>
+                {verificationMessage && (
+                  <div
+                    className={`business-status ${
+                      isBusinessNumberVerified ? "success" : "error"
+                    }`}
+                  >
+                    {verificationMessage}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -365,6 +567,14 @@ export default function BusinessVerificationPage() {
         </div>
       </div>
 
+      {/* 알림 모달 */}
+      <AlertModal
+        isOpen={showModal}
+        title={modalTitle}
+        message={modalMessage}
+        onClose={closeModal}
+      />
+
       <style jsx global>{`
         /* Layout 오버라이드 */
         body .main-content {
@@ -529,26 +739,109 @@ export default function BusinessVerificationPage() {
 
         .verify-button {
           padding: 0.75rem 1.5rem;
-          background-color: #6c757d;
+          background-color: #1681ff;
           color: white;
           border: none;
           border-radius: 4px;
           cursor: pointer;
           font-size: 0.9rem;
           white-space: nowrap;
+          transition: background-color 0.2s;
         }
 
-        .verify-button:hover {
-          background-color: #5a6268;
+        .verify-button:hover:not(:disabled) {
+          background-color: #1366cc;
+        }
+
+        .verify-button:disabled {
+          background-color: #6c757d;
+          cursor: not-allowed;
         }
 
         .business-status {
           margin-top: 0.5rem;
           padding: 0.5rem;
-          background-color: #d4edda;
-          color: #155724;
           border-radius: 4px;
           font-size: 0.9rem;
+        }
+
+        .business-status.success {
+          background-color: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+        }
+
+        .business-status.error {
+          background-color: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+        }
+
+        /* 모달 스타일 */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 10000;
+        }
+
+        .modal-content {
+          background: white;
+          border-radius: 8px;
+          padding: 0;
+          max-width: 400px;
+          width: 90%;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+          padding: 1.5rem 1.5rem 0 1.5rem;
+          border-bottom: 1px solid #e9ecef;
+        }
+
+        .modal-header h3 {
+          margin: 0;
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: #333;
+          padding-bottom: 1rem;
+        }
+
+        .modal-body {
+          padding: 1.5rem;
+        }
+
+        .modal-body p {
+          margin: 0;
+          line-height: 1.5;
+          color: #333;
+          white-space: pre-line;
+        }
+
+        .modal-footer {
+          padding: 0 1.5rem 1.5rem 1.5rem;
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .modal-confirm-button {
+          padding: 0.5rem 1.5rem;
+          background-color: #1681ff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.9rem;
+        }
+
+        .modal-confirm-button:hover {
+          background-color: #1366cc;
         }
 
         .address-group {
@@ -848,6 +1141,11 @@ export default function BusinessVerificationPage() {
 
           body .main-content {
             padding-top: 120px !important;
+          }
+
+          .modal-content {
+            width: 95%;
+            margin: 0 1rem;
           }
         }
       `}</style>
