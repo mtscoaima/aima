@@ -7,13 +7,18 @@ import AdminSidebar from "@/components/AdminSidebar";
 import "./styles.css";
 
 interface DocumentInfo {
-  fileUrl: string;
   fileName: string;
+  fileSize?: number;
+  fileType?: string;
+  fileData?: string; // base64 데이터
+  fileUrl?: string; // data URL 형태
   uploadedAt: string;
+  status?: string;
 }
 
 interface UserDocuments {
-  [key: string]: DocumentInfo;
+  businessRegistration?: DocumentInfo;
+  employmentCertificate?: DocumentInfo;
 }
 
 interface User {
@@ -229,8 +234,101 @@ export default function MemberApprovalPage() {
     }
   };
 
-  const handleViewDocument = (fileUrl: string) => {
-    window.open(fileUrl, "_blank");
+  const handleViewDocument = (docInfo: DocumentInfo) => {
+    try {
+      // base64 데이터가 있는 경우 Blob으로 변환
+      if (docInfo.fileData && docInfo.fileType) {
+        try {
+          // base64 데이터를 Blob으로 변환
+          const base64Data = docInfo.fileData;
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: docInfo.fileType });
+
+          // Blob URL 생성
+          const blobUrl = URL.createObjectURL(blob);
+
+          // 새 창에서 파일 열기
+          const newWindow = window.open(blobUrl, "_blank");
+
+          if (!newWindow) {
+            alert("팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.");
+          } else {
+            // 메모리 정리를 위해 일정 시간 후 Blob URL 해제
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 10000); // 10초 후 해제
+          }
+
+          return;
+        } catch (blobError) {
+          console.error("Blob 생성 오류:", blobError);
+          // Blob 생성 실패 시 다운로드로 대체
+          downloadFile(docInfo);
+          return;
+        }
+      }
+
+      // fileUrl이 있는 경우 (기존 로직)
+      if (docInfo.fileUrl && !docInfo.fileUrl.startsWith("data:")) {
+        const newWindow = window.open(docInfo.fileUrl, "_blank");
+
+        if (!newWindow) {
+          alert("팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.");
+        }
+        return;
+      }
+
+      // 다른 방법으로 열 수 없는 경우 다운로드
+      alert("파일을 열 수 없습니다. 다운로드를 시도해보세요.");
+    } catch (error) {
+      console.error("파일 열기 오류:", error);
+      alert("파일을 여는 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 파일 다운로드 함수
+  const downloadFile = (docInfo: DocumentInfo) => {
+    try {
+      if (docInfo.fileData && docInfo.fileType) {
+        // base64 데이터를 Blob으로 변환하여 다운로드
+        const base64Data = docInfo.fileData;
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: docInfo.fileType });
+
+        // 다운로드 링크 생성
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = docInfo.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 메모리 정리
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      } else {
+        alert("다운로드할 파일 데이터가 없습니다.");
+      }
+    } catch (error) {
+      console.error("파일 다운로드 오류:", error);
+      alert("파일 다운로드 중 오류가 발생했습니다.");
+    }
   };
 
   const renderDocuments = (documents: UserDocuments | undefined) => {
@@ -243,17 +341,55 @@ export default function MemberApprovalPage() {
       employmentCertificate: "재직증명서",
     };
 
+    const availableDocs = [];
+
+    // 사업자등록증 확인
+    if (
+      documents.businessRegistration &&
+      documents.businessRegistration.fileName
+    ) {
+      availableDocs.push({
+        type: "businessRegistration",
+        info: documents.businessRegistration,
+        label: docTypes.businessRegistration,
+      });
+    }
+
+    // 재직증명서 확인
+    if (
+      documents.employmentCertificate &&
+      documents.employmentCertificate.fileName
+    ) {
+      availableDocs.push({
+        type: "employmentCertificate",
+        info: documents.employmentCertificate,
+        label: docTypes.employmentCertificate,
+      });
+    }
+
+    if (availableDocs.length === 0) {
+      return <span className="no-documents">문서 없음</span>;
+    }
+
     return (
       <div className="documents-container">
-        {Object.entries(documents).map(([docType, docInfo]) => (
-          <button
-            key={docType}
-            className="document-link"
-            onClick={() => handleViewDocument(docInfo.fileUrl)}
-            title={`${docTypes[docType as keyof typeof docTypes]} 보기`}
-          >
-            📄 {docTypes[docType as keyof typeof docTypes]}
-          </button>
+        {availableDocs.map(({ type, info, label }) => (
+          <div key={type} className="document-item">
+            <button
+              className="document-link"
+              onClick={() => handleViewDocument(info)}
+              title={`${label} 보기`}
+            >
+              📄 {label}
+            </button>
+            <button
+              className="document-download"
+              onClick={() => downloadFile(info)}
+              title={`${label} 다운로드`}
+            >
+              💾
+            </button>
+          </div>
         ))}
       </div>
     );

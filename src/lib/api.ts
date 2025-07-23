@@ -106,6 +106,7 @@ export interface SignupResponse {
 export interface UserInfoResponse {
   id: string;
   email: string;
+  username?: string;
   name: string;
   phoneNumber: string;
   role: string;
@@ -113,6 +114,8 @@ export interface UserInfoResponse {
   updatedAt: string;
   lastLoginAt?: string;
   marketingConsent?: boolean;
+  smsMarketingConsent?: boolean;
+  emailMarketingConsent?: boolean;
   approval_status?: string;
   // SNS 연동 정보
   kakao_user_id?: string;
@@ -151,24 +154,24 @@ export interface UserInfoResponse {
 }
 
 export interface UpdateUserRequest {
+  username?: string;
   name?: string;
-  phoneNumber?: string;
-  position?: string;
-  department?: string;
+  email?: string;
+  // 기업정보 필드들
   companyName?: string;
   representativeName?: string;
   businessNumber?: string;
   address?: string;
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
-  optOutNumber?: string;
-  email?: string;
-  marketingConsent?: boolean;
-  // 새로 추가되는 기업정보 필드들
   businessType?: string;
   faxNumber?: string;
   homepage?: string;
   approval_status?: string;
+  // 마케팅 동의 필드들 (기존 호환성을 위해 유지)
+  marketingConsent?: boolean;
+  smsMarketingConsent?: boolean;
+  emailMarketingConsent?: boolean;
 }
 
 export interface UpdateUserResponse {

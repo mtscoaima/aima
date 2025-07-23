@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -17,6 +17,7 @@ import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBalance } from "@/contexts/BalanceContext";
+import { getUserInfo, UserInfoResponse } from "@/lib/api";
 
 // Chart.js 컴포넌트 등록
 ChartJS.register(
@@ -32,128 +33,82 @@ ChartJS.register(
 
 export default function AdvertiserDashboard() {
   const { user } = useAuth();
-  const {
-    formatCurrency,
-    getTransactionHistory,
-    calculateBalance,
-    isLoading,
-    refreshTransactions,
-  } = useBalance();
+  const { formatCurrency, calculateBalance } = useBalance();
 
-  // 트랜잭션 히스토리 가져오기
-  const transactionHistory = getTransactionHistory();
+  // 사용자 정보 상태
+  const [userData, setUserData] = useState<UserInfoResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 최근 5개 트랜잭션 가져오기
-  const recentTransactions = transactionHistory.slice(0, 5);
-
-  // 이번 달 트랜잭션 통계 계산
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-
-  const thisMonthTransactions = transactionHistory.filter((transaction) => {
-    const timestamp = transaction.timestamp || transaction.created_at;
-    if (!timestamp) return false;
-
-    const transactionDate = new Date(timestamp);
-    return (
-      transactionDate.getMonth() === currentMonth &&
-      transactionDate.getFullYear() === currentYear
-    );
-  });
-
-  const thisMonthCharges = thisMonthTransactions.filter(
-    (t) => t.type === "charge"
-  );
-  const thisMonthUsages = thisMonthTransactions.filter(
-    (t) => t.type === "usage"
-  );
-  const thisMonthRefunds = thisMonthTransactions.filter(
-    (t) => t.type === "refund"
-  );
-
-  const totalChargeAmount = thisMonthCharges.reduce(
-    (sum, t) => sum + t.amount,
-    0
-  );
-  const totalUsageAmount = thisMonthUsages.reduce(
-    (sum, t) => sum + t.amount,
-    0
-  );
-  const totalRefundAmount = thisMonthRefunds.reduce(
-    (sum, t) => sum + t.amount,
-    0
-  );
-
-  // 날짜 포맷팅 함수
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      return date
-        .toLocaleDateString("ko-KR", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        })
-        .replace(/\./g, ".")
-        .replace(/ /g, "");
-    } catch {
-      return "-";
+  // 회사 정보 존재 여부 확인 함수
+  const hasCompanyInfo = (userData: UserInfoResponse | null): boolean => {
+    if (!userData?.companyInfo) {
+      return false;
     }
+
+    // 필수 정보 중 하나라도 있으면 회사 정보가 있다고 판단
+    const { companyName, ceoName, businessNumber } = userData.companyInfo;
+    return !!(companyName || ceoName || businessNumber);
   };
 
-  // 트랜잭션 시간 포맷팅 함수
-  const formatTransactionTime = (transaction: {
-    timestamp?: string;
-    created_at: string;
-  }) => {
-    const timestamp = transaction.timestamp || transaction.created_at;
-    if (!timestamp) return "-";
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffHours < 1) {
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      return `${diffMinutes}분 전`;
-    } else if (diffHours < 24) {
-      return `${diffHours}시간 전`;
-    } else {
-      return `${diffDays}일 전`;
+  // 인증 상태 텍스트 반환 함수
+  const getApprovalStatusText = (status?: string, hasCompanyInfo?: boolean) => {
+    // 회사 정보가 없으면 미인증
+    if (!hasCompanyInfo) {
+      return "미인증";
     }
-  };
 
-  // 트랜잭션 타입별 아이콘과 색상
-  const getTransactionDisplay = (type: string) => {
-    switch (type) {
-      case "charge":
-        return { icon: "💳", color: "bg-green-500", text: "잔액 충전" };
-      case "usage":
-        return { icon: "📱", color: "bg-blue-500", text: "서비스 사용" };
-      case "refund":
-        return { icon: "↩️", color: "bg-purple-500", text: "환불 처리" };
+    switch (status) {
+      case "APPROVED":
+        return "승인완료";
+      case "REJECTED":
+        return "승인거절";
+      case "PENDING":
+        return "승인대기";
       default:
-        return { icon: "📋", color: "bg-gray-500", text: "기타" };
+        return "미인증";
     }
   };
 
-  // 사용자 역할 한글 변환
-  const getRoleInKorean = (role?: string) => {
-    if (!role) return "일반회원";
-    switch (role) {
-      case "ADVERTISER":
-        return "광고주";
-      case "SALESPERSON":
-        return "영업사원";
-      case "ADMIN":
-        return "관리자";
+  // 인증 상태 색상 반환 함수
+  const getApprovalStatusColor = (
+    status?: string,
+    hasCompanyInfo?: boolean
+  ) => {
+    // 회사 정보가 없으면 회색 배지
+    if (!hasCompanyInfo) {
+      return "bg-gray-100 text-gray-800";
+    }
+
+    switch (status) {
+      case "APPROVED":
+        return "bg-green-100 text-green-800";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800";
+      case "REJECTED":
+        return "bg-red-100 text-red-800";
       default:
-        return "일반회원";
+        return "bg-gray-100 text-gray-800";
     }
   };
+
+  // 사용자 정보 로드
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+        const userInfo = await getUserInfo();
+        setUserData(userInfo);
+      } catch (error) {
+        console.error("사용자 정보 로드 실패:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      loadUserData();
+    }
+  }, [user]);
 
   // 메시지 발송 현황 차트 데이터 (월간)
   const messageChartData = {
@@ -210,279 +165,247 @@ export default function AdvertiserDashboard() {
 
   return (
     <AdvertiserLoginRequiredGuard>
-      <div className="p-4 max-w-7xl mx-auto">
-        {/* 회원 요약정보 섹션 */}
-        <div className="bg-white rounded-lg shadow p-4 mb-4 border-t-4 border-t-blue-500">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">회원 요약정보</h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={refreshTransactions}
-                disabled={isLoading}
-                className="text-sm text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
-                title="트랜잭션 새로고침"
-              >
-                {isLoading ? "🔄" : "↻"}
-              </button>
-              <Link
-                href="/my-site/advertiser/profile"
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-              >
-                상세정보 →
-              </Link>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">회원명</p>
-              <p className="font-medium">{user?.name || "Loading..."}</p>
-              <p className="text-xs text-gray-400">ID: {user?.id || "-"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">가입일</p>
-              <p className="font-medium">{formatDate(user?.createdAt)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">회원유형</p>
-              <p className="font-medium">{getRoleInKorean(user?.role)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">트랜잭션 수</p>
-              <p className="font-medium">{transactionHistory.length}건</p>
-              <p className="text-xs text-gray-400">
-                {isLoading ? "로딩 중..." : "최신 업데이트"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {/* 메시지 발송현황 요약 섹션 */}
-          <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-green-500">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">메시지 발송현황 요약</h2>
-              <span className="text-sm text-gray-500">(이번 달)</span>
-            </div>
-
-            <div className="w-full h-60 mb-3">
-              <Line data={messageChartData} options={chartOptions} />
-            </div>
-
-            <div className="grid grid-cols-5 gap-2">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">총 발송건수</p>
-                <p className="font-bold text-lg">128건</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">성공건수</p>
-                <p className="font-bold text-lg text-blue-600">117건</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">실패건수</p>
-                <p className="font-bold text-lg text-red-600">11건</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">성공률</p>
-                <p className="font-bold text-lg">91.4%</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">최근 발송일시</p>
-                <p className="font-medium text-sm">2025.05.10 11:42</p>
-              </div>
-            </div>
-          </div>
-
-          {/* 타켓마케팅 발송현황 요약 섹션 */}
-          <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-purple-500">
-            <h2 className="text-lg font-semibold mb-3">
-              타켓마케팅 발송현황 요약
-            </h2>
-
-            <div className="w-full h-60 mb-3">
-              <Bar data={campaignChartData} options={chartOptions} />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">진행 중 캠페인</p>
-                <p className="font-bold text-lg text-blue-600">2건</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">완료된 캠페인</p>
-                <p className="font-bold text-lg">4건</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">평균 반응률</p>
-                <p className="font-bold text-lg">13.5%</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {/* 중점 현황 섹션 */}
-          <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-orange-500">
-            <h2 className="text-lg font-semibold mb-3">중점 현황</h2>
-
-            <div className="grid grid-cols-1 gap-4">
+      <div className="dashboard-container">
+        {/* 상단 파란색 배너 */}
+        <div className="bg-blue-500 p-4 mb-6 rounded-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center text-white">
               <div>
-                <p className="text-sm text-gray-600">현재 이용 중인 잔액</p>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="font-bold text-lg">
-                    {isLoading
-                      ? "로딩 중..."
-                      : formatCurrency(calculateBalance())}
-                  </p>
-                  <Link
-                    href="/credit-management"
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    충전하기
-                  </Link>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-lg font-medium">사업자 정보 인증</h1>
+                  {!isLoading && userData && (
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
+                        userData.approval_status,
+                        hasCompanyInfo(userData)
+                      )}`}
+                    >
+                      {getApprovalStatusText(
+                        userData.approval_status,
+                        hasCompanyInfo(userData)
+                      )}
+                    </span>
+                  )}
                 </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-600">이번 달 충전 금액</p>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="font-bold text-lg text-green-600">
-                    {formatCurrency(totalChargeAmount)}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-600">이번 달 사용 금액</p>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="font-bold text-lg text-red-600">
-                    {formatCurrency(totalUsageAmount)}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-600">이번 달 환불 금액</p>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="font-bold text-lg text-purple-600">
-                    {formatCurrency(totalRefundAmount)}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-600">발송 가능 수량</p>
-                <div className="mt-1">
-                  <p className="text-sm text-gray-700">
-                    SMS: 약 {Math.floor(calculateBalance() / 20)}건
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    LMS: 약 {Math.floor(calculateBalance() / 50)}건
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    MMS: 약 {Math.floor(calculateBalance() / 200)}건
-                  </p>
-                </div>
+                <p className="text-sm opacity-90">
+                  원활한 에이마 서비스 이용을 위해 기업 정보를 인증해 주세요.
+                </p>
               </div>
             </div>
-          </div>
-
-          {/* 퀵 액션 섹션 */}
-          <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-indigo-500">
-            <h2 className="text-lg font-semibold mb-3">퀵 액션</h2>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Link
-                href="/messages/send"
-                className="flex flex-col items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mb-2">
-                  <span className="text-white text-sm">📱</span>
-                </div>
-                <span className="text-sm font-medium">메시지 발송</span>
-              </Link>
-
-              <Link
-                href="/target-marketing"
-                className="flex flex-col items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-              >
-                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mb-2">
-                  <span className="text-white text-sm">🎯</span>
-                </div>
-                <span className="text-sm font-medium">타겟마케팅</span>
-              </Link>
-
-              <Link
-                href="/messages/history"
-                className="flex flex-col items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-              >
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mb-2">
-                  <span className="text-white text-sm">📊</span>
-                </div>
-                <span className="text-sm font-medium">발송 내역</span>
-              </Link>
-
-              <Link
-                href="/credit-management"
-                className="flex flex-col items-center p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
-              >
-                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center mb-2">
-                  <span className="text-white text-sm">💳</span>
-                </div>
-                <span className="text-sm font-medium">크레딧 관리</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* 최근 활동 섹션 */}
-        <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-gray-500">
-          <h2 className="text-lg font-semibold mb-3">최근 활동</h2>
-
-          <div className="space-y-3">
-            {recentTransactions.length > 0 ? (
-              recentTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center">
-                    <div
-                      className={`w-2 h-2 ${
-                        getTransactionDisplay(transaction.type).color
-                      } rounded-full mr-3`}
-                    ></div>
-                    <div>
-                      <p className="font-medium">
-                        {getTransactionDisplay(transaction.type).text}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {formatCurrency(transaction.amount)} -{" "}
-                        {transaction.description}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {formatTransactionTime(transaction)}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>최근 활동 내역이 없습니다.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 text-center">
+            <div className="flex-1"></div>
             <Link
-              href="/messages/history"
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              href="/my-site/advertiser/business-verification"
+              className="bg-blue-50 border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm hover:bg-blue-100 inline-block"
             >
-              전체 활동 내역 보기 →
+              사업자 정보 인증
             </Link>
           </div>
         </div>
+
+        <div className="max-w-7xl mx-auto px-4">
+          {/* 3개 카드 레이아웃 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* 회원정보 카드 */}
+            <div className="bg-white rounded-lg shadow p-4 border border-gray-50 flex flex-col justify-between">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-lg font-semibold mb-4">{user?.name}</h2>
+                <p className="text-gray-600 mb-6">
+                  {user?.id || "example1234"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Link
+                  href="/my-site/advertiser/profile"
+                  className="flex-1 bg-blue-50 border border-blue-600 text-blue-600 py-2 px-4 rounded text-sm hover:bg-blue-100 text-center"
+                >
+                  회원정보변경
+                </Link>
+                <Link
+                  href="/my-site/advertiser/profile"
+                  className="flex-1 bg-blue-500 text-white py-2 px-4 rounded text-sm hover:bg-blue-600 text-center"
+                >
+                  사업자정보변경
+                </Link>
+              </div>
+            </div>
+
+            {/* 요금제 카드 */}
+            <div className="bg-white rounded-lg shadow p-4 border border-gray-50">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">요금제</h2>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">회원요금제</span>
+                  <Link href="/credit-management" className="font-medium">
+                    <span className="text-black hover:text-blue-600">
+                      {user?.payment_mode === "prepaid"
+                        ? "선불 요금제"
+                        : "후불 요금제"}
+                    </span>{" "}
+                    <span className="text-blue-600">&gt;</span>
+                  </Link>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">캠페인요금제</span>
+                  <Link href="/credit-management" className="font-medium">
+                    <span className="text-black hover:text-blue-600">
+                      미사용
+                    </span>{" "}
+                    <span className="text-blue-600">&gt;</span>
+                  </Link>
+                </div>
+                <div className="border-t pt-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">잔액</span>
+                    <Link
+                      href="/credit-management"
+                      className="text-blue-600 hover:underline"
+                    >
+                      충전하기 &gt;
+                    </Link>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">충전금</span>
+                    <span className="font-medium">
+                      {formatCurrency(calculateBalance())}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">포인트</span>
+                    <span className="font-medium">
+                      {Math.floor(calculateBalance() / 20)} P
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 문자 발신번호 카드 */}
+            <div className="bg-white rounded-lg shadow p-4 border border-gray-50">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">문자 발신번호</h2>
+                <Link
+                  href="/my-site/advertiser/profile"
+                  className="text-blue-600 text-sm hover:underline"
+                >
+                  발신번호관리 &gt;
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">기본발신번호</span>
+                  <span className="font-medium">010-222-5357</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">인증완료</span>
+                  <span className="font-medium">1건</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 차트 섹션 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* 메시지 발송현황 요약 */}
+            <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-green-500">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">메시지 발송현황 요약</h2>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/messages/history"
+                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                  >
+                    자세히보기
+                  </Link>
+                  <span className="text-gray-500 text-sm">(이번 달)</span>
+                </div>
+              </div>
+
+              <div className="h-64 mb-4">
+                <Line data={messageChartData} options={chartOptions} />
+              </div>
+
+              <div className="grid grid-cols-5 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-gray-600">총 발송건수</p>
+                  <p className="font-bold text-lg">128건</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">성공건수</p>
+                  <p className="font-bold text-lg text-blue-600">117건</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">실패건수</p>
+                  <p className="font-bold text-lg text-red-600">11건</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">성공률</p>
+                  <p className="font-bold text-lg">91.4%</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">최근 발송일시</p>
+                  <p className="font-medium text-sm">
+                    2025.05.10
+                    <br />
+                    11:42
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 타겟마케팅 캠페인 현황 */}
+            <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-purple-500">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">
+                  타겟마케팅 캠페인 현황
+                </h2>
+                <Link
+                  href="/messages/history"
+                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                >
+                  자세히보기
+                </Link>
+              </div>
+
+              <div className="h-64 mb-4">
+                <Bar data={campaignChartData} options={chartOptions} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-gray-600">진행 중 캠페인</p>
+                  <p className="font-bold text-lg text-blue-600">2건</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">완료된 캠페인</p>
+                  <p className="font-bold text-lg">4건</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">평균 반응률</p>
+                  <p className="font-bold text-lg">13.5%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <style jsx global>{`
+        .dashboard-container {
+          padding-bottom: 2rem;
+        }
+
+        body .main-layout {
+          min-height: auto !important;
+        }
+
+        body .main-content {
+          min-height: auto !important;
+        }
+      `}</style>
     </AdvertiserLoginRequiredGuard>
   );
 }

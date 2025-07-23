@@ -449,15 +449,13 @@ export async function POST(request: NextRequest) {
     if (referrerCode && referrerCode.trim().length > 0) {
       try {
         // 추천인 코드로 사용자 검색
-        const { data: referrer, error: referrerError } = await supabase
+        const { data: referrer } = await supabase
           .from("users")
           .select("id, name, role")
           .eq("referral_code", referrerCode.trim())
           .single();
 
-        if (referrerError) {
-          console.log("Referrer not found:", referrerCode);
-        } else if (referrer) {
+        if (referrer) {
           // 추천 관계 생성
           const { error: referralError } = await supabase
             .from("referrals")
@@ -472,10 +470,6 @@ export async function POST(request: NextRequest) {
 
           if (referralError) {
             console.error("Referral creation error:", referralError);
-          } else {
-            console.log(
-              `Referral created: ${referrer.name} -> ${newUser.name}`
-            );
           }
         }
       } catch (referralError) {

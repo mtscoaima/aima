@@ -18,6 +18,8 @@ export default function Navigation() {
   const isHomePage = pathname === "/";
   const isAdminPage = pathname.startsWith("/admin");
   const isAuthPage = pathname === "/login" || pathname === "/signup";
+  const isBusinessVerificationPage =
+    pathname === "/my-site/advertiser/business-verification";
 
   const navClassName = isHomePage
     ? "navigation"
@@ -87,8 +89,8 @@ export default function Navigation() {
     <nav className={navClassName}>
       <div className="nav-container">
         <div className="nav-left">
-          {/* 햄버거 버튼 - 인증 페이지에서는 숨김 */}
-          {!isAdminPage && !isAuthPage && (
+          {/* 햄버거 버튼 - 관리자 페이지, 인증 페이지, 사업자 인증 페이지에서는 숨김 */}
+          {!isAdminPage && !isAuthPage && !isBusinessVerificationPage && (
             <button
               className="hamburger-btn"
               onClick={toggleMobileMenu}
@@ -128,8 +130,8 @@ export default function Navigation() {
           </Link>
         </div>
 
-        {/* 중앙 메뉴 - 관리자 페이지와 인증 페이지에서는 숨김 */}
-        {!isAdminPage && !isAuthPage && (
+        {/* 중앙 메뉴 - 관리자 페이지, 인증 페이지, 사업자 인증 페이지에서는 숨김 */}
+        {!isAdminPage && !isAuthPage && !isBusinessVerificationPage && (
           <div className="nav-center">
             <nav className="landing-nav-menu">
               {user?.role === "SALESPERSON" ? (
@@ -200,8 +202,8 @@ export default function Navigation() {
           </div>
         )}
 
-        {/* 모바일 드롭다운 메뉴 - 관리자 페이지와 인증 페이지에서는 숨김 */}
-        {!isAdminPage && !isAuthPage && (
+        {/* 모바일 드롭다운 메뉴 - 관리자 페이지, 인증 페이지, 사업자 인증 페이지에서는 숨김 */}
+        {!isAdminPage && !isAuthPage && !isBusinessVerificationPage && (
           <div
             className={`mobile-menu-container ${
               showMobileMenu ? "active" : ""
@@ -456,7 +458,7 @@ export default function Navigation() {
                                   fill="currentColor"
                                 />
                               </svg>
-                              회원정보
+                              마이페이지
                             </Link>
                           </>
                         )}
