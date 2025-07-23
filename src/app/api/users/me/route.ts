@@ -23,24 +23,24 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 interface UpdateUserRequest {
+  username?: string;
   name?: string;
-  phoneNumber?: string;
-  position?: string;
-  department?: string;
+  email?: string;
+  // 기업정보 필드들
   companyName?: string;
   representativeName?: string;
   businessNumber?: string;
   address?: string;
   phoneNumberCompany?: string;
   customerServiceNumber?: string;
-  optOutNumber?: string;
-  email?: string;
-  marketingConsent?: boolean;
-  // 새로 추가되는 기업정보 필드들
   businessType?: string;
   faxNumber?: string;
   homepage?: string;
   approval_status?: string;
+  // 마케팅 동의 필드들
+  marketingConsent?: boolean;
+  smsMarketingConsent?: boolean;
+  emailMarketingConsent?: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from("users")
       .select(
-        "id, email, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status, agree_marketing, agreement_info, kakao_user_id, naver_user_id, google_user_id, payment_mode"
+        "id, email, username, name, phone_number, role, created_at, updated_at, last_login_at, is_active, company_info, tax_invoice_info, documents, approval_status, agree_marketing, agree_sms_marketing, agree_email_marketing, agreement_info, kakao_user_id, naver_user_id, google_user_id, payment_mode"
       )
       .eq("id", userId)
       .single();
@@ -228,6 +228,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       id: user.id,
       email: user.email,
+      username: user.username || user.email, // username이 없으면 email 사용
       name: user.name,
       phoneNumber: user.phone_number,
       role: user.role,
@@ -236,6 +237,8 @@ export async function GET(request: NextRequest) {
       lastLoginAt: user.last_login_at,
       approval_status: user.approval_status,
       marketingConsent: user.agree_marketing || false,
+      smsMarketingConsent: user.agree_sms_marketing || false,
+      emailMarketingConsent: user.agree_email_marketing || false,
       payment_mode: user.payment_mode,
       // SNS 연동 정보 추가
       kakao_user_id: user.kakao_user_id,
@@ -349,9 +352,8 @@ export async function PUT(request: NextRequest) {
     };
 
     // 기본 정보 업데이트
+    if (updateData.username) updateFields.username = updateData.username;
     if (updateData.name) updateFields.name = updateData.name;
-    if (updateData.phoneNumber)
-      updateFields.phone_number = updateData.phoneNumber;
     if (updateData.email) updateFields.email = updateData.email;
     if (updateData.marketingConsent !== undefined) {
       updateFields.agree_marketing = updateData.marketingConsent;
@@ -368,6 +370,46 @@ export async function PUT(request: NextRequest) {
         ...currentAgreementInfo,
         marketing: updateData.marketingConsent,
         agreedAt: new Date().toISOString(),
+      };
+    }
+
+    // 새로운 분리된 마케팅 동의 필드들 처리
+    if (updateData.smsMarketingConsent !== undefined) {
+      updateFields.agree_sms_marketing = updateData.smsMarketingConsent;
+    }
+
+    if (updateData.emailMarketingConsent !== undefined) {
+      updateFields.agree_email_marketing = updateData.emailMarketingConsent;
+    }
+
+    // SMS/이메일 마케팅 동의 중 하나라도 변경된 경우 agreement_info 업데이트
+    if (
+      updateData.smsMarketingConsent !== undefined ||
+      updateData.emailMarketingConsent !== undefined
+    ) {
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("agreement_info, agree_sms_marketing, agree_email_marketing")
+        .eq("id", userId)
+        .single();
+
+      const currentAgreementInfo = currentUser?.agreement_info || {};
+
+      // 현재 값 또는 업데이트된 값 사용
+      const finalSmsConsent =
+        updateData.smsMarketingConsent !== undefined
+          ? updateData.smsMarketingConsent
+          : currentUser?.agree_sms_marketing || false;
+      const finalEmailConsent =
+        updateData.emailMarketingConsent !== undefined
+          ? updateData.emailMarketingConsent
+          : currentUser?.agree_email_marketing || false;
+
+      updateFields.agreement_info = {
+        ...currentAgreementInfo,
+        smsMarketing: finalSmsConsent,
+        emailMarketing: finalEmailConsent,
+        marketingAgreedAt: new Date().toISOString(),
       };
     }
 
