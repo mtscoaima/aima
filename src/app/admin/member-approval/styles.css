@@ -200,6 +200,12 @@
   gap: 4px;
 }
 
+.document-item {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
 .document-link {
   background: none;
   border: 1px solid #e5e8ec;
@@ -211,13 +217,35 @@
   color: #333333;
   text-align: left;
   white-space: nowrap;
-  min-width: 100px;
+  min-width: 80px;
+  flex: 1;
 }
 
 .document-link:hover {
   background-color: rgba(59, 130, 246, 0.1);
   border-color: #3b82f6;
   color: #3b82f6;
+}
+
+.document-download {
+  background-color: #22c55e;
+  border: 1px solid #22c55e;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 10px;
+  color: white;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.document-download:hover {
+  background-color: #16a34a;
+  border-color: #16a34a;
 }
 
 .no-documents {

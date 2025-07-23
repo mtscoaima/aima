@@ -513,7 +513,30 @@ export default function ProfilePage() {
   };
 
   // 승인 상태 표시 함수
-  const getApprovalStatusText = (status?: string) => {
+  // 회사 정보 존재 여부 확인 함수
+  const hasCompanyInfo = (userData: UserProfileData): boolean => {
+    if (!userData) {
+      return false;
+    }
+
+    // 필수 정보 중 하나라도 있으면 회사 정보가 있다고 판단
+    const { companyName, representativeName, businessNumber } = userData;
+    return (
+      !!(companyName && companyName !== "-") ||
+      !!(representativeName && representativeName !== "-") ||
+      !!(businessNumber && businessNumber !== "-")
+    );
+  };
+
+  const getApprovalStatusText = (
+    status?: string,
+    hasCompanyInfoFlag?: boolean
+  ) => {
+    // 회사 정보가 없으면 미인증
+    if (!hasCompanyInfoFlag) {
+      return "미인증";
+    }
+
     switch (status) {
       case "APPROVED":
         return "승인완료";
@@ -522,11 +545,19 @@ export default function ProfilePage() {
       case "REJECTED":
         return "승인거부";
       default:
-        return "승인대기";
+        return "미인증";
     }
   };
 
-  const getApprovalStatusColor = (status?: string) => {
+  const getApprovalStatusColor = (
+    status?: string,
+    hasCompanyInfoFlag?: boolean
+  ) => {
+    // 회사 정보가 없으면 회색 배지
+    if (!hasCompanyInfoFlag) {
+      return "bg-gray-100 text-gray-800";
+    }
+
     switch (status) {
       case "APPROVED":
         return "bg-green-100 text-green-800";
@@ -535,7 +566,7 @@ export default function ProfilePage() {
       case "REJECTED":
         return "bg-red-100 text-red-800";
       default:
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -1616,10 +1647,14 @@ export default function ProfilePage() {
               <h2 className="text-xl font-semibold text-black">기업정보인증</h2>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
-                  userData.approval_status
+                  userData.approval_status,
+                  hasCompanyInfo(userData)
                 )}`}
               >
-                {getApprovalStatusText(userData.approval_status)}
+                {getApprovalStatusText(
+                  userData.approval_status,
+                  hasCompanyInfo(userData)
+                )}
               </span>
             </div>
             <button

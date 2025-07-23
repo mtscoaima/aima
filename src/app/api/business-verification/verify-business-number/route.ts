@@ -35,8 +35,6 @@ export async function POST(request: Request) {
     // 공공데이터 포털 API 호출
     const apiUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${serviceKey}`;
 
-    console.log("공공데이터 포털 API 호출:", businessNumber);
-
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -85,7 +83,6 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("사업자등록번호 검증 결과:", data);
     return NextResponse.json(data);
   } catch (error) {
     console.error("사업자등록번호 검증 오류:", error);

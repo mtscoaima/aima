@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
+import { useAuth } from "@/contexts/AuthContext";
+import { tokenManager, getUserInfo, UserInfoResponse } from "@/lib/api";
 
 // 모달 컴포넌트
 interface AlertModalProps {
@@ -44,6 +46,11 @@ const AlertModal: React.FC<AlertModalProps> = ({
 };
 
 export default function BusinessVerificationPage() {
+  const { user } = useAuth();
+
+  // 기존 데이터 로드 완료 여부
+  const [isInitialized, setIsInitialized] = useState(false);
+
   const [businessType, setBusinessType] = useState("individual");
   const [businessName, setBusinessName] = useState("");
   const [representativeName, setRepresentativeName] = useState("");
@@ -56,6 +63,31 @@ export default function BusinessVerificationPage() {
   const [managerEmail, setManagerEmail] = useState("");
   const [usePersonalInfo, setUsePersonalInfo] = useState(false);
 
+  // 파일 첨부 상태
+  const [businessDocumentFile, setBusinessDocumentFile] = useState<File | null>(
+    null
+  );
+  const [employmentDocumentFile, setEmploymentDocumentFile] =
+    useState<File | null>(null);
+
+  // 기존 문서 정보 상태
+  const [existingBusinessDocument, setExistingBusinessDocument] = useState<{
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+  } | null>(null);
+  const [existingEmploymentDocument, setExistingEmploymentDocument] = useState<{
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+  } | null>(null);
+
+  // 주소 검색 모달 상태
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [searchAddress, setSearchAddress] = useState("");
+  const [roadAddress, setRoadAddress] = useState("");
+  const [detailAddress, setDetailAddress] = useState("");
+
   // 사업자등록번호 검증 관련 상태
   const [isBusinessNumberVerified, setIsBusinessNumberVerified] =
     useState(false);
@@ -64,6 +96,138 @@ export default function BusinessVerificationPage() {
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
+
+  // 가입자 정보와 동일 체크박스 처리
+  useEffect(() => {
+    if (usePersonalInfo && user) {
+      // 체크박스가 체크되고 사용자 정보가 있을 때 자동으로 채우기
+      setManagerName(user.name || "");
+      setManagerEmail(user.email || "");
+
+      // 전화번호 처리 (010-1234-5678 형태를 분리)
+      if (user.phoneNumber) {
+        const phoneMatch = user.phoneNumber.match(
+          /^(\d{3})-?(\d{3,4})-?(\d{4})$/
+        );
+        if (phoneMatch) {
+          setManagerPhone(`${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`);
+        } else {
+          setManagerPhone(user.phoneNumber);
+        }
+      }
+    } else if (!usePersonalInfo) {
+      // 체크박스가 해제되면 필드 초기화
+      setManagerName("");
+      setManagerPhone("");
+      setManagerEmail("");
+    }
+  }, [usePersonalInfo, user]);
+
+  // 주소 업데이트 (도로명 주소 + 상세 주소)
+  useEffect(() => {
+    const fullAddress =
+      roadAddress + (detailAddress ? ` ${detailAddress}` : "");
+    setAddress(fullAddress);
+  }, [roadAddress, detailAddress]);
+
+  // 회사 정보 존재 여부 확인 함수
+  const hasCompanyInfo = (userData: UserInfoResponse | null): boolean => {
+    if (!userData?.companyInfo) {
+      return false;
+    }
+
+    // 필수 정보 중 하나라도 있으면 회사 정보가 있다고 판단
+    const { companyName, ceoName, businessNumber } = userData.companyInfo;
+    return !!(companyName || ceoName || businessNumber);
+  };
+
+  // 사용자 정보 로드 및 기존 데이터로 폼 채우기
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (isInitialized) return; // 이미 초기화된 경우 재실행 방지
+
+      try {
+        const userInfo = await getUserInfo();
+
+        // 미인증 상태가 아닌 경우에만 기존 데이터로 폼 채우기
+        if (hasCompanyInfo(userInfo)) {
+          const { companyInfo, taxInvoiceInfo, documents } = userInfo;
+
+          // 기업정보 설정
+          if (companyInfo) {
+            setBusinessType(companyInfo.businessType || "individual");
+            setBusinessName(companyInfo.companyName || "");
+            setRepresentativeName(companyInfo.ceoName || "");
+            setBusinessNumber(companyInfo.businessNumber || "");
+            // businessCategory, businessType2는 기본값 그대로 사용
+
+            // 주소 정보 설정
+            if (companyInfo.companyAddress) {
+              setAddress(companyInfo.companyAddress);
+              setRoadAddress(companyInfo.companyAddress);
+              // detailAddress는 기본값 그대로 사용
+            }
+          }
+
+          // 세금계산서 담당자 정보 설정
+          if (taxInvoiceInfo) {
+            setManagerName(taxInvoiceInfo.manager || "");
+            setManagerPhone(taxInvoiceInfo.contact || "");
+            setManagerEmail(taxInvoiceInfo.email || "");
+          }
+
+          // 기존 문서 정보 설정
+          if (documents) {
+            if (documents.businessRegistration) {
+              setExistingBusinessDocument({
+                fileName: documents.businessRegistration.fileName,
+                fileSize: 0, // API 응답에 fileSize가 없으므로 기본값
+                fileType: "", // API 응답에 fileType이 없으므로 기본값
+              });
+            }
+
+            if (documents.employmentCertificate) {
+              setExistingEmploymentDocument({
+                fileName: documents.employmentCertificate.fileName,
+                fileSize: 0, // API 응답에 fileSize가 없으므로 기본값
+                fileType: "", // API 응답에 fileType이 없으므로 기본값
+              });
+            }
+          }
+
+          // 사업자등록번호가 있으면 검증 완료 상태로 설정
+          if (companyInfo?.businessNumber) {
+            setIsBusinessNumberVerified(true);
+            setVerificationMessage("사업자등록번호 확인 완료");
+          }
+        }
+
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("사용자 정보 로드 실패:", error);
+        setIsInitialized(true);
+      }
+    };
+
+    if (user && !isInitialized) {
+      loadUserData();
+    }
+  }, [user, isInitialized]);
+
+  // 파일을 Base64로 변환하는 함수
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // data:image/jpeg;base64, 부분을 제거하고 base64 데이터만 반환
+        const base64Data = result.split(",")[1];
+        resolve(base64Data);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
 
   // 사업자등록번호 포맷팅 (숫자만 입력, 하이픈 자동 추가)
   const formatBusinessNumber = (value: string) => {
@@ -189,33 +353,216 @@ export default function BusinessVerificationPage() {
     setModalMessage("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // 필수 항목 검증
+    // 1. 기업유형 (기본값이 있으므로 항상 선택됨, 추가 검증 불필요)
+
+    // 2. 사업자명
     if (!businessName.trim()) {
       showAlertModal("알림", "사업자명을 입력해주세요.");
       return;
     }
 
+    // 3. 대표자명
     if (!representativeName.trim()) {
       showAlertModal("알림", "대표자명을 입력해주세요.");
       return;
     }
 
+    // 4. 사업자등록번호 검증 완료
     if (!isBusinessNumberVerified) {
       showAlertModal("알림", "사업자등록번호 확인을 완료해주세요.");
       return;
     }
 
-    // 인증 제출 로직
-    console.log("인증 정보 제출");
-    showAlertModal("알림", "사업자 인증 신청이 완료되었습니다.");
+    // 5. 주소 입력 확인
+    if (!roadAddress.trim()) {
+      showAlertModal("알림", "주소를 검색하고 선택해주세요.");
+      return;
+    }
+
+    // 6. 인증정보 (사업자등록증/증명원) 파일 첨부
+    if (!businessDocumentFile && !existingBusinessDocument) {
+      showAlertModal(
+        "알림",
+        "사업자등록증 또는 사업자등록증명원을 첨부해주세요."
+      );
+      return;
+    }
+
+    try {
+      // 로딩 상태 표시
+      setIsVerifying(true);
+
+      // 파일을 base64로 변환 (새로운 파일이 있는 경우에만)
+      let businessDocumentData = null;
+      if (businessDocumentFile) {
+        businessDocumentData = await fileToBase64(businessDocumentFile);
+      }
+
+      let employmentDocumentData = null;
+      if (employmentDocumentFile) {
+        employmentDocumentData = await fileToBase64(employmentDocumentFile);
+      }
+
+      // API 호출용 데이터 구성
+      const submitData = {
+        businessType,
+        businessName,
+        representativeName,
+        businessNumber,
+        roadAddress,
+        detailAddress,
+        businessCategory,
+        businessType2,
+        managerName,
+        managerPhone,
+        managerEmail,
+        businessDocumentFile: businessDocumentFile
+          ? {
+              name: businessDocumentFile.name,
+              size: businessDocumentFile.size,
+              type: businessDocumentFile.type,
+              data: businessDocumentData,
+            }
+          : undefined,
+        employmentDocumentFile: employmentDocumentFile
+          ? {
+              name: employmentDocumentFile.name,
+              size: employmentDocumentFile.size,
+              type: employmentDocumentFile.type,
+              data: employmentDocumentData,
+            }
+          : undefined,
+        // 기존 문서 정보 (새로운 파일이 없는 경우 사용)
+        hasExistingBusinessDocument: !!existingBusinessDocument,
+        hasExistingEmploymentDocument: !!existingEmploymentDocument,
+      };
+
+      // JWT 토큰 가져오기
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        showAlertModal("오류", "인증이 필요합니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      // API 호출
+      const response = await fetch("/api/business-verification/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(submitData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        showAlertModal(
+          "완료",
+          result.message || "사업자 인증 신청이 완료되었습니다."
+        );
+
+        // 폼 초기화 (선택사항)
+        // setBusinessName("");
+        // setRepresentativeName("");
+        // setBusinessNumber("");
+        // setBusinessDocumentFile(null);
+        // setEmploymentDocumentFile(null);
+        // setIsBusinessNumberVerified(false);
+        // setVerificationMessage("");
+      } else {
+        showAlertModal(
+          "오류",
+          result.error || "사업자 인증 신청 중 오류가 발생했습니다."
+        );
+      }
+    } catch (error) {
+      console.error("사업자 인증 제출 오류:", error);
+      showAlertModal(
+        "오류",
+        "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+      );
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleFileUpload = (type: string) => {
-    // 파일 업로드 로직
-    console.log(`${type} 파일 업로드`);
+    // 파일 선택을 위한 input 엘리먼트 생성
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".jpg,.jpeg,.png,.pdf,.tif";
+
+    input.onchange = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+
+      if (file) {
+        // 파일 크기 검증 (20MB)
+        if (file.size > 20 * 1024 * 1024) {
+          showAlertModal("알림", "파일 크기는 20MB 이하여야 합니다.");
+          return;
+        }
+
+        // 파일 형식 검증
+        const allowedTypes = [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "application/pdf",
+          "image/tiff",
+        ];
+        if (!allowedTypes.includes(file.type)) {
+          showAlertModal(
+            "알림",
+            "JPEG, JPG, PNG, PDF, TIF 형식의 파일만 업로드 가능합니다."
+          );
+          return;
+        }
+
+        // 파일 저장
+        if (type === "business") {
+          setBusinessDocumentFile(file);
+          showAlertModal(
+            "알림",
+            `사업자등록증 파일이 선택되었습니다.\n파일명: ${file.name}`
+          );
+        } else if (type === "employment") {
+          setEmploymentDocumentFile(file);
+          showAlertModal(
+            "알림",
+            `재직증명서 파일이 선택되었습니다.\n파일명: ${file.name}`
+          );
+        }
+      }
+    };
+
+    input.click();
+  };
+
+  // 주소찾기 버튼 클릭 함수
+  const handleAddressSearch = () => {
+    // 현재 address 값이 있으면 searchAddress에 미리 설정
+    setSearchAddress(address);
+    setShowAddressModal(true);
+  };
+
+  // 주소 선택 함수
+  const handleAddressSelect = (selectedAddress: string) => {
+    setRoadAddress(selectedAddress);
+    setAddress(selectedAddress); // 기존 address state에도 설정
+    setDetailAddress(""); // 상세주소 초기화
+    setShowAddressModal(false);
+  };
+
+  // 주소 모달 닫기
+  const closeAddressModal = () => {
+    setShowAddressModal(false);
+    setSearchAddress("");
   };
 
   return (
@@ -325,16 +672,21 @@ export default function BusinessVerificationPage() {
                       type="text"
                       className="form-input address-input-main"
                       placeholder="도로명 주소 찾기"
-                      disabled
+                      value={roadAddress}
+                      readOnly
                     />
-                    <button type="button" className="address-button">
+                    <button
+                      type="button"
+                      className="address-button"
+                      onClick={handleAddressSearch}
+                    >
                       주소찾기
                     </button>
                   </div>
                   <input
                     type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    value={detailAddress}
+                    onChange={(e) => setDetailAddress(e.target.value)}
                     className="form-input address-input"
                     placeholder="나머지 주소를 입력해 주세요"
                   />
@@ -376,6 +728,13 @@ export default function BusinessVerificationPage() {
                       type="text"
                       className="form-input file-display-input"
                       placeholder="사업자등록증 또는 사업자등록증명원을 등록해 주세요."
+                      value={
+                        businessDocumentFile
+                          ? businessDocumentFile.name
+                          : existingBusinessDocument
+                          ? `[기존 파일] ${existingBusinessDocument.fileName}`
+                          : ""
+                      }
                       readOnly
                     />
                     <button
@@ -439,6 +798,13 @@ export default function BusinessVerificationPage() {
                     type="text"
                     className="form-input file-display-input"
                     placeholder="재직증명서를 등록해주세요.(임직원만)"
+                    value={
+                      employmentDocumentFile
+                        ? employmentDocumentFile.name
+                        : existingEmploymentDocument
+                        ? `[기존 파일] ${existingEmploymentDocument.fileName}`
+                        : ""
+                    }
                     readOnly
                   />
                   <button
@@ -554,8 +920,12 @@ export default function BusinessVerificationPage() {
 
             {/* 제출 버튼 */}
             <div className="submit-section">
-              <button type="submit" className="submit-button">
-                인증하기
+              <button
+                type="submit"
+                className="submit-button"
+                disabled={isVerifying}
+              >
+                {isVerifying ? "제출 중..." : "인증하기"}
               </button>
               <div className="inquiry-section">
                 <Link href="/support" className="inquiry-link">
@@ -574,6 +944,70 @@ export default function BusinessVerificationPage() {
         message={modalMessage}
         onClose={closeModal}
       />
+
+      {/* 주소 검색 모달 */}
+      {showAddressModal && (
+        <div className="modal-overlay">
+          <div className="modal-content address-modal">
+            <div className="modal-header">
+              <h3>주소 검색</h3>
+            </div>
+            <div className="modal-body">
+              <div className="address-search-section">
+                <label className="form-label">주소 검색</label>
+                <div className="search-input-group">
+                  <input
+                    type="text"
+                    value={searchAddress}
+                    onChange={(e) => setSearchAddress(e.target.value)}
+                    placeholder="도로명, 건물명, 지번을 입력하세요"
+                    className="form-input"
+                  />
+                  <button
+                    type="button"
+                    className="search-button"
+                    onClick={() => {
+                      // 간단한 검색 결과 예시
+                      if (searchAddress.trim()) {
+                        handleAddressSelect(searchAddress.trim());
+                      }
+                    }}
+                  >
+                    검색
+                  </button>
+                </div>
+                <div className="search-results">
+                  {searchAddress.trim() && (
+                    <div className="search-result-item">
+                      <button
+                        type="button"
+                        className="result-button"
+                        onClick={() =>
+                          handleAddressSelect(searchAddress.trim())
+                        }
+                      >
+                        <span className="result-address">
+                          {searchAddress.trim()}
+                        </span>
+                        <span className="result-type">도로명주소</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="modal-cancel-button"
+                onClick={closeAddressModal}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         /* Layout 오버라이드 */
@@ -844,6 +1278,97 @@ export default function BusinessVerificationPage() {
           background-color: #1366cc;
         }
 
+        /* 주소 검색 모달 스타일 */
+        .address-modal {
+          max-width: 500px;
+          width: 95%;
+        }
+
+        .address-search-section {
+          margin-bottom: 1rem;
+        }
+
+        .search-input-group {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .search-input-group .form-input {
+          flex: 1;
+        }
+
+        .search-button {
+          padding: 0.75rem 1.5rem;
+          background-color: #1681ff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          white-space: nowrap;
+        }
+
+        .search-button:hover {
+          background-color: #1366cc;
+        }
+
+        .search-results {
+          max-height: 200px;
+          overflow-y: auto;
+          border: 1px solid #e9ecef;
+          border-radius: 4px;
+        }
+
+        .search-result-item {
+          border-bottom: 1px solid #f8f9fa;
+        }
+
+        .search-result-item:last-child {
+          border-bottom: none;
+        }
+
+        .result-button {
+          width: 100%;
+          padding: 1rem;
+          background: white;
+          border: none;
+          text-align: left;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .result-button:hover {
+          background-color: #f8f9fa;
+        }
+
+        .result-address {
+          font-size: 0.95rem;
+          color: #333;
+          font-weight: 500;
+        }
+
+        .result-type {
+          font-size: 0.8rem;
+          color: #6c757d;
+        }
+
+        .modal-cancel-button {
+          padding: 0.5rem 1.5rem;
+          background-color: #6c757d;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.9rem;
+        }
+
+        .modal-cancel-button:hover {
+          background-color: #5a6268;
+        }
+
         .address-group {
           display: flex;
           flex-direction: column;
@@ -1070,8 +1595,14 @@ export default function BusinessVerificationPage() {
           margin-bottom: 0;
         }
 
-        .submit-button:hover {
+        .submit-button:hover:not(:disabled) {
           background-color: #1366cc;
+        }
+
+        .submit-button:disabled {
+          background-color: #6c757d;
+          cursor: not-allowed;
+          opacity: 0.7;
         }
 
         .inquiry-section {

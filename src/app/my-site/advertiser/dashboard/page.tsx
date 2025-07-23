@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -17,6 +17,7 @@ import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBalance } from "@/contexts/BalanceContext";
+import { getUserInfo, UserInfoResponse } from "@/lib/api";
 
 // Chart.js 컴포넌트 등록
 ChartJS.register(
@@ -33,6 +34,81 @@ ChartJS.register(
 export default function AdvertiserDashboard() {
   const { user } = useAuth();
   const { formatCurrency, calculateBalance } = useBalance();
+
+  // 사용자 정보 상태
+  const [userData, setUserData] = useState<UserInfoResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 회사 정보 존재 여부 확인 함수
+  const hasCompanyInfo = (userData: UserInfoResponse | null): boolean => {
+    if (!userData?.companyInfo) {
+      return false;
+    }
+
+    // 필수 정보 중 하나라도 있으면 회사 정보가 있다고 판단
+    const { companyName, ceoName, businessNumber } = userData.companyInfo;
+    return !!(companyName || ceoName || businessNumber);
+  };
+
+  // 인증 상태 텍스트 반환 함수
+  const getApprovalStatusText = (status?: string, hasCompanyInfo?: boolean) => {
+    // 회사 정보가 없으면 미인증
+    if (!hasCompanyInfo) {
+      return "미인증";
+    }
+
+    switch (status) {
+      case "APPROVED":
+        return "승인완료";
+      case "REJECTED":
+        return "승인거절";
+      case "PENDING":
+        return "승인대기";
+      default:
+        return "미인증";
+    }
+  };
+
+  // 인증 상태 색상 반환 함수
+  const getApprovalStatusColor = (
+    status?: string,
+    hasCompanyInfo?: boolean
+  ) => {
+    // 회사 정보가 없으면 회색 배지
+    if (!hasCompanyInfo) {
+      return "bg-gray-100 text-gray-800";
+    }
+
+    switch (status) {
+      case "APPROVED":
+        return "bg-green-100 text-green-800";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800";
+      case "REJECTED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // 사용자 정보 로드
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+        const userInfo = await getUserInfo();
+        setUserData(userInfo);
+      } catch (error) {
+        console.error("사용자 정보 로드 실패:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      loadUserData();
+    }
+  }, [user]);
 
   // 메시지 발송 현황 차트 데이터 (월간)
   const messageChartData = {
@@ -95,7 +171,22 @@ export default function AdvertiserDashboard() {
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center text-white">
               <div>
-                <h1 className="text-lg font-medium">사업자 정보 인증</h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-lg font-medium">사업자 정보 인증</h1>
+                  {!isLoading && userData && (
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
+                        userData.approval_status,
+                        hasCompanyInfo(userData)
+                      )}`}
+                    >
+                      {getApprovalStatusText(
+                        userData.approval_status,
+                        hasCompanyInfo(userData)
+                      )}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm opacity-90">
                   원활한 에이마 서비스 이용을 위해 기업 정보를 인증해 주세요.
                 </p>
