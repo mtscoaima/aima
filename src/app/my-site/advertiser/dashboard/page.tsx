@@ -89,22 +89,25 @@ export default function AdvertiserDashboard() {
 
   return (
     <AdvertiserLoginRequiredGuard>
-      <div className="min-h-screen ">
+      <div className="dashboard-container">
         {/* 상단 파란색 배너 */}
-        <div className="bg-blue-500 p-4 mb-6">
+        <div className="bg-blue-500 p-4 mb-6 rounded-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center text-white">
               <div>
                 <h1 className="text-lg font-medium">사업자 정보 인증</h1>
                 <p className="text-sm opacity-90">
-                  정확한 사업자 정보로 정확한 위탁 가격 정보를 안내해 주세요.
+                  원활한 에이마 서비스 이용을 위해 기업 정보를 인증해 주세요.
                 </p>
               </div>
             </div>
             <div className="flex-1"></div>
-            <button className="bg-blue-50 border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm hover:bg-blue-100">
+            <Link
+              href="/my-site/advertiser/business-verification"
+              className="bg-blue-50 border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm hover:bg-blue-100 inline-block"
+            >
               사업자 정보 인증
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -298,6 +301,20 @@ export default function AdvertiserDashboard() {
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        .dashboard-container {
+          padding-bottom: 2rem;
+        }
+
+        body .main-layout {
+          min-height: auto !important;
+        }
+
+        body .main-content {
+          min-height: auto !important;
+        }
+      `}</style>
     </AdvertiserLoginRequiredGuard>
   );
 }
