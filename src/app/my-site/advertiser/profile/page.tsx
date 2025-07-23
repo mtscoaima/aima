@@ -97,6 +97,15 @@ export default function ProfilePage() {
   const [isPhoneChangeModalOpen, setIsPhoneChangeModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 세금계산서 이메일 변경 모달 상태
+  const [isTaxInvoiceEmailModalOpen, setIsTaxInvoiceEmailModalOpen] =
+    useState(false);
+  const [taxInvoiceEmailData, setTaxInvoiceEmailData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+  });
+
   // 사용자 프로필 데이터
   const [userData, setUserData] = useState<UserProfileData>({
     name: "",
@@ -1305,6 +1314,84 @@ export default function ProfilePage() {
     alert("변경되었습니다");
   };
 
+  // 세금계산서 이메일 변경 모달 열기
+  const handleChangeInvoiceEmail = () => {
+    setTaxInvoiceEmailData({
+      name: userData.name || "",
+      phone: userData.phoneNumber || "",
+      email: userData.email || "",
+    });
+    setIsTaxInvoiceEmailModalOpen(true);
+  };
+
+  // 세금계산서 이메일 변경 모달 닫기
+  const handleTaxInvoiceEmailModalClose = () => {
+    setIsTaxInvoiceEmailModalOpen(false);
+    setTaxInvoiceEmailData({
+      name: "",
+      phone: "",
+      email: "",
+    });
+  };
+
+  // 세금계산서 이메일 데이터 변경 처리
+  const handleTaxInvoiceEmailDataChange = (field: string, value: string) => {
+    setTaxInvoiceEmailData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // 세금계산서 이메일 정보 수정 처리
+  const handleTaxInvoiceEmailSave = async () => {
+    try {
+      setIsSaving(true);
+
+      // 입력 검증
+      if (!taxInvoiceEmailData.name.trim()) {
+        alert("담당자 이름을 입력해주세요.");
+        return;
+      }
+      if (!taxInvoiceEmailData.phone.trim()) {
+        alert("담당자 휴대폰을 입력해주세요.");
+        return;
+      }
+      if (!taxInvoiceEmailData.email.trim()) {
+        alert("계산서 수신 이메일을 입력해주세요.");
+        return;
+      }
+
+      // 이메일 형식 검증
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(taxInvoiceEmailData.email)) {
+        alert("올바른 이메일 형식을 입력해주세요.");
+        return;
+      }
+
+      // API 호출로 사용자 정보 업데이트 (이름과 이메일만 업데이트)
+      await updateUserInfo({
+        name: taxInvoiceEmailData.name,
+        email: taxInvoiceEmailData.email,
+      });
+
+      // 로컬 상태 업데이트
+      setUserData((prev) => ({
+        ...prev,
+        name: taxInvoiceEmailData.name,
+        phoneNumber: taxInvoiceEmailData.phone,
+        email: taxInvoiceEmailData.email,
+      }));
+
+      alert("담당자 정보가 성공적으로 수정되었습니다.");
+      setIsTaxInvoiceEmailModalOpen(false);
+    } catch (error) {
+      console.error("담당자 정보 수정 실패:", error);
+      alert("담당자 정보 수정에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 탭별 콘텐츠 렌더링
   const renderTabContent = () => {
     switch (activeTab) {
@@ -1986,35 +2073,231 @@ export default function ProfilePage() {
   );
 
   // 발신번호관리 탭 (향후 구현)
+  // 발신번호 관리 관련 상태
+  const [senderNumbers, setSenderNumbers] = useState([
+    {
+      id: 1,
+      number: "010-1234-1123",
+      name: "미등록",
+      registrationDate: "25-08-11",
+      status: "정상",
+      isDefault: true,
+    },
+    {
+      id: 2,
+      number: "010-1111-1111",
+      name: "이름01",
+      registrationDate: "25-08-11",
+      status: "정상",
+      isDefault: false,
+    },
+  ]);
+  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+  const [defaultNumber] = useState("010-1234-1123");
+
+  // 발신번호 선택/해제 처리
+  const handleNumberSelect = (id: number) => {
+    setSelectedNumbers((prev) =>
+      prev.includes(id) ? prev.filter((num) => num !== id) : [...prev, id]
+    );
+  };
+
+  // 전체 선택/해제 처리
+  const handleSelectAll = () => {
+    if (selectedNumbers.length === senderNumbers.length) {
+      setSelectedNumbers([]);
+    } else {
+      setSelectedNumbers(senderNumbers.map((num) => num.id));
+    }
+  };
+
+  // 발신번호 삭제 처리
+  const handleDeleteNumbers = () => {
+    if (selectedNumbers.length === 0) {
+      alert("삭제할 발신번호를 선택해주세요.");
+      return;
+    }
+
+    if (confirm("선택한 발신번호를 삭제하시겠습니까?")) {
+      setSenderNumbers((prev) =>
+        prev.filter((num) => !selectedNumbers.includes(num.id))
+      );
+      setSelectedNumbers([]);
+    }
+  };
+
+  // 기본 발신번호 변경 처리
+  const handleChangeDefaultNumber = () => {
+    // 실제 구현에서는 모달이나 다른 UI로 처리
+    alert("기본 발신번호 변경 기능은 추후 구현 예정입니다.");
+  };
+
+  // 발신번호 추가 처리
+  const handleAddNumber = () => {
+    // 실제 구현에서는 모달이나 다른 UI로 처리
+    alert("발신번호 추가 기능은 추후 구현 예정입니다.");
+  };
+
+  // 발신번호명 수정 처리
+  const handleEditNumberName = (id: number) => {
+    // 실제 구현에서는 모달이나 다른 UI로 처리
+    console.log(id);
+    alert("발신번호명 수정 기능은 추후 구현 예정입니다.");
+  };
+
   const renderSendingNumberTab = () => (
-    <div className="bg-white rounded-lg shadow p-6 border-t-4 border-t-indigo-500">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-black">발신번호관리</h2>
+    <div className="space-y-6">
+      {/* 안내 정보 */}
+      <div className="bg-white rounded-lg shadow p-4 border-l-4 border-l-blue-500">
+        <ul className="text-sm text-gray-700 space-y-1">
+          <li className="flex items-start">
+            <span className="text-blue-500 mr-2">•</span>
+            발신번호는 메시지 발송에 사용됩니다.
+          </li>
+          <li className="flex items-start">
+            <span className="text-blue-500 mr-2">•</span>
+            사업자 회원은 최대 10개까지 등록할 수 있어요.
+          </li>
+        </ul>
       </div>
 
-      <div className="text-center py-12">
-        <svg
-          className="w-16 h-16 text-gray-400 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-          />
-        </svg>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">발신번호관리</h3>
-        <p className="text-gray-600">
-          발신번호 등록 및 관리 기능이 곧 제공될 예정입니다.
-        </p>
+      {/* 기본 발신번호 및 등록한 번호 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 기본 발신번호 */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            기본 발신번호
+          </h3>
+          <div className="flex items-center justify-between">
+            <span className="text-xl font-medium text-gray-900">
+              {defaultNumber}
+            </span>
+            <button
+              onClick={handleChangeDefaultNumber}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+            >
+              변경하기
+            </button>
+          </div>
+        </div>
+
+        {/* 등록한 번호 */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            등록한 번호
+          </h3>
+          <div className="flex items-center justify-between">
+            <span className="text-lg text-gray-700">
+              {senderNumbers.length}/10 (잔여번호 {10 - senderNumbers.length}개)
+            </span>
+            <button
+              onClick={handleAddNumber}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+            >
+              추가하기
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 발신번호 목록 */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">
+              발신번호 목록
+            </h3>
+            <button
+              onClick={handleDeleteNumbers}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedNumbers.length === senderNumbers.length &&
+                      senderNumbers.length > 0
+                    }
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  발신번호
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  발신번호명
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  등록일
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  상태
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {senderNumbers.map((number) => (
+                <tr key={number.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedNumbers.includes(number.id)}
+                      onChange={() => handleNumberSelect(number.id)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-900">
+                        {number.number}
+                      </span>
+                      {number.isDefault && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          기본
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-900">
+                        {number.name}
+                      </span>
+                      <button
+                        onClick={() => handleEditNumberName(number.id)}
+                        className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+                      >
+                        수정
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {number.registrationDate}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-blue-600 font-medium">
+                      {number.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 
-  // 세금계산서 탭 (향후 구현)
   const renderTaxInvoiceTab = () => (
     <div className="space-y-6">
       {/* 탭 설명 */}
@@ -2022,29 +2305,82 @@ export default function ProfilePage() {
         세금계산서는 매월 10일 카드결제를 제외한 전월 결제분이 발행됩니다.
       </p>
 
-      <div className="bg-white rounded-lg shadow p-6 border-t-4 border-t-pink-500">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-black">세금계산서</h2>
+      {/* 계산서 수신 이메일 */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          계산서 수신 이메일
+        </h3>
+        <div className="flex items-center justify-between">
+          <div className="border border-gray-300 rounded px-4 py-2 bg-gray-50">
+            <span className="text-gray-900">
+              {userData?.email || "이메일 정보가 없습니다."}
+            </span>
+          </div>
+          <button
+            onClick={handleChangeInvoiceEmail}
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+          >
+            변경하기
+          </button>
+        </div>
+      </div>
+
+      {/* 세금계산서 발행 내역 */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
+            세금계산서 발행 내역
+          </h3>
         </div>
 
-        <div className="text-center py-12">
-          <svg
-            className="w-16 h-16 text-gray-400 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">세금계산서</h3>
-          <p className="text-gray-600">
-            세금계산서 발행 및 관리 기능이 곧 제공될 예정입니다.
-          </p>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  작성일
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  사업자등록번호
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  업체명
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  공급가액
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  세액
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  충전금액
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {/* 발행 내역이 없을 때 */}
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center">
+                  <div className="text-gray-500">
+                    <svg
+                      className="w-12 h-12 text-gray-300 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <p className="text-sm">발행된 세금계산서가 없습니다.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -3208,6 +3544,100 @@ export default function ProfilePage() {
                   className="px-8 py-3 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200"
                 >
                   메인으로
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 세금계산서 이메일 변경 모달 */}
+        {isTaxInvoiceEmailModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-black">
+                  세금계산서 담당자 정보 수정
+                </h2>
+                <button
+                  onClick={handleTaxInvoiceEmailModalClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    담당자 이름
+                  </label>
+                  <input
+                    type="text"
+                    value={taxInvoiceEmailData.name}
+                    onChange={(e) =>
+                      handleTaxInvoiceEmailDataChange("name", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="김갈비"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    담당자 휴대폰
+                  </label>
+                  <input
+                    type="tel"
+                    value={taxInvoiceEmailData.phone}
+                    onChange={(e) =>
+                      handleTaxInvoiceEmailDataChange("phone", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="010-555-5555"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    계산서 수신 이메일
+                  </label>
+                  <input
+                    type="email"
+                    value={taxInvoiceEmailData.email}
+                    onChange={(e) =>
+                      handleTaxInvoiceEmailDataChange("email", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="avelo01@naver.com"
+                  />
+                </div>
+              </div>
+
+              {/* 버튼 영역 */}
+              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={handleTaxInvoiceEmailModalClose}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleTaxInvoiceEmailSave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:bg-green-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "수정 중..." : "수정"}
                 </button>
               </div>
             </div>
