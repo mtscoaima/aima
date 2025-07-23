@@ -205,13 +205,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 파일 저장 완료 (base64 형태로 데이터베이스에 저장)
-    console.log("사업자 인증 제출 완료:", {
-      userId,
-      businessRegistration: documents.businessRegistration?.fileName,
-      employmentCertificate: documents.employmentCertificate?.fileName,
-    });
-
     return NextResponse.json({
       success: true,
       message:
