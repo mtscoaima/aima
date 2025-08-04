@@ -239,7 +239,7 @@ export default function LoginPage() {
                 new Error(`카카오 로그인 오류: ${error} - ${errorDescription}`)
               );
             }
-          } catch (e) {
+          } catch {
             // 팝업이 다른 도메인에 있을 때는 접근할 수 없음 (정상)
             // CORS 오류는 무시
           }
