@@ -293,7 +293,7 @@ export default function AdvertiserDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">문자 발신번호</h2>
                 <Link
-                  href="/my-site/advertiser/profile"
+                  href="/my-site/advertiser/profile?tab=sendingNumber"
                   className="text-blue-600 text-sm hover:underline"
                 >
                   발신번호관리 &gt;

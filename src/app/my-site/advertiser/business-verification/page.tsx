@@ -6,6 +6,18 @@ import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { tokenManager, getUserInfo, UserInfoResponse } from "@/lib/api";
 
+// 타입 정의
+interface BusinessDetails {
+  name?: string;
+  representativeName?: string;
+  address?: string;
+  sector?: string;
+  taxType?: string;
+  estimatedType?: string;
+  isActive?: boolean;
+  [key: string]: string | boolean | undefined;
+}
+
 // 모달 컴포넌트
 interface AlertModalProps {
   isOpen: boolean;
@@ -97,11 +109,11 @@ export default function BusinessVerificationPage() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
-  // API 정보 표시 관련 상태
-  const [apiInfo, setApiInfo] = useState<{
-    taxType?: string;
-    estimatedType?: string;
-  } | null>(null);
+  // 자동입력 관련 상태 (현재 미사용 - 향후 다른 API 연동 시 사용 예정)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [pendingBusinessDetails, setPendingBusinessDetails] =
+    useState<BusinessDetails | null>(null);
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
 
   // 가입자 정보와 동일 체크박스 처리
   useEffect(() => {
@@ -256,8 +268,9 @@ export default function BusinessVerificationPage() {
     };
   };
 
-  // 자동입력 확인 함수
-  const confirmAutoFill = (businessDetails: any) => {
+  // 자동입력 확인 함수 (현재 미사용 - 향후 다른 API 연동 시 사용 예정)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const confirmAutoFill = (businessDetails: BusinessDetails) => {
     setPendingBusinessDetails(businessDetails);
 
     // 자동입력 가능한 필드들 확인
@@ -277,8 +290,8 @@ export default function BusinessVerificationPage() {
     }
   };
 
-  // 자동입력 실행 함수
-  const autoFillBusinessInfo = (businessDetails: any) => {
+  // 자동입력 실행 함수 (현재 미사용 - 향후 다른 API 연동 시 사용 예정)
+  const autoFillBusinessInfo = (businessDetails: BusinessDetails) => {
     const filledFields: string[] = [];
 
     try {
@@ -325,7 +338,8 @@ export default function BusinessVerificationPage() {
     }
   };
 
-  // 자동입력 취소 함수
+  // 자동입력 취소 함수 (현재 미사용 - 향후 사용 예정)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const cancelAutoFill = () => {
     if (autoFilledFields.length === 0) return;
 
@@ -335,7 +349,7 @@ export default function BusinessVerificationPage() {
     if (!confirmCancel) return;
 
     // 자동입력된 필드들 초기화
-    autoFilledFields.forEach((field) => {
+    autoFilledFields.forEach((field: string) => {
       switch (field) {
         case "businessName":
           setBusinessName("");
@@ -451,12 +465,6 @@ export default function BusinessVerificationPage() {
           enhancedMessage += `\n\n⚠️ 안내사항:\n국세청 API는 개인정보보호 정책으로 인해\n상호명, 주소, 업태 등의 상세 정보를\n제공하지 않습니다.\n\n해당 정보는 직접 입력해주세요.`;
 
           showAlertModal("사업자 정보 확인", enhancedMessage);
-
-          // API 정보 저장
-          setApiInfo({
-            taxType: details.taxType,
-            estimatedType: details.estimatedType,
-          });
 
           if (details.estimatedType && details.isActive) {
             if (details.estimatedType === "개인") {

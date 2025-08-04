@@ -77,15 +77,11 @@ interface SuccessResponse {
   taxInvoiceEmail?: string;
   taxInvoiceManager?: string;
   taxInvoiceContact?: string;
-  agreeMarketing?: boolean;
   agreeTerms?: boolean;
   agreePrivacy?: boolean;
-  agreementInfo?: {
-    terms: boolean;
-    privacy: boolean;
-    marketing: boolean;
-    agreedAt: string;
-  };
+  agreeSmsMarketing?: boolean;
+  agreeEmailMarketing?: boolean;
+  agreedAt?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -107,9 +103,10 @@ export async function POST(request: NextRequest) {
       taxInvoiceEmail,
       taxInvoiceManager,
       taxInvoiceContact,
-      agreeMarketing,
       agreeTerms,
       agreePrivacy,
+      agreeSmsMarketing,
+      agreeEmailMarketing,
     } = body;
 
     // 먼저 간단한 테이블 존재 확인
@@ -280,13 +277,8 @@ export async function POST(request: NextRequest) {
         }
       : null;
 
-    // 약관 동의 정보 JSON 객체 생성
-    const agreementInfo = {
-      terms: agreeTerms || false,
-      privacy: agreePrivacy || false,
-      marketing: agreeMarketing || false,
-      agreedAt: getKSTISOString(),
-    };
+    // 약관 동의 시점
+    const agreedAt = getKSTISOString();
 
     const { data: newUser, error: insertError } = await supabase
       .from("users")
@@ -306,8 +298,12 @@ export async function POST(request: NextRequest) {
         company_info: companyInfo,
         tax_invoice_info: taxInvoiceInfo,
         documents: null, // 파일은 별도 API에서 업로드
-        agreement_info: agreementInfo,
-        agree_marketing: agreeMarketing,
+        // 약관 동의 관련
+        agree_terms: agreeTerms || false,
+        agree_privacy: agreePrivacy || false,
+        agree_sms_marketing: agreeSmsMarketing || false,
+        agree_email_marketing: agreeEmailMarketing || false,
+        agreed_at: agreedAt,
       })
       .select()
       .single();
@@ -344,10 +340,11 @@ export async function POST(request: NextRequest) {
       taxInvoiceEmail: newUser.tax_invoice_info?.email,
       taxInvoiceManager: newUser.tax_invoice_info?.manager,
       taxInvoiceContact: newUser.tax_invoice_info?.contact,
-      agreeMarketing: newUser.agree_marketing,
-      agreeTerms: newUser.agreement_info?.terms,
-      agreePrivacy: newUser.agreement_info?.privacy,
-      agreementInfo: newUser.agreement_info,
+      agreeTerms: newUser.agree_terms,
+      agreePrivacy: newUser.agree_privacy,
+      agreeSmsMarketing: newUser.agree_sms_marketing,
+      agreeEmailMarketing: newUser.agree_email_marketing,
+      agreedAt: newUser.agreed_at,
     };
 
     return NextResponse.json(successResponse, { status: 201 });
