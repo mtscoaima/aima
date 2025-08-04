@@ -83,6 +83,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // 응답 데이터 구조 확장 (상세 정보 포함)
+    if (data.match_cnt > 0 && data.data && data.data[0]) {
+      const businessInfo = data.data[0];
+
+      // 사업자 유형 추정 (과세 유형 기반)
+      const estimatedType = businessInfo.tax_type?.includes("일반과세자")
+        ? "법인"
+        : businessInfo.tax_type?.includes("간이과세자")
+        ? "개인"
+        : null;
+
+      // 현실적인 응답 (유효성 확인 + 제한된 정보)
+      return NextResponse.json({
+        ...data,
+        businessDetails: {
+          // 실제 제공되는 정보만
+          taxType: businessInfo.tax_type || null,
+          status: businessInfo.b_stt || null,
+          statusCode: businessInfo.b_stt_cd || null,
+          estimatedType: estimatedType, // 과세유형 기반 추정
+          isActive: businessInfo.b_stt_cd === "01",
+          // 제공되지 않는 정보는 null로 명시
+          name: null,
+          address: null,
+          sector: null,
+          openDate: null,
+          apiLimitation:
+            "국세청 API는 개인정보보호로 인해 상호명, 주소, 업태 정보를 제공하지 않습니다.",
+        },
+      });
+    }
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("사업자등록번호 검증 오류:", error);

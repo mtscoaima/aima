@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import AnnouncementModal from "../../components/AnnouncementModal";
 import Pagination from "../../components/Pagination";
 import "./styles.css";
@@ -31,6 +32,7 @@ interface PaginationInfo {
 }
 
 const SupportPage = () => {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
     "faq" | "announcement" | "contact"
   >("faq");
@@ -99,6 +101,14 @@ const SupportPage = () => {
     setIsModalOpen(false);
     setSelectedAnnouncement(null);
   };
+
+  // URL 파라미터 기반 탭 설정
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["faq", "announcement", "contact"].includes(tabParam)) {
+      setActiveTab(tabParam as "faq" | "announcement" | "contact");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeTab === "announcement") {

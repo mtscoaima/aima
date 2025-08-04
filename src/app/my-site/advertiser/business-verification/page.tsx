@@ -97,6 +97,12 @@ export default function BusinessVerificationPage() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
+  // API 정보 표시 관련 상태
+  const [apiInfo, setApiInfo] = useState<{
+    taxType?: string;
+    estimatedType?: string;
+  } | null>(null);
+
   // 가입자 정보와 동일 체크박스 처리
   useEffect(() => {
     if (usePersonalInfo && user) {
@@ -241,6 +247,116 @@ export default function BusinessVerificationPage() {
     )}`;
   };
 
+  // 주소 파싱 함수 (도로명 주소와 상세 주소 분리)
+  const parseAddress = (fullAddress: string) => {
+    // 기본적으로 전체 주소를 도로명 주소로 설정
+    return {
+      roadAddress: fullAddress.trim(),
+      detailAddress: "",
+    };
+  };
+
+  // 자동입력 확인 함수
+  const confirmAutoFill = (businessDetails: any) => {
+    setPendingBusinessDetails(businessDetails);
+
+    // 자동입력 가능한 필드들 확인
+    const availableFields = [];
+    if (businessDetails.name) availableFields.push("상호");
+    if (businessDetails.representativeName) availableFields.push("대표자명");
+    if (businessDetails.address) availableFields.push("주소");
+    if (businessDetails.sector) availableFields.push("업태");
+
+    if (availableFields.length > 0) {
+      const fieldList = availableFields.join(", ");
+      const confirmMessage = `조회된 사업자 정보로 자동 입력하시겠습니까?\n\n자동입력 가능 항목: ${fieldList}\n\n※ 자동입력 후에도 수정이 가능합니다.`;
+
+      if (window.confirm(confirmMessage)) {
+        autoFillBusinessInfo(businessDetails);
+      }
+    }
+  };
+
+  // 자동입력 실행 함수
+  const autoFillBusinessInfo = (businessDetails: any) => {
+    const filledFields: string[] = [];
+
+    try {
+      // 상호 자동입력
+      if (businessDetails.name && businessDetails.name.trim()) {
+        setBusinessName(businessDetails.name.trim());
+        filledFields.push("businessName");
+      }
+
+      // 대표자명 자동입력 (개인사업자인 경우)
+      if (
+        businessDetails.representativeName &&
+        businessDetails.representativeName.trim()
+      ) {
+        setRepresentativeName(businessDetails.representativeName.trim());
+        filledFields.push("representativeName");
+      }
+
+      // 주소 자동입력
+      if (businessDetails.address && businessDetails.address.trim()) {
+        const addressInfo = parseAddress(businessDetails.address);
+        setRoadAddress(addressInfo.roadAddress);
+        setDetailAddress(addressInfo.detailAddress);
+        filledFields.push("address");
+      }
+
+      // 업태 자동입력
+      if (businessDetails.sector && businessDetails.sector.trim()) {
+        setBusinessCategory(businessDetails.sector.trim());
+        filledFields.push("businessCategory");
+      }
+
+      // 자동입력된 필드 목록 저장
+      setAutoFilledFields(filledFields);
+
+      // 성공 메시지 표시
+      showAlertModal(
+        "자동입력 완료",
+        `사업자 정보가 자동으로 입력되었습니다.\n\n입력된 정보를 확인하시고 필요시 수정해주세요.`
+      );
+    } catch (error) {
+      console.error("자동입력 중 오류:", error);
+      showAlertModal("오류", "자동입력 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 자동입력 취소 함수
+  const cancelAutoFill = () => {
+    if (autoFilledFields.length === 0) return;
+
+    const confirmCancel = window.confirm(
+      "자동입력된 정보를 모두 초기화하시겠습니까?"
+    );
+    if (!confirmCancel) return;
+
+    // 자동입력된 필드들 초기화
+    autoFilledFields.forEach((field) => {
+      switch (field) {
+        case "businessName":
+          setBusinessName("");
+          break;
+        case "representativeName":
+          setRepresentativeName("");
+          break;
+        case "address":
+          setRoadAddress("");
+          setDetailAddress("");
+          break;
+        case "businessCategory":
+          setBusinessCategory("");
+          break;
+      }
+    });
+
+    setAutoFilledFields([]);
+    showAlertModal("초기화 완료", "자동입력된 정보가 초기화되었습니다.");
+  };
+
   // 사업자등록번호 입력 핸들러
   const handleBusinessNumberChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -316,7 +432,42 @@ export default function BusinessVerificationPage() {
 
         setIsBusinessNumberVerified(true);
         setVerificationMessage(`사업자등록번호 확인 완료 - ${statusMessage}`);
-        showAlertModal("사업자 정보 확인", detailMessage);
+
+        // API 제한사항 안내
+        if (result.businessDetails) {
+          const details = result.businessDetails;
+
+          // 상세 메시지에 API 제한사항 포함
+          let enhancedMessage = detailMessage;
+
+          if (details.taxType) {
+            enhancedMessage += `\n\n📋 확인된 정보:\n• 과세유형: ${details.taxType}`;
+
+            if (details.estimatedType) {
+              enhancedMessage += `\n• 추정 사업자 유형: ${details.estimatedType}`;
+            }
+          }
+
+          enhancedMessage += `\n\n⚠️ 안내사항:\n국세청 API는 개인정보보호 정책으로 인해\n상호명, 주소, 업태 등의 상세 정보를\n제공하지 않습니다.\n\n해당 정보는 직접 입력해주세요.`;
+
+          showAlertModal("사업자 정보 확인", enhancedMessage);
+
+          // API 정보 저장
+          setApiInfo({
+            taxType: details.taxType,
+            estimatedType: details.estimatedType,
+          });
+
+          if (details.estimatedType && details.isActive) {
+            if (details.estimatedType === "개인") {
+              setBusinessType("individual");
+            } else if (details.estimatedType === "법인") {
+              setBusinessType("corporation");
+            }
+          }
+        } else {
+          showAlertModal("사업자 정보 확인", detailMessage);
+        }
       } else {
         // 검증 실패
         setIsBusinessNumberVerified(false);
@@ -980,7 +1131,7 @@ export default function BusinessVerificationPage() {
                 {isVerifying ? "제출 중..." : "인증하기"}
               </button>
               <div className="inquiry-section">
-                <Link href="/support" className="inquiry-link">
+                <Link href="/support?tab=contact" className="inquiry-link">
                   인증 문의
                 </Link>
               </div>
@@ -1422,6 +1573,34 @@ export default function BusinessVerificationPage() {
           background-color: #f8d7da;
           color: #721c24;
           border: 1px solid #f5c6cb;
+        }
+
+        /* API 정보 패널 스타일 */
+        .api-info-panel {
+          margin-top: 1rem;
+          padding: 1rem;
+          background-color: #f8f9fa;
+          border-radius: 8px;
+          border-left: 4px solid #007bff;
+        }
+
+        .api-info-message {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 0.5rem;
+          font-size: 14px;
+          color: #0056b3;
+          font-weight: 500;
+        }
+
+        .api-limitation-notice {
+          font-size: 13px;
+          color: #6c757d;
+          padding: 0.5rem;
+          background-color: #fff3cd;
+          border-radius: 4px;
+          border: 1px solid #ffeaa7;
         }
 
         /* 모달 스타일 */

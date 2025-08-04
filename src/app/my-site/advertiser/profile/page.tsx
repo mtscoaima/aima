@@ -1960,7 +1960,7 @@ export default function ProfilePage() {
                     <p className="text-xs font-semibold ">
                       ※사업자 정보를 변경하고 싶어요.{" "}
                       <button
-                        onClick={() => router.push("/support")}
+                        onClick={() => router.push("/support?tab=contact")}
                         className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
                       >
                         고객센터 문의
