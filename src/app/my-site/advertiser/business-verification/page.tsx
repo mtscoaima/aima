@@ -585,253 +585,297 @@ export default function BusinessVerificationPage() {
             <div className="form-section">
               <h2 className="section-title">사업자정보</h2>
 
-              <div className="form-group">
-                <label className="form-label required">기업유형</label>
-                <div className="radio-group">
-                  <label className="radio-option">
-                    <input
-                      type="radio"
-                      name="businessType"
-                      value="individual"
-                      checked={businessType === "individual"}
-                      onChange={(e) => setBusinessType(e.target.value)}
-                    />
-                    <span className="radio-text">개인사업자</span>
-                  </label>
-                  <label className="radio-option">
-                    <input
-                      type="radio"
-                      name="businessType"
-                      value="corporation"
-                      checked={businessType === "corporation"}
-                      onChange={(e) => setBusinessType(e.target.value)}
-                    />
-                    <span className="radio-text">법인사업자</span>
-                  </label>
-                </div>
-              </div>
+              <table className="info-table">
+                <tbody>
+                  <tr>
+                    <td className="label-cell required">
+                      기업유형<span className="required-mark">*</span>
+                    </td>
+                    <td className="input-cell">
+                      <div className="radio-group">
+                        <label className="radio-option">
+                          <input
+                            type="radio"
+                            name="businessType"
+                            value="individual"
+                            checked={businessType === "individual"}
+                            onChange={(e) => setBusinessType(e.target.value)}
+                          />
+                          <span className="radio-text">개인사업자</span>
+                        </label>
+                        <label className="radio-option">
+                          <input
+                            type="radio"
+                            name="businessType"
+                            value="corporation"
+                            checked={businessType === "corporation"}
+                            onChange={(e) => setBusinessType(e.target.value)}
+                          />
+                          <span className="radio-text">법인사업자</span>
+                        </label>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell required">
+                      사업자명<span className="required-mark">*</span>
+                    </td>
+                    <td className="input-cell">
+                      <input
+                        type="text"
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        className="table-input"
+                        placeholder="사업자명을 입력해주세요"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell required">
+                      대표자명<span className="required-mark">*</span>
+                    </td>
+                    <td className="input-cell">
+                      <input
+                        type="text"
+                        value={representativeName}
+                        onChange={(e) => setRepresentativeName(e.target.value)}
+                        className="table-input"
+                        placeholder="대표자명을 입력해주세요"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell required">
+                      사업자등록번호<span className="required-mark">*</span>
+                    </td>
+                    <td className="input-cell">
+                      <div className="input-with-button">
+                        <input
+                          type="text"
+                          value={businessNumber}
+                          onChange={handleBusinessNumberChange}
+                          className="table-input"
+                          placeholder="사업자등록번호를 입력해주세요"
+                          maxLength={12}
+                        />
+                        <button
+                          type="button"
+                          className="verify-button"
+                          onClick={verifyBusinessNumber}
+                          disabled={isVerifying}
+                        >
+                          {isVerifying ? "확인중..." : "사업자번호 확인"}
+                        </button>
+                      </div>
+                      {verificationMessage && (
+                        <div
+                          className={`verification-message ${
+                            isBusinessNumberVerified ? "success" : "error"
+                          }`}
+                        >
+                          {verificationMessage}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell required">
+                      주소<span className="required-mark">*</span>
+                    </td>
+                    <td className="input-cell">
+                      <div className="address-group">
+                        <div className="address-search">
+                          <input
+                            type="text"
+                            className="table-input address-input-main"
+                            placeholder="도로명 주소 찾기"
+                            value={roadAddress}
+                            readOnly
+                          />
+                          <button
+                            type="button"
+                            className="address-button"
+                            onClick={handleAddressSearch}
+                          >
+                            주소찾기
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={detailAddress}
+                          onChange={(e) => setDetailAddress(e.target.value)}
+                          className="table-input address-input"
+                          placeholder="나머지 주소를 입력해 주세요"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell">
+                      업태<span className="optional-mark">(선택)</span>
+                    </td>
+                    <td className="input-cell">
+                      <input
+                        type="text"
+                        value={businessCategory}
+                        onChange={(e) => setBusinessCategory(e.target.value)}
+                        className="table-input"
+                        placeholder="선택"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell">
+                      업종<span className="optional-mark">(선택)</span>
+                    </td>
+                    <td className="input-cell">
+                      <input
+                        type="text"
+                        value={businessType2}
+                        onChange={(e) => setBusinessType2(e.target.value)}
+                        className="table-input"
+                        placeholder="선택"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
-              <div className="form-group">
-                <label className="form-label required">사업자명</label>
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  className="form-input"
-                  placeholder="사업자명을 입력해주세요"
-                />
-              </div>
+              <table className="info-table">
+                <tbody>
+                  <tr>
+                    <td className="label-cell required">
+                      인증정보<span className="required-mark">*</span>
+                    </td>
+                    <td className="input-cell">
+                      <div className="upload-section">
+                        <div className="upload-title-section">
+                          <span className="upload-title">
+                            사업자등록증/사업자등록증명원 (택1)
+                          </span>
+                        </div>
+                        <div className="file-input-group">
+                          <input
+                            type="text"
+                            className="table-input file-display-input"
+                            placeholder="사업자등록증 또는 사업자등록증명원을 등록해 주세요."
+                            value={
+                              businessDocumentFile
+                                ? businessDocumentFile.name
+                                : existingBusinessDocument
+                                ? `[기존 파일] ${existingBusinessDocument.fileName}`
+                                : ""
+                            }
+                            readOnly
+                          />
+                          <button
+                            type="button"
+                            className="upload-button"
+                            onClick={() => handleFileUpload("business")}
+                          >
+                            파일 첨부
+                          </button>
+                        </div>
 
-              <div className="form-group">
-                <label className="form-label required">대표자명</label>
-                <input
-                  type="text"
-                  value={representativeName}
-                  onChange={(e) => setRepresentativeName(e.target.value)}
-                  className="form-input"
-                  placeholder="대표자명을 입력해주세요"
-                />
-              </div>
+                        <div className="file-requirement">
+                          <p className="requirement-text">
+                            <strong>
+                              90일 이내 발행된 사업자등록증 또는
+                              사업자등록증명원을 첨부해 주세요.
+                            </strong>
+                          </p>
+                          <p className="file-info">
+                            <span className="highlight-red">
+                              단, 주민등록번호 뒷자리는 노출되지 않도록 처리
+                            </span>
+                            <br />
+                            (ex 991234 - ******* 표시 등)가 되어 있어야 합니다.
+                            (파일 형식 : JPEG, JPG, PNG, PDF, TIF / 용량 20MB
+                            이하)
+                          </p>
+                        </div>
 
-              <div className="form-group">
-                <label className="form-label required">사업자등록번호</label>
-                <div className="input-with-button">
-                  <input
-                    type="text"
-                    value={businessNumber}
-                    onChange={handleBusinessNumberChange}
-                    className="form-input"
-                    placeholder="사업자등록번호를 입력해주세요 (예: 123-45-67890)"
-                    maxLength={12}
-                  />
-                  <button
-                    type="button"
-                    className="verify-button"
-                    onClick={verifyBusinessNumber}
-                    disabled={isVerifying}
-                  >
-                    {isVerifying ? "확인중..." : "확인"}
-                  </button>
-                </div>
-                {verificationMessage && (
-                  <div
-                    className={`business-status ${
-                      isBusinessNumberVerified ? "success" : "error"
-                    }`}
-                  >
-                    {verificationMessage}
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label required">주소</label>
-                <div className="address-group">
-                  <div className="address-search">
-                    <input
-                      type="text"
-                      className="form-input address-input-main"
-                      placeholder="도로명 주소 찾기"
-                      value={roadAddress}
-                      readOnly
-                    />
-                    <button
-                      type="button"
-                      className="address-button"
-                      onClick={handleAddressSearch}
-                    >
-                      주소찾기
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={detailAddress}
-                    onChange={(e) => setDetailAddress(e.target.value)}
-                    className="form-input address-input"
-                    placeholder="나머지 주소를 입력해 주세요"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">업태</label>
-                <input
-                  type="text"
-                  value={businessCategory}
-                  onChange={(e) => setBusinessCategory(e.target.value)}
-                  className="form-input"
-                  placeholder="선택"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">업종</label>
-                <input
-                  type="text"
-                  value={businessType2}
-                  onChange={(e) => setBusinessType2(e.target.value)}
-                  className="form-input"
-                  placeholder="선택"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label required">인증정보</label>
-                <div className="upload-section">
-                  <div className="upload-title-section">
-                    <span className="upload-title">
-                      사업자등록증/사업자등록증명원 (택1)
-                    </span>
-                  </div>
-                  <div className="file-input-group">
-                    <input
-                      type="text"
-                      className="form-input file-display-input"
-                      placeholder="사업자등록증 또는 사업자등록증명원을 등록해 주세요."
-                      value={
-                        businessDocumentFile
-                          ? businessDocumentFile.name
-                          : existingBusinessDocument
-                          ? `[기존 파일] ${existingBusinessDocument.fileName}`
-                          : ""
-                      }
-                      readOnly
-                    />
-                    <button
-                      type="button"
-                      className="upload-button"
-                      onClick={() => handleFileUpload("business")}
-                    >
-                      파일 첨부
-                    </button>
-                  </div>
-
-                  <div className="file-requirement">
-                    <p className="requirement-text">
-                      <strong>
-                        90일 이내 발행된 사업자등록증 또는 사업자등록증명원을
-                        첨부해 주세요.
-                      </strong>
-                    </p>
-                    <p className="file-info">
-                      <span className="highlight-red">
-                        단, 주민등록번호 뒷자리는 노출되지 않도록 처리
-                      </span>
-                      <br />
-                      (ex 991234 - ******* 표시 등)가 되어 있어야 합니다. (파일
-                      형식 : JPEG, JPG, PNG, PDF, TIF / 용량 20MB 이하)
-                    </p>
-                  </div>
-
-                  <div className="file-buttons">
-                    <a
-                      href="https://hometax.go.kr/websquare/websquare.html?w2xPath=/ui/pp/index_pp.xml&menuCd=index3"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="file-btn"
-                    >
-                      사업자등록증 발급 바로가기 &gt;
-                    </a>
-                    <a
-                      href="https://www.gov.kr/mw/AA020InfoCappView.do?HighCtgCD=&CappBizCD=12100000016"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="file-btn"
-                    >
-                      사업자등록증명원 발급 바로가기 &gt;
-                    </a>
-                  </div>
-                </div>
-              </div>
+                        <div className="file-buttons">
+                          <a
+                            href="https://hometax.go.kr/websquare/websquare.html?w2xPath=/ui/pp/index_pp.xml&menuCd=index3"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="file-btn"
+                          >
+                            사업자등록증 발급 바로가기 &gt;
+                          </a>
+                          <a
+                            href="https://www.gov.kr/mw/AA020InfoCappView.do?HighCtgCD=&CappBizCD=12100000016"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="file-btn"
+                          >
+                            사업자등록증명원 발급 바로가기 &gt;
+                          </a>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             {/* 재직자 인증 섹션 */}
             <div className="form-section">
-              <h2 className="section-title optional">재직자 인증</h2>
+              <h2 className="section-title optional">
+                재직자 인증<span className="optional-mark">(선택)</span>
+              </h2>
 
-              <div className="employment-section">
-                <div className="upload-title-section">
-                  <span className="upload-title">인증정보</span>
-                </div>
-                <div className="file-input-group">
-                  <input
-                    type="text"
-                    className="form-input file-display-input"
-                    placeholder="재직증명서를 등록해주세요.(임직원만)"
-                    value={
-                      employmentDocumentFile
-                        ? employmentDocumentFile.name
-                        : existingEmploymentDocument
-                        ? `[기존 파일] ${existingEmploymentDocument.fileName}`
-                        : ""
-                    }
-                    readOnly
-                  />
-                  <button
-                    type="button"
-                    className="upload-button"
-                    onClick={() => handleFileUpload("employment")}
-                  >
-                    파일 첨부
-                  </button>
-                </div>
-                <div className="upload-description">
-                  <p>• 대표자가 아닌 임직원인 경우 제출</p>
-                  <p>
-                    • 해당 사업체 근무 여부를 확인합니다. 임직원만 제출해주세요.
-                  </p>
-                  <p>
-                    • 본인의 재직증명서를 제출해주시고, 주민번호 뒷자리와 주소는
-                    가려서 제출해주세요.
-                  </p>
-                </div>
-              </div>
+              <table className="info-table">
+                <tbody>
+                  <tr>
+                    <td className="label-cell">인증정보</td>
+                    <td className="input-cell">
+                      <div className="file-input-group">
+                        <input
+                          type="text"
+                          className="table-input file-display-input"
+                          placeholder="재직증명서를 등록해주세요.(임직원만)"
+                          value={
+                            employmentDocumentFile
+                              ? employmentDocumentFile.name
+                              : existingEmploymentDocument
+                              ? `[기존 파일] ${existingEmploymentDocument.fileName}`
+                              : ""
+                          }
+                          readOnly
+                        />
+                        <button
+                          type="button"
+                          className="upload-button"
+                          onClick={() => handleFileUpload("employment")}
+                        >
+                          파일 첨부
+                        </button>
+                      </div>
+                      <div className="upload-description">
+                        <p>• 대표자가 아닌 임직원인 경우 제출</p>
+                        <p>
+                          • 해당 사업체 근무 여부를 확인합니다. 임직원만
+                          제출해주세요.
+                        </p>
+                        <p>
+                          • 본인의 재직증명서를 제출해주시고, 주민번호 뒷자리와
+                          주소는 가려서 제출해주세요.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             {/* 세금계산서 담당자 섹션 */}
             <div className="form-section">
               <div className="section-header">
-                <h2 className="section-title optional">세금계산서 담당자</h2>
+                <h2 className="section-title optional">
+                  세금계산서 담당자<span className="optional-mark">(선택)</span>
+                </h2>
                 <div className="checkbox-group inline">
                   <label className="checkbox-option">
                     <input
@@ -844,62 +888,70 @@ export default function BusinessVerificationPage() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">담당자 이름</label>
-                <input
-                  type="text"
-                  value={managerName}
-                  onChange={(e) => setManagerName(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">담당자 휴대폰</label>
-                <div className="phone-group">
-                  <input
-                    type="text"
-                    className="form-input phone-input"
-                    defaultValue="010"
-                  />
-                  <span>-</span>
-                  <input
-                    type="text"
-                    value={managerPhone.split("-")[1] || ""}
-                    onChange={(e) =>
-                      setManagerPhone(
-                        `010-${e.target.value}-${
-                          managerPhone.split("-")[2] || ""
-                        }`
-                      )
-                    }
-                    className="form-input phone-input"
-                  />
-                  <span>-</span>
-                  <input
-                    type="text"
-                    value={managerPhone.split("-")[2] || ""}
-                    onChange={(e) =>
-                      setManagerPhone(
-                        `010-${managerPhone.split("-")[1] || ""}-${
-                          e.target.value
-                        }`
-                      )
-                    }
-                    className="form-input phone-input"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">계산서 수신 이메일</label>
-                <input
-                  type="email"
-                  value={managerEmail}
-                  onChange={(e) => setManagerEmail(e.target.value)}
-                  className="form-input"
-                />
-              </div>
+              <table className="info-table">
+                <tbody>
+                  <tr>
+                    <td className="label-cell">담당자 이름</td>
+                    <td className="input-cell">
+                      <input
+                        type="text"
+                        value={managerName}
+                        onChange={(e) => setManagerName(e.target.value)}
+                        className="table-input"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell">담당자 휴대폰</td>
+                    <td className="input-cell">
+                      <div className="phone-group">
+                        <input
+                          type="text"
+                          className="table-input phone-input"
+                          defaultValue="010"
+                        />
+                        <span>-</span>
+                        <input
+                          type="text"
+                          value={managerPhone.split("-")[1] || ""}
+                          onChange={(e) =>
+                            setManagerPhone(
+                              `010-${e.target.value}-${
+                                managerPhone.split("-")[2] || ""
+                              }`
+                            )
+                          }
+                          className="table-input phone-input"
+                        />
+                        <span>-</span>
+                        <input
+                          type="text"
+                          value={managerPhone.split("-")[2] || ""}
+                          onChange={(e) =>
+                            setManagerPhone(
+                              `010-${managerPhone.split("-")[1] || ""}-${
+                                e.target.value
+                              }`
+                            )
+                          }
+                          className="table-input phone-input"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell">계산서 수신 이메일</td>
+                    <td className="input-cell">
+                      <input
+                        type="email"
+                        value={managerEmail}
+                        onChange={(e) => setManagerEmail(e.target.value)}
+                        className="table-input"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             {/* 세금계산서 발급 안내 */}
@@ -1066,6 +1118,167 @@ export default function BusinessVerificationPage() {
 
         .verification-form {
           background: transparent;
+        }
+
+        /* 테이블 스타일 */
+        .info-table {
+          width: 100%;
+          border-collapse: collapse;
+          border: 1px solid #e5e8ec;
+          margin-bottom: 1.5rem;
+          background: white;
+        }
+
+        .label-cell {
+          background: #f8f9fa;
+          padding: 15px 20px;
+          border: 1px solid #e5e8ec;
+          font-weight: 600;
+          color: #333;
+          width: 200px;
+          vertical-align: top;
+          text-align: left;
+        }
+
+        .input-cell {
+          padding: 15px 20px;
+          border: 1px solid #e5e8ec;
+          vertical-align: top;
+        }
+
+        .required-mark {
+          color: #dc3545;
+          margin-left: 2px;
+        }
+
+        .optional-mark {
+          color: #6c757d;
+          font-weight: normal;
+          margin-left: 5px;
+        }
+
+        .table-input {
+          width: 100%;
+          padding: 10px 12px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+          transition: border-color 0.15s ease-in-out;
+        }
+
+        .table-input:focus {
+          outline: none;
+          border-color: #1681ff;
+          box-shadow: 0 0 0 2px rgba(22, 129, 255, 0.1);
+        }
+
+        .verification-message {
+          margin-top: 8px;
+          padding: 8px 12px;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .verification-message.success {
+          background: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+        }
+
+        .verification-message.error {
+          background: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+        }
+
+        /* 라디오 버튼 그룹 스타일 */
+        .radio-group {
+          display: flex;
+          gap: 20px;
+          align-items: center;
+        }
+
+        .radio-option {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+          margin: 0;
+          accent-color: #1681ff;
+        }
+
+        .radio-text {
+          font-size: 14px;
+          color: #333;
+        }
+
+        /* 전화번호 입력 그룹 */
+        .phone-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .phone-input {
+          width: 80px !important;
+          text-align: center;
+        }
+
+        /* 버튼 스타일 조정 */
+        .verify-button,
+        .address-button,
+        .upload-button {
+          padding: 10px 16px;
+          background: #1681ff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 14px;
+          cursor: pointer;
+          white-space: nowrap;
+          margin-left: 8px;
+        }
+
+        .verify-button:hover,
+        .address-button:hover,
+        .upload-button:hover {
+          background: #1366cc;
+        }
+
+        .verify-button:disabled {
+          background: #6c757d;
+          cursor: not-allowed;
+        }
+
+        /* 입력 그룹 */
+        .input-with-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .input-with-button .table-input {
+          flex: 1;
+        }
+
+        .address-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .address-search {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .address-search .table-input {
+          flex: 1;
         }
 
         .form-section {
@@ -1677,6 +1890,53 @@ export default function BusinessVerificationPage() {
           .modal-content {
             width: 95%;
             margin: 0 1rem;
+          }
+
+          /* 모바일에서 테이블 반응형 */
+          .info-table {
+            font-size: 14px;
+          }
+
+          .label-cell {
+            width: 120px;
+            padding: 12px 15px;
+            font-size: 13px;
+          }
+
+          .input-cell {
+            padding: 12px 15px;
+          }
+
+          .table-input {
+            padding: 8px 10px;
+            font-size: 14px;
+          }
+
+          .input-with-button {
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+          }
+
+          .input-with-button .table-input {
+            margin-bottom: 8px;
+          }
+
+          .verify-button,
+          .address-button,
+          .upload-button {
+            margin-left: 0;
+            width: 100%;
+            justify-self: stretch;
+          }
+
+          .phone-group {
+            flex-wrap: wrap;
+            gap: 4px;
+          }
+
+          .phone-input {
+            width: 70px !important;
           }
         }
       `}</style>
