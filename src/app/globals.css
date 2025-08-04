@@ -145,6 +145,7 @@ h3 {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   transition: all 0.3s ease;
+  overflow: visible;
 }
 
 .nav-container {
@@ -155,6 +156,7 @@ h3 {
   height: 80px;
   min-height: 70px; /* 최소 높이 보장 */
   max-width: 100%; /* 컨테이너 너비 제한 */
+  overflow: visible; /* 드롭다운이 보이도록 */
 }
 
 .nav-left {
@@ -297,6 +299,8 @@ h3 {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
+  max-width: 100%;
 }
 
 /* 사용자가이드 버튼 */
@@ -488,6 +492,43 @@ h3 {
   transform: scale(1.05);
 }
 
+.user-profile-btn-extended {
+  background: none;
+  border: none;
+  padding: 4px 12px 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 0;
+  max-width: calc(100% - 20px);
+  margin-right: 8px;
+}
+
+.user-profile-btn-extended:hover {
+  opacity: 0.8;
+}
+
+.user-info-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.user-name-display {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.user-email-display {
+  display: none; /* 이메일 숨김 */
+}
+
 .user-avatar-circle {
   width: 36px;
   height: 36px;
@@ -499,13 +540,55 @@ h3 {
   justify-content: center;
   font-size: 14px;
   font-weight: 600;
-  border: 2px solid #e5e8ec;
+  border: none;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dropdown-arrow-icon {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.user-profile-btn-extended:hover .dropdown-arrow-icon {
+  transform: translateY(1px);
 }
 
 .user-profile-btn:hover .user-avatar-circle {
   border-color: #1681ff;
   box-shadow: 0 2px 8px rgba(22, 129, 255, 0.2);
+}
+
+.user-profile-btn-extended:hover .user-avatar-circle {
+  /* 확장 버튼에서는 아바타 호버 효과 제거 */
+}
+
+/* 모바일 반응형 스타일 */
+@media (max-width: 768px) {
+  .user-info-display {
+    display: none;
+  }
+
+  .user-profile-btn-extended {
+    padding: 4px 8px 4px 4px;
+    min-width: auto;
+    gap: 6px;
+    margin-right: 4px;
+  }
+
+  .dropdown-arrow-icon {
+    width: 10px;
+    height: 10px;
+  }
+
+  .user-dropdown {
+    min-width: 180px;
+    right: 0;
+  }
+
+  .nav-container {
+    padding: 0 1rem;
+  }
 }
 
 /* 데스크톱 메뉴 */
@@ -825,6 +908,7 @@ h3 {
 /* 유저 드롭다운 스타일 */
 .user-dropdown-container {
   position: relative;
+  z-index: 1;
 }
 
 .user-info-button {
@@ -871,19 +955,14 @@ h3 {
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   border: 1px solid #e5e7eb;
-  min-width: 280px;
-  z-index: 1000;
+  min-width: 200px;
+  z-index: 1001;
   overflow: hidden;
   margin-top: 8px;
 }
 
 .user-dropdown-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  display: none;
 }
 
 .user-avatar {
@@ -918,6 +997,7 @@ h3 {
 .user-dropdown-divider {
   height: 1px;
   background: #e5e7eb;
+  display: none;
 }
 
 .user-dropdown-menu {

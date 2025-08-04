@@ -359,33 +359,66 @@ export default function Navigation() {
                 <div className="user-dropdown-container">
                   <button
                     onClick={toggleUserDropdown}
-                    className="user-profile-btn"
+                    className="user-profile-btn-extended"
                   >
                     <div className="user-avatar-circle">
                       {(user?.name || user?.email || "")
                         .charAt(0)
                         .toUpperCase()}
                     </div>
+                    <div className="user-info-display">
+                      <div className="user-name-display">
+                        {user?.name || user?.email || "사용자"}
+                      </div>
+                    </div>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      className="dropdown-arrow-icon"
+                    >
+                      <path
+                        d="M3 4.5L6 7.5L9 4.5"
+                        stroke="#666"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </button>
                   {showUserDropdown && (
                     <div className="user-dropdown">
-                      <div className="user-dropdown-header">
-                        <div className="user-avatar">
-                          {(user?.name || user?.email || "")
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-                        <div className="user-details">
-                          <div className="user-name-full">
-                            {user?.name || user?.email}
-                          </div>
-                          <div className="user-email">{user?.email}</div>
-                        </div>
-                      </div>
-                      <div className="user-dropdown-divider"></div>
                       <div className="user-dropdown-menu">
                         {user?.role === "SALESPERSON" ? (
                           <>
+                            <Link
+                              href="/salesperson/profile"
+                              className="dropdown-menu-item"
+                              onClick={() => setShowUserDropdown(false)}
+                            >
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                              >
+                                <path d="M2 2H6V6H2V2Z" fill="currentColor" />
+                                <path
+                                  d="M10 2H14V6H10V2Z"
+                                  fill="currentColor"
+                                />
+                                <path
+                                  d="M2 10H6V14H2V10Z"
+                                  fill="currentColor"
+                                />
+                                <path
+                                  d="M10 10H14V14H10V10Z"
+                                  fill="currentColor"
+                                />
+                              </svg>
+                              대시보드
+                            </Link>
                             <Link
                               href="/salesperson/profile"
                               className="dropdown-menu-item"
