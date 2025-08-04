@@ -54,17 +54,14 @@ export default function LoginPage() {
     const initKakaoSDK = async () => {
       if (typeof window === "undefined") return;
 
-      // 카카오 SDK는 클라이언트에서 초기화만 하고, 실제 인증은 서버 API를 통해 처리
-      // 따라서 SDK 초기화는 유지하되, 앱키는 서버에서만 사용
-
-      // 카카오 SDK 로딩 대기 (더 안정적인 방법)
+      // 카카오 SDK 로딩 대기
       let retryCount = 0;
       const maxRetries = 100; // 10초 대기 (100ms * 100)
 
       const waitForKakaoSDK = () => {
         return new Promise<void>((resolve, reject) => {
           const checkSDK = () => {
-            if (window.Kakao && window.Kakao.isInitialized !== undefined) {
+            if (window.Kakao && window.Kakao.init !== undefined) {
               resolve();
               return;
             }
@@ -72,7 +69,6 @@ export default function LoginPage() {
             retryCount++;
             if (retryCount >= maxRetries) {
               console.error("❌ 카카오 SDK 로딩 타임아웃");
-
               reject(new Error("카카오 SDK 로딩 실패"));
               return;
             }
@@ -87,8 +83,34 @@ export default function LoginPage() {
       try {
         await waitForKakaoSDK();
 
-        // SDK 초기화는 서버에서 인증 URL을 받아온 후에 처리하므로 여기서는 생략
-        // 실제 카카오 로그인은 서버 API를 통해 처리됨
+        // 카카오 SDK 초기화
+        // 이미 초기화되어 있으면 건너뛰기
+        if (!window.Kakao.isInitialized()) {
+          // 환경변수에서 카카오 앱키 가져오기
+          const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
+
+          if (kakaoAppKey) {
+            window.Kakao.init(kakaoAppKey);
+            console.log("✅ 카카오 SDK 초기화 완료");
+          } else {
+            // 환경변수가 없으면 서버에서 앱키 가져오기
+            try {
+              const response = await fetch("/api/auth/kakao-auth-url");
+              if (response.ok) {
+                // 이미 앱키가 서버에 설정되어 있다면 팝업 방식 대신 리다이렉트 방식 사용
+                console.log(
+                  "✅ 카카오 서버 설정 확인됨 - 리다이렉트 방식 사용"
+                );
+              } else {
+                console.warn("⚠️ 카카오 앱키가 설정되지 않았습니다.");
+              }
+            } catch (error) {
+              console.warn("⚠️ 카카오 설정 확인 실패:", error);
+            }
+          }
+        } else {
+          console.log("✅ 카카오 SDK 이미 초기화됨");
+        }
       } catch (error) {
         console.error("❌ 카카오 SDK 초기화 실패:", error);
       }
@@ -157,146 +179,140 @@ export default function LoginPage() {
 
   const handleKakaoLogin = async () => {
     try {
-      // 카카오 SDK 상태 확인
+      // 브라우저 환경 확인
       if (typeof window === "undefined") {
         console.error("❌ 브라우저 환경이 아님");
         alert("브라우저 환경에서만 사용 가능합니다.");
         return;
       }
 
-      if (!window.Kakao) {
-        console.error("❌ 카카오 SDK가 로드되지 않았습니다");
-        alert("카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.");
+      // 카카오 인증 URL 가져오기
+      const authUrlResponse = await fetch("/api/auth/kakao-auth-url");
+      if (!authUrlResponse.ok) {
+        const errorData = await authUrlResponse.json();
+        console.error("❌ 카카오 인증 URL 요청 실패:", errorData);
+        alert(errorData.message || "카카오 인증 URL을 가져올 수 없습니다.");
         return;
       }
 
-      if (!window.Kakao.isInitialized()) {
-        console.error("❌ 카카오 SDK가 초기화되지 않았습니다");
-        alert("카카오 SDK가 초기화되지 않았습니다. 페이지를 새로고침해주세요.");
-        return;
-      }
+      const { authUrl } = await authUrlResponse.json();
 
-      // Auth 메서드 존재 확인
-      if (!window.Kakao.Auth) {
-        console.error("❌ 카카오 Auth 객체가 없습니다");
-        alert(
-          "카카오 로그인 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요."
+      // 카카오 로그인 팝업 열기
+      const authCode = await new Promise<string>((resolve, reject) => {
+        const popup = window.open(
+          authUrl + "&prompt=login",
+          "kakaoLogin",
+          "width=500,height=600,scrollbars=yes,resizable=yes"
         );
-        return;
+
+        if (!popup) {
+          reject(new Error("팝업이 차단되었습니다. 팝업 차단을 해제해주세요."));
+          return;
+        }
+
+        // 팝업에서 코드 받기
+        const checkClosed = setInterval(() => {
+          try {
+            if (popup.closed) {
+              clearInterval(checkClosed);
+              reject(new Error("로그인이 취소되었습니다."));
+              return;
+            }
+
+            // URL에서 code 파라미터 확인
+            const url = popup.location.href;
+            if (url.includes("code=")) {
+              const urlParams = new URLSearchParams(popup.location.search);
+              const code = urlParams.get("code");
+              if (code) {
+                popup.close();
+                clearInterval(checkClosed);
+                resolve(code);
+              }
+            } else if (url.includes("error=")) {
+              const urlParams = new URLSearchParams(popup.location.search);
+              const error = urlParams.get("error");
+              const errorDescription = urlParams.get("error_description");
+              popup.close();
+              clearInterval(checkClosed);
+              reject(
+                new Error(`카카오 로그인 오류: ${error} - ${errorDescription}`)
+              );
+            }
+          } catch (e) {
+            // 팝업이 다른 도메인에 있을 때는 접근할 수 없음 (정상)
+            // CORS 오류는 무시
+          }
+        }, 1000);
+
+        // 타임아웃 설정 (5분)
+        setTimeout(() => {
+          if (!popup.closed) {
+            popup.close();
+            clearInterval(checkClosed);
+            reject(new Error("로그인 시간이 초과되었습니다."));
+          }
+        }, 300000);
+      });
+
+      // 인증 코드로 액세스 토큰 요청
+      const tokenResponse = await fetch("/api/auth/kakao-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: authCode }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json();
+        console.error("❌ 카카오 토큰 요청 실패:", errorData);
+        throw new Error(errorData.message || "토큰 요청에 실패했습니다.");
       }
 
-      // 카카오 로그인 - 팝업 방식
-      try {
-        // 카카오 인증 URL 가져오기
-        const authUrlResponse = await fetch("/api/auth/kakao-auth-url");
-        if (!authUrlResponse.ok) {
-          throw new Error("카카오 인증 URL을 가져올 수 없습니다");
-        }
-        const { authUrl } = await authUrlResponse.json();
+      const tokenData = await tokenResponse.json();
 
-        // 카카오 로그인 팝업 열기
-        const authCode = await new Promise<string>((resolve, reject) => {
-          const popup = window.open(
-            authUrl + "&prompt=login",
-            "kakaoLogin",
-            "width=500,height=600,scrollbars=yes,resizable=yes"
+      // 카카오 로그인 API 호출
+      const response = await fetch("/api/auth/kakao-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accessToken: tokenData.access_token,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.needsSignup && data.redirectToSignup) {
+          // 신규 사용자 - 회원가입 페이지로 리다이렉트
+          const socialUserId = data.socialUserId || "";
+          router.push(
+            `/signup?social=kakao&socialUserId=${encodeURIComponent(
+              socialUserId
+            )}`
           );
-
-          if (!popup) {
-            reject(new Error("팝업이 차단되었습니다"));
-            return;
-          }
-
-          // 팝업에서 코드 받기
-          const checkClosed = setInterval(() => {
-            try {
-              if (popup.closed) {
-                clearInterval(checkClosed);
-                reject(new Error("로그인이 취소되었습니다"));
-                return;
-              }
-
-              // URL에서 code 파라미터 확인
-              const url = popup.location.href;
-              if (url.includes("code=")) {
-                const urlParams = new URLSearchParams(popup.location.search);
-                const code = urlParams.get("code");
-                if (code) {
-                  popup.close();
-                  clearInterval(checkClosed);
-                  resolve(code);
-                }
-              }
-            } catch {
-              // 팝업이 다른 도메인에 있을 때는 접근할 수 없음 (정상)
-            }
-          }, 1000);
-        });
-
-        // 인증 코드로 액세스 토큰 요청
-        const tokenResponse = await fetch("/api/auth/kakao-token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ code: authCode }),
-        });
-
-        if (!tokenResponse.ok) {
-          throw new Error("토큰 요청 실패");
-        }
-
-        const tokenData = await tokenResponse.json();
-
-        // 기존 로그인 API 호출
-        const response = await fetch("/api/auth/kakao-login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            accessToken: tokenData.access_token,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          if (data.needsSignup && data.redirectToSignup) {
-            // 신규 사용자 - 회원가입 페이지로 리다이렉트
-            const socialUserId = data.socialUserId || "";
-            router.push(
-              `/signup?social=kakao&socialUserId=${encodeURIComponent(
-                socialUserId
-              )}`
-            );
-          } else {
-            // 기존 사용자 - 로그인 처리
-            const { tokenManager } = await import("@/lib/api");
-            tokenManager.setTokens(data.accessToken, data.refreshToken);
-
-            // 페이지 새로고침으로 인증 상태 업데이트
-            window.location.href = "/";
-          }
         } else {
-          console.error("🔴 카카오 로그인 API 오류:", data);
-          alert(data.message || "카카오 로그인에 실패했습니다.");
+          // 기존 사용자 - 로그인 처리
+          const { tokenManager } = await import("@/lib/api");
+          tokenManager.setTokens(data.accessToken, data.refreshToken);
+
+          // 페이지 새로고침으로 인증 상태 업데이트
+          window.location.href = "/";
         }
-      } catch (loginError) {
-        console.error("🔴 카카오 로그인 과정 오류:", loginError);
-        if (loginError instanceof Error) {
-          alert(loginError.message);
-        } else {
-          alert("카카오 로그인 중 오류가 발생했습니다.");
-        }
+      } else {
+        console.error("❌ 카카오 로그인 API 오류:", data);
+        alert(data.message || "카카오 로그인에 실패했습니다.");
       }
     } catch (error) {
-      console.error("🔴 카카오 로그인 전체 오류:", error);
-      console.error(
-        "🔴 오류 스택:",
-        error instanceof Error ? error.stack : "스택 없음"
-      );
-      alert("카카오 로그인 중 오류가 발생했습니다.");
+      console.error("❌ 카카오 로그인 오류:", error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert("카카오 로그인 중 오류가 발생했습니다.");
+      }
     }
   };
 
