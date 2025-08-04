@@ -11,7 +11,7 @@ import {
   tokenManager,
 } from "@/lib/api";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // 회원정보 데이터 타입
 interface UserProfileData {
@@ -79,6 +79,7 @@ interface EditableCompanyData {
 export default function ProfilePage() {
   const { user, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -571,6 +572,21 @@ export default function ProfilePage() {
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  // URL 파라미터에 따른 탭 설정
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (
+      tab &&
+      (tab === "memberInfo" ||
+        tab === "businessInfo" ||
+        tab === "password" ||
+        tab === "sendingNumber" ||
+        tab === "taxInvoice")
+    ) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // 사용자 정보 로드
   useEffect(() => {

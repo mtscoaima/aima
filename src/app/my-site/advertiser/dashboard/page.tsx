@@ -165,42 +165,45 @@ export default function AdvertiserDashboard() {
 
   return (
     <AdvertiserLoginRequiredGuard>
-      <div className="dashboard-container">
-        {/* 상단 파란색 배너 */}
-        <div className="bg-blue-500 p-4 mb-6 rounded-lg">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center text-white">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-lg font-medium">사업자 정보 인증</h1>
-                  {!isLoading && userData && (
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
-                        userData.approval_status,
-                        hasCompanyInfo(userData)
-                      )}`}
-                    >
-                      {getApprovalStatusText(
-                        userData.approval_status,
-                        hasCompanyInfo(userData)
-                      )}
-                    </span>
-                  )}
+      <div className="dashboard-container pt-8">
+        {/* 상단 파란색 배너 - 승인 완료 상태가 아닐 때만 표시 */}
+        {!isLoading && userData && userData.approval_status !== "APPROVED" && (
+          <div className="max-w-7xl mx-auto px-4 mb-6">
+            <div className="bg-blue-500 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-white">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h1 className="text-lg font-medium">사업자 정보 인증</h1>
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
+                          userData.approval_status,
+                          hasCompanyInfo(userData)
+                        )}`}
+                      >
+                        {getApprovalStatusText(
+                          userData.approval_status,
+                          hasCompanyInfo(userData)
+                        )}
+                      </span>
+                    </div>
+                    <p className="text-sm opacity-90">
+                      원활한 에이마 서비스 이용을 위해 기업 정보를 인증해
+                      주세요.
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm opacity-90">
-                  원활한 에이마 서비스 이용을 위해 기업 정보를 인증해 주세요.
-                </p>
+                <div className="flex-1"></div>
+                <Link
+                  href="/my-site/advertiser/business-verification"
+                  className="bg-blue-50 border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm hover:bg-blue-100 inline-block"
+                >
+                  사업자 정보 인증
+                </Link>
               </div>
             </div>
-            <div className="flex-1"></div>
-            <Link
-              href="/my-site/advertiser/business-verification"
-              className="bg-blue-50 border border-blue-600 text-blue-600 px-4 py-2 rounded text-sm hover:bg-blue-100 inline-block"
-            >
-              사업자 정보 인증
-            </Link>
           </div>
-        </div>
+        )}
 
         <div className="max-w-7xl mx-auto px-4">
           {/* 3개 카드 레이아웃 */}
@@ -208,9 +211,12 @@ export default function AdvertiserDashboard() {
             {/* 회원정보 카드 */}
             <div className="bg-white rounded-lg shadow p-4 border border-gray-50 flex flex-col justify-between">
               <div className="flex flex-col gap-2">
-                <h2 className="text-lg font-semibold mb-4">{user?.name}</h2>
+                <h2 className="text-lg font-semibold mb-4">{user?.name}님</h2>
                 <p className="text-gray-600 mb-6">
-                  {user?.id || "example1234"}
+                  {userData?.username ||
+                    userData?.email ||
+                    user?.email ||
+                    "example1234"}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -221,7 +227,7 @@ export default function AdvertiserDashboard() {
                   회원정보변경
                 </Link>
                 <Link
-                  href="/my-site/advertiser/profile"
+                  href="/my-site/advertiser/profile?tab=businessInfo"
                   className="flex-1 bg-blue-500 text-white py-2 px-4 rounded text-sm hover:bg-blue-600 text-center"
                 >
                   사업자정보변경
