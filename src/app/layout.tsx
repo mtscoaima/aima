@@ -4,6 +4,7 @@ import Script from "next/script";
 import Layout from "../components/Layout";
 import { AuthProvider } from "../contexts/AuthContext";
 import { BalanceProvider } from "../contexts/BalanceContext";
+import { NotificationProvider } from "../contexts/NotificationContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,7 +41,9 @@ export default function RootLayout({
 
         <AuthProvider>
           <BalanceProvider>
-            <Layout>{children}</Layout>
+            <NotificationProvider>
+              <Layout>{children}</Layout>
+            </NotificationProvider>
           </BalanceProvider>
         </AuthProvider>
       </body>

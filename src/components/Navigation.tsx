@@ -4,12 +4,25 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotificationUtils } from "@/hooks/useNotificationUtils";
+import { Notification } from "@/contexts/NotificationContext";
 import ConfirmDialog from "./ConfirmDialog";
 
 export default function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
+  const notificationUtils = useNotificationUtils();
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    handleNotificationClick,
+    markAllAsRead,
+    getNotificationIcon,
+    getRelativeTime,
+    truncateMessage,
+  } = notificationUtils;
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -318,39 +331,86 @@ export default function Navigation() {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    <span className="notification-badge">3</span>
+                    {unreadCount > 0 && (
+                      <span className="notification-badge">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                   </button>
                   {showNotifications && (
                     <div className="notification-dropdown">
                       <div className="notification-header">
                         <h4>알림</h4>
-                        <button className="mark-all-read">모두 읽음</button>
+                        {unreadCount > 0 && (
+                          <button
+                            className="mark-all-read"
+                            onClick={markAllAsRead}
+                            disabled={isLoading}
+                          >
+                            모두 읽음
+                          </button>
+                        )}
                       </div>
                       <div className="notification-list">
-                        <div className="notification-item unread">
-                          <div className="notification-content">
-                            <p>새로운 메시지가 발송되었습니다.</p>
-                            <span className="notification-time">5분 전</span>
+                        {isLoading ? (
+                          <div className="notification-loading">
+                            <p>알림을 불러오는 중...</p>
                           </div>
-                        </div>
-                        <div className="notification-item unread">
-                          <div className="notification-content">
-                            <p>캠페인이 성공적으로 완료되었습니다.</p>
-                            <span className="notification-time">1시간 전</span>
+                        ) : notifications.length === 0 ? (
+                          <div className="notification-empty">
+                            <p>새로운 알림이 없습니다.</p>
                           </div>
-                        </div>
-                        <div className="notification-item">
-                          <div className="notification-content">
-                            <p>월간 리포트가 준비되었습니다.</p>
-                            <span className="notification-time">2시간 전</span>
-                          </div>
-                        </div>
+                        ) : (
+                          notifications
+                            .slice(0, 5)
+                            .map((notification: Notification) => (
+                              <div
+                                key={notification.id}
+                                className={`notification-item ${
+                                  !notification.is_read ? "unread" : ""
+                                }`}
+                                onClick={() =>
+                                  handleNotificationClick(notification)
+                                }
+                                style={{
+                                  cursor: notification.action_url
+                                    ? "pointer"
+                                    : "default",
+                                }}
+                              >
+                                <div className="notification-content">
+                                  <div className="notification-icon-title">
+                                    {getNotificationIcon(notification.type)}
+                                    <h5>{notification.title}</h5>
+                                  </div>
+                                  <p>
+                                    {truncateMessage(notification.message, 80)}
+                                  </p>
+                                  <span className="notification-time">
+                                    {getRelativeTime(notification.created_at)}
+                                  </span>
+                                </div>
+                                {!notification.is_read && (
+                                  <div className="notification-unread-dot"></div>
+                                )}
+                              </div>
+                            ))
+                        )}
                       </div>
-                      <div className="notification-footer">
-                        <button className="view-all-notifications">
-                          모든 알림 보기
-                        </button>
-                      </div>
+                      {notifications.length > 0 && (
+                        <div className="notification-footer">
+                          <button
+                            className="view-all-notifications"
+                            onClick={() => {
+                              setShowNotifications(false);
+                              // TODO: 전체 알림 페이지로 이동 (향후 구현)
+                              router.push("/notifications");
+                            }}
+                          >
+                            모든 알림 보기
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
