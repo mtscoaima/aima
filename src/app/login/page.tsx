@@ -91,25 +91,17 @@ export default function LoginPage() {
 
           if (kakaoAppKey) {
             window.Kakao.init(kakaoAppKey);
-            console.log("✅ 카카오 SDK 초기화 완료");
           } else {
             // 환경변수가 없으면 서버에서 앱키 가져오기
             try {
               const response = await fetch("/api/auth/kakao-auth-url");
-              if (response.ok) {
-                // 이미 앱키가 서버에 설정되어 있다면 팝업 방식 대신 리다이렉트 방식 사용
-                console.log(
-                  "✅ 카카오 서버 설정 확인됨 - 리다이렉트 방식 사용"
-                );
-              } else {
+              if (!response.ok) {
                 console.warn("⚠️ 카카오 앱키가 설정되지 않았습니다.");
               }
             } catch (error) {
               console.warn("⚠️ 카카오 설정 확인 실패:", error);
             }
           }
-        } else {
-          console.log("✅ 카카오 SDK 이미 초기화됨");
         }
       } catch (error) {
         console.error("❌ 카카오 SDK 초기화 실패:", error);

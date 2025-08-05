@@ -69,7 +69,6 @@ function PaymentSuccessContent() {
         localStorage.removeItem("payment_redirect_url"); // 사용 후 제거
       }
 
-      console.log("페이지 이동:", finalUrl);
       window.location.href = finalUrl;
     } catch (error) {
       console.error("페이지 이동 오류:", error);

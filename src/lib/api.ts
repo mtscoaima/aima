@@ -33,9 +33,10 @@ export interface SignupRequest {
   taxInvoiceEmail?: string;
   taxInvoiceManager?: string;
   taxInvoiceContact?: string;
-  agreeMarketing?: boolean;
   agreeTerms?: boolean;
   agreePrivacy?: boolean;
+  agreeSmsMarketing?: boolean;
+  agreeEmailMarketing?: boolean;
 }
 
 export interface RefreshTokenRequest {
@@ -92,15 +93,11 @@ export interface SignupResponse {
   taxInvoiceEmail?: string;
   taxInvoiceManager?: string;
   taxInvoiceContact?: string;
-  agreeMarketing?: boolean;
   agreeTerms?: boolean;
   agreePrivacy?: boolean;
-  agreementInfo?: {
-    terms: boolean;
-    privacy: boolean;
-    marketing: boolean;
-    agreedAt: string;
-  };
+  agreeSmsMarketing?: boolean;
+  agreeEmailMarketing?: boolean;
+  agreedAt?: string;
 }
 
 export interface UserInfoResponse {
@@ -113,9 +110,11 @@ export interface UserInfoResponse {
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
-  marketingConsent?: boolean;
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
   smsMarketingConsent?: boolean;
   emailMarketingConsent?: boolean;
+  agreedAt?: string;
   approval_status?: string;
   // SNS 연동 정보
   kakao_user_id?: string;
@@ -168,8 +167,9 @@ export interface UpdateUserRequest {
   faxNumber?: string;
   homepage?: string;
   approval_status?: string;
-  // 마케팅 동의 필드들 (기존 호환성을 위해 유지)
-  marketingConsent?: boolean;
+  // 약관 및 마케팅 동의 필드들
+  agreeTerms?: boolean;
+  agreePrivacy?: boolean;
   smsMarketingConsent?: boolean;
   emailMarketingConsent?: boolean;
 }

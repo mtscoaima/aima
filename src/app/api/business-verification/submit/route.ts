@@ -205,6 +205,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 6. 관리자에게 알림 전송
+    try {
+      const userName =
+        updateResult[0].name || updateResult[0].email || "사용자";
+
+      const notificationData = {
+        recipient_role: "ADMIN",
+        sender_user_id: parseInt(userId),
+        title: "새로운 사업자 인증 신청",
+        message: `${userName}님이 사업자 인증을 신청했습니다. 검토가 필요합니다.`,
+        type: "BUSINESS_VERIFICATION",
+        action_url: `/admin/member-approval?tab=verification&user_id=${userId}`,
+      };
+
+      const { error: notificationError } = await supabase
+        .from("notifications")
+        .insert(notificationData);
+
+      if (notificationError) {
+        console.error("관리자 알림 전송 실패:", notificationError);
+        // 알림 전송 실패는 전체 프로세스를 중단하지 않음
+      }
+    } catch (notificationErr) {
+      console.error("알림 전송 중 오류:", notificationErr);
+      // 알림 전송 실패는 전체 프로세스를 중단하지 않음
+    }
+
     return NextResponse.json({
       success: true,
       message:

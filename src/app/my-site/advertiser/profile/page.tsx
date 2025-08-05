@@ -11,7 +11,7 @@ import {
   tokenManager,
 } from "@/lib/api";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // 회원정보 데이터 타입
 interface UserProfileData {
@@ -79,6 +79,7 @@ interface EditableCompanyData {
 export default function ProfilePage() {
   const { user, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -572,6 +573,21 @@ export default function ProfilePage() {
     }
   };
 
+  // URL 파라미터에 따른 탭 설정
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (
+      tab &&
+      (tab === "memberInfo" ||
+        tab === "businessInfo" ||
+        tab === "password" ||
+        tab === "sendingNumber" ||
+        tab === "taxInvoice")
+    ) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   // 사용자 정보 로드
   useEffect(() => {
     const loadUserData = async () => {
@@ -593,7 +609,7 @@ export default function ProfilePage() {
           lastLoginDate: userInfo.lastLoginAt
             ? new Date(userInfo.lastLoginAt).toLocaleString("ko-KR")
             : "",
-          marketingConsent: userInfo.marketingConsent || false,
+          marketingConsent: false, // 레거시 호환성을 위해 기본값 사용
           smsMarketing: userInfo.smsMarketingConsent || false, // 새로운 필드 사용
           emailMarketing: userInfo.emailMarketingConsent || false, // 새로운 필드 사용
           approval_status: userInfo.approval_status || "",
@@ -1944,7 +1960,7 @@ export default function ProfilePage() {
                     <p className="text-xs font-semibold ">
                       ※사업자 정보를 변경하고 싶어요.{" "}
                       <button
-                        onClick={() => router.push("/support")}
+                        onClick={() => router.push("/support?tab=contact")}
                         className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
                       >
                         고객센터 문의
