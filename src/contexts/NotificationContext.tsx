@@ -72,7 +72,7 @@ export function NotificationProvider({
   // API 호출을 위한 공통 함수
   const makeApiCall = useCallback(
     async (url: string, options: RequestInit = {}) => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       if (!token) {
         throw new Error("인증 토큰이 없습니다.");
       }

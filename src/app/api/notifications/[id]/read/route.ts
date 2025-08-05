@@ -33,7 +33,7 @@ async function getUserFromToken(request: NextRequest) {
       role: string;
     };
     return decoded;
-  } catch (error) {
+  } catch {
     throw new Error("유효하지 않은 토큰입니다.");
   }
 }
@@ -41,11 +41,12 @@ async function getUserFromToken(request: NextRequest) {
 // PUT /api/notifications/[id]/read - 특정 알림을 읽음으로 처리
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserFromToken(request);
-    const notificationId = parseInt(params.id);
+    const resolvedParams = await params;
+    const notificationId = parseInt(resolvedParams.id);
 
     if (isNaN(notificationId)) {
       return NextResponse.json(

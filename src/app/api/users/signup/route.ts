@@ -44,6 +44,8 @@ interface SignupRequest {
   agreeMarketing?: boolean;
   agreeTerms?: boolean;
   agreePrivacy?: boolean;
+  agreeSmsMarketing?: boolean;
+  agreeEmailMarketing?: boolean;
 }
 
 interface ErrorResponse {

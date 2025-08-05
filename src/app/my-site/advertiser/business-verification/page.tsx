@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { tokenManager, getUserInfo, UserInfoResponse } from "@/lib/api";
@@ -59,9 +60,13 @@ const AlertModal: React.FC<AlertModalProps> = ({
 
 export default function BusinessVerificationPage() {
   const { user } = useAuth();
+  const router = useRouter();
 
   // 기존 데이터 로드 완료 여부
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // 인증 신청 성공 상태
+  const [isSubmissionSuccess, setIsSubmissionSuccess] = useState(false);
 
   const [businessType, setBusinessType] = useState("individual");
   const [businessName, setBusinessName] = useState("");
@@ -510,6 +515,12 @@ export default function BusinessVerificationPage() {
     setShowModal(false);
     setModalTitle("");
     setModalMessage("");
+    
+    // 인증 신청이 성공한 경우 루트 페이지로 리다이렉트
+    if (isSubmissionSuccess) {
+      setIsSubmissionSuccess(false);
+      router.push("/");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -620,6 +631,7 @@ export default function BusinessVerificationPage() {
       const result = await response.json();
 
       if (response.ok) {
+        setIsSubmissionSuccess(true);
         showAlertModal(
           "완료",
           result.message || "사업자 인증 신청이 완료되었습니다."

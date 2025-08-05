@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { JSX } from "react";
 import {
   useNotifications as useNotificationContext,
   Notification,
-  NotificationContextType,
+  NotificationPagination,
 } from "@/contexts/NotificationContext";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
@@ -13,7 +13,7 @@ import { useCallback } from "react";
 interface NotificationUtilsType {
   notifications: Notification[];
   unreadCount: number;
-  pagination: any;
+  pagination: NotificationPagination | null;
   isLoading: boolean;
   error: string | null;
   fetchNotifications: (page?: number, unreadOnly?: boolean) => Promise<void>;

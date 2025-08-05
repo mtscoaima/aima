@@ -27,8 +27,19 @@ interface NotificationRequest {
   action_url?: string | null;
 }
 
+// JWT 토큰 사용자 정보 타입
+interface UserToken {
+  userId: string;
+  email: string;
+  name: string;
+  phoneNumber: string;
+  role: string;
+}
+
 // JWT 토큰에서 사용자 정보 추출 (선택적 - 시스템 알림의 경우 필요 없음)
-async function getUserFromToken(request: NextRequest): Promise<any | null> {
+async function getUserFromToken(
+  request: NextRequest
+): Promise<UserToken | null> {
   const authHeader = request.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
@@ -36,15 +47,10 @@ async function getUserFromToken(request: NextRequest): Promise<any | null> {
 
   const token = authHeader.substring(7);
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string;
-      email: string;
-      name: string;
-      phoneNumber: string;
-      role: string;
-    };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as UserToken;
     return decoded;
   } catch (error) {
+    console.error("JWT 토큰 검증 오류:", error);
     return null;
   }
 }
@@ -166,38 +172,5 @@ export async function POST(request: NextRequest) {
       { error: "서버 오류가 발생했습니다." },
       { status: 500 }
     );
-  }
-}
-
-// 내부 함수: 사업자 인증 알림 전송 (다른 API에서 호출용)
-export async function sendBusinessVerificationNotification(
-  userName: string,
-  userId: number
-) {
-  try {
-    const notificationData = {
-      recipient_role: "ADMIN",
-      sender_user_id: userId,
-      title: "새로운 사업자 인증 신청",
-      message: `${userName}님이 사업자 인증을 신청했습니다. 검토가 필요합니다.`,
-      type: "BUSINESS_VERIFICATION",
-      action_url: `/admin/user-management?tab=verification&user_id=${userId}`,
-    };
-
-    const { data: createdNotification, error: createError } = await supabase
-      .from("notifications")
-      .insert(notificationData)
-      .select()
-      .single();
-
-    if (createError) {
-      console.error("사업자 인증 알림 생성 실패:", createError);
-      throw new Error("알림 생성에 실패했습니다.");
-    }
-
-    return createdNotification;
-  } catch (error) {
-    console.error("사업자 인증 알림 전송 오류:", error);
-    throw error;
   }
 }

@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
 
+// 타입 정의
+interface NotificationRead {
+  user_id: number;
+  read_at?: string;
+}
+
+interface NotificationWithReads {
+  id: number;
+  is_read?: boolean;
+  read_at?: string | null;
+  notification_reads?: NotificationRead[];
+  [key: string]: unknown;
+}
+
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -33,7 +47,7 @@ async function getUserFromToken(request: NextRequest) {
       role: string;
     };
     return decoded;
-  } catch (error) {
+  } catch {
     throw new Error("유효하지 않은 토큰입니다.");
   }
 }
@@ -73,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. 역할 기반 알림 조회
-    let roleNotificationsQuery = supabase
+    const roleNotificationsQuery = supabase
       .from("notifications")
       .select(
         `
@@ -101,9 +115,9 @@ export async function GET(request: NextRequest) {
     // 3. 역할 기반 알림에 읽음 상태 추가 및 필터링
     const processedRoleNotifications =
       roleNotifications
-        ?.map((notification: any) => {
+        ?.map((notification: NotificationWithReads) => {
           const readRecord = notification.notification_reads?.find(
-            (read: any) => read.user_id === parseInt(user.userId)
+            (read: NotificationRead) => read.user_id === parseInt(user.userId)
           );
 
           return {
@@ -113,7 +127,7 @@ export async function GET(request: NextRequest) {
             notification_reads: undefined, // 응답에서 제거
           };
         })
-        .filter((notification: any) => {
+        .filter((notification: NotificationWithReads) => {
           return unreadOnly ? !notification.is_read : true;
         }) || [];
 

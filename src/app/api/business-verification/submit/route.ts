@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
         title: "새로운 사업자 인증 신청",
         message: `${userName}님이 사업자 인증을 신청했습니다. 검토가 필요합니다.`,
         type: "BUSINESS_VERIFICATION",
-        action_url: `/admin/user-management?tab=verification&user_id=${userId}`,
+        action_url: `/admin/member-approval?tab=verification&user_id=${userId}`,
       };
 
       const { error: notificationError } = await supabase

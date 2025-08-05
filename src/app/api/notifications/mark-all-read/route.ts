@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
 
+// 타입 정의
+interface NotificationRead {
+  user_id: number;
+  read_at?: string;
+}
+
+interface NotificationWithReads {
+  id: number;
+  notification_reads?: NotificationRead[];
+  [key: string]: unknown;
+}
+
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -33,7 +45,7 @@ async function getUserFromToken(request: NextRequest) {
       role: string;
     };
     return decoded;
-  } catch (error) {
+  } catch {
     throw new Error("유효하지 않은 토큰입니다.");
   }
 }
@@ -85,20 +97,22 @@ export async function PUT(request: NextRequest) {
 
     // 3. 아직 읽지 않은 역할 기반 알림들 필터링
     const unreadRoleNotifications =
-      roleNotifications?.filter((notification: any) => {
+      roleNotifications?.filter((notification: NotificationWithReads) => {
         const hasRead = notification.notification_reads?.some(
-          (read: any) => read.user_id === parseInt(user.userId)
+          (read: NotificationRead) => read.user_id === parseInt(user.userId)
         );
         return !hasRead;
       }) || [];
 
     // 4. 읽지 않은 역할 기반 알림들에 대해 읽음 기록 추가
     if (unreadRoleNotifications.length > 0) {
-      const readRecords = unreadRoleNotifications.map((notification: any) => ({
-        notification_id: notification.id,
-        user_id: parseInt(user.userId),
-        read_at: currentTime,
-      }));
+      const readRecords = unreadRoleNotifications.map(
+        (notification: NotificationWithReads) => ({
+          notification_id: notification.id,
+          user_id: parseInt(user.userId),
+          read_at: currentTime,
+        })
+      );
 
       const { error: insertError } = await supabase
         .from("notification_reads")

@@ -609,7 +609,7 @@ export default function ProfilePage() {
           lastLoginDate: userInfo.lastLoginAt
             ? new Date(userInfo.lastLoginAt).toLocaleString("ko-KR")
             : "",
-          marketingConsent: userInfo.marketingConsent || false,
+          marketingConsent: false, // 레거시 호환성을 위해 기본값 사용
           smsMarketing: userInfo.smsMarketingConsent || false, // 새로운 필드 사용
           emailMarketing: userInfo.emailMarketingConsent || false, // 새로운 필드 사용
           approval_status: userInfo.approval_status || "",
