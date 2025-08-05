@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const includeInactive = searchParams.get("include_inactive") === "true";
     const page = searchParams.get("page");
     const limit = searchParams.get("limit");
+    const search = searchParams.get("search");
+    const category = searchParams.get("category");
 
     // 페이지네이션이 요청된 경우
     const usePagination = page !== null || limit !== null;
@@ -23,6 +25,16 @@ export async function GET(request: NextRequest) {
 
     if (!includeInactive) {
       query = query.eq("is_active", true);
+    }
+
+    // 검색 기능 추가
+    if (search) {
+      query = query.or(`question.ilike.%${search}%,answer.ilike.%${search}%`);
+    }
+
+    // 카테고리 필터링 추가
+    if (category) {
+      query = query.eq("category", category);
     }
 
     if (usePagination) {
@@ -37,6 +49,18 @@ export async function GET(request: NextRequest) {
 
       if (!includeInactive) {
         countQuery = countQuery.eq("is_active", true);
+      }
+
+      // 검색 조건을 카운트 쿼리에도 적용
+      if (search) {
+        countQuery = countQuery.or(
+          `question.ilike.%${search}%,answer.ilike.%${search}%`
+        );
+      }
+
+      // 카테고리 필터링을 카운트 쿼리에도 적용
+      if (category) {
+        countQuery = countQuery.eq("category", category);
       }
 
       const { count, error: countError } = await countQuery;

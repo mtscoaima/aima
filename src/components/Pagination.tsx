@@ -18,9 +18,10 @@ const Pagination: React.FC<PaginationProps> = ({
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
+    const actualTotalPages = Math.max(1, totalPages); // 최소 1페이지 보장
 
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    const endPage = Math.min(actualTotalPages, startPage + maxVisiblePages - 1);
 
     // 끝 페이지 조정
     if (endPage - startPage < maxVisiblePages - 1) {
@@ -34,14 +35,11 @@ const Pagination: React.FC<PaginationProps> = ({
     return pageNumbers;
   };
 
-  if (totalPages <= 1) return null;
+  // 페이지네이션 항상 표시 (주석처리)
+  // if (totalPages <= 1) return null;
 
   return (
     <div className={`pagination-container ${className}`}>
-      <div className="pagination-info">
-        총 {totalItems}개 · {currentPage}/{totalPages} 페이지
-      </div>
-
       <div className="pagination-controls">
         <button
           className="pagination-button pagination-prev"
@@ -76,7 +74,7 @@ const Pagination: React.FC<PaginationProps> = ({
         <button
           className="pagination-button pagination-next"
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          disabled={currentPage === Math.max(1, totalPages)}
           title="다음 페이지"
         >
           ›
@@ -84,8 +82,8 @@ const Pagination: React.FC<PaginationProps> = ({
 
         <button
           className="pagination-button pagination-next"
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(Math.max(1, totalPages))}
+          disabled={currentPage === Math.max(1, totalPages)}
           title="마지막 페이지"
         >
           »»
