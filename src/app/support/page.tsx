@@ -39,6 +39,29 @@ const SupportPage = () => {
     "register" | "history"
   >("register");
 
+  // 카테고리 매핑 상수
+  const CATEGORY_DISPLAY_MAP: { [key: string]: string } = {
+    AI_TARGET_MARKETING: "AI 타깃마케팅",
+    PRICING: "요금제",
+    CHARGING: "충전",
+    LOGIN: "로그인",
+    USER_INFO: "회원정보",
+    MESSAGE: "문자",
+    SEND_RESULT: "발송결과",
+    OTHER: "기타",
+  };
+
+  const CATEGORY_CODE_MAP: { [key: string]: string } = {
+    "AI 타깃마케팅": "AI_TARGET_MARKETING",
+    요금제: "PRICING",
+    충전: "CHARGING",
+    로그인: "LOGIN",
+    회원정보: "USER_INFO",
+    문자: "MESSAGE",
+    발송결과: "SEND_RESULT",
+    기타: "OTHER",
+  };
+
   // 문의 폼 상태
   const [inquiryForm, setInquiryForm] = useState({
     category: "",
@@ -59,6 +82,7 @@ const SupportPage = () => {
     attachedFile?: {
       name: string;
       size: string;
+      url?: string;
     } | null;
     status: "pending" | "completed";
     createdAt: string;
@@ -85,167 +109,203 @@ const SupportPage = () => {
   });
   const [editSelectedFile, setEditSelectedFile] = useState<File | null>(null);
 
-  const [inquiries, setInquiries] = useState<InquiryType[]>([
-    {
-      id: 1,
-      category: "AI 타깃마케팅",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content:
-        "안녕하세요. 로그인에 문제가 있어 문의드립니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.",
-      attachedFile: {
-        name: "이미지.jpg",
-        size: "3MB",
-      },
-      status: "pending",
-      createdAt: "2025.09.22",
-      answer: null,
-    },
-    {
-      id: 2,
-      category: "로그인",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content:
-        "안녕하세요. 로그인에 문제가 있어 문의드립니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.",
-      attachedFile: {
-        name: "이미지.jpg",
-        size: "3MB",
-      },
-      status: "completed",
-      createdAt: "2025.09.22",
-      answer: {
-        author: "예이마",
-        content:
-          "안녕하세요. 예이마입니다. 문의주신 내용에 대한 답변 안내드립니다. 문의주신 내용에 대한 답변 안내드립니다.\n문의주신 내용에 대한 답변 안내드립니다. 문의주신 내용에 대한 답변 안내드립니다.",
-        createdAt: "2025.09.22",
-      },
-    },
-    {
-      id: 3,
-      category: "충전",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content: "충전 관련 문의입니다.",
-      attachedFile: null,
-      status: "completed",
-      createdAt: "2025.09.22",
-      answer: {
-        author: "관리자",
-        content: "충전 관련 답변입니다.",
-        createdAt: "2025.09.22",
-      },
-    },
-    {
-      id: 4,
-      category: "회원정보",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content: "회원정보 관련 문의입니다.",
-      attachedFile: null,
-      status: "completed",
-      createdAt: "2025.09.22",
-      answer: {
-        author: "관리자",
-        content: "회원정보 관련 답변입니다.",
-        createdAt: "2025.09.22",
-      },
-    },
-    {
-      id: 5,
-      category: "문자",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content: "문자 발송 관련 문의입니다.",
-      attachedFile: null,
-      status: "pending",
-      createdAt: "2025.09.21",
-      answer: null,
-    },
-    {
-      id: 6,
-      category: "로그인",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content: "로그인 관련 문의입니다.",
-      attachedFile: null,
-      status: "completed",
-      createdAt: "2025.09.21",
-      answer: {
-        author: "관리자",
-        content: "로그인 관련 답변입니다.",
-        createdAt: "2025.09.21",
-      },
-    },
-    {
-      id: 7,
-      category: "발송결과",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content: "발송결과 관련 문의입니다.",
-      attachedFile: null,
-      status: "pending",
-      createdAt: "2025.09.20",
-      answer: null,
-    },
-    {
-      id: 8,
-      category: "기타",
-      title: "문의의 대한 제목이 들어갑니다.",
-      content: "기타 관련 문의입니다.",
-      attachedFile: null,
-      status: "completed",
-      createdAt: "2025.09.20",
-      answer: {
-        author: "관리자",
-        content: "기타 관련 답변입니다.",
-        createdAt: "2025.09.20",
-      },
-    },
-    {
-      id: 9,
-      category: "AI 타깃마케팅",
-      title: "추가 문의 사항이 있습니다.",
-      content: "AI 타깃마케팅 관련 추가 문의입니다.",
-      attachedFile: null,
-      status: "pending",
-      createdAt: "2025.09.19",
-      answer: null,
-    },
-    {
-      id: 10,
-      category: "요금제",
-      title: "요금제 관련 문의드립니다.",
-      content: "요금제에 대해 자세히 알고 싶습니다.",
-      attachedFile: null,
-      status: "completed",
-      createdAt: "2025.09.19",
-      answer: {
-        author: "관리자",
-        content: "요금제 관련 상세 답변입니다.",
-        createdAt: "2025.09.19",
-      },
-    },
-    {
-      id: 11,
-      category: "충전",
-      title: "충전 관련해서 문의드립니다.",
-      content: "충전 방법에 대해 문의드립니다.",
-      attachedFile: null,
-      status: "pending",
-      createdAt: "2025.09.18",
-      answer: null,
-    },
-    {
-      id: 12,
-      category: "문자",
-      title: "문자 발송 관련 문의입니다.",
-      content: "문자 발송이 안 됩니다.",
-      attachedFile: null,
-      status: "completed",
-      createdAt: "2025.09.18",
-      answer: {
-        author: "관리자",
-        content: "문자 발송 문제 해결 방법입니다.",
-        createdAt: "2025.09.18",
-      },
-    },
-  ]);
+  const [inquiries, setInquiries] = useState<InquiryType[]>([]);
   const [inquiryCurrentPage, setInquiryCurrentPage] = useState(1);
   const inquiriesPerPage = 10;
+  const [inquiryLoading, setInquiryLoading] = useState(false);
+  const [inquiryError, setInquiryError] = useState<string | null>(null);
+  const [totalInquiries, setTotalInquiries] = useState(0);
+
+  // 문의 목록 가져오기
+  const fetchInquiries = async (page: number = 1) => {
+    setInquiryLoading(true);
+    setInquiryError(null);
+
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        setInquiryError("로그인이 필요합니다.");
+        return;
+      }
+
+      const response = await fetch(
+        `/api/inquiries?page=${page}&limit=${inquiriesPerPage}&sortBy=created_at&sortOrder=desc`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          console.log(result);
+          // 백엔드 응답 구조 확인 및 데이터 추출
+          const inquiriesData = result.data?.inquiries || result.data || [];
+
+          // 백엔드 데이터를 프론트엔드 형태로 변환
+          const mappedInquiries: InquiryType[] = inquiriesData.map(
+            (inquiry: {
+              id: number;
+              category: string;
+              title: string;
+              content: string;
+              status: string;
+              created_at: string;
+              attachments?: {
+                file_name: string;
+                file_size: number;
+                file_path: string;
+              }[];
+              replies?: { content: string; created_at: string }[];
+            }) => ({
+              id: inquiry.id,
+              category: getCategoryDisplayName(inquiry.category),
+              title: inquiry.title,
+              content: inquiry.content,
+              attachedFile:
+                inquiry.attachments && inquiry.attachments.length > 0
+                  ? {
+                      name: inquiry.attachments[0].file_name,
+                      size: formatFileSize(inquiry.attachments[0].file_size),
+                      url: getSupabaseFileUrl(inquiry.attachments[0].file_path),
+                    }
+                  : null,
+              status: inquiry.status === "ANSWERED" ? "completed" : "pending",
+              createdAt: formatDate(inquiry.created_at),
+              answer:
+                inquiry.replies && inquiry.replies.length > 0
+                  ? {
+                      author: "관리자",
+                      content: inquiry.replies[0].content,
+                      createdAt: formatDate(inquiry.replies[0].created_at),
+                    }
+                  : null,
+            })
+          );
+
+          setInquiries(mappedInquiries);
+          // 페이지네이션 데이터 추출
+          const paginationData =
+            result.data?.pagination || result.pagination || {};
+          setTotalInquiries(
+            paginationData.total || paginationData.totalItems || 0
+          );
+        } else {
+          setInquiryError(
+            result.error?.message || "문의 목록을 불러오는데 실패했습니다."
+          );
+        }
+      } else {
+        setInquiryError("문의 목록을 불러오는데 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("문의 목록 조회 오류:", error);
+      setInquiryError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setInquiryLoading(false);
+    }
+  };
+
+  // 카테고리 표시명 변환
+  const getCategoryDisplayName = (category: string) => {
+    return CATEGORY_DISPLAY_MAP[category] || category;
+  };
+
+  // 파일 크기 포맷
+  const formatFileSize = (bytes: number) => {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+    } else if (bytes >= 1024) {
+      return `${(bytes / 1024).toFixed(1)}KB`;
+    } else {
+      return `${bytes}B`;
+    }
+  };
+
+  // 날짜 포맷
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date
+      .toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+      .replace(/\. /g, ".")
+      .replace(".", ".");
+  };
+
+  // Supabase Storage 파일 URL 생성
+  const getSupabaseFileUrl = (filePath: string) => {
+    // Supabase URL을 환경변수에서 가져오거나 기본값 사용
+    const supabaseUrl =
+      typeof window !== "undefined"
+        ? window.location.origin.includes("localhost")
+          ? process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:54321"
+          : process.env.NEXT_PUBLIC_SUPABASE_URL
+        : process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    return `${supabaseUrl}/storage/v1/object/public/inquiry-attachments/${filePath}`;
+  };
+
+  // 개별 문의 상세 정보 조회 함수
+  const fetchUpdatedInquiryDetail = async (inquiryId: number) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        console.error("인증 토큰이 없습니다.");
+        return;
+      }
+
+      const response = await fetch(`/api/inquiries/${inquiryId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const inquiryData = result.data;
+
+        // API 응답을 InquiryType 형식으로 변환
+        const updatedInquiry: InquiryType = {
+          id: inquiryData.id,
+          category: getCategoryDisplayName(inquiryData.category),
+          title: inquiryData.title,
+          content: inquiryData.content,
+          attachedFile:
+            inquiryData.attachments && inquiryData.attachments.length > 0
+              ? {
+                  name: inquiryData.attachments[0].file_name,
+                  size: formatFileSize(inquiryData.attachments[0].file_size),
+                  url: getSupabaseFileUrl(inquiryData.attachments[0].file_path),
+                }
+              : null,
+          status: inquiryData.status === "ANSWERED" ? "completed" : "pending",
+          createdAt: formatDate(inquiryData.created_at),
+          answer:
+            inquiryData.replies && inquiryData.replies.length > 0
+              ? {
+                  author: "관리자",
+                  content: inquiryData.replies[0].content,
+                  createdAt: formatDate(inquiryData.replies[0].created_at),
+                }
+              : null,
+        };
+
+        setSelectedInquiry(updatedInquiry);
+      } else {
+        console.error("문의 상세 정보 조회 실패:", response.status);
+      }
+    } catch (error) {
+      console.error("문의 상세 정보 조회 오류:", error);
+    }
+  };
 
   // 로그인된 유저 정보 가져오기
   useEffect(() => {
@@ -294,6 +354,14 @@ const SupportPage = () => {
 
     fetchUserInfo();
   }, []);
+
+  // 문의내역 탭이 활성화될 때 문의 목록 불러오기
+  useEffect(() => {
+    if (activeContactTab === "history") {
+      fetchInquiries(inquiryCurrentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeContactTab, inquiryCurrentPage]);
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [faqs, setFaqs] = useState<FAQ[]>([]);
@@ -415,14 +483,12 @@ const SupportPage = () => {
   };
 
   // 문의내역 페이지네이션 처리
-  const totalInquiries = inquiries.length;
   const totalInquiryPages = Math.ceil(totalInquiries / inquiriesPerPage);
-  const startIndex = (inquiryCurrentPage - 1) * inquiriesPerPage;
-  const endIndex = startIndex + inquiriesPerPage;
-  const currentInquiries = inquiries.slice(startIndex, endIndex);
+  const currentInquiries = inquiries; // API에서 페이지별 데이터를 받아오므로 그대로 사용
 
   const handleInquiryPageChange = (page: number) => {
     setInquiryCurrentPage(page);
+    fetchInquiries(page);
   };
 
   // 문의 상세보기 핸들러
@@ -439,7 +505,7 @@ const SupportPage = () => {
   const handleEditInquiry = () => {
     if (selectedInquiry) {
       setEditForm({
-        category: selectedInquiry.category,
+        category: selectedInquiry.category, // 이미 한글 이름이므로 그대로 사용
         title: selectedInquiry.title,
         content: selectedInquiry.content,
       });
@@ -499,7 +565,7 @@ const SupportPage = () => {
     setInquiryDetailMode("detail");
   };
 
-  const handleSubmitEdit = () => {
+  const handleSubmitEdit = async () => {
     // 폼 유효성 검사
     if (!editForm.category) {
       alert("문의유형을 선택해주세요.");
@@ -516,46 +582,109 @@ const SupportPage = () => {
       return;
     }
 
-    // TODO: API 호출로 문의 수정
-    console.log("문의 수정:", {
-      ...editForm,
-      file: editSelectedFile,
-    });
+    if (!selectedInquiry) return;
 
-    // 수정 완료 처리
-    if (selectedInquiry) {
-      const updatedInquiry = {
-        ...selectedInquiry,
-        category: editForm.category,
-        title: editForm.title,
-        content: editForm.content,
-        attachedFile: editSelectedFile
-          ? {
-              name: editSelectedFile.name,
-              size: `${(editSelectedFile.size / (1024 * 1024)).toFixed(1)}MB`,
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      // 카테고리를 영문 코드로 변환
+      const categoryCode =
+        CATEGORY_CODE_MAP[editForm.category] || editForm.category;
+
+      const response = await fetch(`/api/inquiries/${selectedInquiry.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          category: categoryCode,
+          title: editForm.title,
+          content: editForm.content,
+        }),
+      });
+
+      if (response.ok) {
+        // 새로운 파일이 선택된 경우 파일 업로드 처리
+        if (editSelectedFile) {
+          try {
+            // 새 파일 업로드 (API에서 기존 파일 자동 삭제 후 교체)
+            const formData = new FormData();
+            formData.append("file", editSelectedFile);
+            formData.append("inquiry_id", selectedInquiry.id.toString());
+
+            const uploadResponse = await fetch("/api/upload/inquiry", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+              console.error("파일 업로드 실패");
+              alert("문의는 수정되었지만 파일 업로드에 실패했습니다.");
             }
-          : selectedInquiry.attachedFile,
-      };
+          } catch (error) {
+            console.error("파일 업로드 오류:", error);
+            alert("문의는 수정되었지만 파일 업로드에 실패했습니다.");
+          }
+        }
 
-      setInquiries((prev) =>
-        prev.map((inquiry) =>
-          inquiry.id === selectedInquiry.id ? updatedInquiry : inquiry
-        )
-      );
-      setSelectedInquiry(updatedInquiry);
+        alert("문의가 성공적으로 수정되었습니다.");
+
+        // 문의 목록을 다시 불러오기 (첨부파일 정보 포함)
+        await fetchInquiries(inquiryCurrentPage);
+
+        // 수정된 문의의 최신 정보를 직접 API에서 가져와서 즉시 반영
+        await fetchUpdatedInquiryDetail(selectedInquiry.id);
+
+        setEditSelectedFile(null);
+        setInquiryDetailMode("detail");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error?.message || "문의 수정에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("문의 수정 오류:", error);
+      alert("문의 수정 중 오류가 발생했습니다.");
     }
-
-    alert("문의가 성공적으로 수정되었습니다.");
-    setInquiryDetailMode("detail");
   };
 
-  const handleDeleteInquiry = () => {
+  const handleDeleteInquiry = async () => {
     if (selectedInquiry && confirm("문의를 삭제하시겠습니까?")) {
-      setInquiries((prev) =>
-        prev.filter((inquiry) => inquiry.id !== selectedInquiry.id)
-      );
-      handleBackToList();
-      alert("문의가 삭제되었습니다.");
+      try {
+        const accessToken = localStorage.getItem("accessToken");
+        if (!accessToken) {
+          alert("로그인이 필요합니다.");
+          return;
+        }
+
+        const response = await fetch(`/api/inquiries/${selectedInquiry.id}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.ok) {
+          alert("문의가 삭제되었습니다.");
+          handleBackToList();
+          // 문의 목록을 다시 불러오기
+          fetchInquiries(inquiryCurrentPage);
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error?.message || "문의 삭제에 실패했습니다.");
+        }
+      } catch (error) {
+        console.error("문의 삭제 오류:", error);
+        alert("문의 삭제 중 오류가 발생했습니다.");
+      }
     }
   };
 
@@ -630,6 +759,10 @@ const SupportPage = () => {
         return;
       }
 
+      // 카테고리를 영문 코드로 변환
+      const categoryCode =
+        CATEGORY_CODE_MAP[inquiryForm.category] || inquiryForm.category;
+
       // API 호출로 문의 등록
       const response = await fetch("/api/inquiries", {
         method: "POST",
@@ -638,7 +771,7 @@ const SupportPage = () => {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          category: inquiryForm.category,
+          category: categoryCode,
           title: inquiryForm.title,
           content: inquiryForm.content,
           sms_notification: inquiryForm.smsNotification,
@@ -666,6 +799,9 @@ const SupportPage = () => {
         // 성공 메시지
         alert("문의가 성공적으로 등록되었습니다.");
 
+        // 새로 등록된 문의 ID 저장
+        const newInquiryId = result.data?.id;
+
         // 폼 초기화
         setInquiryForm({
           category: "",
@@ -678,6 +814,15 @@ const SupportPage = () => {
         // 문의내역 탭으로 이동하고 첫 페이지로 설정
         setActiveContactTab("history");
         setInquiryCurrentPage(1);
+
+        // 문의 목록을 다시 불러오기
+        await fetchInquiries(1);
+
+        // 새로 등록된 문의를 상세보기로 바로 표시
+        if (newInquiryId) {
+          await fetchUpdatedInquiryDetail(newInquiryId);
+          setInquiryDetailMode("detail");
+        }
       } else {
         const errorData = await response.json();
         console.error("문의 등록 API 오류:", errorData);
@@ -973,16 +1118,14 @@ const SupportPage = () => {
                             }
                           >
                             <option value="">문의유형을 선택해 주세요</option>
-                            <option value="AI_TARGET_MARKETING">
-                              AI 타깃마케팅
-                            </option>
-                            <option value="PRICING">요금제</option>
-                            <option value="CHARGING">충전</option>
-                            <option value="LOGIN">로그인</option>
-                            <option value="USER_INFO">회원정보</option>
-                            <option value="MESSAGE">문자</option>
-                            <option value="SEND_RESULT">발송결과</option>
-                            <option value="OTHER">기타</option>
+                            <option value="AI 타깃마케팅">AI 타깃마케팅</option>
+                            <option value="요금제">요금제</option>
+                            <option value="충전">충전</option>
+                            <option value="로그인">로그인</option>
+                            <option value="회원정보">회원정보</option>
+                            <option value="문자">문자</option>
+                            <option value="발송결과">발송결과</option>
+                            <option value="기타">기타</option>
                           </select>
                           <div className="dropdown-arrow">▼</div>
                         </div>
@@ -1129,7 +1272,21 @@ const SupportPage = () => {
                     </div>
 
                     <div className="inquiry-history-body">
-                      {currentInquiries.length > 0 ? (
+                      {inquiryLoading ? (
+                        <div className="loading-message">
+                          문의 내역을 불러오는 중...
+                        </div>
+                      ) : inquiryError ? (
+                        <div className="error-message">
+                          {inquiryError}
+                          <button
+                            onClick={() => fetchInquiries(inquiryCurrentPage)}
+                            className="retry-button"
+                          >
+                            다시 시도
+                          </button>
+                        </div>
+                      ) : currentInquiries.length > 0 ? (
                         currentInquiries.map((inquiry) => (
                           <div
                             key={inquiry.id}
@@ -1206,10 +1363,22 @@ const SupportPage = () => {
                     {selectedInquiry?.attachedFile && (
                       <div className="inquiry-attached-file">
                         <span className="attached-file-label">첨부파일</span>
-                        <span className="attached-file-info">
-                          {selectedInquiry.attachedFile.name} (
-                          {selectedInquiry.attachedFile.size})
-                        </span>
+                        {selectedInquiry.attachedFile.url ? (
+                          <a
+                            href={selectedInquiry.attachedFile.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="attached-file-link"
+                          >
+                            {selectedInquiry.attachedFile.name} (
+                            {selectedInquiry.attachedFile.size})
+                          </a>
+                        ) : (
+                          <span className="attached-file-info">
+                            {selectedInquiry.attachedFile.name} (
+                            {selectedInquiry.attachedFile.size})
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1309,16 +1478,16 @@ const SupportPage = () => {
                               }
                             >
                               <option value="">문의유형을 선택해 주세요</option>
-                              <option value="AI_TARGET_MARKETING">
+                              <option value="AI 타깃마케팅">
                                 AI 타깃마케팅
                               </option>
-                              <option value="PRICING">요금제</option>
-                              <option value="CHARGING">충전</option>
-                              <option value="LOGIN">로그인</option>
-                              <option value="USER_INFO">회원정보</option>
-                              <option value="MESSAGE">문자</option>
-                              <option value="SEND_RESULT">발송결과</option>
-                              <option value="OTHER">기타</option>
+                              <option value="요금제">요금제</option>
+                              <option value="충전">충전</option>
+                              <option value="로그인">로그인</option>
+                              <option value="회원정보">회원정보</option>
+                              <option value="문자">문자</option>
+                              <option value="발송결과">발송결과</option>
+                              <option value="기타">기타</option>
                             </select>
                             <div className="dropdown-arrow">▼</div>
                           </div>

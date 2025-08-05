@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
 import {
   UpdateInquiryRequest,
   ApiResponse,
   InquiryDetail,
 } from "@/types/inquiry";
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 // Supabase 클라이언트 초기화
 const supabase = createClient(
@@ -15,10 +18,11 @@ const supabase = createClient(
 // GET - 문의 상세 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const inquiryId = parseInt(params.id);
+    const resolvedParams = await params;
+    const inquiryId = parseInt(resolvedParams.id);
 
     if (isNaN(inquiryId)) {
       return NextResponse.json(
@@ -33,9 +37,9 @@ export async function GET(
       );
     }
 
-    // 사용자 인증 확인
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
+    // Authorization 헤더에서 토큰 추출
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         {
           success: false,
@@ -48,7 +52,53 @@ export async function GET(
       );
     }
 
-    // 문의 조회 (사용자 본인의 문의만)
+    const token = authHeader.substring(7); // "Bearer " 제거
+
+    // JWT 토큰 검증
+    let decoded: {
+      userId: string;
+      email: string;
+      name: string;
+      phoneNumber: string;
+      role: string;
+    };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        email: string;
+        name: string;
+        phoneNumber: string;
+        role: string;
+      };
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_TOKEN",
+            message: "유효하지 않은 토큰입니다.",
+          },
+        } as ApiResponse,
+        { status: 401 }
+      );
+    }
+
+    // 토큰에서 사용자 ID 추출
+    const userId = decoded.userId;
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_TOKEN",
+            message: "토큰에 사용자 정보가 없습니다.",
+          },
+        } as ApiResponse,
+        { status: 401 }
+      );
+    }
+
+    // 문의 조회 (사용자 본인의 문의만) - 첨부파일과 답변 정보 포함
     const { data: inquiry, error: inquiryError } = await supabase
       .from("inquiries")
       .select(
@@ -58,7 +108,9 @@ export async function GET(
           id,
           name,
           email
-        )
+        ),
+        attachments:inquiry_attachments(*),
+        replies:inquiry_replies(*)
       `
       )
       .eq("id", inquiryId)
@@ -158,10 +210,11 @@ export async function GET(
 // PUT - 문의 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const inquiryId = parseInt(params.id);
+    const resolvedParams = await params;
+    const inquiryId = parseInt(resolvedParams.id);
     const body: UpdateInquiryRequest = await request.json();
 
     if (isNaN(inquiryId)) {
@@ -193,15 +246,61 @@ export async function PUT(
       );
     }
 
-    // 사용자 인증 확인
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
+    // Authorization 헤더에서 토큰 추출
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "UNAUTHORIZED",
             message: "인증이 필요합니다.",
+          },
+        } as ApiResponse,
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7); // "Bearer " 제거
+
+    // JWT 토큰 검증
+    let decoded: {
+      userId: string;
+      email: string;
+      name: string;
+      phoneNumber: string;
+      role: string;
+    };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        email: string;
+        name: string;
+        phoneNumber: string;
+        role: string;
+      };
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_TOKEN",
+            message: "유효하지 않은 토큰입니다.",
+          },
+        } as ApiResponse,
+        { status: 401 }
+      );
+    }
+
+    // 토큰에서 사용자 ID 추출
+    const userId = decoded.userId;
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_TOKEN",
+            message: "토큰에 사용자 정보가 없습니다.",
           },
         } as ApiResponse,
         { status: 401 }
@@ -244,7 +343,13 @@ export async function PUT(
     }
 
     // 수정할 데이터 구성
-    const updateData: any = {};
+    const updateData: Partial<{
+      category: string;
+      title: string;
+      content: string;
+      contact_phone: string;
+      sms_notification: boolean;
+    }> = {};
     if (body.category) updateData.category = body.category;
     if (body.title) updateData.title = body.title.trim();
     if (body.content) updateData.content = body.content.trim();
@@ -312,10 +417,11 @@ export async function PUT(
 // DELETE - 문의 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const inquiryId = parseInt(params.id);
+    const resolvedParams = await params;
+    const inquiryId = parseInt(resolvedParams.id);
 
     if (isNaN(inquiryId)) {
       return NextResponse.json(
@@ -330,9 +436,9 @@ export async function DELETE(
       );
     }
 
-    // 사용자 인증 확인
-    const userId = request.headers.get("x-user-id");
-    if (!userId) {
+    // Authorization 헤더에서 토큰 추출
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         {
           success: false,
@@ -344,6 +450,27 @@ export async function DELETE(
         { status: 401 }
       );
     }
+
+    const token = authHeader.substring(7);
+
+    // JWT 토큰 검증
+    let decoded: { userId: string };
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_TOKEN",
+            message: "유효하지 않은 토큰입니다.",
+          },
+        } as ApiResponse,
+        { status: 401 }
+      );
+    }
+
+    const userId = decoded.userId;
 
     // 기존 문의 조회 및 삭제 권한 확인
     const { data: existingInquiry, error: fetchError } = await supabase
@@ -378,6 +505,24 @@ export async function DELETE(
         } as ApiResponse,
         { status: 403 }
       );
+    }
+
+    // 첨부파일이 있는 경우 Supabase Storage에서 삭제
+    const { data: attachments } = await supabase
+      .from("inquiry_attachments")
+      .select("file_path")
+      .eq("inquiry_id", inquiryId);
+
+    if (attachments && attachments.length > 0) {
+      for (const attachment of attachments) {
+        const { error: storageDeleteError } = await supabase.storage
+          .from("inquiry-attachments")
+          .remove([attachment.file_path]);
+
+        if (storageDeleteError) {
+          console.error("첨부파일 삭제 오류:", storageDeleteError);
+        }
+      }
     }
 
     // 문의 삭제 (관련 첨부파일과 답변은 CASCADE로 자동 삭제)
@@ -422,7 +567,7 @@ export async function DELETE(
 
 // 문의 수정 요청 유효성 검사
 function validateUpdateInquiryRequest(data: UpdateInquiryRequest) {
-  const errors: any = {};
+  const errors: Record<string, string> = {};
   let isValid = true;
 
   // 카테고리 검사 (제공된 경우)

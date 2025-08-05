@@ -251,10 +251,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 기본 쿼리 구성
+    // 기본 쿼리 구성 - 첨부파일과 답변 정보 포함
     let query = supabase
       .from("inquiries")
-      .select("*", { count: "exact" })
+      .select(
+        `
+        *,
+        attachments:inquiry_attachments(*),
+        replies:inquiry_replies(*)
+      `,
+        { count: "exact" }
+      )
       .eq("user_id", parseInt(userId));
 
     // 필터 적용

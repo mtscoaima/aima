@@ -6,9 +6,6 @@ import {
   FileUploadResponse,
   FILE_UPLOAD_CONFIG,
 } from "@/types/inquiry";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -149,6 +146,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 기존 첨부파일 확인 및 삭제
+    const { data: existingAttachments } = await supabase
+      .from("inquiry_attachments")
+      .select("*")
+      .eq("inquiry_id", parseInt(inquiryId));
+
+    if (existingAttachments && existingAttachments.length > 0) {
+      // 기존 파일들을 Supabase Storage에서 삭제
+      for (const attachment of existingAttachments) {
+        const { error: storageDeleteError } = await supabase.storage
+          .from("inquiry-attachments")
+          .remove([attachment.file_path]);
+
+        if (storageDeleteError) {
+          console.error("기존 파일 삭제 오류:", storageDeleteError);
+        }
+      }
+
+      // DB에서 기존 첨부파일 레코드 삭제
+      const { error: dbDeleteError } = await supabase
+        .from("inquiry_attachments")
+        .delete()
+        .eq("inquiry_id", parseInt(inquiryId));
+
+      if (dbDeleteError) {
+        console.error("기존 첨부파일 DB 삭제 오류:", dbDeleteError);
+      }
+    }
+
     // 파일 저장
     const fileResult = await saveFile(file, inquiryId);
     if (!fileResult.success) {
@@ -192,8 +218,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 파일 다운로드 URL 생성
-    const downloadUrl = `/api/download/inquiry/${attachment.id}`;
+    // Supabase Storage 공개 URL 사용
+    const { data: urlData } = supabase.storage
+      .from("inquiry-attachments")
+      .getPublicUrl(attachment.file_path);
 
     const response: FileUploadResponse = {
       id: attachment.id,
@@ -201,7 +229,7 @@ export async function POST(request: NextRequest) {
       file_path: attachment.file_path,
       file_size: attachment.file_size,
       content_type: attachment.content_type,
-      url: downloadUrl,
+      url: urlData.publicUrl,
     };
 
     return NextResponse.json({
@@ -261,39 +289,46 @@ function validateFile(file: File) {
   return { isValid: true };
 }
 
-// 파일 저장
+// Supabase Storage에 파일 저장
 async function saveFile(file: File, inquiryId: string) {
   try {
-    // 업로드 디렉토리 생성
-    const uploadDir = join(process.cwd(), "uploads", "inquiries", inquiryId);
-
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
-
     // 고유한 파일명 생성 (타임스탬프 + 랜덤 문자열)
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
     const fileExtension = file.name.split(".").pop();
     const uniqueFileName = `${timestamp}_${randomStr}.${fileExtension}`;
 
-    const filePath = join(uploadDir, uniqueFileName);
-    const relativePath = join(
-      "uploads",
-      "inquiries",
-      inquiryId,
-      uniqueFileName
-    );
+    // Supabase Storage 경로: inquiries/{inquiryId}/{fileName}
+    const storagePath = `inquiries/${inquiryId}/${uniqueFileName}`;
 
-    // 파일 저장
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // 파일을 ArrayBuffer로 변환
+    const arrayBuffer = await file.arrayBuffer();
 
-    await writeFile(filePath, buffer);
+    // Supabase Storage에 파일 업로드
+    const { error } = await supabase.storage
+      .from("inquiry-attachments")
+      .upload(storagePath, arrayBuffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("Supabase Storage 업로드 오류:", error);
+      return {
+        success: false,
+        error: `파일 업로드 중 오류가 발생했습니다: ${error.message}`,
+      };
+    }
+
+    // 공개 URL 생성
+    const { data: urlData } = supabase.storage
+      .from("inquiry-attachments")
+      .getPublicUrl(storagePath);
 
     return {
       success: true,
-      filePath: relativePath,
+      filePath: storagePath,
+      publicUrl: urlData.publicUrl,
     };
   } catch (error) {
     console.error("파일 저장 오류:", error);
@@ -469,11 +504,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // TODO: 물리 파일도 삭제
-    // const fullPath = join(process.cwd(), attachment.file_path);
-    // if (existsSync(fullPath)) {
-    //   await unlink(fullPath);
-    // }
+    // Supabase Storage에서 파일 삭제
+    const { error: storageError } = await supabase.storage
+      .from("inquiry-attachments")
+      .remove([attachment.file_path]);
+
+    if (storageError) {
+      console.error("Supabase Storage 파일 삭제 오류:", storageError);
+      // Storage 삭제 실패해도 DB 삭제는 성공했으므로 경고만 로그
+    }
 
     return NextResponse.json({
       success: true,

@@ -14,10 +14,11 @@ const supabase = createClient(
 // POST - 답변 등록 (관리자용)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const inquiryId = parseInt(params.id);
+    const resolvedParams = await params;
+    const inquiryId = parseInt(resolvedParams.id);
     const body: CreateReplyRequest = await request.json();
 
     if (isNaN(inquiryId)) {

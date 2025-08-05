@@ -1274,6 +1274,18 @@ body .main-content {
   outline: none;
 }
 
+/* 첨부파일 링크 스타일 */
+.attached-file-link {
+  color: #007bff;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.attached-file-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
 .inquiry-input:focus {
   outline: none;
   border-color: #1681ff;
