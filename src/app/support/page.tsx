@@ -272,8 +272,6 @@ const SupportPage = () => {
       case "faq":
         return (
           <div className="support-section">
-            <h2>자주 묻는 질문 (FAQ)</h2>
-
             {/* 검색창 */}
             <div className="faq-search-container">
               <form onSubmit={handleSearchSubmit} className="faq-search-form">
@@ -315,8 +313,8 @@ const SupportPage = () => {
               ))}
             </div>
 
-            {/* FAQ 목록 */}
-            <div className="faq-list-container">
+            {/* FAQ 목록 - 테이블 형식 */}
+            <div className="faq-table-container">
               {faqLoading ? (
                 <div className="loading-message">FAQ를 불러오는 중...</div>
               ) : faqError ? (
@@ -338,27 +336,29 @@ const SupportPage = () => {
               ) : faqs.length === 0 ? (
                 <div className="no-announcements">등록된 FAQ가 없습니다.</div>
               ) : (
-                <>
-                  <div className="faq-items">
+                <div className="faq-table">
+                  <div className="faq-table-body">
                     {faqs.map((faq) => (
-                      <div key={faq.id} className="faq-item-container">
+                      <div key={faq.id} className="faq-table-row-container">
                         <div
-                          className="faq-item clickable"
+                          className="faq-table-row clickable"
                           onClick={() => handleFaqClick(faq)}
                         >
-                          <div className="faq-question">
+                          <div className="faq-table-cell faq-q-cell">
                             <span className="faq-q-mark">Q.</span>
-                            <span className="faq-question-text">
-                              {faq.question}
-                            </span>
+                          </div>
+                          <div className="faq-table-cell faq-question-cell">
+                            {faq.question}
                             <span className="faq-expand-indicator">
                               {expandedFaq === faq.id ? "▲" : "▼"}
                             </span>
                           </div>
                         </div>
                         {expandedFaq === faq.id && (
-                          <div className="faq-answer">
-                            <span className="faq-a-mark">A.</span>
+                          <div className="faq-expanded-content">
+                            <div className="faq-a-cell">
+                              <span className="faq-a-mark">A.</span>
+                            </div>
                             <div className="faq-answer-text">
                               {faq.answer.split("\n").map((line, idx) => (
                                 <p key={idx}>{line}</p>
@@ -369,18 +369,17 @@ const SupportPage = () => {
                       </div>
                     ))}
                   </div>
-
-                  {faqPagination && (
-                    <Pagination
-                      currentPage={faqPagination.currentPage}
-                      totalPages={faqPagination.totalPages}
-                      totalItems={faqPagination.totalItems}
-                      onPageChange={handleFaqPageChange}
-                      className="faq-pagination"
-                    />
-                  )}
-                </>
+                </div>
               )}
+
+              {/* FAQ 페이지네이션은 항상 표시 */}
+              <Pagination
+                currentPage={faqPagination?.currentPage || 1}
+                totalPages={faqPagination?.totalPages || 1}
+                totalItems={faqPagination?.totalItems || 10}
+                onPageChange={handleFaqPageChange}
+                className="faq-pagination"
+              />
             </div>
           </div>
         );
