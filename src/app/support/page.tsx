@@ -42,7 +42,6 @@ const SupportPage = () => {
   // 문의 폼 상태
   const [inquiryForm, setInquiryForm] = useState({
     category: "",
-    contact: "",
     title: "",
     content: "",
     smsNotification: false,
@@ -252,27 +251,44 @@ const SupportPage = () => {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        // TODO: 실제 API 호출로 변경
-        // const response = await fetch('/api/user/profile');
-        // const userData = await response.json();
-        // const phone = userData.phone || "";
+        // accessToken 가져오기
+        const accessToken = localStorage.getItem("accessToken");
+        if (!accessToken) {
+          console.warn("accessToken이 없습니다.");
+          const defaultPhone = "010-0000-0000";
+          setUserPhone(defaultPhone);
+          return;
+        }
 
-        // 임시로 로컬스토리지나 세션에서 가져오기
-        const savedPhone = localStorage.getItem("userPhone") || "010-0000-0000";
-        setUserPhone(savedPhone);
-        setInquiryForm((prev) => ({
-          ...prev,
-          contact: savedPhone,
-        }));
+        // 실제 유저 정보 API 호출
+        const response = await fetch("/api/user/profile", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.success && userData.data?.phone) {
+            setUserPhone(userData.data.phone);
+          } else {
+            console.warn("유저 정보가 존재하지 않음:", userData);
+            const defaultPhone = "010-0000-0000";
+            setUserPhone(defaultPhone);
+          }
+        } else {
+          // API 실패 시 기본값
+          console.warn("유저 정보 API 호출 실패, Status:", response.status);
+          const defaultPhone = "010-0000-0000";
+          setUserPhone(defaultPhone);
+        }
       } catch (error) {
         console.error("유저 정보 가져오기 실패:", error);
         // 기본값 설정
         const defaultPhone = "010-0000-0000";
         setUserPhone(defaultPhone);
-        setInquiryForm((prev) => ({
-          ...prev,
-          contact: defaultPhone,
-        }));
       }
     };
 
@@ -601,59 +617,78 @@ const SupportPage = () => {
       return;
     }
 
+    if (!userPhone) {
+      alert("연락처 정보를 확인할 수 없습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+
     try {
-      // 새로운 문의 객체 생성
-      const newInquiry = {
-        id: inquiries.length + 1,
-        category: inquiryForm.category,
-        title: inquiryForm.title,
-        content: inquiryForm.content,
-        attachedFile: selectedFile
-          ? {
-              name: selectedFile.name,
-              size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)}MB`,
-            }
-          : null,
-        status: "pending" as const,
-        createdAt: new Date()
-          .toLocaleDateString("ko-KR", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          })
-          .replace(/\. /g, ".")
-          .replace(".", ""),
-        answer: null,
-      };
+      // accessToken 가져오기
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
 
-      // 문의 목록에 새 문의 추가 (맨 앞에 추가)
-      setInquiries((prev) => [newInquiry, ...prev]);
-
-      // TODO: API 호출로 문의 등록
-      console.log("문의 등록:", {
-        ...inquiryForm,
-        file: selectedFile,
+      // API 호출로 문의 등록
+      const response = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          category: inquiryForm.category,
+          title: inquiryForm.title,
+          content: inquiryForm.content,
+          sms_notification: inquiryForm.smsNotification,
+        }),
       });
 
-      // 성공 메시지
-      alert("문의가 성공적으로 등록되었습니다.");
+      if (response.ok) {
+        const result = await response.json();
 
-      // 폼 초기화
-      setInquiryForm({
-        category: "",
-        contact: userPhone || "010-0000-0000",
-        title: "",
-        content: "",
-        smsNotification: false,
-      });
-      setSelectedFile(null);
+        // 파일이 있는 경우 파일 업로드
+        if (selectedFile && result.data?.id) {
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          formData.append("inquiry_id", result.data.id.toString());
 
-      // 문의내역 탭으로 이동하고 첫 페이지로 설정
-      setActiveContactTab("history");
-      setInquiryCurrentPage(1);
+          await fetch("/api/upload/inquiry", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: formData,
+          });
+        }
+
+        // 성공 메시지
+        alert("문의가 성공적으로 등록되었습니다.");
+
+        // 폼 초기화
+        setInquiryForm({
+          category: "",
+          title: "",
+          content: "",
+          smsNotification: false,
+        });
+        setSelectedFile(null);
+
+        // 문의내역 탭으로 이동하고 첫 페이지로 설정
+        setActiveContactTab("history");
+        setInquiryCurrentPage(1);
+      } else {
+        const errorData = await response.json();
+        console.error("문의 등록 API 오류:", errorData);
+        alert(
+          errorData.error?.message ||
+            "문의 등록에 실패했습니다. 다시 시도해주세요."
+        );
+      }
     } catch (error) {
       console.error("문의 등록 실패:", error);
-      alert("문의 등록에 실패했습니다. 다시 시도해주세요.");
+      alert("문의 등록에 실패했습니다. 네트워크 연결을 확인해주세요.");
     }
   };
 
@@ -938,14 +973,16 @@ const SupportPage = () => {
                             }
                           >
                             <option value="">문의유형을 선택해 주세요</option>
-                            <option value="ai-marketing">AI 타깃마케팅</option>
-                            <option value="pricing">요금제</option>
-                            <option value="charging">충전</option>
-                            <option value="login">로그인</option>
-                            <option value="profile">회원정보</option>
-                            <option value="message">문자</option>
-                            <option value="result">발송결과</option>
-                            <option value="etc">기타</option>
+                            <option value="AI_TARGET_MARKETING">
+                              AI 타깃마케팅
+                            </option>
+                            <option value="PRICING">요금제</option>
+                            <option value="CHARGING">충전</option>
+                            <option value="LOGIN">로그인</option>
+                            <option value="USER_INFO">회원정보</option>
+                            <option value="MESSAGE">문자</option>
+                            <option value="SEND_RESULT">발송결과</option>
+                            <option value="OTHER">기타</option>
                           </select>
                           <div className="dropdown-arrow">▼</div>
                         </div>
@@ -959,12 +996,10 @@ const SupportPage = () => {
                         <div className="inquiry-contact-input">
                           <input
                             type="tel"
-                            placeholder="010-0000-0000"
-                            className="inquiry-input"
-                            value={inquiryForm.contact}
-                            onChange={(e) =>
-                              handleInquiryFormChange("contact", e.target.value)
-                            }
+                            className="inquiry-input readonly-input"
+                            value={userPhone}
+                            readOnly
+                            placeholder="로그인 후 자동 설정"
                           />
                           <div className="sms-notification">
                             <label className="checkbox-label">
@@ -1274,16 +1309,16 @@ const SupportPage = () => {
                               }
                             >
                               <option value="">문의유형을 선택해 주세요</option>
-                              <option value="AI 타깃마케팅">
+                              <option value="AI_TARGET_MARKETING">
                                 AI 타깃마케팅
                               </option>
-                              <option value="요금제">요금제</option>
-                              <option value="충전">충전</option>
-                              <option value="로그인">로그인</option>
-                              <option value="회원정보">회원정보</option>
-                              <option value="문자">문자</option>
-                              <option value="발송결과">발송결과</option>
-                              <option value="기타">기타</option>
+                              <option value="PRICING">요금제</option>
+                              <option value="CHARGING">충전</option>
+                              <option value="LOGIN">로그인</option>
+                              <option value="USER_INFO">회원정보</option>
+                              <option value="MESSAGE">문자</option>
+                              <option value="SEND_RESULT">발송결과</option>
+                              <option value="OTHER">기타</option>
                             </select>
                             <div className="dropdown-arrow">▼</div>
                           </div>

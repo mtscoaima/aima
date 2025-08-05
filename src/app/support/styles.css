@@ -1173,21 +1173,64 @@ body .main-content {
 .inquiry-select {
   width: 100%;
   padding: 0.875rem 2.5rem 0.875rem 1rem;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
   font-size: 1rem;
   background-color: #ffffff;
+  background-image: linear-gradient(to bottom, #ffffff, #f8f9fa);
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .inquiry-select:focus {
   outline: none;
   border-color: #1681ff;
-  box-shadow: 0 0 0 2px rgba(22, 129, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(22, 129, 255, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-image: linear-gradient(to bottom, #ffffff, #ffffff);
+}
+
+.inquiry-select:hover {
+  border-color: #d1ecf1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 브라우저별 dropdown 옵션 스타일링 개선 */
+.inquiry-select option {
+  padding: 0.75rem 1rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #f1f3f5;
+  color: #343a40;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.inquiry-select option:first-child {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.inquiry-select option:last-child {
+  border-bottom: 2px solid #e9ecef;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.inquiry-select option:hover,
+.inquiry-select option:focus {
+  background-color: #f8f9fa;
+  color: #1681ff;
+}
+
+.inquiry-select option:checked {
+  background-color: #e3f2fd;
+  color: #1681ff;
+  font-weight: 500;
 }
 
 .dropdown-arrow {
@@ -1216,6 +1259,19 @@ body .main-content {
   transition: border-color 0.2s ease;
   width: 100%;
   max-width: 400px;
+}
+
+.readonly-input {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  border-color: #dee2e6;
+}
+
+.readonly-input:focus {
+  border-color: #dee2e6;
+  box-shadow: none;
+  outline: none;
 }
 
 .inquiry-input:focus {
