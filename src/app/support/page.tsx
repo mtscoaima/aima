@@ -35,6 +35,250 @@ const SupportPage = () => {
   const [activeTab, setActiveTab] = useState<
     "faq" | "announcement" | "contact"
   >("announcement");
+  const [activeContactTab, setActiveContactTab] = useState<
+    "register" | "history"
+  >("register");
+
+  // 문의 폼 상태
+  const [inquiryForm, setInquiryForm] = useState({
+    category: "",
+    contact: "",
+    title: "",
+    content: "",
+    smsNotification: false,
+  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [userPhone, setUserPhone] = useState("");
+
+  // 문의내역 상태
+  // 문의 상세보기 타입 정의
+  interface InquiryType {
+    id: number;
+    category: string;
+    title: string;
+    content: string;
+    attachedFile?: {
+      name: string;
+      size: string;
+    } | null;
+    status: "pending" | "completed";
+    createdAt: string;
+    answer?: {
+      author: string;
+      content: string;
+      createdAt: string;
+    } | null;
+  }
+
+  // 문의 상세보기 상태
+  const [selectedInquiry, setSelectedInquiry] = useState<InquiryType | null>(
+    null
+  );
+  const [inquiryDetailMode, setInquiryDetailMode] = useState<
+    "list" | "detail" | "edit"
+  >("list");
+
+  // 문의 수정 폼 상태
+  const [editForm, setEditForm] = useState({
+    category: "",
+    title: "",
+    content: "",
+  });
+  const [editSelectedFile, setEditSelectedFile] = useState<File | null>(null);
+
+  const [inquiries, setInquiries] = useState<InquiryType[]>([
+    {
+      id: 1,
+      category: "AI 타깃마케팅",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content:
+        "안녕하세요. 로그인에 문제가 있어 문의드립니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.",
+      attachedFile: {
+        name: "이미지.jpg",
+        size: "3MB",
+      },
+      status: "pending",
+      createdAt: "2025.09.22",
+      answer: null,
+    },
+    {
+      id: 2,
+      category: "로그인",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content:
+        "안녕하세요. 로그인에 문제가 있어 문의드립니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.\n문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다. 문의에 대한 설명이 들어갑니다.",
+      attachedFile: {
+        name: "이미지.jpg",
+        size: "3MB",
+      },
+      status: "completed",
+      createdAt: "2025.09.22",
+      answer: {
+        author: "예이마",
+        content:
+          "안녕하세요. 예이마입니다. 문의주신 내용에 대한 답변 안내드립니다. 문의주신 내용에 대한 답변 안내드립니다.\n문의주신 내용에 대한 답변 안내드립니다. 문의주신 내용에 대한 답변 안내드립니다.",
+        createdAt: "2025.09.22",
+      },
+    },
+    {
+      id: 3,
+      category: "충전",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content: "충전 관련 문의입니다.",
+      attachedFile: null,
+      status: "completed",
+      createdAt: "2025.09.22",
+      answer: {
+        author: "관리자",
+        content: "충전 관련 답변입니다.",
+        createdAt: "2025.09.22",
+      },
+    },
+    {
+      id: 4,
+      category: "회원정보",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content: "회원정보 관련 문의입니다.",
+      attachedFile: null,
+      status: "completed",
+      createdAt: "2025.09.22",
+      answer: {
+        author: "관리자",
+        content: "회원정보 관련 답변입니다.",
+        createdAt: "2025.09.22",
+      },
+    },
+    {
+      id: 5,
+      category: "문자",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content: "문자 발송 관련 문의입니다.",
+      attachedFile: null,
+      status: "pending",
+      createdAt: "2025.09.21",
+      answer: null,
+    },
+    {
+      id: 6,
+      category: "로그인",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content: "로그인 관련 문의입니다.",
+      attachedFile: null,
+      status: "completed",
+      createdAt: "2025.09.21",
+      answer: {
+        author: "관리자",
+        content: "로그인 관련 답변입니다.",
+        createdAt: "2025.09.21",
+      },
+    },
+    {
+      id: 7,
+      category: "발송결과",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content: "발송결과 관련 문의입니다.",
+      attachedFile: null,
+      status: "pending",
+      createdAt: "2025.09.20",
+      answer: null,
+    },
+    {
+      id: 8,
+      category: "기타",
+      title: "문의의 대한 제목이 들어갑니다.",
+      content: "기타 관련 문의입니다.",
+      attachedFile: null,
+      status: "completed",
+      createdAt: "2025.09.20",
+      answer: {
+        author: "관리자",
+        content: "기타 관련 답변입니다.",
+        createdAt: "2025.09.20",
+      },
+    },
+    {
+      id: 9,
+      category: "AI 타깃마케팅",
+      title: "추가 문의 사항이 있습니다.",
+      content: "AI 타깃마케팅 관련 추가 문의입니다.",
+      attachedFile: null,
+      status: "pending",
+      createdAt: "2025.09.19",
+      answer: null,
+    },
+    {
+      id: 10,
+      category: "요금제",
+      title: "요금제 관련 문의드립니다.",
+      content: "요금제에 대해 자세히 알고 싶습니다.",
+      attachedFile: null,
+      status: "completed",
+      createdAt: "2025.09.19",
+      answer: {
+        author: "관리자",
+        content: "요금제 관련 상세 답변입니다.",
+        createdAt: "2025.09.19",
+      },
+    },
+    {
+      id: 11,
+      category: "충전",
+      title: "충전 관련해서 문의드립니다.",
+      content: "충전 방법에 대해 문의드립니다.",
+      attachedFile: null,
+      status: "pending",
+      createdAt: "2025.09.18",
+      answer: null,
+    },
+    {
+      id: 12,
+      category: "문자",
+      title: "문자 발송 관련 문의입니다.",
+      content: "문자 발송이 안 됩니다.",
+      attachedFile: null,
+      status: "completed",
+      createdAt: "2025.09.18",
+      answer: {
+        author: "관리자",
+        content: "문자 발송 문제 해결 방법입니다.",
+        createdAt: "2025.09.18",
+      },
+    },
+  ]);
+  const [inquiryCurrentPage, setInquiryCurrentPage] = useState(1);
+  const inquiriesPerPage = 10;
+
+  // 로그인된 유저 정보 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        // TODO: 실제 API 호출로 변경
+        // const response = await fetch('/api/user/profile');
+        // const userData = await response.json();
+        // const phone = userData.phone || "";
+
+        // 임시로 로컬스토리지나 세션에서 가져오기
+        const savedPhone = localStorage.getItem("userPhone") || "010-0000-0000";
+        setUserPhone(savedPhone);
+        setInquiryForm((prev) => ({
+          ...prev,
+          contact: savedPhone,
+        }));
+      } catch (error) {
+        console.error("유저 정보 가져오기 실패:", error);
+        // 기본값 설정
+        const defaultPhone = "010-0000-0000";
+        setUserPhone(defaultPhone);
+        setInquiryForm((prev) => ({
+          ...prev,
+          contact: defaultPhone,
+        }));
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
+
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(false);
@@ -154,6 +398,265 @@ const SupportPage = () => {
     fetchFaqs(1, faqSearchQuery, category);
   };
 
+  // 문의내역 페이지네이션 처리
+  const totalInquiries = inquiries.length;
+  const totalInquiryPages = Math.ceil(totalInquiries / inquiriesPerPage);
+  const startIndex = (inquiryCurrentPage - 1) * inquiriesPerPage;
+  const endIndex = startIndex + inquiriesPerPage;
+  const currentInquiries = inquiries.slice(startIndex, endIndex);
+
+  const handleInquiryPageChange = (page: number) => {
+    setInquiryCurrentPage(page);
+  };
+
+  // 문의 상세보기 핸들러
+  const handleInquiryDetail = (inquiry: InquiryType) => {
+    setSelectedInquiry(inquiry);
+    setInquiryDetailMode("detail");
+  };
+
+  const handleBackToList = () => {
+    setSelectedInquiry(null);
+    setInquiryDetailMode("list");
+  };
+
+  const handleEditInquiry = () => {
+    if (selectedInquiry) {
+      setEditForm({
+        category: selectedInquiry.category,
+        title: selectedInquiry.title,
+        content: selectedInquiry.content,
+      });
+      setEditSelectedFile(null);
+    }
+    setInquiryDetailMode("edit");
+  };
+
+  // 수정 폼 핸들러
+  const handleEditFormChange = (field: string, value: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleEditFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // 파일 크기 체크 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("파일 크기는 5MB 이하만 가능합니다.");
+        return;
+      }
+
+      // 파일 확장자 체크
+      const allowedExtensions = [
+        "jpg",
+        "jpeg",
+        "gif",
+        "png",
+        "bmp",
+        "docx",
+        "xlsx",
+        "xls",
+        "csv",
+        "pdf",
+      ];
+      const fileExtension = file.name.split(".").pop()?.toLowerCase();
+
+      if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+        alert("지원하지 않는 파일 형식입니다.");
+        return;
+      }
+
+      setEditSelectedFile(file);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditForm({
+      category: "",
+      title: "",
+      content: "",
+    });
+    setEditSelectedFile(null);
+    setInquiryDetailMode("detail");
+  };
+
+  const handleSubmitEdit = () => {
+    // 폼 유효성 검사
+    if (!editForm.category) {
+      alert("문의유형을 선택해주세요.");
+      return;
+    }
+
+    if (!editForm.title.trim()) {
+      alert("문의제목을 입력해주세요.");
+      return;
+    }
+
+    if (!editForm.content.trim()) {
+      alert("문의내용을 입력해주세요.");
+      return;
+    }
+
+    // TODO: API 호출로 문의 수정
+    console.log("문의 수정:", {
+      ...editForm,
+      file: editSelectedFile,
+    });
+
+    // 수정 완료 처리
+    if (selectedInquiry) {
+      const updatedInquiry = {
+        ...selectedInquiry,
+        category: editForm.category,
+        title: editForm.title,
+        content: editForm.content,
+        attachedFile: editSelectedFile
+          ? {
+              name: editSelectedFile.name,
+              size: `${(editSelectedFile.size / (1024 * 1024)).toFixed(1)}MB`,
+            }
+          : selectedInquiry.attachedFile,
+      };
+
+      setInquiries((prev) =>
+        prev.map((inquiry) =>
+          inquiry.id === selectedInquiry.id ? updatedInquiry : inquiry
+        )
+      );
+      setSelectedInquiry(updatedInquiry);
+    }
+
+    alert("문의가 성공적으로 수정되었습니다.");
+    setInquiryDetailMode("detail");
+  };
+
+  const handleDeleteInquiry = () => {
+    if (selectedInquiry && confirm("문의를 삭제하시겠습니까?")) {
+      setInquiries((prev) =>
+        prev.filter((inquiry) => inquiry.id !== selectedInquiry.id)
+      );
+      handleBackToList();
+      alert("문의가 삭제되었습니다.");
+    }
+  };
+
+  // 문의 폼 핸들러
+  const handleInquiryFormChange = (field: string, value: string | boolean) => {
+    setInquiryForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // 파일 크기 체크 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("파일 크기는 5MB 이하로 업로드해주세요.");
+        return;
+      }
+
+      // 파일 확장자 체크
+      const allowedExtensions = [
+        "jpg",
+        "jpeg",
+        "gif",
+        "png",
+        "bmp",
+        "docx",
+        "xlsx",
+        "xls",
+        "csv",
+        "pdf",
+      ];
+      const fileExtension = file.name.split(".").pop()?.toLowerCase();
+
+      if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+        alert("지원하지 않는 파일 형식입니다.");
+        return;
+      }
+
+      setSelectedFile(file);
+    }
+  };
+
+  const handleSubmitInquiry = async () => {
+    // 폼 유효성 검사
+    if (!inquiryForm.category) {
+      alert("문의유형을 선택해주세요.");
+      return;
+    }
+
+    if (!inquiryForm.title.trim()) {
+      alert("문의제목을 입력해주세요.");
+      return;
+    }
+
+    if (!inquiryForm.content.trim()) {
+      alert("문의내용을 입력해주세요.");
+      return;
+    }
+
+    try {
+      // 새로운 문의 객체 생성
+      const newInquiry = {
+        id: inquiries.length + 1,
+        category: inquiryForm.category,
+        title: inquiryForm.title,
+        content: inquiryForm.content,
+        attachedFile: selectedFile
+          ? {
+              name: selectedFile.name,
+              size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)}MB`,
+            }
+          : null,
+        status: "pending" as const,
+        createdAt: new Date()
+          .toLocaleDateString("ko-KR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          })
+          .replace(/\. /g, ".")
+          .replace(".", ""),
+        answer: null,
+      };
+
+      // 문의 목록에 새 문의 추가 (맨 앞에 추가)
+      setInquiries((prev) => [newInquiry, ...prev]);
+
+      // TODO: API 호출로 문의 등록
+      console.log("문의 등록:", {
+        ...inquiryForm,
+        file: selectedFile,
+      });
+
+      // 성공 메시지
+      alert("문의가 성공적으로 등록되었습니다.");
+
+      // 폼 초기화
+      setInquiryForm({
+        category: "",
+        contact: userPhone || "010-0000-0000",
+        title: "",
+        content: "",
+        smsNotification: false,
+      });
+      setSelectedFile(null);
+
+      // 문의내역 탭으로 이동하고 첫 페이지로 설정
+      setActiveContactTab("history");
+      setInquiryCurrentPage(1);
+    } catch (error) {
+      console.error("문의 등록 실패:", error);
+      alert("문의 등록에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
+
   // URL 파라미터 기반 탭 설정
   useEffect(() => {
     const tabParam = searchParams.get("tab");
@@ -168,7 +671,13 @@ const SupportPage = () => {
     } else if (activeTab === "faq") {
       fetchFaqs(faqCurrentPage, faqSearchQuery, selectedCategory);
     }
-  }, [activeTab, currentPage, faqCurrentPage]);
+  }, [
+    activeTab,
+    currentPage,
+    faqCurrentPage,
+    faqSearchQuery,
+    selectedCategory,
+  ]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -386,37 +895,510 @@ const SupportPage = () => {
       case "contact":
         return (
           <div className="support-section">
-            <h2>문의하기</h2>
-            <div className="contact-info">
-              <p>더 궁금한 점이 있으신가요? 아래 연락처로 문의해주세요.</p>
-              <ul>
-                <li>
-                  <strong>이메일:</strong> support@aimarketing.com
-                </li>
-                <li>
-                  <strong>전화:</strong> 1588-XXXX
-                </li>
-                <li>
-                  <strong>운영 시간:</strong> 평일 오전 9시 - 오후 7시
-                </li>
-                <li>
-                  <strong>점심 시간:</strong> 오후 12시 - 오후 1시 (상담 불가)
-                </li>
-              </ul>
-              <div className="contact-tips">
-                <h4>빠른 문의를 위한 팁</h4>
-                <ul>
-                  <li>이메일 문의 시 계정 정보(이메일)를 함께 기재해 주세요</li>
-                  <li>
-                    오류 발생 시 스크린샷을 첨부해 주시면 더 빠른 해결이
-                    가능합니다
-                  </li>
-                  <li>
-                    전화 문의는 평일 오전 10시 - 오후 5시 사이가 가장 연결이
-                    원활합니다
-                  </li>
-                </ul>
-              </div>
+            {/* 문의하기 서브탭 */}
+            <div className="contact-tabs">
+              <button
+                className={`contact-tab-btn ${
+                  activeContactTab === "register" ? "active" : ""
+                }`}
+                onClick={() => setActiveContactTab("register")}
+              >
+                문의등록
+              </button>
+              <button
+                className={`contact-tab-btn ${
+                  activeContactTab === "history" ? "active" : ""
+                }`}
+                onClick={() => setActiveContactTab("history")}
+              >
+                문의내역
+              </button>
+            </div>
+
+            {/* 서브탭 콘텐츠 */}
+            <div className="contact-content">
+              {activeContactTab === "register" ? (
+                <div className="inquiry-register">
+                  <div className="inquiry-form-table">
+                    {/* 문의유형 행 */}
+                    <div className="inquiry-table-row">
+                      <div className="inquiry-table-label">
+                        문의유형 <span className="required">*</span>
+                      </div>
+                      <div className="inquiry-table-content">
+                        <div className="inquiry-category-dropdown">
+                          <select
+                            className="inquiry-select"
+                            value={inquiryForm.category}
+                            onChange={(e) =>
+                              handleInquiryFormChange(
+                                "category",
+                                e.target.value
+                              )
+                            }
+                          >
+                            <option value="">문의유형을 선택해 주세요</option>
+                            <option value="ai-marketing">AI 타깃마케팅</option>
+                            <option value="pricing">요금제</option>
+                            <option value="charging">충전</option>
+                            <option value="login">로그인</option>
+                            <option value="profile">회원정보</option>
+                            <option value="message">문자</option>
+                            <option value="result">발송결과</option>
+                            <option value="etc">기타</option>
+                          </select>
+                          <div className="dropdown-arrow">▼</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 연락처 행 */}
+                    <div className="inquiry-table-row">
+                      <div className="inquiry-table-label">연락처</div>
+                      <div className="inquiry-table-content">
+                        <div className="inquiry-contact-input">
+                          <input
+                            type="tel"
+                            placeholder="010-0000-0000"
+                            className="inquiry-input"
+                            value={inquiryForm.contact}
+                            onChange={(e) =>
+                              handleInquiryFormChange("contact", e.target.value)
+                            }
+                          />
+                          <div className="sms-notification">
+                            <label className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                className="inquiry-checkbox"
+                                checked={inquiryForm.smsNotification}
+                                onChange={(e) =>
+                                  handleInquiryFormChange(
+                                    "smsNotification",
+                                    e.target.checked
+                                  )
+                                }
+                              />
+                              답변 완료 시 SMS 알림
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 문의제목 행 */}
+                    <div className="inquiry-table-row">
+                      <div className="inquiry-table-label">
+                        문의제목 <span className="required">*</span>
+                      </div>
+                      <div className="inquiry-table-content">
+                        <div className="inquiry-title-input">
+                          <input
+                            type="text"
+                            placeholder="제목을 입력해 주세요"
+                            className="inquiry-input inquiry-title-input-field"
+                            maxLength={25}
+                            value={inquiryForm.title}
+                            onChange={(e) =>
+                              handleInquiryFormChange("title", e.target.value)
+                            }
+                          />
+                          <div className="char-count-inside">
+                            {inquiryForm.title.length}/25
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 문의내용 행 */}
+                    <div className="inquiry-table-row">
+                      <div className="inquiry-table-label">
+                        문의내용 <span className="required">*</span>
+                      </div>
+                      <div className="inquiry-table-content">
+                        <div className="inquiry-content-input">
+                          <textarea
+                            placeholder="문의할 내용을 입력해 주세요"
+                            className="inquiry-textarea"
+                            maxLength={2000}
+                            rows={8}
+                            value={inquiryForm.content}
+                            onChange={(e) =>
+                              handleInquiryFormChange("content", e.target.value)
+                            }
+                          ></textarea>
+                          <div className="char-count">
+                            {inquiryForm.content.length}/2000
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 파일첨부 행 */}
+                    <div className="inquiry-table-row">
+                      <div className="inquiry-table-label">파일 첨부(선택)</div>
+                      <div className="inquiry-table-content">
+                        <div className="file-upload-area">
+                          <input
+                            type="file"
+                            id="inquiry-file-input"
+                            style={{ display: "none" }}
+                            accept=".jpg,.jpeg,.gif,.png,.bmp,.docx,.xlsx,.xls,.csv,.pdf"
+                            onChange={handleFileSelect}
+                          />
+                          <button
+                            type="button"
+                            className="file-upload-btn"
+                            onClick={() =>
+                              document
+                                .getElementById("inquiry-file-input")
+                                ?.click()
+                            }
+                          >
+                            파일첨부
+                          </button>
+                          <span className="file-upload-text">
+                            {selectedFile
+                              ? selectedFile.name
+                              : "선택된 파일이 없습니다"}
+                          </span>
+                        </div>
+                        <div className="file-upload-note">
+                          jpg, jpeg, gif, png, bmp, docx, xlsx, xls, csv, pdf
+                          첨부 가능 / 최대 5MB
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 제출 버튼 */}
+                  <div className="inquiry-submit-section">
+                    <button
+                      type="button"
+                      className="inquiry-submit-btn"
+                      onClick={handleSubmitInquiry}
+                    >
+                      문의하기
+                    </button>
+                  </div>
+                </div>
+              ) : inquiryDetailMode === "list" ? (
+                <div className="inquiry-history">
+                  {/* 문의내역 목록 */}
+                  <div className="inquiry-history-table">
+                    <div className="inquiry-history-header">
+                      <div className="inquiry-history-cell">문의유형</div>
+                      <div className="inquiry-history-cell">제목</div>
+                      <div className="inquiry-history-cell">답변여부</div>
+                      <div className="inquiry-history-cell">작성일</div>
+                    </div>
+
+                    <div className="inquiry-history-body">
+                      {currentInquiries.length > 0 ? (
+                        currentInquiries.map((inquiry) => (
+                          <div
+                            key={inquiry.id}
+                            className="inquiry-history-row"
+                            onClick={() => handleInquiryDetail(inquiry)}
+                          >
+                            <div className="inquiry-history-cell">
+                              {inquiry.category}
+                            </div>
+                            <div className="inquiry-history-cell inquiry-title-cell">
+                              {inquiry.title}
+                            </div>
+                            <div className="inquiry-history-cell">
+                              <span
+                                className={`status-badge ${inquiry.status}`}
+                              >
+                                {inquiry.status === "pending"
+                                  ? "답변대기"
+                                  : "답변완료"}
+                              </span>
+                            </div>
+                            <div className="inquiry-history-cell">
+                              {inquiry.createdAt}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="no-inquiry-history">
+                          등록된 문의 내역이 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 페이지네이션 */}
+                  {totalInquiries > 0 && (
+                    <Pagination
+                      currentPage={inquiryCurrentPage}
+                      totalPages={totalInquiryPages}
+                      totalItems={totalInquiries}
+                      onPageChange={handleInquiryPageChange}
+                      className="inquiry-pagination"
+                    />
+                  )}
+                </div>
+              ) : inquiryDetailMode === "detail" ? (
+                <div className="inquiry-detail">
+                  {/* 문의 상세보기 */}
+                  <div className="inquiry-detail-header">
+                    <h3>{selectedInquiry?.title}</h3>
+                  </div>
+
+                  <div className="inquiry-detail-info">
+                    <div className="inquiry-detail-meta">
+                      <span className="inquiry-meta-item">
+                        <strong>문의유형</strong> {selectedInquiry?.category}
+                      </span>
+                      <span className="inquiry-meta-separator">|</span>
+                      <span className="inquiry-meta-item">
+                        <strong>문의날짜</strong> {selectedInquiry?.createdAt}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="inquiry-detail-content">
+                    <div className="inquiry-content-text">
+                      {selectedInquiry?.content
+                        ?.split("\n")
+                        .map((line: string, index: number) => (
+                          <p key={index}>{line}</p>
+                        ))}
+                    </div>
+
+                    {selectedInquiry?.attachedFile && (
+                      <div className="inquiry-attached-file">
+                        <span className="attached-file-label">첨부파일</span>
+                        <span className="attached-file-info">
+                          {selectedInquiry.attachedFile.name} (
+                          {selectedInquiry.attachedFile.size})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 답변 섹션 */}
+                  {selectedInquiry?.answer && (
+                    <div className="inquiry-answer-section">
+                      <div className="inquiry-answer-content">
+                        <div className="answer-author">
+                          <strong>{selectedInquiry.answer.author}</strong>
+                        </div>
+                        <div className="answer-text">
+                          {selectedInquiry.answer.content
+                            .split("\n")
+                            .map((line: string, index: number) => (
+                              <p key={index}>{line}</p>
+                            ))}
+                        </div>
+                        <div className="answer-date">
+                          <strong>답변날짜</strong>{" "}
+                          {selectedInquiry.answer.createdAt}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 하단 버튼 */}
+                  <div
+                    className={`inquiry-detail-buttons ${selectedInquiry?.status}`}
+                  >
+                    {selectedInquiry?.status === "pending" ? (
+                      <>
+                        {/* 답변 대기: 목록(좌측), 수정/삭제(우측) */}
+                        <button
+                          className="inquiry-detail-btn list-btn"
+                          onClick={handleBackToList}
+                        >
+                          목록
+                        </button>
+                        <div className="button-group">
+                          <button
+                            className="inquiry-detail-btn edit-btn"
+                            onClick={handleEditInquiry}
+                          >
+                            수정
+                          </button>
+                          <button
+                            className="inquiry-detail-btn delete-btn"
+                            onClick={handleDeleteInquiry}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* 답변 완료: 목록/삭제(우측) */}
+                        <div className="button-group">
+                          <button
+                            className="inquiry-detail-btn list-btn"
+                            onClick={handleBackToList}
+                          >
+                            목록
+                          </button>
+                          <button
+                            className="inquiry-detail-btn delete-btn"
+                            onClick={handleDeleteInquiry}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="inquiry-edit">
+                  {/* 문의 수정 */}
+                  <div className="inquiry-edit-header">
+                    <h3>문의 수정</h3>
+                  </div>
+
+                  <div className="inquiry-edit-form">
+                    <div className="inquiry-form-table">
+                      {/* 문의유형 행 */}
+                      <div className="inquiry-table-row">
+                        <div className="inquiry-table-label">
+                          문의유형 <span className="required">*</span>
+                        </div>
+                        <div className="inquiry-table-content">
+                          <div className="inquiry-category-dropdown">
+                            <select
+                              className="inquiry-select"
+                              value={editForm.category}
+                              onChange={(e) =>
+                                handleEditFormChange("category", e.target.value)
+                              }
+                            >
+                              <option value="">문의유형을 선택해 주세요</option>
+                              <option value="AI 타깃마케팅">
+                                AI 타깃마케팅
+                              </option>
+                              <option value="요금제">요금제</option>
+                              <option value="충전">충전</option>
+                              <option value="로그인">로그인</option>
+                              <option value="회원정보">회원정보</option>
+                              <option value="문자">문자</option>
+                              <option value="발송결과">발송결과</option>
+                              <option value="기타">기타</option>
+                            </select>
+                            <div className="dropdown-arrow">▼</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 문의제목 행 */}
+                      <div className="inquiry-table-row">
+                        <div className="inquiry-table-label">
+                          문의제목 <span className="required">*</span>
+                        </div>
+                        <div className="inquiry-table-content">
+                          <div className="inquiry-title-input">
+                            <input
+                              type="text"
+                              placeholder="제목을 입력해 주세요"
+                              className="inquiry-input inquiry-title-input-field"
+                              maxLength={25}
+                              value={editForm.title}
+                              onChange={(e) =>
+                                handleEditFormChange("title", e.target.value)
+                              }
+                            />
+                            <div className="char-count-inside">
+                              {editForm.title.length}/25
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 문의내용 행 */}
+                      <div className="inquiry-table-row">
+                        <div className="inquiry-table-label">
+                          문의내용 <span className="required">*</span>
+                        </div>
+                        <div className="inquiry-table-content">
+                          <div className="inquiry-content-input">
+                            <textarea
+                              placeholder="문의할 내용을 입력해 주세요"
+                              className="inquiry-textarea"
+                              maxLength={2000}
+                              rows={8}
+                              value={editForm.content}
+                              onChange={(e) =>
+                                handleEditFormChange("content", e.target.value)
+                              }
+                            ></textarea>
+                            <div className="char-count">
+                              {editForm.content.length}/2000
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 파일첨부 행 */}
+                      <div className="inquiry-table-row">
+                        <div className="inquiry-table-label">
+                          파일 첨부(선택)
+                        </div>
+                        <div className="inquiry-table-content">
+                          <div className="file-upload-area">
+                            <input
+                              type="file"
+                              id="edit-file-input"
+                              style={{ display: "none" }}
+                              accept=".jpg,.jpeg,.gif,.png,.bmp,.docx,.xlsx,.xls,.csv,.pdf"
+                              onChange={handleEditFileSelect}
+                            />
+                            <button
+                              type="button"
+                              className="file-upload-btn"
+                              onClick={() =>
+                                document
+                                  .getElementById("edit-file-input")
+                                  ?.click()
+                              }
+                            >
+                              파일첨부
+                            </button>
+                            <span className="file-upload-text">
+                              {editSelectedFile
+                                ? editSelectedFile.name
+                                : selectedInquiry?.attachedFile
+                                ? selectedInquiry.attachedFile.name
+                                : "선택된 파일이 없습니다"}
+                            </span>
+                          </div>
+                          <div className="file-upload-note">
+                            jpg, jpeg, gif, png, bmp, docx, xlsx, xls, csv, pdf
+                            첨부 가능 / 최대 5MB
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 하단 버튼 */}
+                    <div className="inquiry-edit-buttons">
+                      <button
+                        type="button"
+                        className="inquiry-edit-btn cancel-btn"
+                        onClick={handleCancelEdit}
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        className="inquiry-edit-btn submit-btn"
+                        onClick={handleSubmitEdit}
+                      >
+                        수정완료
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
