@@ -30,42 +30,54 @@ export interface SMSBatchResult {
  */
 export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
   try {
-    // TODO: 실제 SMS 서비스와 연동
-    // 예시: CoolSMS API 연동
-    /*
-    const smsApi = new CoolSMS({
-      apiKey: process.env.SMS_API_KEY,
-      apiSecret: process.env.SMS_API_SECRET
+    // Naver SENS API를 사용한 실제 SMS 발송
+    const response = await fetch("/api/message/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        toNumber: message.to,
+        message: message.message,
+        subject: message.subject,
+      }),
     });
 
-    const result = await smsApi.send({
-      to: message.to,
-      from: message.from || process.env.SMS_SENDER_NUMBER,
-      text: message.message,
-      type: message.type || 'SMS'
-    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
 
-    return {
-      success: result.success,
-      messageId: result.messageId,
-      cost: result.cost
-    };
-    */
+    const result = await response.json();
 
-    // 현재는 개발 모드로 로그만 출력
-    console.log("SMS 발송:", {
-      to: message.to,
-      message: message.message,
-      type: message.type || "SMS",
-    });
-
-    // 개발 환경에서는 항상 성공으로 처리
-    return {
-      success: true,
-      messageId: `dev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    };
+    if (result.success) {
+      return {
+        success: true,
+        messageId: result.results?.[0]?.data?.requestId || "unknown",
+        cost: calculateSMSCost(message.message, message.type),
+      };
+    } else {
+      throw new Error(result.message || "SMS 발송 실패");
+    }
   } catch (error) {
     console.error("SMS 발송 오류:", error);
+
+    // 개발 환경에서는 실패해도 로그만 출력하고 성공으로 처리
+    if (process.env.NODE_ENV === "development") {
+      console.log("개발 환경 SMS 발송 (실제 발송 안됨):", {
+        to: message.to,
+        message: message.message,
+        type: message.type || "SMS",
+      });
+
+      return {
+        success: true,
+        messageId: `dev_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+      };
+    }
+
     return {
       success: false,
       error:
@@ -115,14 +127,9 @@ export async function sendBatchSMS(
 export async function sendInquiryReplyNotification(
   phoneNumber: string,
   userName: string,
-  inquiryTitle: string,
-  inquiryId: number
+  inquiryTitle: string
 ): Promise<SMSResult> {
-  const message = generateInquiryReplyMessage(
-    userName,
-    inquiryTitle,
-    inquiryId
-  );
+  const message = generateInquiryReplyMessage(userName, inquiryTitle);
 
   return await sendSMS({
     to: formatPhoneNumber(phoneNumber),
@@ -138,8 +145,7 @@ export async function sendInquiryStatusNotification(
   phoneNumber: string,
   userName: string,
   inquiryTitle: string,
-  status: string,
-  inquiryId: number
+  status: string
 ): Promise<SMSResult> {
   const statusText = getStatusText(status);
   const message = `안녕하세요 ${userName}님, '${inquiryTitle}' 문의의 상태가 '${statusText}'로 변경되었습니다. 고객센터에서 확인하세요.`;
@@ -156,12 +162,8 @@ export async function sendInquiryStatusNotification(
  */
 function generateInquiryReplyMessage(
   userName: string,
-  inquiryTitle: string,
-  inquiryId: number
+  inquiryTitle: string
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://yoursite.com";
-  const inquiryUrl = `${baseUrl}/support?inquiry=${inquiryId}`;
-
   // SMS 길이 제한 고려 (한글 기준 90자 내외)
   const shortTitle =
     inquiryTitle.length > 15
@@ -172,26 +174,23 @@ function generateInquiryReplyMessage(
 }
 
 /**
- * 전화번호 형식 정규화
+ * 전화번호 형식 정규화 (Naver SENS API용)
  */
 function formatPhoneNumber(phoneNumber: string): string {
   // 모든 특수문자 제거
   const cleaned = phoneNumber.replace(/\D/g, "");
 
-  // 국가코드 처리
-  if (cleaned.startsWith("82")) {
-    return "+" + cleaned;
-  } else if (
-    cleaned.startsWith("010") ||
-    cleaned.startsWith("011") ||
-    cleaned.startsWith("016") ||
-    cleaned.startsWith("017") ||
-    cleaned.startsWith("018") ||
-    cleaned.startsWith("019")
-  ) {
-    return "+82" + cleaned.substring(1);
+  // 이미 올바른 형식인 경우 (11자리 휴대폰 번호)
+  if (cleaned.length === 11 && cleaned.startsWith("010")) {
+    return cleaned;
   }
 
+  // 국가코드가 포함된 경우 (+82로 시작)
+  if (cleaned.startsWith("82") && cleaned.length === 12) {
+    return "0" + cleaned.substring(2);
+  }
+
+  // 기본적으로 그대로 반환 (이미 올바른 형식이라고 가정)
   return cleaned;
 }
 

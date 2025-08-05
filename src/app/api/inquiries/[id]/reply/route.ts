@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
 import { CreateReplyRequest, ApiResponse, InquiryReply } from "@/types/inquiry";
+import { sendInquiryReplyNotification } from "@/utils/smsNotification";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -200,11 +201,17 @@ export async function POST(
     // SMS 알림 발송 (문의자가 SMS 알림을 원하는 경우)
     if (inquiry.sms_notification && inquiry.user?.phone_number) {
       try {
-        await sendSMSNotification(
+        const smsResult = await sendInquiryReplyNotification(
           inquiry.user.phone_number,
           inquiry.user.name || "고객",
           inquiry.title
         );
+
+        if (smsResult.success) {
+          console.log(`SMS 알림 발송 성공: ${inquiry.user.phone_number}`);
+        } else {
+          console.error(`SMS 알림 발송 실패: ${smsResult.error}`);
+        }
       } catch (smsError) {
         console.error("SMS 알림 발송 오류:", smsError);
         // SMS 발송 실패해도 답변 등록은 성공으로 처리
@@ -358,32 +365,4 @@ function validateCreateReplyRequest(data: CreateReplyRequest) {
   }
 
   return { isValid, errors };
-}
-
-// SMS 알림 발송 함수 (실제 SMS 서비스 연동 필요)
-async function sendSMSNotification(
-  phoneNumber: string,
-  userName: string,
-  inquiryTitle: string
-) {
-  try {
-    // TODO: 실제 SMS 서비스 (예: 아임포트, KakaoTalk Business API 등) 연동
-    // 현재는 로그만 출력
-    console.log(`SMS 알림 발송:`, {
-      to: phoneNumber,
-      message: `안녕하세요 ${userName}님, '${inquiryTitle}' 문의에 대한 답변이 등록되었습니다. 고객센터를 확인해주세요.`,
-    });
-
-    // 실제 구현 예시:
-    // const smsService = new SMSService();
-    // await smsService.send({
-    //   to: phoneNumber,
-    //   message: `안녕하세요 ${userName}님, '${inquiryTitle}' 문의에 대한 답변이 등록되었습니다. 고객센터를 확인해주세요.`
-    // });
-
-    return { success: true };
-  } catch (error) {
-    console.error("SMS 발송 오류:", error);
-    throw error;
-  }
 }

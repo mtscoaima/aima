@@ -142,7 +142,6 @@ const SupportPage = () => {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          console.log(result);
           // 백엔드 응답 구조 확인 및 데이터 추출
           const inquiriesData = result.data?.inquiries || result.data || [];
 

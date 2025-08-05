@@ -492,3 +492,293 @@
     justify-content: center;
   }
 }
+
+/* 문의사항 관리 스타일 */
+.view-button {
+  background: #4299e1;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-right: 8px;
+}
+
+.view-button:hover {
+  background: #3182ce;
+}
+
+.reply-button {
+  background: #48bb78;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reply-button:hover {
+  background: #38a169;
+}
+
+.status.pending {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.status.answered {
+  background: #c6f6d5;
+  color: #2f855a;
+}
+
+.status.closed {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+/* 문의 상세보기 모달 */
+.inquiry-detail-modal {
+  max-width: 700px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.inquiry-info {
+  margin-bottom: 20px;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+.info-row label {
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 100px;
+  margin-right: 12px;
+}
+
+.info-row span {
+  color: #4a5568;
+}
+
+.inquiry-content {
+  margin-bottom: 20px;
+}
+
+.inquiry-content label {
+  display: block;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+.content-box {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 16px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+.reply-section {
+  margin-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
+}
+
+.reply-section label {
+  display: block;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+.reply-box {
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.reply-box:last-child {
+  margin-bottom: 0;
+}
+
+.reply-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
+  color: #2f855a;
+  margin-bottom: 12px;
+}
+
+.reply-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid #c6f6d5;
+  font-size: 0.875rem;
+}
+
+.reply-author,
+.reply-date {
+  color: #2f855a;
+  font-weight: 500;
+}
+
+/* 첨부파일 관련 스타일 - 고객용과 동일하게 */
+.inquiry-attached-files {
+  margin-top: 1rem;
+}
+
+.inquiry-attached-file {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.inquiry-attached-file:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.attached-file-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 80px;
+}
+
+.attached-file-link {
+  background: none;
+  border: none;
+  color: #007bff;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.attached-file-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+/* 답변 작성 모달 스타일 */
+.reply-modal {
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+}
+
+.inquiry-summary {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.inquiry-summary h4 {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.summary-item {
+  display: flex;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+
+.summary-item label {
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 100px;
+  margin-right: 12px;
+  margin-bottom: 0;
+}
+
+.summary-item span {
+  color: #4a5568;
+}
+
+.summary-content {
+  margin-top: 12px;
+}
+
+.summary-content label {
+  display: block;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+.content-preview {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 12px;
+  max-height: 100px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.5;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.reply-form {
+  margin-top: 20px;
+}
+
+.reply-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 150px;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color 0.2s;
+}
+
+.reply-textarea:focus {
+  outline: none;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.char-count {
+  text-align: right;
+  margin-top: 6px;
+  font-size: 0.875rem;
+  color: #718096;
+}
+
+.save-button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.save-button:disabled:hover {
+  background: #a0aec0;
+}
