@@ -81,7 +81,14 @@ export async function sendNaverSMS(
     const messageType = message.length <= 90 && !subject ? "SMS" : "LMS";
 
     // 요청 본문
-    const data: any = {
+    const data: {
+      type: string;
+      countryCode: string;
+      from: string;
+      content: string;
+      subject?: string;
+      messages: { to: string }[];
+    } = {
       type: messageType,
       countryCode: "82",
       from: TEST_CALLING_NUMBER,

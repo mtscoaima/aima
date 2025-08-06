@@ -133,8 +133,8 @@ export async function POST(
       );
     }
 
-    // 이미 답변이 있는지 확인
-    const { data: existingReply, error: replyCheckError } = await supabase
+    // 이미 답변이 있는지 확인 (현재는 중복 답변 허용)
+    const { error: replyCheckError } = await supabase
       .from("inquiry_replies")
       .select("id")
       .eq("inquiry_id", inquiryId)
@@ -207,9 +207,7 @@ export async function POST(
           inquiry.title
         );
 
-        if (smsResult.success) {
-          console.log(`SMS 알림 발송 성공: ${inquiry.user.phone_number}`);
-        } else {
+        if (!smsResult.success) {
           console.error(`SMS 알림 발송 실패: ${smsResult.error}`);
         }
       } catch (smsError) {
@@ -241,10 +239,11 @@ export async function POST(
 // GET - 문의별 답변 목록 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const inquiryId = parseInt(params.id);
+    const resolvedParams = await params;
+    const inquiryId = parseInt(resolvedParams.id);
 
     if (isNaN(inquiryId)) {
       return NextResponse.json(
@@ -352,7 +351,7 @@ export async function GET(
 
 // 답변 등록 요청 유효성 검사
 function validateCreateReplyRequest(data: CreateReplyRequest) {
-  const errors: any = {};
+  const errors: Record<string, string> = {};
   let isValid = true;
 
   // 답변 내용 검사

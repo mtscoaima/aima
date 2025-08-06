@@ -182,8 +182,8 @@ export async function saveFileWithProgress(
   onProgress?: (progress: number) => void
 ) {
   try {
-    const chunkSize = 1024 * 1024; // 1MB 청크
-    const totalChunks = Math.ceil(file.size / chunkSize);
+    // const chunkSize = 1024 * 1024; // 1MB 청크 (현재 사용되지 않음)
+    // const totalChunks = Math.ceil(file.size / chunkSize); // 현재 사용되지 않음
 
     // 업로드 디렉토리 생성
     const uploadDir = join(process.cwd(), "uploads", "inquiries", inquiryId);

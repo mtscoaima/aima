@@ -32,7 +32,22 @@ interface PaginationInfo {
 }
 
 interface AdminInquiryResponse {
-  inquiries: any[];
+  inquiries: Array<{
+    id: number;
+    user_id: number;
+    category: string;
+    title: string;
+    content: string;
+    contact_phone: string;
+    sms_notification: boolean;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    user_name: string;
+    user_email: string;
+    attachment_count: number;
+    reply_count: number;
+  }>;
   pagination: PaginationInfo;
 }
 
@@ -175,22 +190,38 @@ export async function GET(request: NextRequest) {
     }
 
     // 데이터 변환 - 클라이언트에서 사용하기 쉬운 형태로
-    const transformedInquiries = (inquiries || []).map((inquiry: any) => ({
-      id: inquiry.id,
-      user_id: inquiry.user_id,
-      category: inquiry.category,
-      title: inquiry.title,
-      content: inquiry.content,
-      contact_phone: inquiry.contact_phone,
-      sms_notification: inquiry.sms_notification,
-      status: inquiry.status,
-      created_at: inquiry.created_at,
-      updated_at: inquiry.updated_at,
-      user_name: inquiry.users?.name || "알 수 없음",
-      user_email: inquiry.users?.email || "",
-      attachment_count: inquiry.attachments?.[0]?.count || 0,
-      reply_count: inquiry.replies?.[0]?.count || 0,
-    }));
+    const transformedInquiries = (inquiries || []).map(
+      (inquiry: {
+        id: number;
+        user_id: number;
+        category: string;
+        title: string;
+        content: string;
+        contact_phone: string;
+        sms_notification: boolean;
+        status: string;
+        created_at: string;
+        updated_at: string;
+        users?: { name?: string; email?: string };
+        attachments?: Array<{ count: number }>;
+        replies?: Array<{ count: number }>;
+      }) => ({
+        id: inquiry.id,
+        user_id: inquiry.user_id,
+        category: inquiry.category,
+        title: inquiry.title,
+        content: inquiry.content,
+        contact_phone: inquiry.contact_phone,
+        sms_notification: inquiry.sms_notification,
+        status: inquiry.status,
+        created_at: inquiry.created_at,
+        updated_at: inquiry.updated_at,
+        user_name: inquiry.users?.name || "알 수 없음",
+        user_email: inquiry.users?.email || "",
+        attachment_count: inquiry.attachments?.[0]?.count || 0,
+        reply_count: inquiry.replies?.[0]?.count || 0,
+      })
+    );
 
     // 페이지네이션 정보 계산
     const totalPages = Math.ceil((count || 0) / params.limit!);

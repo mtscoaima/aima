@@ -40,6 +40,10 @@ const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <div className={`pagination-container ${className}`}>
+      <div className="pagination-info">
+        총 {totalItems}개 항목 - {Math.max(1, totalPages)} 페이지 중{" "}
+        {currentPage} 페이지
+      </div>
       <div className="pagination-controls">
         <button
           className="pagination-button pagination-prev"

@@ -7,6 +7,8 @@ import {
   ApiResponse,
   InquiryListResponse,
   Inquiry,
+  InquiryCategory,
+  InquiryStatus,
 } from "@/types/inquiry";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -181,13 +183,17 @@ export async function GET(request: NextRequest) {
     const params: InquiryListParams = {
       page: parseInt(searchParams.get("page") || "1"),
       limit: parseInt(searchParams.get("limit") || "10"),
-      category: (searchParams.get("category") as any) || undefined,
-      status: (searchParams.get("status") as any) || undefined,
+      category: searchParams.get("category") as InquiryCategory | undefined,
+      status: searchParams.get("status") as InquiryStatus | undefined,
       search: searchParams.get("search") || undefined,
       startDate: searchParams.get("startDate") || undefined,
       endDate: searchParams.get("endDate") || undefined,
-      sortBy: (searchParams.get("sortBy") as any) || "created_at",
-      sortOrder: (searchParams.get("sortOrder") as any) || "desc",
+      sortBy:
+        (searchParams.get("sortBy") as
+          | "created_at"
+          | "updated_at"
+          | "status") || "created_at",
+      sortOrder: (searchParams.get("sortOrder") as "asc" | "desc") || "desc",
     };
 
     // Authorization 헤더에서 토큰 추출
@@ -355,7 +361,7 @@ export async function GET(request: NextRequest) {
 
 // 문의 등록 요청 유효성 검사
 function validateCreateInquiryRequest(data: CreateInquiryRequest) {
-  const errors: any = {};
+  const errors: Record<string, string> = {};
   let isValid = true;
 
   // 카테고리 검사

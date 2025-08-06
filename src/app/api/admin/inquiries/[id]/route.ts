@@ -257,13 +257,6 @@ export async function PUT(
       );
     }
 
-    // SMS 알림 발송 로직 (선택사항)
-    if (body.status === "ANSWERED" && updatedInquiry.sms_notification) {
-      // 여기서 SMS 발송 로직을 구현할 수 있습니다
-      // 예: 문의에 대한 답변이 완료되었다는 SMS 발송
-      console.log(`SMS 알림 발송 대상: ${updatedInquiry.contact_phone}`);
-    }
-
     return NextResponse.json({
       success: true,
       data: updatedInquiry,
