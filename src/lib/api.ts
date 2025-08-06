@@ -156,6 +156,7 @@ export interface UpdateUserRequest {
   username?: string;
   name?: string;
   email?: string;
+  phoneNumber?: string; // 휴대폰 번호 필드 추가
   // 기업정보 필드들
   companyName?: string;
   representativeName?: string;

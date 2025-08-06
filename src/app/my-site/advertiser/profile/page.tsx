@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getUserInfo,
@@ -56,13 +56,6 @@ interface UserProfileData {
   [key: string]: string | boolean | object | undefined;
 }
 
-// 수정 가능한 필드들을 위한 타입
-interface EditableUserData {
-  username: string;
-  name: string;
-  email: string;
-}
-
 // 기업정보 수정 가능한 필드들을 위한 타입
 interface EditableCompanyData {
   companyName: string;
@@ -89,14 +82,18 @@ export default function ProfilePage() {
   >("memberInfo");
 
   // 모달 상태 관리
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCompanyEditModalOpen, setIsCompanyEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   const [isWithdrawalCompleteModalOpen, setIsWithdrawalCompleteModalOpen] =
     useState(false);
-  const [isPhoneChangeModalOpen, setIsPhoneChangeModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 휴대폰 변경 관련 상태
+  const [
+    isPhoneChangeVerificationLoading,
+    setIsPhoneChangeVerificationLoading,
+  ] = useState(false);
 
   // 세금계산서 이메일 변경 모달 상태
   const [isTaxInvoiceEmailModalOpen, setIsTaxInvoiceEmailModalOpen] =
@@ -148,13 +145,6 @@ export default function ProfilePage() {
     kakao: false,
     naver: false,
     google: false,
-  });
-
-  // 수정 가능한 필드들의 상태
-  const [editableData, setEditableData] = useState<EditableUserData>({
-    username: "",
-    name: "",
-    email: "",
   });
 
   // 기업정보 수정 가능한 필드들의 상태
@@ -661,13 +651,6 @@ export default function ProfilePage() {
 
         setUserData(profileData);
 
-        // 수정 가능한 필드들 초기화
-        setEditableData({
-          username: profileData.username || "",
-          name: profileData.name,
-          email: profileData.email,
-        });
-
         // 기업정보 수정 가능한 필드들 초기화
         setEditableCompanyData({
           companyName: profileData.companyName || "",
@@ -695,36 +678,56 @@ export default function ProfilePage() {
     }
   }, [user, authLoading]);
 
-  // 모달 열기
-  const handleEditClick = () => {
-    setEditableData({
-      username: userData.username || "",
-      name: userData.name,
-      email: userData.email,
-    });
-    setIsEditModalOpen(true);
-  };
+  // 휴대폰 번호 업데이트 처리
+  const handlePhoneUpdate = useCallback(async (newPhoneNumber: string) => {
+    try {
+      // 휴대폰 번호 업데이트
+      await updateUserInfo({
+        phoneNumber: newPhoneNumber,
+      });
 
-  // 모달 닫기
-  const handleModalClose = () => {
-    setIsEditModalOpen(false);
-    setEditableData({
-      username: userData.username || "",
-      name: userData.name,
-      email: userData.email,
-    });
-  };
+      // 로컬 상태 업데이트
+      setUserData((prev) => ({
+        ...prev,
+        phoneNumber: newPhoneNumber,
+      }));
 
-  // 수정 가능한 필드 값 변경
-  const handleEditableDataChange = (
-    field: keyof EditableUserData,
-    value: string
-  ) => {
-    setEditableData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+      alert("휴대폰 번호가 성공적으로 변경되었습니다.");
+
+      // 로딩 상태 초기화
+      setIsPhoneChangeVerificationLoading(false);
+    } catch (error) {
+      console.error("휴대폰 번호 변경 실패:", error);
+      alert("휴대폰 번호 변경에 실패했습니다. 다시 시도해주세요.");
+    }
+  }, []);
+
+  // 휴대폰 변경 본인인증 팝업 메시지 리스너
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === "inicis-auth-success") {
+        // 본인인증 성공
+        const { userInfo } = event.data;
+
+        // 현재 휴대폰 번호와 다른 번호인지 확인
+        if (userInfo.phoneNumber === userData.phoneNumber) {
+          alert("현재 휴대폰 번호와 동일합니다. 다른 번호로 인증해주세요.");
+          return;
+        }
+
+        // 휴대폰 번호 업데이트
+        handlePhoneUpdate(userInfo.phoneNumber);
+      } else if (event.data.type === "inicis-auth-failed") {
+        // 본인인증 실패
+        alert(`본인인증에 실패했습니다: ${event.data.resultMsg}`);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [userData.phoneNumber, handlePhoneUpdate]);
 
   // 기업정보 수정 모달 닫기
   const handleCompanyModalClose = () => {
@@ -938,48 +941,6 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("기업정보 수정 실패:", error);
       alert("기업정보 수정에 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // 저장 처리
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-
-      // 입력 검증
-      if (!editableData.username.trim()) {
-        alert("아이디를 입력해주세요.");
-        return;
-      }
-      if (!editableData.name.trim()) {
-        alert("이름을 입력해주세요.");
-        return;
-      }
-      if (!editableData.email.trim()) {
-        alert("이메일을 입력해주세요.");
-        return;
-      }
-
-      // 실제 API 호출로 사용자 정보 업데이트
-      await updateUserInfo(editableData);
-
-      // 로컬 상태 업데이트
-      setUserData((prev) => ({
-        ...prev,
-        username: editableData.username,
-        name: editableData.name,
-        email: editableData.email,
-      }));
-
-      // 성공 메시지 표시 (실제 구현에서는 toast나 알림으로 표시)
-      alert("회원정보가 성공적으로 수정되었습니다.");
-
-      setIsEditModalOpen(false);
-    } catch (error) {
-      console.error("회원정보 수정 실패:", error);
-      alert("회원정보 수정에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsSaving(false);
     }
@@ -1278,21 +1239,12 @@ export default function ProfilePage() {
   // 회원 탈퇴 처리
   const handleWithdrawal = async () => {
     try {
-      // 확인 알림
-      const isConfirmed = window.confirm(
-        "정말로 회원 탈퇴를 하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-      );
-
-      if (!isConfirmed) {
-        return;
-      }
-
       setIsSaving(true);
 
       // 간단한 회원 탈퇴 API 호출
       await withdrawUser({
-        password: "", // 비밀번호 검증 없이 진행
-        reason: "사용자 요청",
+        password: "",
+        reason: "",
         customReason: undefined,
       });
 
@@ -1307,20 +1259,74 @@ export default function ProfilePage() {
     }
   };
 
-  // 휴대폰 변경 모달 열기
-  const handlePhoneChangeClick = () => {
-    setIsPhoneChangeModalOpen(true);
-  };
+  // 본인인증을 통한 휴대폰 변경
+  const handlePhoneChangeClick = async () => {
+    setIsPhoneChangeVerificationLoading(true);
 
-  // 휴대폰 변경 모달 닫기
-  const handlePhoneChangeModalClose = () => {
-    setIsPhoneChangeModalOpen(false);
-  };
+    try {
+      // KG이니시스 본인인증 요청 API 호출
+      const response = await fetch("/api/auth/inicis-auth/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          // 휴대폰 변경을 위한 본인인증임을 명시
+          purpose: "phone_change",
+        }),
+      });
 
-  // 휴대폰 변경 확인
-  const handlePhoneChangeConfirm = () => {
-    setIsPhoneChangeModalOpen(false);
-    alert("변경되었습니다");
+      if (!response.ok) {
+        throw new Error("본인인증 요청에 실패했습니다.");
+      }
+
+      const data = await response.json();
+
+      // 팝업창 열기
+      const width = 400;
+      const height = 640;
+      const left = (window.innerWidth - width) / 2;
+      const top = (window.innerHeight - height) / 2;
+
+      const popup = window.open(
+        "",
+        "inicis_phone_change_auth",
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      );
+
+      // 팝업 차단 확인
+      if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        alert("팝업이 차단되었습니다. 팝업 차단을 해제해주세요.");
+        return;
+      }
+
+      // 폼 생성 및 제출
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = data.authUrl;
+      form.target = "inicis_phone_change_auth";
+
+      // 파라미터 추가
+      Object.entries(data.params).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value as string;
+        form.appendChild(input);
+      });
+
+      // 폼을 body에 추가하고 제출
+      document.body.appendChild(form);
+      form.submit();
+
+      // 폼 제거
+      document.body.removeChild(form);
+    } catch (error) {
+      console.error("본인인증 요청 오류:", error);
+      alert("본인인증 요청 중 오류가 발생했습니다.");
+    } finally {
+      setIsPhoneChangeVerificationLoading(false);
+    }
   };
 
   // 세금계산서 이메일 변경 모달 열기
@@ -1497,24 +1503,17 @@ export default function ProfilePage() {
       </p>
 
       {/* 회원정보관리 섹션 */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="mb-8">
+        <div className="mb-6">
           <h2 className="text-xl font-semibold text-black">회원 정보</h2>
-          <button
-            onClick={handleEditClick}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 text-sm font-medium"
-          >
-            회원정보 수정
-          </button>
         </div>
 
         {/* 회원정보 현황 */}
-        {/* 회원정보 */}
         <div className="mb-6">
-          <table className="w-full">
+          <table className="w-full border border-gray-200">
             <tbody>
               <tr className="border-b border-gray-200">
-                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32">
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
                   아이디
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-900">
@@ -1522,15 +1521,7 @@ export default function ProfilePage() {
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
-                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32">
-                  이메일
-                </td>
-                <td className="py-4 px-4 text-sm text-gray-900">
-                  {userData.email || "-"}
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200">
-                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32">
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
                   이름
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-900">
@@ -1538,23 +1529,33 @@ export default function ProfilePage() {
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
-                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32">
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
                   담당자 휴대폰
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-900">
-                  <div className="flex items-center justify-between">
-                    <span>{userData.phoneNumber || "-"}</span>
+                  <div className="flex items-center">
+                    <span>
+                      {userData.phoneNumber
+                        ? userData.phoneNumber.replace(
+                            /(\d{3})(\d{4})(\d{4})/,
+                            "$1-$2-$3"
+                          )
+                        : "-"}
+                    </span>
                     <button
                       onClick={handlePhoneChangeClick}
-                      className="px-3 py-1 bg-gray-500 text-white text-xs rounded-md hover:bg-gray-600 transition-colors duration-200"
+                      disabled={isPhoneChangeVerificationLoading}
+                      className="ml-3 px-3 py-1 bg-gray-500 text-white text-xs rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
-                      휴대폰 변경
+                      {isPhoneChangeVerificationLoading
+                        ? "처리 중..."
+                        : "휴대폰 변경"}
                     </button>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32">
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
                   마케팅정보수신
                 </td>
                 <td className="py-4 px-4">
@@ -1657,136 +1658,105 @@ export default function ProfilePage() {
       </div>
 
       {/* SNS 연동 섹션 */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="mb-8">
+        <div className="mb-6">
           <h2 className="text-xl font-semibold text-black">SNS 계정 연동</h2>
         </div>
 
         <div className="mb-6">
-          <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
-            연동된 SNS 계정
-          </h3>
+          <table className="w-full border border-gray-200">
+            <tbody>
+              {/* 카카오 연동 */}
+              <tr className="border-b border-gray-200">
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
+                  카카오
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-900">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {snsLinkedAccounts.kakao ? "연동됨" : "연동되지 않음"}
+                    </span>
+                    {snsLinkedAccounts.kakao ? (
+                      <button
+                        onClick={() => handleSocialUnlink("kakao")}
+                        className="px-3 py-1 text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors duration-200 text-xs font-medium cursor-pointer"
+                      >
+                        연동 해제
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSocialLink("kakao")}
+                        disabled={snsLinking.kakao}
+                        className="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 text-xs font-medium disabled:bg-yellow-300 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {snsLinking.kakao ? "연동 중..." : "연동하기"}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
 
-          <div className="space-y-4">
-            {/* 카카오 연동 */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md border">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center mr-4">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path
-                      d="M10 3.33333C14.6024 3.33333 18.3333 6.30952 18.3333 10C18.3333 12.5476 16.6548 14.7857 14.1667 16.0714L13.3333 18.3333L10.8333 16.6667H10C5.39762 16.6667 1.66667 13.6905 1.66667 10C1.66667 6.30952 5.39762 3.33333 10 3.33333Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="font-medium text-black">카카오</h4>
-                  <p className="text-sm text-gray-600">
-                    {snsLinkedAccounts.kakao ? "연동됨" : "연동되지 않음"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                {snsLinkedAccounts.kakao ? (
-                  <button
-                    onClick={() => handleSocialUnlink("kakao")}
-                    className="px-4 py-2 text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors duration-200 text-sm font-medium cursor-pointer"
-                  >
-                    연동 해제
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleSocialLink("kakao")}
-                    disabled={snsLinking.kakao}
-                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 text-sm font-medium disabled:bg-yellow-300 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {snsLinking.kakao ? "연동 중..." : "연동하기"}
-                  </button>
-                )}
-              </div>
-            </div>
+              {/* 네이버 연동 */}
+              <tr className="border-b border-gray-200">
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
+                  네이버
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-900">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {snsLinkedAccounts.naver ? "연동됨" : "연동되지 않음"}
+                    </span>
+                    {snsLinkedAccounts.naver ? (
+                      <button
+                        onClick={() => handleSocialUnlink("naver")}
+                        className="px-3 py-1 text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors duration-200 text-xs font-medium cursor-pointer"
+                      >
+                        연동 해제
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSocialLink("naver")}
+                        disabled={snsLinking.naver}
+                        className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 text-xs font-medium disabled:bg-green-300 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {snsLinking.naver ? "연동 중..." : "연동하기"}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
 
-            {/* 네이버 연동 */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md border">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-4">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path
-                      d="M13.6667 10.5833L6.33333 5.83333V10.5833H4.16667V14.1667H6.33333V18.3333H13.6667V14.1667H15.8333V10.5833H13.6667ZM11.5 12.75H8.5V7.25L11.5 10.5833V12.75Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="font-medium text-black">네이버</h4>
-                  <p className="text-sm text-gray-600">
-                    {snsLinkedAccounts.naver ? "연동됨" : "연동되지 않음"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                {snsLinkedAccounts.naver ? (
-                  <button
-                    onClick={() => handleSocialUnlink("naver")}
-                    className="px-4 py-2 text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors duration-200 text-sm font-medium cursor-pointer"
-                  >
-                    연동 해제
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleSocialLink("naver")}
-                    disabled={snsLinking.naver}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 text-sm font-medium disabled:bg-green-300 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {snsLinking.naver ? "연동 중..." : "연동하기"}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* 구글 연동 */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md border">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center mr-4">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="font-medium text-black">구글</h4>
-                  <p className="text-sm text-gray-600">
-                    {snsLinkedAccounts.google ? "연동됨" : "연동되지 않음"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                {snsLinkedAccounts.google ? (
-                  <button
-                    onClick={() => handleSocialUnlink("google")}
-                    className="px-4 py-2 text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors duration-200 text-sm font-medium cursor-pointer"
-                  >
-                    연동 해제
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleSocialLink("google")}
-                    disabled={snsLinking.google}
-                    className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 text-sm font-medium disabled:bg-red-300 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {snsLinking.google ? "연동 중..." : "연동하기"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+              {/* 구글 연동 */}
+              <tr>
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
+                  구글
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-900">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {snsLinkedAccounts.google ? "연동됨" : "연동되지 않음"}
+                    </span>
+                    {snsLinkedAccounts.google ? (
+                      <button
+                        onClick={() => handleSocialUnlink("google")}
+                        className="px-3 py-1 text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors duration-200 text-xs font-medium cursor-pointer"
+                      >
+                        연동 해제
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSocialLink("google")}
+                        disabled={snsLinking.google}
+                        className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 text-xs font-medium disabled:bg-red-300 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {snsLinking.google ? "연동 중..." : "연동하기"}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         {/* SNS 연동 안내 */}
@@ -2670,107 +2640,6 @@ export default function ProfilePage() {
         <div>{renderTabContent()}</div>
 
         {/* 모달들 (기존 코드 유지) */}
-        {/* 회원정보 수정 모달 */}
-        {isEditModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-black">
-                  회원정보 수정
-                </h2>
-                <button
-                  onClick={handleModalClose}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* 개인정보 섹션 */}
-                <div>
-                  <h3 className="text-lg font-medium text-black mb-4 border-b pb-2">
-                    개인정보
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        아이디 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editableData.username}
-                        onChange={(e) =>
-                          handleEditableDataChange("username", e.target.value)
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="아이디를 입력하세요"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        이름 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editableData.name}
-                        onChange={(e) =>
-                          handleEditableDataChange("name", e.target.value)
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="이름을 입력하세요"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        이메일 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        value={editableData.email}
-                        onChange={(e) =>
-                          handleEditableDataChange("email", e.target.value)
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="이메일을 입력하세요"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 버튼 영역 */}
-              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
-                <button
-                  onClick={handleModalClose}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
-                  disabled={isSaving}
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? "저장 중..." : "저장"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 비밀번호 변경 모달 */}
         {isPasswordModalOpen && (
@@ -3587,71 +3456,29 @@ export default function ProfilePage() {
                     </p>
                   </div>
                 </div>
+
+                <div className="mt-6 pt-4">
+                  <p className="text-gray-800 font-medium text-center">
+                    회원탈퇴를 진행하시겠습니까?
+                  </p>
+                </div>
               </div>
 
               {/* 버튼 영역 */}
-              <div className="flex justify-end space-x-3 mt-8 pt-4 border-t">
+              <div className="flex justify-center space-x-3 mt-6 pt-4">
                 <button
                   onClick={handleWithdrawalModalClose}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  disabled={isSaving}
+                  className="px-8 py-3 bg-gray-500 rounded-md hover:bg-gray-600 transition-colors duration-200 text-white font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   취소
                 </button>
                 <button
                   onClick={handleWithdrawal}
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
+                  disabled={isSaving}
+                  className="px-8 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 font-medium disabled:bg-blue-300 disabled:cursor-not-allowed"
                 >
-                  회원 탈퇴
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 휴대폰 변경 모달 */}
-        {isPhoneChangeModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-black">
-                  휴대폰 번호 변경
-                </h2>
-                <button
-                  onClick={handlePhoneChangeModalClose}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  휴대폰 번호 변경을 원하시면 고객센터로 문의해 주세요.
-                  <br />
-                  고객센터: 1588-1234
-                  <br />
-                  운영시간: 평일 9:00~18:00 (주말, 공휴일 제외)
-                </p>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  onClick={handlePhoneChangeConfirm}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
-                >
-                  확인
+                  {isSaving ? "처리 중..." : "회원탈퇴"}
                 </button>
               </div>
             </div>

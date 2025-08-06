@@ -26,6 +26,7 @@ interface UpdateUserRequest {
   username?: string;
   name?: string;
   email?: string;
+  phoneNumber?: string; // 휴대폰 번호 필드 추가
   // 기업정보 필드들
   companyName?: string;
   representativeName?: string;
@@ -358,6 +359,8 @@ export async function PUT(request: NextRequest) {
     if (updateData.username) updateFields.username = updateData.username;
     if (updateData.name) updateFields.name = updateData.name;
     if (updateData.email) updateFields.email = updateData.email;
+    if (updateData.phoneNumber)
+      updateFields.phone_number = updateData.phoneNumber;
     // 약관 동의 업데이트
     if (updateData.agreeTerms !== undefined) {
       updateFields.agree_terms = updateData.agreeTerms;
