@@ -1,7 +1,9 @@
 /**
  * SMS 알림 발송 유틸리티
- * 실제 SMS 서비스 (예: 아임포트, KakaoTalk Business API, CoolSMS 등)와 연동하여 사용
+ * NAVER SENS API를 사용하여 SMS/LMS 발송
  */
+
+import { sendNaverSMS, sendNaverMMS } from "@/lib/naverSensApi";
 
 export interface SMSMessage {
   to: string; // 수신자 전화번호
@@ -9,6 +11,7 @@ export interface SMSMessage {
   from?: string; // 발신자 번호 (옵션)
   subject?: string; // 제목 (LMS의 경우)
   type?: "SMS" | "LMS" | "MMS"; // 메시지 타입
+  fileIds?: string[]; // MMS 파일 ID (MMS의 경우)
 }
 
 export interface SMSResult {
@@ -30,53 +33,46 @@ export interface SMSBatchResult {
  */
 export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
   try {
-    // Naver SENS API를 사용한 실제 SMS 발송
-    const response = await fetch("/api/message/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        toNumber: message.to,
-        message: message.message,
-        subject: message.subject,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+    // 전화번호 형식 검증
+    const formattedPhoneNumber = formatPhoneNumber(message.to);
+    if (!validatePhoneNumber(formattedPhoneNumber)) {
+      throw new Error("유효하지 않은 전화번호입니다.");
     }
 
-    const result = await response.json();
+    let result;
+
+    // MMS 발송 (파일이 있는 경우)
+    if (
+      message.type === "MMS" &&
+      message.fileIds &&
+      message.fileIds.length > 0
+    ) {
+      result = await sendNaverMMS(
+        formattedPhoneNumber,
+        message.message,
+        message.subject || "",
+        message.fileIds
+      );
+    } else {
+      // SMS/LMS 발송
+      result = await sendNaverSMS(
+        formattedPhoneNumber,
+        message.message,
+        message.subject
+      );
+    }
 
     if (result.success) {
       return {
         success: true,
-        messageId: result.results?.[0]?.data?.requestId || "unknown",
+        messageId: result.requestId,
         cost: calculateSMSCost(message.message, message.type),
       };
     } else {
-      throw new Error(result.message || "SMS 발송 실패");
+      throw new Error(result.error || "SMS 발송 실패");
     }
   } catch (error) {
     console.error("SMS 발송 오류:", error);
-
-    // 개발 환경에서는 실패해도 로그만 출력하고 성공으로 처리
-    if (process.env.NODE_ENV === "development") {
-      console.log("개발 환경 SMS 발송 (실제 발송 안됨):", {
-        to: message.to,
-        message: message.message,
-        type: message.type || "SMS",
-      });
-
-      return {
-        success: true,
-        messageId: `dev_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`,
-      };
-    }
 
     return {
       success: false,
