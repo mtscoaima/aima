@@ -655,7 +655,15 @@ const SupportPage = () => {
   };
 
   const handleDeleteInquiry = async () => {
-    if (selectedInquiry && confirm("문의를 삭제하시겠습니까?")) {
+    if (!selectedInquiry) return;
+
+    // 답변 완료된 문의인 경우 추가 경고 메시지
+    const isAnswered = selectedInquiry.status === "completed";
+    const confirmMessage = isAnswered
+      ? "답변이 완료된 문의입니다. 삭제하면 답변도 함께 삭제되며 복구할 수 없습니다.\n정말로 삭제하시겠습니까?"
+      : "문의를 삭제하시겠습니까?";
+
+    if (confirm(confirmMessage)) {
       try {
         const accessToken = localStorage.getItem("accessToken");
         if (!accessToken) {

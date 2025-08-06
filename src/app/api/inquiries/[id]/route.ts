@@ -493,19 +493,8 @@ export async function DELETE(
       );
     }
 
-    // 답변이 있는 경우 삭제 불가
-    if (existingInquiry.replies && existingInquiry.replies.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "DELETION_NOT_ALLOWED",
-            message: "답변이 등록된 문의는 삭제할 수 없습니다.",
-          },
-        } as ApiResponse,
-        { status: 403 }
-      );
-    }
+    // 답변이 있는 문의도 삭제 가능 (답변도 함께 삭제됨)
+    // 주의: 답변이 있는 문의를 삭제하면 답변도 함께 삭제되며, 복구할 수 없습니다.
 
     // 첨부파일이 있는 경우 Supabase Storage에서 삭제
     const { data: attachments } = await supabase
@@ -514,6 +503,7 @@ export async function DELETE(
       .eq("inquiry_id", inquiryId);
 
     if (attachments && attachments.length > 0) {
+      // Storage에서 파일 삭제
       for (const attachment of attachments) {
         const { error: storageDeleteError } = await supabase.storage
           .from("inquiry-attachments")
@@ -523,9 +513,31 @@ export async function DELETE(
           console.error("첨부파일 삭제 오류:", storageDeleteError);
         }
       }
+
+      // 첨부파일 테이블에서 레코드 삭제
+      const { error: attachmentDeleteError } = await supabase
+        .from("inquiry_attachments")
+        .delete()
+        .eq("inquiry_id", inquiryId);
+
+      if (attachmentDeleteError) {
+        console.error("첨부파일 레코드 삭제 오류:", attachmentDeleteError);
+        // 첨부파일 레코드 삭제 실패해도 문의 삭제는 계속 진행
+      }
     }
 
-    // 문의 삭제 (관련 첨부파일과 답변은 CASCADE로 자동 삭제)
+    // 먼저 관련 답변 삭제
+    const { error: replyDeleteError } = await supabase
+      .from("inquiry_replies")
+      .delete()
+      .eq("inquiry_id", inquiryId);
+
+    if (replyDeleteError) {
+      console.error("답변 삭제 오류:", replyDeleteError);
+      // 답변 삭제 실패해도 문의 삭제는 계속 진행
+    }
+
+    // 문의 삭제
     const { error: deleteError } = await supabase
       .from("inquiries")
       .delete()
