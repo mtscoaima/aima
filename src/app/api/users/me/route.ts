@@ -428,6 +428,30 @@ export async function PUT(request: NextRequest) {
       updateFields.approval_status = "PENDING";
     }
 
+    // 세금계산서 담당자 정보 업데이트
+    if (updateData.taxInvoiceInfo !== undefined) {
+      // 기존 tax_invoice_info 가져오기
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("tax_invoice_info")
+        .eq("id", userId)
+        .single();
+
+      const currentTaxInvoiceInfo = currentUser?.tax_invoice_info || {};
+
+      // 새로운 정보로 업데이트
+      const updatedTaxInvoiceInfo = {
+        ...currentTaxInvoiceInfo,
+        email: updateData.taxInvoiceInfo.email || currentTaxInvoiceInfo.email,
+        manager:
+          updateData.taxInvoiceInfo.manager || currentTaxInvoiceInfo.manager,
+        contact:
+          updateData.taxInvoiceInfo.contact || currentTaxInvoiceInfo.contact,
+      };
+
+      updateFields.tax_invoice_info = updatedTaxInvoiceInfo;
+    }
+
     // 명시적으로 approval_status가 전달된 경우에만 업데이트
     if (updateData.approval_status !== undefined) {
       updateFields.approval_status = updateData.approval_status;

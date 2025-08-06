@@ -52,6 +52,13 @@ interface UserProfileData {
     };
   };
 
+  // 세금계산서 담당자 정보
+  taxInvoiceInfo?: {
+    email?: string;
+    manager?: string;
+    contact?: string;
+  };
+
   // 인덱스 시그니처 추가
   [key: string]: string | boolean | object | undefined;
 }
@@ -660,6 +667,8 @@ export default function ProfilePage() {
                   uploadedAt: "2024-01-10T09:05:00Z",
                 },
               },
+          // 세금계산서 담당자 정보
+          taxInvoiceInfo: userInfo.taxInvoiceInfo || undefined,
         };
 
         // SNS 연동 상태 확인 (userInfo에서 소셜 ID가 있는지 확인)
@@ -1359,16 +1368,26 @@ export default function ProfilePage() {
     setIsTaxInvoiceEmailModalOpen(true);
   };
 
-  // userData가 변경될 때 editTaxInvoiceData 초기화
+  // userData가 변경될 때 editTaxInvoiceData 초기화 (세금계산서 담당자 정보에서)
   useEffect(() => {
-    if (userData.name || userData.phoneNumber || userData.email) {
+    if (
+      userData.taxInvoiceInfo ||
+      userData.name ||
+      userData.phoneNumber ||
+      userData.email
+    ) {
       setEditTaxInvoiceData({
-        name: userData.name || "",
-        phone: userData.phoneNumber || "",
-        email: userData.email || "",
+        name: userData.taxInvoiceInfo?.manager || userData.name || "",
+        phone: userData.taxInvoiceInfo?.contact || userData.phoneNumber || "",
+        email: userData.taxInvoiceInfo?.email || userData.email || "",
       });
     }
-  }, [userData.name, userData.phoneNumber, userData.email]);
+  }, [
+    userData.taxInvoiceInfo,
+    userData.name,
+    userData.phoneNumber,
+    userData.email,
+  ]);
 
   // 세금계산서 담당자 인라인 편집 데이터 변경
   const handleEditTaxInvoiceDataChange = (field: string, value: string) => {
@@ -1404,25 +1423,29 @@ export default function ProfilePage() {
         return;
       }
 
-      // API 호출로 사용자 정보 업데이트
+      // API 호출로 세금계산서 담당자 정보만 업데이트
       await updateUserInfo({
-        name: editTaxInvoiceData.name,
-        phoneNumber: editTaxInvoiceData.phone,
-        email: editTaxInvoiceData.email,
+        taxInvoiceInfo: {
+          manager: editTaxInvoiceData.name,
+          contact: editTaxInvoiceData.phone,
+          email: editTaxInvoiceData.email,
+        },
       });
 
-      // 로컬 상태 업데이트
+      // 로컬 상태 업데이트 (세금계산서 담당자 정보만)
       setUserData((prev) => ({
         ...prev,
-        name: editTaxInvoiceData.name,
-        phoneNumber: editTaxInvoiceData.phone,
-        email: editTaxInvoiceData.email,
+        taxInvoiceInfo: {
+          manager: editTaxInvoiceData.name,
+          contact: editTaxInvoiceData.phone,
+          email: editTaxInvoiceData.email,
+        },
       }));
 
-      alert("담당자 정보가 성공적으로 수정되었습니다.");
+      alert("세금계산서 담당자 정보가 성공적으로 수정되었습니다.");
     } catch (error) {
-      console.error("담당자 정보 수정 실패:", error);
-      alert("담당자 정보 수정에 실패했습니다. 다시 시도해주세요.");
+      console.error("세금계산서 담당자 정보 수정 실패:", error);
+      alert("세금계산서 담당자 정보 수정에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsSaving(false);
     }
@@ -2176,24 +2199,24 @@ export default function ProfilePage() {
         </div>
 
         {/* 비밀번호 변경 수칙 */}
-        <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+        <div className="mb-6 p-4 bg-red-50 rounded-lg border border-blue-200">
           <div className="flex items-start">
             <svg
-              className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0"
+              className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
               <path
                 fillRule="evenodd"
-                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                 clipRule="evenodd"
               />
             </svg>
             <div className="text-sm">
-              <p className="font-medium text-yellow-800 mb-1">
+              <p className="font-medium text-black-800 mb-1">
                 비밀번호 변경 수칙
               </p>
-              <ul className="text-yellow-700 space-y-1">
+              <ul className="text-black-700 space-y-1">
                 <li>• 주기적인(3~6개월) 비밀번호 변경</li>
                 <li>• 다른 아이디/사이트에서 사용한 적 없는 비밀번호</li>
                 <li>• 이전에 사용한 적 없는 비밀번호</li>
@@ -2202,80 +2225,104 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* 비밀번호 변경 폼 */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              현재 비밀번호 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              value={passwordData.currentPassword}
-              onChange={(e) =>
-                handlePasswordDataChange("currentPassword", e.target.value)
-              }
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                passwordErrors.currentPassword
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-blue-500"
-              }`}
-              placeholder="현재 비밀번호 입력"
-            />
-            {passwordErrors.currentPassword && (
-              <p className="mt-2 text-sm text-red-600">
-                {passwordErrors.currentPassword}
-              </p>
-            )}
-          </div>
+        {/* 비밀번호 변경 폼 - 테이블 형식 */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <table className="w-full">
+            <tbody>
+              <tr className="border-b border-gray-200">
+                <td className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 w-1/4">
+                  현재 비밀번호 <span className="text-red-500">*</span>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <input
+                      type="password"
+                      value={passwordData.currentPassword}
+                      onChange={(e) =>
+                        handlePasswordDataChange(
+                          "currentPassword",
+                          e.target.value
+                        )
+                      }
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                        passwordErrors.currentPassword
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-blue-500"
+                      }`}
+                      placeholder="현재 비밀번호 입력"
+                    />
+                    {passwordErrors.currentPassword && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {passwordErrors.currentPassword}
+                      </p>
+                    )}
+                  </div>
+                </td>
+              </tr>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              새 비밀번호 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              value={passwordData.newPassword}
-              onChange={(e) =>
-                handlePasswordDataChange("newPassword", e.target.value)
-              }
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                passwordErrors.newPassword
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-blue-500"
-              }`}
-              placeholder="8~20자 영문, 숫자, 특수기호 조합"
-            />
-            {passwordErrors.newPassword && (
-              <p className="mt-2 text-sm text-red-600">
-                {passwordErrors.newPassword}
-              </p>
-            )}
-          </div>
+              <tr className="border-b border-gray-200">
+                <td className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 w-1/4">
+                  새 비밀번호 <span className="text-red-500">*</span>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <input
+                      type="password"
+                      value={passwordData.newPassword}
+                      onChange={(e) =>
+                        handlePasswordDataChange("newPassword", e.target.value)
+                      }
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                        passwordErrors.newPassword
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-blue-500"
+                      }`}
+                      placeholder="8~20자 영문, 숫자, 특수기호 조합"
+                    />
+                    {passwordErrors.newPassword && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {passwordErrors.newPassword}
+                      </p>
+                    )}
+                  </div>
+                </td>
+              </tr>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              새 비밀번호 확인 <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              value={passwordData.confirmPassword}
-              onChange={(e) =>
-                handlePasswordDataChange("confirmPassword", e.target.value)
-              }
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                passwordErrors.confirmPassword
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-blue-500"
-              }`}
-              placeholder="새 비밀번호와 동일하게 입력"
-            />
-            {passwordErrors.confirmPassword && (
-              <p className="mt-2 text-sm text-red-600">
-                {passwordErrors.confirmPassword}
-              </p>
-            )}
-          </div>
+              <tr className="border-b border-gray-200 last:border-b-0">
+                <td className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 w-1/4">
+                  새 비밀번호 확인 <span className="text-red-500">*</span>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <input
+                      type="password"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) =>
+                        handlePasswordDataChange(
+                          "confirmPassword",
+                          e.target.value
+                        )
+                      }
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                        passwordErrors.confirmPassword
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-blue-500"
+                      }`}
+                      placeholder="새 비밀번호와 동일하게 입력"
+                    />
+                    {passwordErrors.confirmPassword && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {passwordErrors.confirmPassword}
+                      </p>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
+        <div className="mt-4">
           {/* 일반 에러 메시지 */}
           {passwordErrors.general && (
             <div className="p-4 bg-red-50 rounded-md">

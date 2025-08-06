@@ -168,6 +168,12 @@ export interface UpdateUserRequest {
   faxNumber?: string;
   homepage?: string;
   approval_status?: string;
+  // 세금계산서 담당자 정보
+  taxInvoiceInfo?: {
+    email?: string;
+    manager?: string;
+    contact?: string;
+  };
   // 약관 및 마케팅 동의 필드들
   agreeTerms?: boolean;
   agreePrivacy?: boolean;
