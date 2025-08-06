@@ -104,6 +104,13 @@ export default function ProfilePage() {
     email: "",
   });
 
+  // 세금계산서 담당자 편집 데이터
+  const [editTaxInvoiceData, setEditTaxInvoiceData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+  });
+
   // 재직증명서 수정 모달 상태
   const [isEmploymentCertModalOpen, setIsEmploymentCertModalOpen] =
     useState(false);
@@ -503,6 +510,19 @@ export default function ProfilePage() {
         }
       }, 1000);
     });
+  };
+
+  // 기업유형 번역 함수
+  const getBusinessTypeText = (businessType?: string) => {
+    switch (businessType) {
+      case "individual":
+        return "개인사업자";
+      case "company":
+      case "corporation":
+        return "법인사업자";
+      default:
+        return businessType || "-";
+    }
   };
 
   // 승인 상태 표시 함수
@@ -1339,6 +1359,75 @@ export default function ProfilePage() {
     setIsTaxInvoiceEmailModalOpen(true);
   };
 
+  // userData가 변경될 때 editTaxInvoiceData 초기화
+  useEffect(() => {
+    if (userData.name || userData.phoneNumber || userData.email) {
+      setEditTaxInvoiceData({
+        name: userData.name || "",
+        phone: userData.phoneNumber || "",
+        email: userData.email || "",
+      });
+    }
+  }, [userData.name, userData.phoneNumber, userData.email]);
+
+  // 세금계산서 담당자 인라인 편집 데이터 변경
+  const handleEditTaxInvoiceDataChange = (field: string, value: string) => {
+    setEditTaxInvoiceData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // 세금계산서 담당자 인라인 편집 저장
+  const handleSaveEditTaxInvoice = async () => {
+    try {
+      setIsSaving(true);
+
+      // 입력 검증
+      if (!editTaxInvoiceData.name.trim()) {
+        alert("담당자 이름을 입력해주세요.");
+        return;
+      }
+      if (!editTaxInvoiceData.phone.trim()) {
+        alert("담당자 휴대폰을 입력해주세요.");
+        return;
+      }
+      if (!editTaxInvoiceData.email.trim()) {
+        alert("계산서 수신 이메일을 입력해주세요.");
+        return;
+      }
+
+      // 이메일 형식 검증
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(editTaxInvoiceData.email)) {
+        alert("올바른 이메일 형식을 입력해주세요.");
+        return;
+      }
+
+      // API 호출로 사용자 정보 업데이트
+      await updateUserInfo({
+        name: editTaxInvoiceData.name,
+        phoneNumber: editTaxInvoiceData.phone,
+        email: editTaxInvoiceData.email,
+      });
+
+      // 로컬 상태 업데이트
+      setUserData((prev) => ({
+        ...prev,
+        name: editTaxInvoiceData.name,
+        phoneNumber: editTaxInvoiceData.phone,
+        email: editTaxInvoiceData.email,
+      }));
+
+      alert("담당자 정보가 성공적으로 수정되었습니다.");
+    } catch (error) {
+      console.error("담당자 정보 수정 실패:", error);
+      alert("담당자 정보 수정에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 세금계산서 이메일 변경 모달 닫기
   const handleTaxInvoiceEmailModalClose = () => {
     setIsTaxInvoiceEmailModalOpen(false);
@@ -1383,9 +1472,10 @@ export default function ProfilePage() {
         return;
       }
 
-      // API 호출로 사용자 정보 업데이트 (이름과 이메일만 업데이트)
+      // API 호출로 사용자 정보 업데이트 (이름, 휴대폰, 이메일 업데이트)
       await updateUserInfo({
         name: taxInvoiceEmailData.name,
+        phoneNumber: taxInvoiceEmailData.phone,
         email: taxInvoiceEmailData.email,
       });
 
@@ -1830,188 +1920,242 @@ export default function ProfilePage() {
         )}
 
         {/* 사업자정보 섹션 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-black">사업자정보</h2>
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-black">사업자 정보</h2>
           </div>
-          <div className="p-6">
-            <div className="space-y-6">
-              {/* 기업유형 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  기업유형
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.businessType || "-"}
-                </div>
-              </div>
 
-              {/* 사업자명 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  사업자명
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.companyName || "-"}
-                </div>
-              </div>
-
-              {/* 대표자명 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  대표자명
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.representativeName || "-"}
-                </div>
-              </div>
-
-              {/* 사업자등록번호 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  사업자등록번호
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.businessNumber || "-"}
-                </div>
-              </div>
-
-              {/* 주소 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  주소
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.address || "-"}
-                </div>
-              </div>
-
-              {/* 업태 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  업태
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.businessType || "-"}
-                </div>
-              </div>
-
-              {/* 종목 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  종목
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : "-"}
-                </div>
-              </div>
-
-              {/* 사업자 인증 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  사업자 인증
-                </label>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
-                      userData.approval_status,
-                      hasCompanyInfo(userData)
-                    )}`}
-                  >
-                    {getApprovalStatusText(
-                      userData.approval_status,
-                      hasCompanyInfo(userData)
-                    )}
-                  </span>
-                </div>
-                {/* 승인 상태일 때 사업자 정보 변경 안내 */}
-                {userData.approval_status === "APPROVED" && (
-                  <div className="mt-10">
-                    <p className="text-xs font-semibold ">
-                      ※사업자 정보를 변경하고 싶어요.{" "}
-                      <button
-                        onClick={() => router.push("/support?tab=contact")}
-                        className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
+          <div className="mb-6">
+            <table className="w-full border border-gray-200">
+              <tbody>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    기업유형
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified
+                      ? ""
+                      : getBusinessTypeText(userData.businessType)}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    사업자명
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? "" : userData.companyName || "-"}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    대표자명
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? "" : userData.representativeName || "-"}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    사업자등록번호
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? "" : userData.businessNumber || "-"}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    주소
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? "" : userData.address || "-"}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    업태
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? "" : "-"}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    종목
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? "" : "-"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    사업자 인증
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${getApprovalStatusColor(
+                          userData.approval_status,
+                          hasCompanyInfo(userData)
+                        )}`}
                       >
-                        고객센터 문의
-                      </button>
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+                        {getApprovalStatusText(
+                          userData.approval_status,
+                          hasCompanyInfo(userData)
+                        )}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+
+          {/* 사업자 정보 변경 안내를 테이블 하단으로 이동 */}
+          {userData.approval_status === "APPROVED" && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-gray-600">
+                ※사업자 정보를 변경하고 싶어요.{" "}
+                <button
+                  onClick={() => router.push("/support?tab=contact")}
+                  className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
+                >
+                  고객센터 문의
+                </button>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 재직자정보 섹션 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-black">재직자정보</h2>
-              {userData.approval_status === "APPROVED" && (
-                <button
-                  onClick={() => setIsEmploymentCertModalOpen(true)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 text-sm font-medium"
-                >
-                  수정
-                </button>
-              )}
-            </div>
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-black">재직자 정보</h2>
           </div>
-          <div className="p-6">
-            <div className="space-y-6">
-              {/* 인증정보 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  인증정보
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : "-"}
-                </div>
-              </div>
-            </div>
+
+          <div className="mb-6">
+            <table className="w-full border border-gray-200">
+              <tbody>
+                <tr>
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    인증정보
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    <div className="flex items-center">
+                      <span>
+                        {isNotVerified
+                          ? ""
+                          : userData.documents?.employmentCertificate
+                          ? "완료"
+                          : "미완료"}
+                      </span>
+                      {userData.approval_status === "APPROVED" && (
+                        <button
+                          onClick={() => setIsEmploymentCertModalOpen(true)}
+                          className="ml-3 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 text-xs font-medium"
+                        >
+                          수정
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* 세금계산서 담당자 섹션 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-black">
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-black">
               세금계산서 담당자
             </h2>
           </div>
-          <div className="p-6">
-            <div className="space-y-6">
-              {/* 담당자 이름 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  담당자 이름
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.name || "-"}
-                </div>
-              </div>
 
-              {/* 담당자 휴대폰 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  담당자 휴대폰
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.phoneNumber || "-"}
-                </div>
-              </div>
+          <div className="mb-6">
+            <table className="w-full border border-gray-200">
+              <tbody>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    담당자 이름
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? (
+                      ""
+                    ) : (
+                      <input
+                        type="text"
+                        value={editTaxInvoiceData.name}
+                        onChange={(e) =>
+                          handleEditTaxInvoiceDataChange("name", e.target.value)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="김갈비"
+                      />
+                    )}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    담당자 휴대폰
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? (
+                      ""
+                    ) : (
+                      <input
+                        type="tel"
+                        value={editTaxInvoiceData.phone}
+                        onChange={(e) =>
+                          handleEditTaxInvoiceDataChange(
+                            "phone",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="010-555-5555"
+                      />
+                    )}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    계산서 수신 이메일
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? (
+                      ""
+                    ) : (
+                      <input
+                        type="email"
+                        value={editTaxInvoiceData.email}
+                        onChange={(e) =>
+                          handleEditTaxInvoiceDataChange(
+                            "email",
+                            e.target.value
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="avelo01@naver.com"
+                      />
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-              {/* 계산서 수신 이메일 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  계산서 수신 이메일
-                </label>
-                <div className="text-sm text-gray-900">
-                  {isNotVerified ? "" : userData.email || "-"}
-                </div>
+            {/* 수정 버튼 */}
+            {!isNotVerified && (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={handleSaveEditTaxInvoice}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "수정 중..." : "수정"}
+                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -3514,13 +3658,13 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* 세금계산서 이메일 변경 모달 */}
-        {isTaxInvoiceEmailModalOpen && (
+        {/* 세금계산서 담당자 수정 모달 - 인라인 편집으로 대체됨 */}
+        {false && isTaxInvoiceEmailModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-black">
-                  세금계산서 담당자 정보 수정
+                  세금계산서 담당자
                 </h2>
                 <button
                   onClick={handleTaxInvoiceEmailModalClose}
@@ -3542,64 +3686,76 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    담당자 이름
-                  </label>
-                  <input
-                    type="text"
-                    value={taxInvoiceEmailData.name}
-                    onChange={(e) =>
-                      handleTaxInvoiceEmailDataChange("name", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="김갈비"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    담당자 휴대폰
-                  </label>
-                  <input
-                    type="tel"
-                    value={taxInvoiceEmailData.phone}
-                    onChange={(e) =>
-                      handleTaxInvoiceEmailDataChange("phone", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="010-555-5555"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    계산서 수신 이메일
-                  </label>
-                  <input
-                    type="email"
-                    value={taxInvoiceEmailData.email}
-                    onChange={(e) =>
-                      handleTaxInvoiceEmailDataChange("email", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="avelo01@naver.com"
-                  />
-                </div>
+              <div className="mb-6">
+                <table className="w-full border border-gray-200">
+                  <tbody>
+                    <tr className="border-b border-gray-200">
+                      <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                        담당자 이름
+                      </td>
+                      <td className="py-4 px-4">
+                        <input
+                          type="text"
+                          value={taxInvoiceEmailData.name}
+                          onChange={(e) =>
+                            handleTaxInvoiceEmailDataChange(
+                              "name",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="김갈비"
+                        />
+                      </td>
+                    </tr>
+                    <tr className="border-b border-gray-200">
+                      <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                        담당자 휴대폰
+                      </td>
+                      <td className="py-4 px-4">
+                        <input
+                          type="tel"
+                          value={taxInvoiceEmailData.phone}
+                          onChange={(e) =>
+                            handleTaxInvoiceEmailDataChange(
+                              "phone",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="010-555-5555"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                        계산서 수신 이메일
+                      </td>
+                      <td className="py-4 px-4">
+                        <input
+                          type="email"
+                          value={taxInvoiceEmailData.email}
+                          onChange={(e) =>
+                            handleTaxInvoiceEmailDataChange(
+                              "email",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="avelo01@naver.com"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               {/* 버튼 영역 */}
-              <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
-                <button
-                  onClick={handleTaxInvoiceEmailModalClose}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
-                  disabled={isSaving}
-                >
-                  취소
-                </button>
+              <div className="flex justify-center mt-6">
                 <button
                   onClick={handleTaxInvoiceEmailSave}
                   disabled={isSaving}
-                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:bg-green-300 disabled:cursor-not-allowed"
+                  className="px-8 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed font-medium"
                 >
                   {isSaving ? "수정 중..." : "수정"}
                 </button>
@@ -3611,7 +3767,7 @@ export default function ProfilePage() {
         {/* 재직증명서 수정 모달 */}
         {isEmploymentCertModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-black">
                   재직자 정보 수정
@@ -3636,117 +3792,101 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    인증정보 <span className="text-red-500">*</span>
-                  </label>
-                  <p className="text-sm text-gray-600 mb-4">
-                    재직증명서를 등록해주세요. (임직원만)
-                    <br />
-                    • 대표자 아닌 임직원의 경우 제출
-                    <br />
-                    • 해당 사업체 근무 여부를 확인합니다. 임직원만 제출해주세요
-                    <br />• 본인의 재직증명서를 제출해주시고, 주민번호 뒷자리와
-                    주소는 가려서 제출해주세요.
-                  </p>
+              <div className="mb-6">
+                <table className="w-full border border-gray-200">
+                  <tbody>
+                    <tr>
+                      <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                        인증정보 <span className="text-red-500">*</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="space-y-4">
+                          {/* 파일 첨부 영역을 최상단으로 이동 */}
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              placeholder={
+                                employmentCertFile
+                                  ? employmentCertFile.name
+                                  : "재직증명서를 등록해주세요. (임직원만)"
+                              }
+                              readOnly
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm text-gray-500"
+                            />
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={handleEmploymentCertFileChange}
+                              className="hidden"
+                              id="employmentCertFile"
+                            />
+                            <label
+                              htmlFor="employmentCertFile"
+                              className="inline-flex items-center px-4 py-2 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
+                            >
+                              파일 첨부
+                            </label>
+                            {employmentCertFile && (
+                              <button
+                                onClick={() => setEmploymentCertFile(null)}
+                                className="text-red-500 hover:text-red-700"
+                                title="파일 제거"
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                            <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                              PDF, JPG, PNG (최대 20MB)
+                            </span>
+                          </div>
 
-                  {employmentCertFile ? (
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200">
-                      <div className="flex items-center">
-                        <svg
-                          className="w-8 h-8 text-blue-500 mr-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                        <div>
-                          <p className="font-medium text-black">
-                            {employmentCertFile.name}
-                          </p>
-                          <p className="text-sm text-blue-600">
-                            업로드 대기 중
-                          </p>
+                          {isEmploymentCertUploading && (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                              <span className="text-sm text-blue-600">
+                                업로드 중...
+                              </span>
+                            </div>
+                          )}
+
+                          {/* 안내 문구를 하단으로 이동 */}
+                          <div className="text-sm text-gray-600">
+                            <ul className="space-y-1 text-xs">
+                              <li>• 대표자 아닌 임직원의 경우 제출</li>
+                              <li>
+                                • 해당 사업체 근무 여부를 확인합니다. 임직원만
+                                제출해주세요
+                              </li>
+                              <li>
+                                • 본인의 재직증명서를 제출해주시고, 주민번호
+                                뒷자리와 주소는 가려서 제출해주세요.
+                              </li>
+                            </ul>
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => setEmploymentCertFile(null)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="border-2 border-dashed border-gray-300 rounded-md p-4">
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={handleEmploymentCertFileChange}
-                        className="hidden"
-                        id="employmentCertFile"
-                      />
-                      <label
-                        htmlFor="employmentCertFile"
-                        className="cursor-pointer flex flex-col items-center justify-center"
-                      >
-                        <svg
-                          className="w-12 h-12 text-gray-400 mb-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                          />
-                        </svg>
-                        <p className="text-sm text-gray-600">파일 첨부</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          PDF, JPG, PNG 파일 (최대 20MB)
-                        </p>
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {isEmploymentCertUploading && (
-                  <div className="mt-2">
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-                      <span className="text-sm text-blue-600">
-                        업로드 중...
-                      </span>
-                    </div>
-                  </div>
-                )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               {/* 버튼 영역 */}
-              <div className="flex justify-center space-x-3 mt-6 pt-4 border-t">
+              <div className="flex justify-end space-x-3 mt-6">
                 <button
                   onClick={handleEmploymentCertModalClose}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+                  className="px-4 py-2 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors duration-200"
                   disabled={isEmploymentCertUploading}
                 >
                   취소
@@ -3754,7 +3894,7 @@ export default function ProfilePage() {
                 <button
                   onClick={handleEmploymentCertSave}
                   disabled={isEmploymentCertUploading || !employmentCertFile}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {isEmploymentCertUploading ? "업로드 중..." : "수정"}
                 </button>
