@@ -1366,9 +1366,9 @@ export default function ProfilePage() {
   // 세금계산서 이메일 변경 모달 열기
   const handleChangeInvoiceEmail = () => {
     setTaxInvoiceEmailData({
-      name: userData.name || "",
-      phone: userData.phoneNumber || "",
-      email: userData.email || "",
+      name: userData.taxInvoiceInfo?.manager || userData.name || "",
+      phone: userData.taxInvoiceInfo?.contact || userData.phoneNumber || "",
+      email: userData.taxInvoiceInfo?.email || userData.email || "",
     });
     setIsTaxInvoiceEmailModalOpen(true);
   };
@@ -1500,22 +1500,26 @@ export default function ProfilePage() {
         return;
       }
 
-      // API 호출로 사용자 정보 업데이트 (이름, 휴대폰, 이메일 업데이트)
+      // API 호출로 세금계산서 담당자 정보만 업데이트
       await updateUserInfo({
-        name: taxInvoiceEmailData.name,
-        phoneNumber: taxInvoiceEmailData.phone,
-        email: taxInvoiceEmailData.email,
+        taxInvoiceInfo: {
+          manager: taxInvoiceEmailData.name,
+          contact: taxInvoiceEmailData.phone,
+          email: taxInvoiceEmailData.email,
+        },
       });
 
-      // 로컬 상태 업데이트
+      // 로컬 상태 업데이트 (세금계산서 담당자 정보만)
       setUserData((prev) => ({
         ...prev,
-        name: taxInvoiceEmailData.name,
-        phoneNumber: taxInvoiceEmailData.phone,
-        email: taxInvoiceEmailData.email,
+        taxInvoiceInfo: {
+          manager: taxInvoiceEmailData.name,
+          contact: taxInvoiceEmailData.phone,
+          email: taxInvoiceEmailData.email,
+        },
       }));
 
-      alert("담당자 정보가 성공적으로 수정되었습니다.");
+      alert("세금계산서 담당자 정보가 성공적으로 수정되었습니다.");
       setIsTaxInvoiceEmailModalOpen(false);
     } catch (error) {
       console.error("담당자 정보 수정 실패:", error);
@@ -3060,7 +3064,9 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <div className="border border-gray-300 rounded px-4 py-2 bg-gray-50">
             <span className="text-gray-900">
-              {userData?.email || "이메일 정보가 없습니다."}
+              {userData?.taxInvoiceInfo?.email ||
+                userData?.email ||
+                "이메일 정보가 없습니다."}
             </span>
           </div>
           <button
@@ -4154,8 +4160,8 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* 세금계산서 담당자 수정 모달 - 인라인 편집으로 대체됨 */}
-        {false && isTaxInvoiceEmailModalOpen && (
+        {/* 세금계산서 담당자 수정 모달 */}
+        {isTaxInvoiceEmailModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
