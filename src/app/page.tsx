@@ -11,10 +11,10 @@ export default function Home() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
 
-  // 관리자로 로그인한 경우 관리자 대시보드로 리다이렉트
+  // 관리자로 로그인한 경우 회원관리 페이지로 리다이렉트
   useEffect(() => {
     if (isAuthenticated && user?.role === "ADMIN") {
-      router.push("/admin/dashboard");
+      router.push("/admin/user-management");
     }
   }, [isAuthenticated, user, router]);
 
@@ -29,7 +29,7 @@ export default function Home() {
       <div className="loading-container">
         <div className="loading-spinner"></div>
         <div className="loading-text">
-          <p>관리자 대시보드로 이동 중...</p>
+          <p>회원관리 페이지로 이동 중...</p>
         </div>
       </div>
     );

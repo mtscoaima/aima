@@ -25,7 +25,7 @@ migrations/create_notifications_tables.sql
 -- 관리자 역할 사용자에게 테스트 알림
 INSERT INTO notifications (recipient_role, title, message, type, action_url) VALUES
 ('ADMIN', '새로운 사업자 인증 신청', '김철수님이 사업자 인증을 신청했습니다. 검토가 필요합니다.', 'BUSINESS_VERIFICATION', '/admin/user-management?tab=verification&user_id=1'),
-('ADMIN', '시스템 점검 알림', '오늘 밤 12시부터 시스템 점검이 예정되어 있습니다.', 'INFO', '/admin/dashboard');
+('ADMIN', '시스템 점검 알림', '오늘 밤 12시부터 시스템 점검이 예정되어 있습니다.', 'INFO', '/admin/user-management');
 
 -- 특정 사용자에게 개별 알림 (user_id는 실제 존재하는 사용자 ID로 변경)
 INSERT INTO notifications (recipient_user_id, title, message, type, action_url) VALUES
@@ -95,7 +95,7 @@ Content-Type: application/json
   "title": "테스트 알림",
   "message": "테스트 메시지입니다.",
   "type": "INFO",
-  "action_url": "/admin/dashboard"
+  "action_url": "/admin/user-management"
 }
 ```
 
