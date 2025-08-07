@@ -87,43 +87,8 @@ export async function GET(request: NextRequest) {
     // 기본 발신번호 찾기
     const defaultNumber = senderNumbers.find((num) => num.is_default);
 
-    // 등록된 발신번호가 없을 때 사용자의 전화번호를 가져오기
-    let fallbackNumber = null;
-    if (!defaultNumber && senderNumbers.length === 0) {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("phone_number")
-        .eq("id", userId)
-        .single();
-
-      if (userData?.phone_number) {
-        const userPhoneNumber = userData.phone_number;
-
-        // 하이픈이 이미 있는지 확인
-        if (userPhoneNumber.includes("-")) {
-          fallbackNumber = userPhoneNumber;
-        } else {
-          // 하이픈이 없는 경우, 숫자만 추출하여 형식 변환
-          const digitsOnly = userPhoneNumber.replace(/[^0-9]/g, "");
-          if (digitsOnly.length === 11 && digitsOnly.startsWith("010")) {
-            fallbackNumber = digitsOnly.replace(
-              /(\d{3})(\d{4})(\d{4})/,
-              "$1-$2-$3"
-            );
-          } else {
-            fallbackNumber = userPhoneNumber; // 원본 유지
-          }
-        }
-      }
-    }
-
-    // 최종 기본 발신번호 결정
-    let finalDefaultNumber = null;
-    if (defaultNumber) {
-      finalDefaultNumber = defaultNumber.phone_number;
-    } else if (fallbackNumber) {
-      finalDefaultNumber = fallbackNumber;
-    }
+    // 기본 발신번호 결정 (모든 사용자가 본인 발신번호를 가지고 있으므로 fallback 불필요)
+    const finalDefaultNumber = defaultNumber?.phone_number || null;
 
     const responseData = {
       senderNumbers: senderNumbers.map((num) => ({
@@ -137,6 +102,7 @@ export async function GET(request: NextRequest) {
         status: num.status === "ACTIVE" ? "정상" : num.status,
         isDefault: num.is_default,
         isVerified: num.is_verified,
+        isUserPhone: num.is_user_phone || false, // 본인 전화번호 여부 추가
       })),
       defaultNumber: finalDefaultNumber,
       totalCount: senderNumbers.length,
@@ -246,6 +212,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 본인 전화번호와의 중복 체크
+    const { data: userData } = await supabase
+      .from("users")
+      .select("phone_number")
+      .eq("id", userId)
+      .single();
+
+    if (userData?.phone_number) {
+      // 사용자 전화번호 정규화
+      let userNormalizedPhone = userData.phone_number;
+      const userDigitsOnly = userData.phone_number.replace(/[^0-9]/g, "");
+      if (phoneRegexWithoutHyphen.test(userDigitsOnly)) {
+        userNormalizedPhone = userDigitsOnly.replace(
+          /(\d{3})(\d{4})(\d{4})/,
+          "$1-$2-$3"
+        );
+      }
+
+      if (normalizedPhoneNumber === userNormalizedPhone) {
+        return NextResponse.json(
+          {
+            message: "본인 전화번호는 이미 자동으로 등록되어 있습니다",
+            error: "User Phone Already Registered",
+            status: 409,
+            timestamp: getKSTISOString(),
+            path: "/api/sender-numbers",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // 중복 번호 확인 (정규화된 전화번호로)
     const { data: existing } = await supabase
       .from("sender_numbers")
@@ -278,6 +276,7 @@ export async function POST(request: NextRequest) {
         phone_number: normalizedPhoneNumber,
         display_name: displayName || "미등록",
         is_default: isFirstNumber,
+        is_user_phone: false, // 일반 발신번호 (본인 번호가 아님)
         is_verified: false, // 실제로는 인증 과정이 필요
         status: "ACTIVE",
       })
@@ -363,10 +362,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 삭제하려는 번호 중 기본번호가 있는지 확인
+    // 삭제하려는 번호 중 기본번호나 본인번호가 있는지 확인
     const { data: numbersToDelete } = await supabase
       .from("sender_numbers")
-      .select("id, is_default, phone_number")
+      .select("id, is_default, is_user_phone, phone_number")
       .eq("user_id", userId)
       .in("id", ids);
 
@@ -375,6 +374,21 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         {
           message: "기본 발신번호는 삭제할 수 없습니다",
+          error: "Bad Request",
+          status: 400,
+          timestamp: getKSTISOString(),
+          path: "/api/sender-numbers",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 본인 전화번호 삭제 방지
+    const hasUserPhone = numbersToDelete?.some((num) => num.is_user_phone);
+    if (hasUserPhone) {
+      return NextResponse.json(
+        {
+          message: "본인 전화번호는 삭제할 수 없습니다",
           error: "Bad Request",
           status: 400,
           timestamp: getKSTISOString(),

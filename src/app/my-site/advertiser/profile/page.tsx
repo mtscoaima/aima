@@ -2411,6 +2411,7 @@ export default function ProfilePage() {
       status: string;
       isDefault: boolean;
       isVerified?: boolean;
+      isUserPhone?: boolean; // 본인 전화번호 여부
     }>
   >([]);
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
@@ -2440,10 +2441,15 @@ export default function ProfilePage() {
 
   // 전체 선택/해제 처리
   const handleSelectAll = () => {
-    if (selectedNumbers.length === senderNumbers.length) {
+    // 선택 가능한 번호들만 필터링 (기본번호나 본인번호가 아닌 것들)
+    const selectableNumbers = senderNumbers.filter(
+      (num) => !num.isDefault && !num.isUserPhone
+    );
+
+    if (selectedNumbers.length === selectableNumbers.length) {
       setSelectedNumbers([]);
     } else {
-      setSelectedNumbers(senderNumbers.map((num) => num.id));
+      setSelectedNumbers(selectableNumbers.map((num) => num.id));
     }
   };
 
@@ -2945,8 +2951,13 @@ export default function ProfilePage() {
                     <input
                       type="checkbox"
                       checked={
-                        selectedNumbers.length === senderNumbers.length &&
-                        senderNumbers.length > 0
+                        selectedNumbers.length ===
+                          senderNumbers.filter(
+                            (num) => !num.isDefault && !num.isUserPhone
+                          ).length &&
+                        senderNumbers.filter(
+                          (num) => !num.isDefault && !num.isUserPhone
+                        ).length > 0
                       }
                       onChange={handleSelectAll}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -2997,7 +3008,7 @@ export default function ProfilePage() {
                           checked={selectedNumbers.includes(number.id)}
                           onChange={() => handleNumberSelect(number.id)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          disabled={number.isDefault} // 기본번호는 선택 불가
+                          disabled={number.isDefault || number.isUserPhone} // 기본번호나 본인번호는 선택 불가
                         />
                       </td>
                       <td className="px-6 py-4">
@@ -3005,6 +3016,11 @@ export default function ProfilePage() {
                           <span className="text-sm text-gray-900">
                             {number.number}
                           </span>
+                          {number.isUserPhone && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              본인
+                            </span>
+                          )}
                           {number.isDefault && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               기본
