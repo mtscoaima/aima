@@ -133,6 +133,7 @@ export default function ProfilePage() {
     useState(false);
 
   // 세금계산서 관련 상태
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [taxInvoices, setTaxInvoices] = useState<any[]>([]);
   const [taxInvoiceLoading, setTaxInvoiceLoading] = useState(false);
   const [taxInvoiceError, setTaxInvoiceError] = useState<string | null>(null);

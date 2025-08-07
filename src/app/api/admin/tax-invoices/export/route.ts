@@ -29,7 +29,10 @@ async function verifyAdminToken(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+    };
 
     if (!decoded || !decoded.userId || decoded.role !== "ADMIN") {
       return null;
@@ -50,11 +53,6 @@ function normalizeBizNumber(bizNumber: string): string {
 // 날짜 포맷팅 함수
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("ko-KR");
-}
-
-// 통화 포맷팅 함수
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("ko-KR").format(amount);
 }
 
 // 세금계산서 엑셀 다운로드 API
@@ -84,6 +82,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
 
     // 필터 적용 함수
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const applyFilters = (query: any) => {
       if (startDate) {
         query = query.gte("issue_date", startDate);
@@ -168,32 +167,36 @@ export async function GET(request: NextRequest) {
     }
 
     // 엑셀 데이터 포맷팅
-    const excelData = taxInvoices.map((invoice: any, index: number) => {
-      // 세금계산서 담당자 정보 추출
-      const taxInvoiceInfo = invoice.users?.tax_invoice_info || {};
+    const excelData = taxInvoices.map(
+      (invoice: Record<string, unknown>, index: number) => {
+        // 세금계산서 담당자 정보 추출
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const users = invoice.users as any;
+        const taxInvoiceInfo = users?.tax_invoice_info || {};
 
-      return {
-        순번: index + 1,
-        "계산서 번호": invoice.invoice_number,
-        발행일: formatDate(invoice.issue_date),
-        사업자번호: invoice.business_number,
-        업체명: invoice.company_name,
-        담당자명: taxInvoiceInfo?.manager || invoice.users?.name || "-",
-        "담당자 이메일": taxInvoiceInfo?.email || invoice.users?.email || "-",
-        "담당자 연락처": taxInvoiceInfo?.contact || "-",
-        공급가액: invoice.supply_amount,
-        세액: invoice.tax_amount,
-        "총 금액": invoice.total_amount,
-        "과세기간 시작": invoice.period_start
-          ? formatDate(invoice.period_start)
-          : "-",
-        "과세기간 종료": invoice.period_end
-          ? formatDate(invoice.period_end)
-          : "-",
-        상태: invoice.status === "issued" ? "발행" : "취소",
-        등록일: formatDate(invoice.created_at),
-      };
-    });
+        return {
+          순번: index + 1,
+          "계산서 번호": invoice.invoice_number,
+          발행일: formatDate(invoice.issue_date as string),
+          사업자번호: invoice.business_number,
+          업체명: invoice.company_name,
+          담당자명: taxInvoiceInfo?.manager || users?.name || "-",
+          "담당자 이메일": taxInvoiceInfo?.email || users?.email || "-",
+          "담당자 연락처": taxInvoiceInfo?.contact || "-",
+          공급가액: invoice.supply_amount,
+          세액: invoice.tax_amount,
+          "총 금액": invoice.total_amount,
+          "과세기간 시작": invoice.period_start
+            ? formatDate(invoice.period_start as string)
+            : "-",
+          "과세기간 종료": invoice.period_end
+            ? formatDate(invoice.period_end as string)
+            : "-",
+          상태: invoice.status === "issued" ? "발행" : "취소",
+          등록일: formatDate(invoice.created_at as string),
+        };
+      }
+    );
 
     // 워크북 생성
     const workbook = XLSX.utils.book_new();

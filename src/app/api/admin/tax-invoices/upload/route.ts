@@ -53,7 +53,10 @@ async function verifyAdminToken(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+    };
 
     if (!decoded || !decoded.userId || decoded.role !== "ADMIN") {
       return null;
@@ -67,10 +70,7 @@ async function verifyAdminToken(request: NextRequest) {
 }
 
 // 날짜 유효성 검사 및 변환
-function validateAndFormatDate(
-  dateStr: string,
-  fieldName: string
-): string | null {
+function validateAndFormatDate(dateStr: string): string | null {
   if (!dateStr) return null;
 
   // 다양한 날짜 형식 지원
@@ -89,7 +89,7 @@ function validateAndFormatDate(
       const excelDate = parseFloat(dateString);
       const jsDate = new Date((excelDate - 25569) * 86400 * 1000);
       return jsDate.toISOString().split("T")[0];
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -108,19 +108,19 @@ function validateAndFormatDate(
     }
 
     return date.toISOString().split("T")[0];
-  } catch (error) {
+  } catch {
     return null;
   }
 }
 
 // 숫자 유효성 검사 및 변환
-function validateAndFormatNumber(value: any, fieldName: string): number | null {
+function validateAndFormatNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") {
     return null;
   }
 
   // 문자열인 경우 콤마 제거
-  let numStr = value.toString().replace(/,/g, "");
+  const numStr = value.toString().replace(/,/g, "");
 
   const num = parseFloat(numStr);
 
@@ -138,7 +138,7 @@ function normalizeBizNumber(bizNumber: string): string {
 
 // 세금계산서 데이터 검증
 function validateTaxInvoiceData(
-  row: any,
+  row: Record<string, unknown>,
   rowIndex: number
 ): { isValid: boolean; data?: TaxInvoiceData; errors: string[] } {
   const errors: string[] = [];
@@ -150,7 +150,7 @@ function validateTaxInvoiceData(
     errors.push(`${rowNum}행: 계산서 번호가 누락되었습니다`);
   }
 
-  const issueDate = validateAndFormatDate(row["발행일"], "발행일");
+  const issueDate = validateAndFormatDate(row["발행일"] as string);
   if (!issueDate) {
     errors.push(
       `${rowNum}행: 발행일이 올바르지 않습니다 (YYYY-MM-DD 형식 필요)`
@@ -174,17 +174,17 @@ function validateTaxInvoiceData(
     errors.push(`${rowNum}행: 업체명이 누락되었습니다`);
   }
 
-  const supplyAmount = validateAndFormatNumber(row["공급가액"], "공급가액");
+  const supplyAmount = validateAndFormatNumber(row["공급가액"]);
   if (supplyAmount === null) {
     errors.push(`${rowNum}행: 공급가액이 올바르지 않습니다 (숫자 필요)`);
   }
 
-  const taxAmount = validateAndFormatNumber(row["세액"], "세액");
+  const taxAmount = validateAndFormatNumber(row["세액"]);
   if (taxAmount === null) {
     errors.push(`${rowNum}행: 세액이 올바르지 않습니다 (숫자 필요)`);
   }
 
-  const totalAmount = validateAndFormatNumber(row["총 금액"], "총 금액");
+  const totalAmount = validateAndFormatNumber(row["총 금액"]);
   if (totalAmount === null) {
     errors.push(`${rowNum}행: 총 금액이 올바르지 않습니다 (숫자 필요)`);
   }
@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
 
     // 각 행 처리
     for (let i = 0; i < data.length; i++) {
-      const row = data[i];
+      const row = data[i] as Record<string, unknown>;
       result.details.processed++;
 
       // 데이터 검증
@@ -343,7 +343,7 @@ export async function POST(request: NextRequest) {
       const validData = validation.data!;
 
       // 중복 계산서 번호 체크
-      const { data: existingInvoice, error: duplicateError } = await supabase
+      const { data: existingInvoice } = await supabase
         .from("tax_invoices")
         .select("id")
         .eq("invoice_number", validData.invoiceNumber)
@@ -375,7 +375,7 @@ export async function POST(request: NextRequest) {
 
       // company_info에서 businessNumber 매칭
       const matchingUser = users?.find((user) => {
-        const companyInfo = user.company_info as any;
+        const companyInfo = user.company_info as { businessNumber?: string };
         if (!companyInfo || !companyInfo.businessNumber) return false;
 
         const userBizNum = normalizeBizNumber(companyInfo.businessNumber);

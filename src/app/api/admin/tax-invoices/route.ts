@@ -28,7 +28,10 @@ async function verifyAdminToken(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+    };
 
     if (!decoded || !decoded.userId || decoded.role !== "ADMIN") {
       return null;
@@ -73,6 +76,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // 필터 적용 함수 (count와 data 쿼리에서 재사용)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const applyFilters = (query: any) => {
       if (startDate) {
         query = query.gte("issue_date", startDate);
@@ -169,23 +173,27 @@ export async function GET(request: NextRequest) {
 
     // 응답 데이터 포맷팅
     const formattedData =
-      taxInvoices?.map((invoice: any) => ({
-        id: invoice.id,
-        invoiceNumber: invoice.invoice_number,
-        issueDate: invoice.issue_date,
-        businessNumber: invoice.business_number,
-        companyName: invoice.company_name,
-        supplyAmount: invoice.supply_amount,
-        taxAmount: invoice.tax_amount,
-        totalAmount: invoice.total_amount,
-        status: invoice.status,
-        createdAt: invoice.created_at,
-        user: {
-          id: invoice.users?.id,
-          name: invoice.users?.name,
-          email: invoice.users?.email,
-        },
-      })) || [];
+      taxInvoices?.map((invoice: Record<string, unknown>) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const users = invoice.users as any;
+        return {
+          id: invoice.id,
+          invoiceNumber: invoice.invoice_number,
+          issueDate: invoice.issue_date,
+          businessNumber: invoice.business_number,
+          companyName: invoice.company_name,
+          supplyAmount: invoice.supply_amount,
+          taxAmount: invoice.tax_amount,
+          totalAmount: invoice.total_amount,
+          status: invoice.status,
+          createdAt: invoice.created_at,
+          user: {
+            id: users?.id,
+            name: users?.name,
+            email: users?.email,
+          },
+        };
+      }) || [];
 
     // 페이지네이션 메타데이터 계산
     const totalPages = Math.ceil((totalCount || 0) / limit);

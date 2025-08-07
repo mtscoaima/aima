@@ -45,8 +45,9 @@ async function verifyTokenAndGetUserId(request: NextRequest) {
 // PATCH: 기본 발신번호 변경
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     const userId = await verifyTokenAndGetUserId(request);
     if (!userId) {
@@ -56,7 +57,7 @@ export async function PATCH(
           error: "Unauthorized",
           status: 401,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}/set-default`,
+          path: `/api/sender-numbers/${resolvedParams.id}/set-default`,
         },
         { status: 401 }
       );
@@ -66,7 +67,7 @@ export async function PATCH(
     const { data: numberToSetDefault } = await supabase
       .from("sender_numbers")
       .select("id, user_id, phone_number, display_name, is_default")
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .eq("user_id", userId)
       .single();
 
@@ -77,7 +78,7 @@ export async function PATCH(
           error: "Not Found",
           status: 404,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}/set-default`,
+          path: `/api/sender-numbers/${resolvedParams.id}/set-default`,
         },
         { status: 404 }
       );
@@ -91,7 +92,7 @@ export async function PATCH(
           error: "Bad Request",
           status: 400,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}/set-default`,
+          path: `/api/sender-numbers/${resolvedParams.id}/set-default`,
         },
         { status: 400 }
       );
@@ -113,7 +114,7 @@ export async function PATCH(
           error: `Database Error: ${resetError.message}`,
           status: 500,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}/set-default`,
+          path: `/api/sender-numbers/${resolvedParams.id}/set-default`,
         },
         { status: 500 }
       );
@@ -123,7 +124,7 @@ export async function PATCH(
     const { data: updatedNumber, error: setError } = await supabase
       .from("sender_numbers")
       .update({ is_default: true })
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .eq("user_id", userId)
       .select()
       .single();
@@ -136,7 +137,7 @@ export async function PATCH(
           error: `Database Error: ${setError.message}`,
           status: 500,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}/set-default`,
+          path: `/api/sender-numbers/${resolvedParams.id}/set-default`,
         },
         { status: 500 }
       );
@@ -165,7 +166,7 @@ export async function PATCH(
         error: error instanceof Error ? error.message : "Unknown error",
         status: 500,
         timestamp: getKSTISOString(),
-        path: `/api/sender-numbers/${params.id}/set-default`,
+        path: `/api/sender-numbers/${resolvedParams.id}/set-default`,
       },
       { status: 500 }
     );

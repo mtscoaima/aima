@@ -31,10 +31,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let decodedToken: any;
+    let decodedToken: { userId: string; role: string };
     try {
-      decodedToken = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
+      decodedToken = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        role: string;
+      };
+    } catch {
       return NextResponse.json(
         { error: "유효하지 않은 토큰입니다." },
         { status: 401 }

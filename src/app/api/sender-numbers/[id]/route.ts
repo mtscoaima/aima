@@ -45,8 +45,9 @@ async function verifyTokenAndGetUserId(request: NextRequest) {
 // PUT: 발신번호 별칭 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     const userId = await verifyTokenAndGetUserId(request);
     if (!userId) {
@@ -56,7 +57,7 @@ export async function PUT(
           error: "Unauthorized",
           status: 401,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 401 }
       );
@@ -71,7 +72,7 @@ export async function PUT(
           error: "Bad Request",
           status: 400,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 400 }
       );
@@ -81,7 +82,7 @@ export async function PUT(
     const { data: existingNumber } = await supabase
       .from("sender_numbers")
       .select("id, user_id")
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .eq("user_id", userId)
       .single();
 
@@ -92,7 +93,7 @@ export async function PUT(
           error: "Not Found",
           status: 404,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 404 }
       );
@@ -102,7 +103,7 @@ export async function PUT(
     const { data: updatedNumber, error } = await supabase
       .from("sender_numbers")
       .update({ display_name: displayName })
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .eq("user_id", userId)
       .select()
       .single();
@@ -115,7 +116,7 @@ export async function PUT(
           error: `Database Error: ${error.message}`,
           status: 500,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 500 }
       );
@@ -144,7 +145,7 @@ export async function PUT(
         error: error instanceof Error ? error.message : "Unknown error",
         status: 500,
         timestamp: getKSTISOString(),
-        path: `/api/sender-numbers/${params.id}`,
+        path: `/api/sender-numbers/${resolvedParams.id}`,
       },
       { status: 500 }
     );
@@ -154,8 +155,9 @@ export async function PUT(
 // DELETE: 개별 발신번호 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     const userId = await verifyTokenAndGetUserId(request);
     if (!userId) {
@@ -165,7 +167,7 @@ export async function DELETE(
           error: "Unauthorized",
           status: 401,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 401 }
       );
@@ -175,7 +177,7 @@ export async function DELETE(
     const { data: numberToDelete } = await supabase
       .from("sender_numbers")
       .select("id, user_id, is_default")
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .eq("user_id", userId)
       .single();
 
@@ -186,7 +188,7 @@ export async function DELETE(
           error: "Not Found",
           status: 404,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 404 }
       );
@@ -200,7 +202,7 @@ export async function DELETE(
           error: "Bad Request",
           status: 400,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 400 }
       );
@@ -210,7 +212,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("sender_numbers")
       .delete()
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .eq("user_id", userId);
 
     if (error) {
@@ -221,7 +223,7 @@ export async function DELETE(
           error: `Database Error: ${error.message}`,
           status: 500,
           timestamp: getKSTISOString(),
-          path: `/api/sender-numbers/${params.id}`,
+          path: `/api/sender-numbers/${resolvedParams.id}`,
         },
         { status: 500 }
       );
@@ -229,7 +231,7 @@ export async function DELETE(
 
     return NextResponse.json({
       message: "발신번호가 성공적으로 삭제되었습니다",
-      deletedId: params.id,
+      deletedId: resolvedParams.id,
     });
   } catch (error) {
     console.error("Delete sender number error:", error);
@@ -239,7 +241,7 @@ export async function DELETE(
         error: error instanceof Error ? error.message : "Unknown error",
         status: 500,
         timestamp: getKSTISOString(),
-        path: `/api/sender-numbers/${params.id}`,
+        path: `/api/sender-numbers/${resolvedParams.id}`,
       },
       { status: 500 }
     );

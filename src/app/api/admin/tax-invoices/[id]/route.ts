@@ -28,7 +28,10 @@ async function verifyAdminToken(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+    };
 
     if (!decoded || !decoded.userId || decoded.role !== "ADMIN") {
       return null;
@@ -44,8 +47,9 @@ async function verifyAdminToken(request: NextRequest) {
 // 세금계산서 상세 조회 API
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     // 관리자 권한 검증
     const adminUser = await verifyAdminToken(request);
@@ -56,13 +60,13 @@ export async function GET(
           error: "Unauthorized",
           status: 403,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 403 }
       );
     }
 
-    const invoiceId = parseInt(params.id);
+    const invoiceId = parseInt(resolvedParams.id);
     if (isNaN(invoiceId)) {
       return NextResponse.json(
         {
@@ -70,7 +74,7 @@ export async function GET(
           error: "Invalid ID",
           status: 400,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 400 }
       );
@@ -114,7 +118,7 @@ export async function GET(
           error: error.message,
           status: 500,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 500 }
       );
@@ -127,14 +131,19 @@ export async function GET(
           error: "Not Found",
           status: 404,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 404 }
       );
     }
 
     // 세금계산서 담당자 정보 추출
-    const taxInvoiceInfo = taxInvoice.users?.tax_invoice_info as any;
+    const userInfo = Array.isArray(taxInvoice.users)
+      ? taxInvoice.users[0]
+      : taxInvoice.users;
+    const taxInvoiceInfo = userInfo?.tax_invoice_info as
+      | { manager?: string; email?: string; contact?: string }
+      | undefined;
 
     // 응답 데이터 포맷팅
     const formattedData = {
@@ -153,9 +162,9 @@ export async function GET(
       createdAt: taxInvoice.created_at,
       updatedAt: taxInvoice.updated_at,
       user: {
-        id: taxInvoice.users?.id,
-        name: taxInvoiceInfo?.manager || taxInvoice.users?.name || "-",
-        email: taxInvoiceInfo?.email || taxInvoice.users?.email || "-",
+        id: userInfo?.id,
+        name: taxInvoiceInfo?.manager || userInfo?.name || "-",
+        email: taxInvoiceInfo?.email || userInfo?.email || "-",
         phone: taxInvoiceInfo?.contact || "-",
       },
     };
@@ -176,7 +185,7 @@ export async function GET(
         error: error instanceof Error ? error.message : "Internal Server Error",
         status: 500,
         timestamp: getKSTISOString(),
-        path: `/api/admin/tax-invoices/${params.id}`,
+        path: `/api/admin/tax-invoices/${resolvedParams.id}`,
       },
       { status: 500 }
     );
@@ -186,8 +195,9 @@ export async function GET(
 // 세금계산서 수정 API
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     // 관리자 권한 검증
     const adminUser = await verifyAdminToken(request);
@@ -198,13 +208,13 @@ export async function PUT(
           error: "Unauthorized",
           status: 403,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 403 }
       );
     }
 
-    const invoiceId = parseInt(params.id);
+    const invoiceId = parseInt(resolvedParams.id);
     if (isNaN(invoiceId)) {
       return NextResponse.json(
         {
@@ -212,7 +222,7 @@ export async function PUT(
           error: "Invalid ID",
           status: 400,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 400 }
       );
@@ -248,7 +258,7 @@ export async function PUT(
           error: "Missing Required Fields",
           status: 400,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 400 }
       );
@@ -268,7 +278,7 @@ export async function PUT(
           error: "Not Found",
           status: 404,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 404 }
       );
@@ -302,7 +312,7 @@ export async function PUT(
           error: updateError.message,
           status: 500,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 500 }
       );
@@ -337,7 +347,7 @@ export async function PUT(
         error: error instanceof Error ? error.message : "Internal Server Error",
         status: 500,
         timestamp: getKSTISOString(),
-        path: `/api/admin/tax-invoices/${params.id}`,
+        path: `/api/admin/tax-invoices/${resolvedParams.id}`,
       },
       { status: 500 }
     );
@@ -347,8 +357,9 @@ export async function PUT(
 // 세금계산서 삭제 API
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     // 관리자 권한 검증
     const adminUser = await verifyAdminToken(request);
@@ -359,13 +370,13 @@ export async function DELETE(
           error: "Unauthorized",
           status: 403,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 403 }
       );
     }
 
-    const invoiceId = parseInt(params.id);
+    const invoiceId = parseInt(resolvedParams.id);
     if (isNaN(invoiceId)) {
       return NextResponse.json(
         {
@@ -373,7 +384,7 @@ export async function DELETE(
           error: "Invalid ID",
           status: 400,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 400 }
       );
@@ -393,7 +404,7 @@ export async function DELETE(
           error: "Not Found",
           status: 404,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 404 }
       );
@@ -413,7 +424,7 @@ export async function DELETE(
           error: deleteError.message,
           status: 500,
           timestamp: getKSTISOString(),
-          path: `/api/admin/tax-invoices/${params.id}`,
+          path: `/api/admin/tax-invoices/${resolvedParams.id}`,
         },
         { status: 500 }
       );
@@ -439,7 +450,7 @@ export async function DELETE(
         error: error instanceof Error ? error.message : "Internal Server Error",
         status: 500,
         timestamp: getKSTISOString(),
-        path: `/api/admin/tax-invoices/${params.id}`,
+        path: `/api/admin/tax-invoices/${resolvedParams.id}`,
       },
       { status: 500 }
     );

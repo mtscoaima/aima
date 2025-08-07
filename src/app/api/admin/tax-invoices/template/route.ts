@@ -14,7 +14,10 @@ async function verifyAdminToken(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      role: string;
+    };
 
     if (!decoded || !decoded.userId || decoded.role !== "ADMIN") {
       return null;
