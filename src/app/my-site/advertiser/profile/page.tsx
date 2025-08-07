@@ -132,6 +132,24 @@ export default function ProfilePage() {
   const [isEmploymentCertUploading, setIsEmploymentCertUploading] =
     useState(false);
 
+  // 세금계산서 관련 상태
+  const [taxInvoices, setTaxInvoices] = useState<any[]>([]);
+  const [taxInvoiceLoading, setTaxInvoiceLoading] = useState(false);
+  const [taxInvoiceError, setTaxInvoiceError] = useState<string | null>(null);
+  const [taxInvoicePagination, setTaxInvoicePagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalItems: 0,
+    itemsPerPage: 10,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+  const [taxInvoiceFilters, setTaxInvoiceFilters] = useState({
+    startDate: "",
+    endDate: "",
+  });
+  const [isExcelDownloading, setIsExcelDownloading] = useState(false);
+
   // 사용자 프로필 데이터
   const [userData, setUserData] = useState<UserProfileData>({
     name: "",
@@ -735,6 +753,156 @@ export default function ProfilePage() {
       alert("휴대폰 번호 변경에 실패했습니다. 다시 시도해주세요.");
     }
   }, []);
+
+  // 세금계산서 목록 조회
+  const fetchTaxInvoices = useCallback(
+    async (page = 1) => {
+      if (!user) return;
+
+      setTaxInvoiceLoading(true);
+      setTaxInvoiceError(null);
+
+      try {
+        const token = tokenManager.getAccessToken();
+        if (!token) {
+          throw new Error("인증 토큰이 없습니다.");
+        }
+
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: taxInvoicePagination.itemsPerPage.toString(),
+        });
+
+        if (taxInvoiceFilters.startDate) {
+          params.append("startDate", taxInvoiceFilters.startDate);
+        }
+        if (taxInvoiceFilters.endDate) {
+          params.append("endDate", taxInvoiceFilters.endDate);
+        }
+
+        const response = await fetch(`/api/tax-invoices?${params}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("세금계산서 목록을 불러오는데 실패했습니다.");
+        }
+
+        const data = await response.json();
+        setTaxInvoices(data.data || []);
+        setTaxInvoicePagination(data.pagination);
+      } catch (error) {
+        console.error("세금계산서 조회 오류:", error);
+        setTaxInvoiceError(
+          error instanceof Error
+            ? error.message
+            : "알 수 없는 오류가 발생했습니다."
+        );
+      } finally {
+        setTaxInvoiceLoading(false);
+      }
+    },
+    [user, taxInvoicePagination.itemsPerPage, taxInvoiceFilters]
+  );
+
+  // 세금계산서 엑셀 다운로드
+  const downloadTaxInvoiceExcel = useCallback(async () => {
+    if (!user) return;
+
+    setIsExcelDownloading(true);
+
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        throw new Error("인증 토큰이 없습니다.");
+      }
+
+      const params = new URLSearchParams();
+      if (taxInvoiceFilters.startDate) {
+        params.append("startDate", taxInvoiceFilters.startDate);
+      }
+      if (taxInvoiceFilters.endDate) {
+        params.append("endDate", taxInvoiceFilters.endDate);
+      }
+
+      const response = await fetch(`/api/tax-invoices/excel?${params}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("엑셀 다운로드에 실패했습니다.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+
+      // 파일명 추출
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = "세금계산서_발행내역.xlsx";
+      if (contentDisposition) {
+        const matches = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+        );
+        if (matches && matches[1]) {
+          filename = decodeURIComponent(matches[1].replace(/['"]/g, ""));
+        }
+      }
+
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("엑셀 다운로드 오류:", error);
+      alert(
+        error instanceof Error ? error.message : "엑셀 다운로드에 실패했습니다."
+      );
+    } finally {
+      setIsExcelDownloading(false);
+    }
+  }, [user, taxInvoiceFilters]);
+
+  // 세금계산서 페이지 변경
+  const handleTaxInvoicePageChange = (page: number) => {
+    setTaxInvoicePagination((prev) => ({ ...prev, currentPage: page }));
+    fetchTaxInvoices(page);
+  };
+
+  // 세금계산서 필터 변경
+  const handleTaxInvoiceFilterChange = (
+    newFilters: typeof taxInvoiceFilters
+  ) => {
+    setTaxInvoiceFilters(newFilters);
+    setTaxInvoicePagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
+
+  // 세금계산서 필터 초기화
+  const resetTaxInvoiceFilters = () => {
+    setTaxInvoiceFilters({ startDate: "", endDate: "" });
+    setTaxInvoicePagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
+
+  // 세금계산서 탭 활성화 시 데이터 로드
+  useEffect(() => {
+    if (activeTab === "taxInvoice" && user) {
+      fetchTaxInvoices();
+    }
+  }, [activeTab, user, fetchTaxInvoices]);
+
+  // 세금계산서 필터 변경 시 데이터 다시 로드
+  useEffect(() => {
+    if (activeTab === "taxInvoice" && user) {
+      fetchTaxInvoices(1);
+    }
+  }, [taxInvoiceFilters, activeTab, user, fetchTaxInvoices]);
 
   // 휴대폰 변경 본인인증 팝업 메시지 리스너
   useEffect(() => {
@@ -3097,60 +3265,284 @@ export default function ProfilePage() {
       {/* 세금계산서 발행 내역 */}
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            세금계산서 발행 내역
-          </h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-900">
+              세금계산서 발행 내역
+            </h3>
+            <button
+              onClick={downloadTaxInvoiceExcel}
+              disabled={isExcelDownloading || taxInvoices.length === 0}
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200 flex items-center space-x-2"
+            >
+              {isExcelDownloading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>다운로드 중...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                  <span>엑셀 다운로드</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                  작성일
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                  사업자등록번호
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                  업체명
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                  공급가액
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                  세액
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                  충전금액
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {/* 발행 내역이 없을 때 */}
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
-                  <div className="text-gray-500">
-                    <svg
-                      className="w-12 h-12 text-gray-300 mx-auto mb-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <p className="text-sm">발행된 세금계산서가 없습니다.</p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        {/* 필터 영역 */}
+        <div className="p-6 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">
+                기간 설정:
+              </label>
+              <input
+                type="date"
+                value={taxInvoiceFilters.startDate}
+                onChange={(e) =>
+                  handleTaxInvoiceFilterChange({
+                    ...taxInvoiceFilters,
+                    startDate: e.target.value,
+                  })
+                }
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <span className="text-gray-500">~</span>
+              <input
+                type="date"
+                value={taxInvoiceFilters.endDate}
+                onChange={(e) =>
+                  handleTaxInvoiceFilterChange({
+                    ...taxInvoiceFilters,
+                    endDate: e.target.value,
+                  })
+                }
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              onClick={resetTaxInvoiceFilters}
+              className="px-3 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              초기화
+            </button>
+          </div>
         </div>
+
+        {/* 테이블 영역 */}
+        <div className="overflow-x-auto">
+          {taxInvoiceLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-sm text-gray-600">
+                  세금계산서 목록을 불러오는 중...
+                </p>
+              </div>
+            </div>
+          ) : taxInvoiceError ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <svg
+                  className="w-12 h-12 text-red-300 mx-auto mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-sm text-red-600 mb-2">{taxInvoiceError}</p>
+                <button
+                  onClick={() => fetchTaxInvoices()}
+                  className="px-4 py-2 text-sm bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
+                >
+                  다시 시도
+                </button>
+              </div>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                    발행일
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                    계산서 번호
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                    사업자등록번호
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                    업체명
+                  </th>
+                  <th className="px-6 py-3 text-right text-sm font-medium text-gray-700">
+                    공급가액
+                  </th>
+                  <th className="px-6 py-3 text-right text-sm font-medium text-gray-700">
+                    세액
+                  </th>
+                  <th className="px-6 py-3 text-right text-sm font-medium text-gray-700">
+                    총 금액
+                  </th>
+                  <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">
+                    상태
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {taxInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center">
+                      <div className="text-gray-500">
+                        <svg
+                          className="w-12 h-12 text-gray-300 mx-auto mb-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        <p className="text-sm">발행된 세금계산서가 없습니다.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  taxInvoices.map((invoice) => (
+                    <tr key={invoice.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {invoice.issue_date}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {invoice.invoice_number}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {invoice.business_number}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {invoice.company_name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                        {invoice.supply_amount.toLocaleString()}원
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                        {invoice.tax_amount.toLocaleString()}원
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
+                        {invoice.total_amount.toLocaleString()}원
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            invoice.status === "issued"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {invoice.status === "issued" ? "발행" : "취소"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* 페이지네이션 */}
+        {taxInvoices.length > 0 && taxInvoicePagination.totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                총 {taxInvoicePagination.totalItems}개 중{" "}
+                {(taxInvoicePagination.currentPage - 1) *
+                  taxInvoicePagination.itemsPerPage +
+                  1}
+                -
+                {Math.min(
+                  taxInvoicePagination.currentPage *
+                    taxInvoicePagination.itemsPerPage,
+                  taxInvoicePagination.totalItems
+                )}
+                개 표시
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() =>
+                    handleTaxInvoicePageChange(
+                      taxInvoicePagination.currentPage - 1
+                    )
+                  }
+                  disabled={!taxInvoicePagination.hasPrevPage}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  이전
+                </button>
+                {Array.from(
+                  { length: taxInvoicePagination.totalPages },
+                  (_, i) => i + 1
+                )
+                  .filter(
+                    (page) =>
+                      page === 1 ||
+                      page === taxInvoicePagination.totalPages ||
+                      Math.abs(page - taxInvoicePagination.currentPage) <= 2
+                  )
+                  .map((page, index, array) => (
+                    <React.Fragment key={page}>
+                      {index > 0 && array[index - 1] !== page - 1 && (
+                        <span className="px-2 text-sm text-gray-500">...</span>
+                      )}
+                      <button
+                        onClick={() => handleTaxInvoicePageChange(page)}
+                        className={`px-3 py-2 text-sm font-medium rounded-md ${
+                          page === taxInvoicePagination.currentPage
+                            ? "bg-blue-500 text-white"
+                            : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                <button
+                  onClick={() =>
+                    handleTaxInvoicePageChange(
+                      taxInvoicePagination.currentPage + 1
+                    )
+                  }
+                  disabled={!taxInvoicePagination.hasNextPage}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

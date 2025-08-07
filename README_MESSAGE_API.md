@@ -179,7 +179,6 @@ const response = await fetch("/api/message/send", {
 });
 
 const result = await response.json();
-console.log(`총 ${result.summary.total}건 중 ${result.summary.success}건 성공`);
 ```
 
 ## 주의사항

@@ -631,8 +631,6 @@ export default function TaxInvoiceManagement() {
       link.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
-
-      console.log("엑셀 다운로드 완료:", filename);
     } catch (error) {
       console.error("엑셀 다운로드 오류:", error);
       alert(
@@ -1402,18 +1400,18 @@ export default function TaxInvoiceManagement() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
                   />
                 </div>
-                <div className="flex items-end space-x-2">
+                <div className="flex flex-col sm:flex-row sm:items-end space-y-2 sm:space-y-0 sm:space-x-2">
                   <button
                     onClick={handleSearch}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50"
+                    className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50"
                   >
                     {isLoading ? "검색 중..." : "검색"}
                   </button>
                   <button
                     onClick={handleResetSearch}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:opacity-50"
+                    className="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:opacity-50"
                   >
                     초기화
                   </button>
@@ -1423,108 +1421,199 @@ export default function TaxInvoiceManagement() {
 
             {/* 테이블 */}
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">
-                  발행 내역 ({pagination.totalCount}건)
-                </h3>
-                <button
-                  onClick={handleExcelDownload}
-                  disabled={isLoading || pagination.totalCount === 0}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  📄 엑셀 다운로드
-                </button>
-              </div>
-
-              {isLoading ? (
-                <div className="px-6 py-12 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-gray-500">데이터를 불러오는 중...</p>
-                </div>
-              ) : error ? (
-                <div className="px-6 py-12 text-center">
-                  <p className="text-red-500 mb-4">오류: {error}</p>
+              {/* 데스크톱 테이블 */}
+              <div className="hidden lg:block overflow-x-auto">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    발행 내역 ({pagination.totalCount}건)
+                  </h3>
                   <button
-                    onClick={() => fetchTaxInvoices(1, searchFilters)}
-                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+                    onClick={handleExcelDownload}
+                    disabled={isLoading || pagination.totalCount === 0}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    다시 시도
+                    📄 엑셀 다운로드
                   </button>
                 </div>
-              ) : invoices.length === 0 ? (
-                <div className="px-6 py-12 text-center text-gray-500">
-                  발행된 세금계산서가 없습니다.
+
+                {isLoading ? (
+                  <div className="px-6 py-12 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-gray-500">데이터를 불러오는 중...</p>
+                  </div>
+                ) : error ? (
+                  <div className="px-6 py-12 text-center">
+                    <p className="text-red-500 mb-4">오류: {error}</p>
+                    <button
+                      onClick={() => fetchTaxInvoices(1, searchFilters)}
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-gray-500">
+                    발행된 세금계산서가 없습니다.
+                  </div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          계산서 번호
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          발행일
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          사업자번호
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          업체명
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          공급가액
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          세액
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          총 금액
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          상태
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          액션
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {invoices.map((invoice) => (
+                        <tr key={invoice.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {invoice.invoiceNumber}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatDate(invoice.issueDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {invoice.businessNumber}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {invoice.companyName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatCurrency(invoice.supplyAmount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatCurrency(invoice.taxAmount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatCurrency(invoice.totalAmount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                invoice.status === "issued"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {invoice.status === "issued" ? "발행" : "취소"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <div className="flex items-center justify-center space-x-2">
+                              <button
+                                onClick={() => handleViewTaxInvoice(invoice.id)}
+                                className="text-indigo-600 hover:text-indigo-900 text-xs bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded"
+                                title="상세보기"
+                              >
+                                보기
+                              </button>
+                              <button
+                                onClick={() => handleEditTaxInvoice(invoice.id)}
+                                className="text-green-600 hover:text-green-900 text-xs bg-green-50 hover:bg-green-100 px-2 py-1 rounded"
+                                title="수정"
+                              >
+                                수정
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteTaxInvoice(
+                                    invoice.id,
+                                    invoice.invoiceNumber
+                                  )
+                                }
+                                className="text-red-600 hover:text-red-900 text-xs bg-red-50 hover:bg-red-100 px-2 py-1 rounded"
+                                title="삭제"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* 모바일/태블릿 카드 레이아웃 */}
+              <div className="lg:hidden">
+                <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    발행 내역 ({pagination.totalCount}건)
+                  </h3>
+                  <button
+                    onClick={handleExcelDownload}
+                    disabled={isLoading || pagination.totalCount === 0}
+                    className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    📄 다운로드
+                  </button>
                 </div>
-              ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        계산서 번호
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        발행일
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        사업자번호
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        업체명
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        공급가액
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        세액
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        총 금액
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        상태
-                      </th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        액션
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+
+                {isLoading ? (
+                  <div className="px-4 py-12 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-gray-500">데이터를 불러오는 중...</p>
+                  </div>
+                ) : error ? (
+                  <div className="px-4 py-12 text-center">
+                    <p className="text-red-500 mb-4">오류: {error}</p>
+                    <button
+                      onClick={() => fetchTaxInvoices(1, searchFilters)}
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="px-4 py-12 text-center text-gray-500">
+                    발행된 세금계산서가 없습니다.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
                     {invoices.map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {invoice.invoiceNumber}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(invoice.issueDate)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {invoice.businessNumber}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {invoice.companyName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(invoice.supplyAmount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(invoice.taxAmount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(invoice.totalAmount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              invoice.status === "issued"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {invoice.status === "issued" ? "발행" : "취소"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                          <div className="flex items-center justify-center space-x-2">
+                      <div key={invoice.id} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {invoice.invoiceNumber}
+                            </span>
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                invoice.status === "issued"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {invoice.status === "issued" ? "발행" : "취소"}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1">
                             <button
                               onClick={() => handleViewTaxInvoice(invoice.id)}
                               className="text-indigo-600 hover:text-indigo-900 text-xs bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded"
@@ -1552,17 +1641,56 @@ export default function TaxInvoiceManagement() {
                               삭제
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-500">발행일:</span>
+                            <span className="ml-1 text-gray-900">
+                              {formatDate(invoice.issueDate)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">사업자번호:</span>
+                            <span className="ml-1 text-gray-900">
+                              {invoice.businessNumber}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500">업체명:</span>
+                            <span className="ml-1 text-gray-900">
+                              {invoice.companyName}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">공급가액:</span>
+                            <span className="ml-1 text-gray-900">
+                              {formatCurrency(invoice.supplyAmount)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">세액:</span>
+                            <span className="ml-1 text-gray-900">
+                              {formatCurrency(invoice.taxAmount)}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500">총 금액:</span>
+                            <span className="ml-1 font-medium text-gray-900">
+                              {formatCurrency(invoice.totalAmount)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              )}
+                  </div>
+                )}
+              </div>
 
               {/* 페이지네이션 */}
               {!isLoading && !error && invoices.length > 0 && (
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
+                <div className="px-4 lg:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-sm text-gray-700 text-center sm:text-left">
                     총 {pagination.totalCount}건 중{" "}
                     {(pagination.currentPage - 1) * pagination.limit + 1}-
                     {Math.min(
