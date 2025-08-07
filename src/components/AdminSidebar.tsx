@@ -14,28 +14,10 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
   const menuItems = [
     {
-      id: "dashboard",
-      label: "대시보드",
-      icon: "📊",
-      href: "/admin/dashboard",
-    },
-    {
-      id: "messages",
-      label: "메시지 관리",
-      icon: "💬",
-      href: "/admin/messages",
-    },
-    {
-      id: "templates",
-      label: "템플릿 관리",
-      icon: "📝",
-      href: "/admin/templates",
-    },
-    {
-      id: "recipients",
-      label: "수신자 관리",
-      icon: "🎯",
-      href: "/admin/recipients",
+      id: "user-management",
+      label: "회원관리",
+      icon: "👥",
+      href: "/admin/user-management",
     },
     {
       id: "campaigns",
@@ -44,28 +26,28 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       href: "/admin/campaigns",
     },
     {
-      id: "user-management",
-      label: "사용자 관리",
-      icon: "👥",
-      href: "/admin/user-management",
-    },
-    {
       id: "member-approval",
-      label: "일반회원 승인",
+      label: "기업정보관리",
       icon: "✅",
       href: "/admin/member-approval",
     },
     {
       id: "customer-support",
-      label: "고객센터 관리",
+      label: "고객지원 관리",
       icon: "🎧",
       href: "/admin/customer-support",
     },
     {
       id: "system-settings",
-      label: "시스템 설정",
+      label: "설정관리",
       icon: "⚙️",
       href: "/admin/system-settings",
+    },
+    {
+      id: "tax-invoices",
+      label: "세금계산서 관리",
+      icon: "🧾",
+      href: "/admin/tax-invoices",
     },
   ];
 
@@ -74,17 +56,14 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     if (window.innerWidth <= 768) {
       onClose();
     }
-    // 대시보드, 메시지 관리, 템플릿 관리, 수신자 관리, 캠페인 관리, 사용자 관리, 일반회원 승인, 고객센터 관리, 시스템 설정 페이지는 실제로 이동 가능
+    // 회원관리, 캠페인 관리, 기업정보관리, 고객지원 관리, 설정관리, 세금계산서 관리 페이지는 실제로 이동 가능
     if (
-      href === "/admin/dashboard" ||
-      href === "/admin/messages" ||
-      href === "/admin/templates" ||
-      href === "/admin/recipients" ||
-      href === "/admin/campaigns" ||
       href === "/admin/user-management" ||
+      href === "/admin/campaigns" ||
       href === "/admin/member-approval" ||
       href === "/admin/customer-support" ||
-      href === "/admin/system-settings"
+      href === "/admin/system-settings" ||
+      href === "/admin/tax-invoices"
     ) {
       window.location.href = href;
     }

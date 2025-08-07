@@ -4269,11 +4269,17 @@ export default function ProfilePage() {
               </div>
 
               {/* 버튼 영역 */}
-              <div className="flex justify-center mt-6">
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={handleTaxInvoiceEmailModalClose}
+                  className="px-8 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200 font-medium"
+                >
+                  취소
+                </button>
                 <button
                   onClick={handleTaxInvoiceEmailSave}
                   disabled={isSaving}
-                  className="px-8 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed font-medium"
+                  className="px-8 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200 disabled:bg-green-300 disabled:cursor-not-allowed font-medium"
                 >
                   {isSaving ? "수정 중..." : "수정"}
                 </button>
