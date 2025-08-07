@@ -1,0 +1,241 @@
+/* Admin layout overrides */
+.admin-dashboard {
+  min-height: calc(100vh - 64px);
+  margin-top: 64px;
+  margin-left: 250px;
+}
+
+.admin-main {
+  padding: 2rem;
+  background-color: #f9fafb;
+  min-height: calc(100vh - 64px);
+}
+
+/* Custom color classes */
+.text-primary {
+  color: #1681ff !important;
+}
+
+.bg-primary {
+  background-color: #1681ff !important;
+}
+
+.bg-primary:hover,
+.bg-primary-dark {
+  background-color: #1366cc !important;
+}
+
+.border-primary {
+  border-color: #1681ff !important;
+}
+
+.ring-primary {
+  --tw-ring-color: #1681ff !important;
+}
+
+/* Header styles */
+.admin-header {
+  margin-bottom: 2rem;
+}
+
+.admin-header h1 {
+  color: #1681ff;
+  font-feature-settings: "liga" off, "clig" off;
+  font-family: "Noto Sans KR";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -0.48px;
+  margin: 0 0 0.5rem 0;
+}
+
+.admin-header p {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+/* Tab navigation styles */
+.tm-tabs {
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 2.5rem;
+}
+
+.tm-tab-btn {
+  background: none;
+  border: none;
+  padding: 0.75rem 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6c757d;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s ease-in-out;
+}
+
+.tm-tab-btn:hover {
+  color: #1681ff;
+}
+
+.tm-tab-btn.active {
+  color: #1681ff;
+}
+
+.tm-tab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #1681ff;
+}
+
+/* Content area */
+.tm-content {
+  flex: 1;
+}
+
+/* Stats section */
+.stats-section {
+  margin-bottom: 2rem;
+}
+
+.stats-section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-icon {
+  font-size: 2rem;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f3f4f6;
+  border-radius: 0.5rem;
+}
+
+.stat-content h3 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin: 0 0 0.5rem 0;
+}
+
+.stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.stat-subtitle {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* Recent invoices section */
+.recent-invoices {
+  margin-bottom: 2rem;
+}
+
+.recent-invoices h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .admin-dashboard {
+    margin-left: 0;
+  }
+
+  .admin-main {
+    padding: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tm-tabs {
+    gap: 1rem;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .tm-tab-btn {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-header h1 {
+    font-size: 20px;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-icon {
+    font-size: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .stat-number {
+    font-size: 1.25rem;
+  }
+}
+
+/* Space utility classes */
+.space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.space-y-1 > * + * {
+  margin-top: 0.25rem;
+}
+
+.space-x-2 > * + * {
+  margin-left: 0.5rem;
+}
+
+.space-x-3 > * + * {
+  margin-left: 0.75rem;
+}
+
+.space-x-4 > * + * {
+  margin-left: 1rem;
+}

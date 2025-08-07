@@ -26,6 +26,7 @@ interface UpdateUserRequest {
   username?: string;
   name?: string;
   email?: string;
+  phoneNumber?: string; // 휴대폰 번호 필드 추가
   // 기업정보 필드들
   companyName?: string;
   representativeName?: string;
@@ -37,6 +38,12 @@ interface UpdateUserRequest {
   faxNumber?: string;
   homepage?: string;
   approval_status?: string;
+  // 세금계산서 정보
+  taxInvoiceInfo?: {
+    email?: string;
+    manager?: string;
+    contact?: string;
+  };
   // 약관 및 마케팅 동의 필드들
   agreeTerms?: boolean;
   agreePrivacy?: boolean;
@@ -358,6 +365,8 @@ export async function PUT(request: NextRequest) {
     if (updateData.username) updateFields.username = updateData.username;
     if (updateData.name) updateFields.name = updateData.name;
     if (updateData.email) updateFields.email = updateData.email;
+    if (updateData.phoneNumber)
+      updateFields.phone_number = updateData.phoneNumber;
     // 약관 동의 업데이트
     if (updateData.agreeTerms !== undefined) {
       updateFields.agree_terms = updateData.agreeTerms;
@@ -425,6 +434,30 @@ export async function PUT(request: NextRequest) {
       updateFields.approval_status = "PENDING";
     }
 
+    // 세금계산서 담당자 정보 업데이트
+    if (updateData.taxInvoiceInfo !== undefined) {
+      // 기존 tax_invoice_info 가져오기
+      const { data: currentUser } = await supabase
+        .from("users")
+        .select("tax_invoice_info")
+        .eq("id", userId)
+        .single();
+
+      const currentTaxInvoiceInfo = currentUser?.tax_invoice_info || {};
+
+      // 새로운 정보로 업데이트
+      const updatedTaxInvoiceInfo = {
+        ...currentTaxInvoiceInfo,
+        email: updateData.taxInvoiceInfo.email || currentTaxInvoiceInfo.email,
+        manager:
+          updateData.taxInvoiceInfo.manager || currentTaxInvoiceInfo.manager,
+        contact:
+          updateData.taxInvoiceInfo.contact || currentTaxInvoiceInfo.contact,
+      };
+
+      updateFields.tax_invoice_info = updatedTaxInvoiceInfo;
+    }
+
     // 명시적으로 approval_status가 전달된 경우에만 업데이트
     if (updateData.approval_status !== undefined) {
       updateFields.approval_status = updateData.approval_status;
@@ -450,6 +483,111 @@ export async function PUT(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // 전화번호가 변경된 경우 발신번호도 업데이트
+    if (updateData.phoneNumber) {
+      try {
+        // 전화번호 정규화 (하이픈 형식으로)
+        let normalizedPhoneNumber = updateData.phoneNumber;
+        const digitsOnly = updateData.phoneNumber.replace(/[^0-9]/g, "");
+        const phoneRegexWithHyphen = /^010-[0-9]{4}-[0-9]{4}$/;
+        const phoneRegexWithoutHyphen = /^010[0-9]{8}$/;
+
+        if (phoneRegexWithHyphen.test(updateData.phoneNumber)) {
+          normalizedPhoneNumber = updateData.phoneNumber;
+        } else if (phoneRegexWithoutHyphen.test(digitsOnly)) {
+          normalizedPhoneNumber = digitsOnly.replace(
+            /(\d{3})(\d{4})(\d{4})/,
+            "$1-$2-$3"
+          );
+        }
+
+        // 새로운 전화번호가 다른 사용자의 기본 전화번호(users 테이블)와 중복되는지 확인
+        const { data: userPhoneDuplicate } = await supabase
+          .from("users")
+          .select("id, name")
+          .eq("phone_number", normalizedPhoneNumber)
+          .neq("id", userId)
+          .maybeSingle();
+
+        if (userPhoneDuplicate) {
+          return NextResponse.json(
+            {
+              message: "해당 전화번호는 이미 다른 사용자가 사용 중입니다",
+              error: "Phone Number Already Used",
+              status: 409,
+              timestamp: getKSTISOString(),
+              path: "/api/users/me",
+            },
+            { status: 409 }
+          );
+        }
+
+        // 다른 사용자의 발신번호와 중복되는지 확인 (경고만, 변경은 허용)
+        const { data: senderNumberDuplicate } = await supabase
+          .from("sender_numbers")
+          .select("user_id")
+          .eq("phone_number", normalizedPhoneNumber)
+          .neq("user_id", userId)
+          .maybeSingle();
+
+        if (senderNumberDuplicate) {
+          console.warn(
+            `전화번호 ${normalizedPhoneNumber}가 다른 사용자(${senderNumberDuplicate.user_id})의 발신번호로 이미 등록되어 있습니다. (변경은 허용)`
+          );
+        }
+
+        // 사용자의 본인 전화번호 발신번호 업데이트
+        const { error: senderUpdateError } = await supabase
+          .from("sender_numbers")
+          .update({
+            phone_number: normalizedPhoneNumber,
+            display_name: `${updatedUser.name} (본인)`,
+            updated_at: getKSTISOString(),
+          })
+          .eq("user_id", userId)
+          .eq("is_user_phone", true);
+
+        if (senderUpdateError) {
+          console.error("발신번호 업데이트 실패:", senderUpdateError);
+          // 발신번호가 없는 경우 새로 생성
+          if (senderUpdateError.code === "PGRST116") {
+            // No rows found
+            // 기존 발신번호가 있는지 확인 (기본값 설정용)
+            const { count: senderCount } = await supabase
+              .from("sender_numbers")
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", userId);
+
+            const isFirstNumber = senderCount === 0;
+
+            const { error: insertError } = await supabase
+              .from("sender_numbers")
+              .insert({
+                user_id: userId,
+                phone_number: normalizedPhoneNumber,
+                display_name: `${updatedUser.name} (본인)`,
+                is_default: isFirstNumber,
+                is_user_phone: true,
+                is_verified: false,
+                status: "ACTIVE",
+                created_at: getKSTISOString(),
+                updated_at: getKSTISOString(),
+              });
+
+            if (insertError) {
+              console.error("발신번호 자동 생성 실패:", insertError);
+            }
+          }
+        }
+      } catch (senderError) {
+        console.error(
+          "전화번호 변경 시 발신번호 업데이트 중 오류:",
+          senderError
+        );
+        // 발신번호 업데이트 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
+      }
     }
 
     // 성공 응답

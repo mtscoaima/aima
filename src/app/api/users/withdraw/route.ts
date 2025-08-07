@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 import { getKSTISOString } from "@/lib/utils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -19,12 +18,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
 });
-
-interface WithdrawUserRequest {
-  password: string;
-  reason: string;
-  customReason?: string;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,28 +82,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 요청 본문 파싱
-    const { password, reason, customReason }: WithdrawUserRequest =
+    // 요청 본문 파싱 (필요한 경우만)
+    try {
       await request.json();
-
-    // 입력값 검증
-    if (!password || !reason) {
-      return NextResponse.json(
-        {
-          message: "비밀번호와 탈퇴 사유를 입력해주세요",
-          error: "Missing required fields",
-          status: 400,
-          timestamp: getKSTISOString(),
-          path: "/api/users/withdraw",
-        },
-        { status: 400 }
-      );
+    } catch {
+      // JSON 파싱이 실패해도 진행
     }
 
     // 현재 사용자 정보 조회
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("id, email, password, name, phone_number, is_active")
+      .select("id, email, name, phone_number, is_active")
       .eq("id", userId)
       .single();
 
@@ -155,20 +137,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 현재 비밀번호 확인
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        {
-          message: "비밀번호가 올바르지 않습니다",
-          error: "Password is incorrect",
-          status: 400,
-          timestamp: getKSTISOString(),
-          path: "/api/users/withdraw",
-        },
-        { status: 400 }
-      );
-    }
+    // 비밀번호 확인 없이 바로 탈퇴 처리
 
     // 탈퇴 로그 기록 (삭제 전에 먼저 저장)
     const withdrawalLog = {
@@ -176,8 +145,8 @@ export async function POST(request: NextRequest) {
       email: user.email,
       name: user.name,
       phone_number: user.phone_number,
-      reason: reason,
-      custom_reason: customReason,
+      reason: "사용자 요청",
+      custom_reason: null,
       withdrawn_at: getKSTISOString(),
     };
 

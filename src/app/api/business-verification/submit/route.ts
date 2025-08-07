@@ -110,9 +110,9 @@ export async function POST(request: NextRequest) {
 
     // 2. 세금계산서 담당자 정보 구성
     const taxInvoiceInfo = {
-      managerName: data.managerName,
-      managerPhone: data.managerPhone,
-      managerEmail: data.managerEmail,
+      manager: data.managerName,
+      contact: data.managerPhone,
+      email: data.managerEmail,
       submittedAt: new Date().toISOString(),
     };
 
