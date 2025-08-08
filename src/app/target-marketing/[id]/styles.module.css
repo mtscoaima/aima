@@ -1512,7 +1512,7 @@ body .main-content {
 }
 
 .radioCircle.checked::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -2410,4 +2410,50 @@ body .main-content {
 /* PaymentModal의 모든 하위 요소가 올바른 z-index를 갖도록 설정 */
 .paymentModalWrapper * {
   z-index: inherit;
+}
+
+/* Message Attachments */
+.messageAttachment {
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+.attachmentImagePreview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attachmentDocument {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.documentIcon {
+  font-size: 24px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.attachmentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.attachmentName {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  word-break: break-all;
+}
+
+.attachmentSize {
+  font-size: 12px;
+  color: #6b7280;
 }

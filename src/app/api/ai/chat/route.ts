@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         try {
           // 사용자 입력 컨텐츠 구성
           const userContent = [];
-          
+
           // 텍스트 추가
           userContent.push({
             type: "input_text",
@@ -46,14 +46,19 @@ export async function POST(request: NextRequest) {
               "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내)"
             }
             
-            ${initialImage ? "첨부된 이미지를 참고하여 " : ""}사용자 요청: ${message}`,
+            ${
+              initialImage ? "첨부된 이미지를 참고하여 " : ""
+            }사용자 요청: ${message}`,
           });
 
           // 초기 이미지가 있으면 추가 - 올바른 형식으로 수정
           if (initialImage) {
             // base64 데이터에서 data URL 접두사 제거
-            const base64Data = initialImage.replace(/^data:image\/[^;]+;base64,/, "");
-            
+            const base64Data = initialImage.replace(
+              /^data:image\/[^;]+;base64,/,
+              ""
+            );
+
             userContent.push({
               type: "input_image",
               image_url: `data:image/png;base64,${base64Data}`,
