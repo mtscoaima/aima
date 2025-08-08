@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
-import { Sparkles, X, ArrowLeft } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
 import { PaymentModal } from "@/components/PaymentModal";
 import { useBalance } from "@/contexts/BalanceContext";
@@ -13,7 +13,7 @@ import {
   getDistrictsByCity,
   getIndustriesByTopLevel,
 } from "@/lib/targetOptions";
-import styles from "../app/target-marketing/[id]/styles.module.css";
+import styles from "./TargetMarketingDetail.module.css";
 
 interface Message {
   id: string;
@@ -53,7 +53,6 @@ interface TargetMarketingDetailProps {
   useTemplate?: boolean;
   initialMessage?: string;
   initialImage?: string | null;
-  onBack: () => void;
 }
 
 function TargetMarketingDetailContent({
@@ -61,7 +60,6 @@ function TargetMarketingDetailContent({
   useTemplate,
   initialMessage,
   initialImage,
-  onBack,
 }: TargetMarketingDetailProps) {
   const {
     balanceData,
@@ -78,7 +76,6 @@ function TargetMarketingDetailContent({
     string | null
   >(null);
 
-  const [isFromTemplate, setIsFromTemplate] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -113,6 +110,13 @@ function TargetMarketingDetailContent({
 
   // 승인 신청 처리 상태
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+
+  // 파일 업로드 관련 상태
+  const [showImageDropdown, setShowImageDropdown] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 성공 모달 상태
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -1044,7 +1048,6 @@ function TargetMarketingDetailContent({
           setTemplateTitle(
             templateData.name || templateData.title || "템플릿에서 불러온 내용"
           );
-          setIsFromTemplate(true);
 
           // 기존 템플릿 ID 설정
           if (templateData.id) {
@@ -1087,6 +1090,23 @@ function TargetMarketingDetailContent({
       }, 100);
     }
   }, [showTypingIndicator]);
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowImageDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // 페이지 로드 시 저장된 상태 복원 (결제 완료 후 돌아온 경우)
   useEffect(() => {
@@ -1421,6 +1441,67 @@ function TargetMarketingDetailContent({
     }
   };
 
+  // 파일 업로드 관련 핸들러들
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 파일 크기 제한 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("파일 크기는 10MB 이하로 선택해주세요.");
+      return;
+    }
+
+    // 허용된 파일 형식 확인
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      alert("지원하지 않는 파일 형식입니다.");
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // 이미지 파일인 경우 미리보기 생성
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFilePreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreviewUrl(null);
+    }
+  };
+
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
+    setShowImageDropdown(false);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleQuickBadgeClick = (message: string) => {
+    setInputMessage(message);
+    handleSendMessage();
+  };
+
   // 이미지 편집 처리
   const handleImageEdit = async (prompt: string) => {
     if (!currentGeneratedImage) {
@@ -1593,28 +1674,6 @@ function TargetMarketingDetailContent({
 
   return (
     <div className={styles.targetMarketingContainer}>
-      <div className={styles.targetMarketingHeader}>
-        <div className={styles.landingHeader}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button
-              onClick={onBack}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "8px",
-                display: "flex",
-                alignItems: "center",
-                color: "#1681ff",
-              }}
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <h1>AI타겟마케팅</h1>
-          </div>
-        </div>
-      </div>
-
       <div className={styles.targetMarketingContent}>
         {/* 좌측: AI 채팅 영역 */}
         <div className={styles.chatSection}>
@@ -1636,7 +1695,7 @@ function TargetMarketingDetailContent({
                         alt="Generated content"
                         width={300}
                         height={200}
-                        style={{ objectFit: "cover" }}
+                        className={styles.messageImageWithStyle}
                       />
                       {message.isImageLoading && (
                         <div className={styles.imageLoadingOverlay}>
@@ -1651,14 +1710,12 @@ function TargetMarketingDetailContent({
                     <div className={styles.messageAttachment}>
                       {message.attachedFile.previewUrl ? (
                         <div className={styles.attachmentImagePreview}>
-                          <img
+                          <Image
                             src={message.attachedFile.previewUrl}
                             alt={message.attachedFile.name}
-                            style={{
-                              maxWidth: "200px",
-                              maxHeight: "150px",
-                              borderRadius: "8px",
-                            }}
+                            width={200}
+                            height={150}
+                            className={styles.attachmentImageWithStyle}
                           />
                           <div className={styles.attachmentInfo}>
                             <span className={styles.attachmentName}>
@@ -1712,28 +1769,115 @@ function TargetMarketingDetailContent({
           </div>
 
           <div className={styles.chatInputSection}>
-            <div className={styles.inputWrapper}>
-              <textarea
-                ref={textareaRef}
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="어떤 광고를 만들고 싶나요?"
-                className={styles.chatInput}
-                rows={3}
-                disabled={isLoading || showTypingIndicator}
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isLoading}
-                className={styles.sendButton}
-              >
-                입력
-              </button>
-            </div>
-            <div className={styles.inputHelp}>
-              <Sparkles size={14} />
-              <span>AI가 이미지 생성, 편집과 마케팅 문구를 도와드립니다</span>
+            <div className="input-section">
+              <div className="chat-input-container">
+                <textarea
+                  ref={textareaRef}
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="어떤 광고를 만들고 싶나요?"
+                  className="chat-input-field"
+                  rows={4}
+                  disabled={isLoading || showTypingIndicator}
+                />
+
+                {/* 첨부된 파일 미리보기 */}
+                {selectedFile && (
+                  <div className="attached-file-preview">
+                    {filePreviewUrl ? (
+                      <div className="file-preview-image">
+                        <Image
+                          src={filePreviewUrl}
+                          alt="미리보기"
+                          width={80}
+                          height={60}
+                          className={styles.filePreviewImageWithStyle}
+                        />
+                      </div>
+                    ) : (
+                      <div className="file-preview-document">
+                        <div className="file-icon">📄</div>
+                        <div className="file-name">{selectedFile.name}</div>
+                        <div className="file-size">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      className="remove-file-btn"
+                      onClick={handleRemoveFile}
+                      title="파일 제거"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                <div className="input-controls">
+                  <div className="image-upload-wrapper" ref={dropdownRef}>
+                    <button
+                      className="add-image-btn circle"
+                      title="AI 및 파일 추가"
+                      onClick={() => setShowImageDropdown(!showImageDropdown)}
+                    >
+                      <span>+</span>
+                    </button>
+                    {showImageDropdown && (
+                      <div className="image-dropdown">
+                        <button
+                          className="dropdown-item"
+                          onClick={handleFileButtonClick}
+                        >
+                          📎 사진 및 파일 추가
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.pdf,.txt,.doc,.docx"
+                      onChange={handleFileSelect}
+                      className={styles.hiddenFileInput}
+                    />
+                  </div>
+                  <div className="quick-start-badges">
+                    <button
+                      className="quick-badge"
+                      onClick={() =>
+                        handleQuickBadgeClick("단골 고객을 위한 특별 이벤트")
+                      }
+                    >
+                      단골 이벤트
+                    </button>
+                    <button
+                      className="quick-badge"
+                      onClick={() =>
+                        handleQuickBadgeClick("할인 이벤트 진행 중입니다")
+                      }
+                    >
+                      할인 이벤트
+                    </button>
+                    <button
+                      className="quick-badge"
+                      onClick={() =>
+                        handleQuickBadgeClick("신규 고객 유치를 위한 특별 혜택")
+                      }
+                    >
+                      고객유치 이벤트
+                    </button>
+                  </div>
+                  <button
+                    className="start-chat-btn"
+                    onClick={handleSendMessage}
+                    disabled={
+                      isLoading || showTypingIndicator || !inputMessage.trim()
+                    }
+                  >
+                    {isLoading ? "생성 중..." : "생성"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1743,7 +1887,30 @@ function TargetMarketingDetailContent({
           <div className={styles.mmsSendSection}>
             {/* 템플릿 미리보기 카드 */}
             <div className={styles.templatePreviewCard}>
-              <div className={styles.templateBadge}>템플릿 생성결과</div>
+              {/* 상단 버튼 영역 */}
+              <div className={styles.templateHeaderActions}>
+                <button
+                  className={styles.campaignLoadButton}
+                  onClick={() => {
+                    // 캠페인 불러오기 기능 (추후 구현)
+                    console.log("캠페인 불러오기");
+                  }}
+                >
+                  캠페인 불러오기
+                </button>
+              </div>
+              <div className={styles.templateBadgeContainer}>
+                <div className={styles.templateBadge}>템플릿 생성결과</div>
+                <button
+                  className={styles.previewButton}
+                  onClick={() => {
+                    // 미리보기 기능 (추후 구현)
+                    console.log("미리보기");
+                  }}
+                >
+                  미리보기
+                </button>
+              </div>
               <div className={styles.templateCardContent}>
                 {currentGeneratedImage ? (
                   <div className={styles.templateImage}>
@@ -1752,7 +1919,7 @@ function TargetMarketingDetailContent({
                       alt="생성된 템플릿 이미지"
                       width={300}
                       height={200}
-                      style={{ objectFit: "cover" }}
+                      className={styles.messageImageWithStyle}
                     />
                     {isImageGenerating && (
                       <div className={styles.imageGeneratingOverlay}>
@@ -1779,36 +1946,56 @@ function TargetMarketingDetailContent({
                   </div>
                 )}
                 <div className={styles.templateInfo}>
-                  <h3 className={styles.templateTitle}>{templateTitle}</h3>
-                  <div className={styles.templateDescription}>
-                    <textarea
-                      value={smsTextContent || ""}
-                      onChange={(e) => setSmsTextContent(e.target.value)}
-                      placeholder="AI가 생성한 마케팅 콘텐츠가 여기에 표시됩니다."
-                      className={styles.templateDescriptionTextarea}
-                      rows={4}
-                    />
-                    <span className={styles.charCount}>
-                      {new Blob([smsTextContent]).size} / 2,000 bytes
-                    </span>
+                  <div className={styles.templateField}>
+                    <label className={styles.templateFieldLabel}>제목:</label>
+                    <div className={styles.templateTitleWrapper}>
+                      <div className={styles.inputWithCounter}>
+                        <input
+                          value={templateTitle}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 20) {
+                              setTemplateTitle(e.target.value);
+                            }
+                          }}
+                          placeholder="템플릿 제목을 입력하세요"
+                          className={styles.templateTitleInput}
+                          maxLength={20}
+                        />
+                        <span className={styles.inlineCharCount}>
+                          {templateTitle.length} / 20
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.templateField}>
+                    <label className={styles.templateFieldLabel}>내용:</label>
+                    <div className={styles.templateDescription}>
+                      <textarea
+                        value={smsTextContent || ""}
+                        onChange={(e) => {
+                          if (e.target.value.length <= 100) {
+                            setSmsTextContent(e.target.value);
+                          }
+                        }}
+                        placeholder="AI가 생성한 마케팅 콘텐츠가 여기에 표시됩니다."
+                        className={styles.templateDescriptionTextarea}
+                        rows={4}
+                        maxLength={100}
+                      />
+                      <span className={styles.charCount}>
+                        {(smsTextContent || "").length} / 100
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* 템플릿 액션 버튼들 */}
                 <div className={styles.templateActions}>
                   <button
-                    className={styles.templateActionButton}
+                    className={`${styles.templateActionButton} ${styles.firstButton}`}
                     onClick={() => {
-                      // 템플릿 불러오기 기능
-                      if (currentGeneratedImage || smsTextContent) {
-                        const confirmed = confirm(
-                          "현재 내용을 템플릿으로 불러오시겠습니까?"
-                        );
-                        if (confirmed) {
-                          // 템플릿 불러오기 로직
-                          console.log("템플릿 불러오기");
-                        }
-                      }
+                      // 템플릿 불러오기 기능 (추후 구현)
+                      console.log("템플릿 불러오기");
                     }}
                   >
                     템플릿 불러오기
@@ -1816,52 +2003,20 @@ function TargetMarketingDetailContent({
                   <button
                     className={styles.templateActionButton}
                     onClick={() => {
-                      // 이미지 편집 모드 활성화
-                      if (currentGeneratedImage) {
-                        setInputMessage("이미지를 수정해주세요");
-                        textareaRef.current?.focus();
-                      } else {
-                        alert(
-                          "편집할 이미지가 없습니다. 먼저 이미지를 생성해주세요."
-                        );
-                      }
+                      // 템플릿 저장 기능 (추후 구현)
+                      console.log("템플릿 저장");
                     }}
                   >
-                    이미지 편집
+                    템플릿 저장
                   </button>
                   <button
                     className={styles.templateActionButton}
                     onClick={() => {
-                      // 템플릿 저장 기능
-                      if (currentGeneratedImage && smsTextContent) {
-                        const templateData = {
-                          id: `saved-${Date.now()}`,
-                          title: isFromTemplate
-                            ? "템플릿에서 불러온 내용"
-                            : templateTitle, // 동적으로 생성된 제목 사용
-                          description: smsTextContent,
-                          imageUrl: currentGeneratedImage,
-                          createdAt: new Date(),
-                          status: "생성완료" as const,
-                        };
-
-                        // 로컬 스토리지에 저장
-                        const savedTemplates = JSON.parse(
-                          localStorage.getItem("savedTemplates") || "[]"
-                        );
-                        savedTemplates.push(templateData);
-                        localStorage.setItem(
-                          "savedTemplates",
-                          JSON.stringify(savedTemplates)
-                        );
-
-                        alert("템플릿이 저장되었습니다!");
-                      } else {
-                        alert("저장할 템플릿 내용이 없습니다.");
-                      }
+                      // 이미지 업로드 기능 (추후 구현)
+                      console.log("이미지 업로드");
                     }}
                   >
-                    템플릿 저장
+                    이미지 업로드
                   </button>
                 </div>
               </div>
@@ -2253,8 +2408,7 @@ function TargetMarketingDetailContent({
                           onChange={(e) =>
                             setTargetCount(parseInt(e.target.value) || 500)
                           }
-                          className={styles.adRecipientInput}
-                          style={{ width: "80px", textAlign: "right" }}
+                          className={styles.adRecipientInputWithStyle}
                         />
                         <span>명</span>
                       </div>
@@ -2365,10 +2519,9 @@ function TargetMarketingDetailContent({
 
       {/* 결제 모달 */}
       <div
-        className={styles.paymentModalWrapper}
+        className={`${styles.paymentModalWrapper} ${styles.paymentModalWrapperWithStyle}`}
         style={{
           display: isPaymentModalOpen ? "block" : "none",
-          zIndex: 1010,
         }}
       >
         <PaymentModal

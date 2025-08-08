@@ -85,14 +85,6 @@ export default function TargetMarketingPage() {
     setCurrentView("detail");
   };
 
-  const handleBackToMain = () => {
-    setCurrentView("main");
-    setDetailProps({});
-    // 세션 스토리지 정리
-    sessionStorage.removeItem("initialMessage");
-    sessionStorage.removeItem("initialImage");
-  };
-
   const handleCloseCreateModal = () => {
     setShowCreateModal(false);
     setCreateFormData({
@@ -310,206 +302,207 @@ export default function TargetMarketingPage() {
 
   return (
     <AdvertiserGuardWithDisabled>
-      {currentView === "detail" ? (
-        <TargetMarketingDetail {...detailProps} onBack={handleBackToMain} />
-      ) : (
-        <div className="target-marketing-landing">
-          <div className="landing-container">
-            {/* Header */}
-            <div className="landing-header">
-              <h1>AI 타겟마케팅</h1>
-            </div>
-
-            {/* Tab Navigation */}
-            <div className="tab-navigation">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  className={`tab-button ${
-                    activeTab === tab.id ? "active" : ""
-                  }`}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            <div className="tab-content">
-              {activeTab === "naver-talktalk" && (
-                <NaverTalkTalkTab onNavigateToDetail={handleNavigateToDetail} />
-              )}
-              {activeTab === "campaign-management" &&
-                renderCampaignManagementTab()}
-              {activeTab === "template-management" &&
-                renderTemplateManagementTab()}
-            </div>
+      <div className="target-marketing-landing">
+        <div className="landing-container">
+          {/* Header */}
+          <div className="landing-header">
+            <h1>AI 타겟마케팅</h1>
           </div>
 
-          {/* 템플릿 작성 모달 */}
-          {showCreateModal && (
-            <div className="modal-overlay">
-              <div className="modal-content create-modal">
-                <div className="modal-header">
-                  <h2>새 템플릿 작성</h2>
-                  <button
-                    onClick={handleCloseCreateModal}
-                    className="modal-close"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
+          {/* Tab Navigation */}
+          <div className="tab-navigation">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`tab-button ${activeTab === tab.id ? "active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-                <div className="modal-body">
-                  <div className="create-form">
-                    <div className="form-section">
-                      <label className="form-label">템플릿 이름</label>
-                      <input
-                        type="text"
-                        value={createFormData.name}
-                        onChange={(e) =>
-                          setCreateFormData({
-                            ...createFormData,
-                            name: e.target.value,
-                          })
-                        }
-                        className="form-input"
-                        placeholder="템플릿 이름을 입력하세요"
-                      />
-                    </div>
+          {/* Tab Content */}
+          <div className="tab-content">
+            {currentView === "detail" ? (
+              <TargetMarketingDetail {...detailProps} />
+            ) : (
+              <>
+                {activeTab === "naver-talktalk" && (
+                  <NaverTalkTalkTab
+                    onNavigateToDetail={handleNavigateToDetail}
+                  />
+                )}
+                {activeTab === "campaign-management" &&
+                  renderCampaignManagementTab()}
+                {activeTab === "template-management" &&
+                  renderTemplateManagementTab()}
+              </>
+            )}
+          </div>
+        </div>
 
-                    <div className="form-section">
-                      <label className="form-label">카테고리</label>
-                      <select
-                        value={createFormData.category}
-                        onChange={(e) =>
-                          setCreateFormData({
-                            ...createFormData,
-                            category: e.target.value,
-                          })
-                        }
-                        className="form-select"
-                      >
-                        {categories
-                          .filter((cat) => cat !== "추천")
-                          .map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
+        {/* 템플릿 작성 모달 */}
+        {showCreateModal && (
+          <div className="modal-overlay">
+            <div className="modal-content create-modal">
+              <div className="modal-header">
+                <h2>새 템플릿 작성</h2>
+                <button
+                  onClick={handleCloseCreateModal}
+                  className="modal-close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-                    <div className="form-section">
-                      <label className="form-label">템플릿 내용</label>
-                      <textarea
-                        value={createFormData.content}
-                        onChange={(e) =>
-                          setCreateFormData({
-                            ...createFormData,
-                            content: e.target.value,
-                          })
-                        }
-                        className="form-textarea"
-                        placeholder="템플릿 내용을 입력하세요"
-                        rows={6}
-                      />
-                    </div>
+              <div className="modal-body">
+                <div className="create-form">
+                  <div className="form-section">
+                    <label className="form-label">템플릿 이름</label>
+                    <input
+                      type="text"
+                      value={createFormData.name}
+                      onChange={(e) =>
+                        setCreateFormData({
+                          ...createFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="form-input"
+                      placeholder="템플릿 이름을 입력하세요"
+                    />
+                  </div>
 
-                    <div className="form-section">
-                      <label className="form-label">이미지 (선택사항)</label>
-                      <div className="image-upload-section">
-                        {imagePreviewUrl ? (
-                          <div className="current-image">
-                            <Image
-                              src={imagePreviewUrl}
-                              alt="미리보기"
-                              width={200}
-                              height={120}
-                              style={{ objectFit: "cover" }}
-                            />
-                            <div className="image-actions">
-                              <button
-                                type="button"
-                                onClick={handleImageChangeClick}
-                                className="image-action-btn"
-                                disabled={isUploadingImage}
-                              >
-                                <ImageIcon size={16} />
-                                {isUploadingImage
-                                  ? "업로드 중..."
-                                  : "이미지 변경"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleImageDelete}
-                                className="image-action-btn delete"
-                                disabled={isUploadingImage}
-                              >
-                                <X size={16} />
-                                이미지 삭제
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="image-upload-placeholder">
+                  <div className="form-section">
+                    <label className="form-label">카테고리</label>
+                    <select
+                      value={createFormData.category}
+                      onChange={(e) =>
+                        setCreateFormData({
+                          ...createFormData,
+                          category: e.target.value,
+                        })
+                      }
+                      className="form-select"
+                    >
+                      {categories
+                        .filter((cat) => cat !== "추천")
+                        .map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="form-section">
+                    <label className="form-label">템플릿 내용</label>
+                    <textarea
+                      value={createFormData.content}
+                      onChange={(e) =>
+                        setCreateFormData({
+                          ...createFormData,
+                          content: e.target.value,
+                        })
+                      }
+                      className="form-textarea"
+                      placeholder="템플릿 내용을 입력하세요"
+                      rows={6}
+                    />
+                  </div>
+
+                  <div className="form-section">
+                    <label className="form-label">이미지 (선택사항)</label>
+                    <div className="image-upload-section">
+                      {imagePreviewUrl ? (
+                        <div className="current-image">
+                          <Image
+                            src={imagePreviewUrl}
+                            alt="미리보기"
+                            width={200}
+                            height={120}
+                            style={{ objectFit: "cover" }}
+                          />
+                          <div className="image-actions">
                             <button
                               type="button"
                               onClick={handleImageChangeClick}
-                              className="upload-button"
+                              className="image-action-btn"
                               disabled={isUploadingImage}
                             >
-                              <ImageIcon size={24} />
-                              <span>이미지 업로드</span>
+                              <ImageIcon size={16} />
+                              {isUploadingImage
+                                ? "업로드 중..."
+                                : "이미지 변경"}
                             </button>
-                            <p className="upload-hint">
-                              이미지를 업로드하지 않으면 기본 이미지가
-                              사용됩니다.
-                            </p>
+                            <button
+                              type="button"
+                              onClick={handleImageDelete}
+                              className="image-action-btn delete"
+                              disabled={isUploadingImage}
+                            >
+                              <X size={16} />
+                              이미지 삭제
+                            </button>
                           </div>
-                        )}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          style={{ display: "none" }}
-                        />
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="image-upload-placeholder">
+                          <button
+                            type="button"
+                            onClick={handleImageChangeClick}
+                            className="upload-button"
+                            disabled={isUploadingImage}
+                          >
+                            <ImageIcon size={24} />
+                            <span>이미지 업로드</span>
+                          </button>
+                          <p className="upload-hint">
+                            이미지를 업로드하지 않으면 기본 이미지가 사용됩니다.
+                          </p>
+                        </div>
+                      )}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        style={{ display: "none" }}
+                      />
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="modal-footer">
-                  <button
-                    onClick={handleCloseCreateModal}
-                    className="cancel-button"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleSaveNewTemplate}
-                    className="save-button primary"
-                    disabled={
-                      isSaving ||
-                      isUploadingImage ||
-                      !createFormData.name.trim() ||
-                      !createFormData.content.trim()
-                    }
-                  >
-                    {isSaving
-                      ? "생성 중..."
-                      : isUploadingImage
-                      ? "이미지 업로드 중..."
-                      : "템플릿 생성"}
-                  </button>
-                </div>
+              <div className="modal-footer">
+                <button
+                  onClick={handleCloseCreateModal}
+                  className="cancel-button"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveNewTemplate}
+                  className="save-button primary"
+                  disabled={
+                    isSaving ||
+                    isUploadingImage ||
+                    !createFormData.name.trim() ||
+                    !createFormData.content.trim()
+                  }
+                >
+                  {isSaving
+                    ? "생성 중..."
+                    : isUploadingImage
+                    ? "이미지 업로드 중..."
+                    : "템플릿 생성"}
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </AdvertiserGuardWithDisabled>
   );
 }

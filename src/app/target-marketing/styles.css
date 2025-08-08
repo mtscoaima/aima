@@ -20,15 +20,333 @@ body .main-content {
 }
 
 /* 모든 하위 요소의 border 제거 */
-.target-marketing-landing *,
-.tab-content *,
-.landing-container * {
+.target-marketing-landing
+  *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
+    [class*="previewButton"]
+  ):not([class*="chat-input"]):not([class*="add-image-btn"]):not(
+    [class*="quick-badge"]
+  ):not([class*="start-chat-btn"]):not([class*="category-tab"]):not(
+    [class*="template-card"]
+  ):not([class*="action-button"]):not([class*="pagination"]):not(
+    [class*="image-dropdown"]
+  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]),
+.tab-content
+  *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
+    [class*="previewButton"]
+  ):not([class*="chat-input"]):not([class*="add-image-btn"]):not(
+    [class*="quick-badge"]
+  ):not([class*="start-chat-btn"]):not([class*="category-tab"]):not(
+    [class*="template-card"]
+  ):not([class*="action-button"]):not([class*="pagination"]):not(
+    [class*="image-dropdown"]
+  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]),
+.landing-container
+  *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
+    [class*="previewButton"]
+  ):not([class*="chat-input"]):not([class*="add-image-btn"]):not(
+    [class*="quick-badge"]
+  ):not([class*="start-chat-btn"]):not([class*="category-tab"]):not(
+    [class*="template-card"]
+  ):not([class*="action-button"]):not([class*="pagination"]):not(
+    [class*="image-dropdown"]
+  ):not([class*="dropdown-item"]):not([class*="templateImage"]) {
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
 
 /* 필요한 요소들은 스타일 복원 */
+
+/* 채팅 입력창 스타일 복원 */
+.chat-input-field {
+  border: 1px solid #ddd !important;
+  border-radius: 15px !important;
+  padding: 16px !important;
+  font-size: 16px !important;
+  background: #fff !important;
+  resize: none !important;
+  outline: none !important;
+  transition: border-color 0.2s ease !important;
+}
+
+.chat-input-field:focus {
+  border-color: #1681ff !important;
+}
+
+.chat-input-field::placeholder {
+  color: #999 !important;
+}
+
+/* 원형 + 버튼 스타일 복원 */
+.add-image-btn.circle {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: #1681ff !important;
+  color: white !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.add-image-btn.circle:hover {
+  background: #0056cc !important;
+}
+
+/* 퀵 배지 버튼 스타일 복원 */
+.quick-badge {
+  background: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  border-radius: 20px !important;
+  padding: 8px 16px !important;
+  color: #495057 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap !important;
+}
+
+.quick-badge:hover {
+  background: #e9ecef !important;
+  border-color: #dee2e6 !important;
+}
+
+/* 파일 첨부 관련 스타일 복원 */
+.attached-file-preview {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+  margin: 8px 0 !important;
+  gap: 8px !important;
+}
+
+.file-preview-image {
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+.file-preview-document {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.file-icon {
+  font-size: 24px !important;
+}
+
+.file-name {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #333 !important;
+}
+
+.file-size {
+  font-size: 12px !important;
+  color: #666 !important;
+}
+
+.remove-file-btn {
+  position: absolute !important;
+  top: -8px !important;
+  right: -8px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: #dc3545 !important;
+  color: white !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.remove-file-btn:hover {
+  background: #c82333 !important;
+}
+
+/* 이미지 드롭다운 스타일 복원 */
+.image-upload-wrapper {
+  position: relative !important;
+}
+
+.image-dropdown {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  background: white !important;
+  border: 1px solid #ddd !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  z-index: 1000 !important;
+  min-width: 200px !important;
+  margin-top: 8px !important;
+}
+
+.dropdown-item {
+  display: block !important;
+  width: 100% !important;
+  padding: 12px 16px !important;
+  background: none !important;
+  border: none !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  color: #333 !important;
+  font-size: 14px !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.dropdown-item:hover {
+  background: #f8f9fa !important;
+}
+
+/* 카테고리 탭 버튼 스타일 복원 */
+.category-tab {
+  background: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  border-radius: 10px !important;
+  padding: 8px 16px !important;
+  color: #495057 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+.category-tab:hover {
+  background: #e9ecef !important;
+  border-color: #dee2e6 !important;
+}
+
+.category-tab.active {
+  background: #fff !important;
+  border: 1px solid #1681ff !important;
+  color: #1681ff !important;
+  font-weight: 600 !important;
+}
+
+/* 템플릿 카드 스타일 복원 */
+.template-card {
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.2s ease !important;
+  overflow: hidden !important;
+}
+
+.template-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-color: #d0d0d0 !important;
+}
+
+/* 템플릿 사용하기 버튼 스타일 복원 */
+.action-button {
+  border: 1px solid #1681ff !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: #1681ff !important;
+  padding: 8px 16px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  text-decoration: none !important;
+}
+
+.action-button:hover {
+  background: #1681ff !important;
+  color: white !important;
+  border-color: #1681ff !important;
+}
+
+.action-button.primary {
+  background: #1681ff !important;
+  color: white !important;
+  border: 1px solid #1681ff !important;
+}
+
+.action-button.primary:hover {
+  background: #0056cc !important;
+  border-color: #0056cc !important;
+}
+
+/* 페이지네이션 버튼 스타일 복원 */
+.pagination-btn {
+  border: 1px solid #dee2e6 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: #495057 !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  margin: 0 2px !important;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #e9ecef !important;
+  border-color: #adb5bd !important;
+}
+
+.pagination-btn:disabled {
+  background: #f8f9fa !important;
+  color: #adb5bd !important;
+  cursor: not-allowed !important;
+  border-color: #e9ecef !important;
+}
+
+.pagination-btn.active {
+  background: #1681ff !important;
+  color: white !important;
+  border-color: #1681ff !important;
+}
+
+.pagination-btn.prev-next {
+  font-weight: 600 !important;
+}
+
+/* 템플릿 관련 버튼들 border 복원 - 더 구체적인 셀렉터 */
+.tab-content [class*="templateActions"] button,
+.tab-content [class*="templateActionButton"],
+[class*="templatePreviewCard"] [class*="templateActions"] button,
+[class*="templatePreviewCard"] [class*="templateActionButton"],
+[class*="campaignLoadButton"],
+[class*="previewButton"] {
+  border: 1px solid #1681ff !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #1681ff !important;
+  padding: 8px 16px !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.tab-content [class*="templateActions"] button:hover,
+.tab-content [class*="templateActionButton"]:hover,
+[class*="templatePreviewCard"] [class*="templateActions"] button:hover,
+[class*="templatePreviewCard"] [class*="templateActionButton"]:hover,
+[class*="campaignLoadButton"]:hover,
+[class*="previewButton"]:hover {
+  background: #1681ff !important;
+  color: white !important;
+  border: 1px solid #1681ff !important;
+}
+
 .chat-input-container {
   border-radius: 15px !important;
   box-shadow: 0px 4px 13px 0px rgba(0, 0, 0, 0.25) !important;
@@ -84,6 +402,36 @@ body .main-content {
 
 .pagination-btn {
   border-radius: 10px !important;
+}
+
+/* 템플릿 이미지 스타일 */
+.target-marketing-landing [class*="templateImage"] {
+  border-radius: 18px 18px 0px 0px !important;
+  overflow: hidden !important;
+}
+
+.target-marketing-landing [class*="templateImage"] img {
+  border-radius: 18px 18px 0px 0px !important;
+}
+
+/* 더 구체적한 선택자 */
+.tab-content [class*="templateImage"] {
+  border-radius: 18px 18px 0px 0px !important;
+  overflow: hidden !important;
+}
+
+.tab-content [class*="templateImage"] img {
+  border-radius: 18px 18px 0px 0px !important;
+}
+
+/* 가장 구체적인 선택자 */
+div[class*="mmsSendSection"] div[class*="templateImage"] {
+  border-radius: 18px 18px 0px 0px !important;
+  overflow: hidden !important;
+}
+
+div[class*="mmsSendSection"] div[class*="templateImage"] img {
+  border-radius: 18px 18px 0px 0px !important;
 }
 
 .landing-container {
@@ -275,7 +623,7 @@ body .main-content {
 .start-chat-btn {
   align-self: flex-end;
   padding: 12px 24px;
-  border-radius: 60px;
+  border-radius: 60px !important;
   background: #1681ff;
   color: #fff;
   text-align: center;
@@ -381,7 +729,7 @@ body .main-content {
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
@@ -494,57 +842,9 @@ body .main-content {
   background: rgba(0, 0, 0, 0.8);
 }
 
-/* 드롭다운 스타일 */
-.image-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  min-width: 160px;
-  overflow: hidden;
-  animation: dropdownFadeIn 0.2s ease-out;
-  transform-origin: top left;
-}
+/* 중복 드롭다운 스타일 제거됨 - 위에서 통일된 스타일 사용 */
 
-@keyframes dropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 12px 16px;
-  background: white;
-  border: none;
-  text-align: left;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  white-space: nowrap;
-}
-
-.dropdown-item:hover {
-  background: #f3f4f6;
-}
-
-.dropdown-item:active {
-  background: #e5e7eb;
-}
+/* 중복 dropdown-item 스타일 제거됨 - 위에서 통일된 스타일 사용 */
 
 /* 드롭다운 화살표 */
 .image-dropdown::before {

@@ -82,6 +82,7 @@ export default function NaverTalkTalkTab({
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
+        console.log("외부 클릭으로 드롭다운 닫힘");
         setShowImageDropdown(false);
       }
     };
@@ -91,6 +92,11 @@ export default function NaverTalkTalkTab({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // 드롭다운 상태 변화 추적
+  useEffect(() => {
+    console.log("드롭다운 상태 변경됨:", showImageDropdown);
+  }, [showImageDropdown]);
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredTemplates.length / templatesPerPage);
@@ -371,12 +377,22 @@ export default function NaverTalkTalkTab({
                 <button
                   className="add-image-btn circle"
                   title="AI 및 파일 추가"
-                  onClick={() => setShowImageDropdown(!showImageDropdown)}
+                  onClick={() => {
+                    console.log("+ 버튼 클릭됨, 현재 상태:", showImageDropdown);
+                    setShowImageDropdown(!showImageDropdown);
+                  }}
                 >
                   <span>+</span>
                 </button>
                 {showImageDropdown && (
-                  <div className="image-dropdown">
+                  <div
+                    className="image-dropdown"
+                    style={{
+                      backgroundColor: "white",
+                      border: "1px solid red",
+                      zIndex: 9999,
+                    }}
+                  >
                     <button
                       className="dropdown-item"
                       onClick={handleFileButtonClick}
@@ -385,6 +401,7 @@ export default function NaverTalkTalkTab({
                     </button>
                   </div>
                 )}
+                {/* 드롭다운 상태 디버깅 */}
                 <input
                   ref={fileInputRef}
                   type="file"
