@@ -128,6 +128,9 @@ function TargetMarketingDetailContent({
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
 
+  // 미리보기 모달 상태
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
   interface Campaign {
     id: string | number;
     name: string;
@@ -2271,10 +2274,7 @@ function TargetMarketingDetailContent({
                 <div className={styles.templateBadge}>템플릿 생성결과</div>
                 <button
                   className={styles.previewButton}
-                  onClick={() => {
-                    // 미리보기 기능 (추후 구현)
-                    console.log("미리보기");
-                  }}
+                  onClick={() => setIsPreviewModalOpen(true)}
                 >
                   미리보기
                 </button>
@@ -3149,6 +3149,81 @@ function TargetMarketingDetailContent({
               >
                 불러오기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 미리보기 모달 */}
+      {isPreviewModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.previewModal}>
+            <div className={styles.modalHeader}>
+              <h2>미리보기</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => setIsPreviewModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className={styles.previewModalBody}>
+              <div className={styles.phoneFrame}>
+                <div className={styles.phoneScreen}>
+                  {currentGeneratedImage && (
+                    <div className={styles.previewImageContainer}>
+                      <Image
+                        src={currentGeneratedImage}
+                        alt="템플릿 미리보기"
+                        width={280}
+                        height={200}
+                        className={styles.previewImage}
+                      />
+                      
+                      {/* 템플릿 제목 */}
+                      {templateTitle && (
+                        <div className={styles.previewTitle}>
+                          {templateTitle}
+                        </div>
+                      )}
+                      
+                      {/* 템플릿 내용 */}
+                      {smsTextContent && (
+                        <div className={styles.previewContent}>
+                          {smsTextContent}
+                        </div>
+                      )}
+                      
+                      {/* 동적 버튼들 - 버튼이 있는 경우에만 표시 */}
+                      {dynamicButtons.length > 0 && (
+                        <div className={styles.previewButtons}>
+                          {dynamicButtons.map((button, index) => (
+                            <button
+                              key={index}
+                              className={styles.previewButton}
+                              onClick={() => {
+                                if (button.url) {
+                                  window.open(button.url, '_blank');
+                                }
+                              }}
+                            >
+                              {button.text || `버튼${index + 1}`}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {!currentGeneratedImage && (
+                    <div className={styles.previewPlaceholder}>
+                      <p>미리볼 이미지가 없습니다.</p>
+                      <p>먼저 이미지를 생성해주세요.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

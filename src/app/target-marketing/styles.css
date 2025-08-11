@@ -1,9 +1,23 @@
+/* ========================================
+   CSS 변수 및 전역 스타일
+======================================== */
+:root {
+  --primary-blue: #1681ff;
+  --primary-blue-hover: #0056cc;
+  --primary-blue-light: rgba(22, 129, 255, 0.1);
+  --ios-blue: #007AFF;
+  --border-radius-sm: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 20px;
+}
+
 /* Layout 오버라이드 */
 body .main-content {
-  padding: 0 !important;
-  padding-top: 140px !important;
-  max-width: none !important;
-  margin: 0 !important;
+  padding: 0;
+  padding-top: 140px;
+  max-width: none;
+  margin: 0;
 }
 
 /* Landing Page Styles */
@@ -13,183 +27,125 @@ body .main-content {
   flex-direction: column;
   padding: 20px;
   position: relative;
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
-
-/* 모든 하위 요소의 border 제거 */
-.target-marketing-landing
-  *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
-    [class*="previewButton"]
-  ):not([class*="chat-input"]):not([class*="add-image-btn"]):not(
-    [class*="quick-badge"]
-  ):not([class*="start-chat-btn"]):not([class*="category-tab"]):not(
-    [class*="template-card"]
-  ):not([class*="action-button"]):not([class*="pagination"]):not(
-    [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]):not([class*="quickActionButtons"]):not([class*="campaignModal"]):not([class*="campaignTable"]):not([class*="loadCampaignButton"]),
-.tab-content
-  *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
-    [class*="previewButton"]
-  ):not([class*="chat-input"]):not([class*="add-image-btn"]):not(
-    [class*="quick-badge"]
-  ):not([class*="start-chat-btn"]):not([class*="category-tab"]):not(
-    [class*="template-card"]
-  ):not([class*="action-button"]):not([class*="pagination"]):not(
-    [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]):not([class*="quickActionButtons"]):not([class*="campaignModal"]):not([class*="campaignTable"]):not([class*="loadCampaignButton"]),
-.landing-container
-  *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
-    [class*="previewButton"]
-  ):not([class*="chat-input"]):not([class*="add-image-btn"]):not(
-    [class*="quick-badge"]
-  ):not([class*="start-chat-btn"]):not([class*="category-tab"]):not(
-    [class*="template-card"]
-  ):not([class*="action-button"]):not([class*="pagination"]):not(
-    [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="templateImage"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]):not([class*="quickActionButtons"]):not([class*="campaignModal"]):not([class*="campaignTable"]):not([class*="loadCampaignButton"]) {
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
-/* 필요한 요소들은 스타일 복원 */
 
 /* 타겟 추천 결과 섹션 스타일 복원 */
-.target-marketing-landing .filterSelect {
-  border: 1px solid #c7c7c7 !important;
-  border-radius: 8px !important;
-}
-
+.target-marketing-landing .filterSelect,
 .target-marketing-landing .timeSelect {
-  border: 1px solid #c7c7c7 !important;
-  border-radius: 8px !important;
+  border: 1px solid #c7c7c7;
+  border-radius: 8px;
 }
 
-.target-marketing-landing .amountButton {
-  border: 1px solid #ddd !important;
-  border-radius: 20px !important;
-}
-
+.target-marketing-landing .amountButton,
 .target-marketing-landing .timePresetButton {
-  border: 1px solid #ddd !important;
-  border-radius: 20px !important;
+  border: 1px solid #ddd;
+  border-radius: 20px;
 }
 
 .target-marketing-landing .amountInputWrapper {
-  border: 1px solid #ddd !important;
-  border-radius: 4px !important;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 
 .target-marketing-landing .dropdownTrigger {
-  border: 1px solid #ddd !important;
-  border-radius: 4px !important;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 
-/* 선택된 버튼 스타일 */
-.target-marketing-landing .amountButton.selected {
-  background: rgba(22, 129, 255, 0.1) !important;
-  border: 1px solid #1681ff !important;
-  color: #1681ff !important;
-}
-
+/* 버튼 상태별 스타일 */
+.target-marketing-landing .amountButton.selected,
 .target-marketing-landing .timePresetButton.selected {
-  background: rgba(22, 129, 255, 0.1) !important;
-  border: 1px solid #1681ff !important;
-  color: #1681ff !important;
+  background: var(--primary-blue-light);
+  border: 1px solid var(--primary-blue);
+  color: var(--primary-blue);
 }
 
-.target-marketing-landing .amountButton:hover {
-  border: 1px solid #1681ff !important;
-  color: #1681ff !important;
-}
-
+.target-marketing-landing .amountButton:hover,
 .target-marketing-landing .timePresetButton:hover {
-  border: 1px solid #1681ff !important;
-  color: #1681ff !important;
+  border: 1px solid var(--primary-blue);
+  color: var(--primary-blue);
 }
 
-/* 드롭다운 포커스 스타일 */
-.target-marketing-landing .filterSelect:focus {
-  border-color: #1681ff !important;
-}
-
+/* 포커스 스타일 */
+.target-marketing-landing .filterSelect:focus,
 .target-marketing-landing .timeSelect:focus {
-  border-color: #1681ff !important;
+  border-color: var(--primary-blue);
 }
 
-/* 메시지 콘텐츠 스타일 복원 */
+/* 메시지 스타일 */
 .target-marketing-landing .userMessage .messageContent {
-  border-radius: 30px !important;
+  border-radius: 30px;
 }
 
 .target-marketing-landing .assistantMessage .messageContent {
-  border-radius: 20px !important;
+  border-radius: 20px;
 }
 
 .target-marketing-landing .messageImage {
-  border-radius: 8px !important;
-  overflow: hidden !important;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-/* 채팅 입력창 스타일 복원 */
+/* 채팅 입력창 스타일 */
 .chat-input-field {
-  border: 1px solid #ddd !important;
-  border-radius: 15px !important;
-  padding: 16px !important;
-  font-size: 16px !important;
-  background: #fff !important;
-  resize: none !important;
-  outline: none !important;
-  transition: border-color 0.2s ease !important;
+  border: 1px solid #ddd;
+  border-radius: 15px;
+  padding: 16px;
+  font-size: 16px;
+  background: #fff;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s ease;
 }
 
 .chat-input-field:focus {
-  border-color: #1681ff !important;
+  border-color: var(--primary-blue);
 }
 
 .chat-input-field::placeholder {
-  color: #999 !important;
+  color: #999;
 }
 
-/* 원형 + 버튼 스타일 복원 */
+/* 원형 버튼 스타일 */
 .add-image-btn.circle {
-  width: 40px !important;
-  height: 40px !important;
-  border-radius: 50% !important;
-  background: #1681ff !important;
-  color: white !important;
-  border: none !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  font-size: 20px !important;
-  font-weight: bold !important;
-  transition: background-color 0.2s ease !important;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
 }
 
 .add-image-btn.circle:hover {
-  background: #0056cc !important;
+  background: var(--primary-blue-hover);
 }
 
-/* 퀵 배지 버튼 스타일 복원 */
+/* 퀵 배지 버튼 스타일 */
 .quick-badge {
-  background: #f8f9fa !important;
-  border: 1px solid #e9ecef !important;
-  border-radius: 20px !important;
-  padding: 8px 16px !important;
-  color: #495057 !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  white-space: nowrap !important;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 20px;
+  padding: 8px 16px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .quick-badge:hover {
-  background: #e9ecef !important;
-  border-color: #dee2e6 !important;
+  background: #e9ecef;
+  border-color: #dee2e6;
 }
 
 /* 파일 첨부 관련 스타일 복원 */
@@ -307,8 +263,8 @@ body .main-content {
 
 .category-tab.active {
   background: #fff !important;
-  border: 1px solid #1681ff !important;
-  color: #1681ff !important;
+  border: 1px solid var(--primary-blue) !important;
+  color: var(--primary-blue) !important;
   font-weight: 600 !important;
 }
 
@@ -329,10 +285,10 @@ body .main-content {
 
 /* 템플릿 사용하기 버튼 스타일 복원 */
 .action-button {
-  border: 1px solid #1681ff !important;
+  border: 1px solid var(--primary-blue) !important;
   border-radius: 6px !important;
   background: #fff !important;
-  color: #1681ff !important;
+  color: var(--primary-blue) !important;
   padding: 8px 16px !important;
   font-size: 14px !important;
   font-weight: 600 !important;
@@ -342,15 +298,15 @@ body .main-content {
 }
 
 .action-button:hover {
-  background: #1681ff !important;
+  background: var(--primary-blue) !important;
   color: white !important;
-  border-color: #1681ff !important;
+  border-color: var(--primary-blue) !important;
 }
 
 .action-button.primary {
-  background: #1681ff !important;
+  background: var(--primary-blue) !important;
   color: white !important;
-  border: 1px solid #1681ff !important;
+  border: 1px solid var(--primary-blue) !important;
 }
 
 .action-button.primary:hover {
@@ -384,9 +340,9 @@ body .main-content {
 }
 
 .pagination-btn.active {
-  background: #1681ff !important;
+  background: var(--primary-blue) !important;
   color: white !important;
-  border-color: #1681ff !important;
+  border-color: var(--primary-blue) !important;
 }
 
 .pagination-btn.prev-next {
@@ -397,31 +353,27 @@ body .main-content {
 .tab-content [class*="templateActions"] button,
 .tab-content [class*="templateActionButton"],
 [class*="templatePreviewCard"] [class*="templateActions"] button,
-[class*="templatePreviewCard"] [class*="templateActionButton"],
-[class*="campaignLoadButton"],
-[class*="previewButton"] {
-  border: 1px solid #1681ff !important;
-  border-radius: 10px !important;
-  background: #fff !important;
-  color: #1681ff !important;
-  padding: 8px 16px !important;
-  font-weight: 700 !important;
-  font-size: 14px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
+[class*="templatePreviewCard"] [class*="templateActionButton"] {
+  border: 1px solid var(--primary-blue);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--primary-blue);
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .tab-content [class*="templateActions"] button:hover,
 .tab-content [class*="templateActionButton"]:hover,
 [class*="templatePreviewCard"] [class*="templateActions"] button:hover,
-[class*="templatePreviewCard"] [class*="templateActionButton"]:hover,
-[class*="campaignLoadButton"]:hover,
-[class*="previewButton"]:hover {
-  background: #1681ff !important;
-  color: white !important;
-  border: 1px solid #1681ff !important;
+[class*="templatePreviewCard"] [class*="templateActionButton"]:hover {
+  background: var(--primary-blue);
+  color: white;
+  border: 1px solid var(--primary-blue);
 }
 
 .chat-input-container {
@@ -444,7 +396,7 @@ body .main-content {
 }
 
 .category-tab.active {
-  border: 1px solid #1681ff !important;
+  border: 1px solid var(--primary-blue) !important;
   border-radius: 10px !important;
 }
 
@@ -453,7 +405,7 @@ body .main-content {
 }
 
 .tab-button.active {
-  border-bottom-color: #1681ff !important;
+  border-bottom-color: var(--primary-blue) !important;
 }
 
 .action-button {
@@ -551,7 +503,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 }
 
 .landing-header h1 {
-  color: #1681ff;
+  color: var(--primary-blue);
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
   font-size: 24px;
@@ -592,8 +544,8 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 }
 
 .tab-button.active {
-  color: #1681ff;
-  border-bottom-color: #1681ff;
+  color: var(--primary-blue);
+  border-bottom-color: var(--primary-blue);
   font-weight: 600;
 }
 
@@ -628,7 +580,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 }
 
 .placeholder-content h2 {
-  color: #1681ff;
+  color: var(--primary-blue);
   font-feature-settings: "liga" off, "clig" off;
   font-family: "Noto Sans KR";
   font-size: 28px;
@@ -723,7 +675,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   align-self: flex-end;
   padding: 12px 24px;
   border-radius: 60px !important;
-  background: #1681ff;
+  background: var(--primary-blue);
   color: #fff;
   text-align: center;
   font-feature-settings: "liga" off, "clig" off;
@@ -835,7 +787,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 .add-image-btn {
   width: 44px;
   height: 44px;
-  background: #1681ff;
+  background: var(--primary-blue);
   color: white;
   border: none;
   border-radius: 8px;
@@ -1082,7 +1034,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 
 .category-tab.active {
   border-radius: 10px;
-  border: 1px solid #1681ff;
+  border: 1px solid var(--primary-blue);
   background: #f5fafe;
   color: #1976d2;
   text-align: center;
@@ -1277,7 +1229,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 
 .pagination-btn.active {
   border-radius: 10px;
-  border: 1px solid #1681ff;
+  border: 1px solid var(--primary-blue);
   background: #f5fafe;
   color: #1976d2;
   text-align: center;
