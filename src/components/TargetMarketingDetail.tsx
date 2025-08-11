@@ -140,6 +140,13 @@ function TargetMarketingDetailContent({
   // 미리보기 모달 상태
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
+  // 템플릿 저장 모달 상태
+  const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+  const [templateSaveName, setTemplateSaveName] = useState("");
+  const [templateSaveCategory, setTemplateSaveCategory] = useState("");
+  const [templateIsPrivate, setTemplateIsPrivate] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
   interface Campaign {
     id: string | number;
     name: string;
@@ -1828,6 +1835,107 @@ function TargetMarketingDetailContent({
     handleSendMessage(message);
   };
 
+  // 템플릿 저장 관련 함수들
+  const templateCategories = [
+    "카페/식음료",
+    "뷰티/미용",
+    "패션/의류",
+    "음식점/요식업",
+    "병원/의료",
+    "학원/교육",
+    "IT/소프트웨어",
+    "부동산",
+    "여행/관광",
+    "스포츠/레저",
+    "자동차",
+    "금융/보험",
+    "기타"
+  ];
+
+  const handleOpenSaveTemplateModal = () => {
+    // 필수 데이터 확인
+    if (!smsTextContent.trim()) {
+      alert("저장할 템플릿 내용이 없습니다.");
+      return;
+    }
+
+    // 모달 열기 및 초기값 설정
+    setTemplateSaveName(templateTitle || "");
+    setTemplateSaveCategory("");
+    setTemplateIsPrivate(false);
+    setIsSaveTemplateModalOpen(true);
+  };
+
+  const handleSaveTemplate = async () => {
+    // 입력값 검증
+    if (!templateSaveName.trim()) {
+      alert("템플릿 이름을 입력해주세요.");
+      return;
+    }
+
+    if (!templateSaveCategory) {
+      alert("카테고리를 선택해주세요.");
+      return;
+    }
+
+    if (!smsTextContent.trim()) {
+      alert("저장할 템플릿 내용이 없습니다.");
+      return;
+    }
+
+    setIsSavingTemplate(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        setIsSavingTemplate(false);
+        return;
+      }
+
+      const response = await fetch("/api/templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: templateSaveName.trim(),
+          content: smsTextContent.trim(),
+          image_url: currentGeneratedImage || null,
+          category: templateSaveCategory,
+          is_private: templateIsPrivate,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
+        }
+        if (response.status === 403) {
+          throw new Error("템플릿 저장 권한이 없습니다.");
+        }
+        throw new Error(`템플릿 저장에 실패했습니다. (${response.status})`);
+      }
+
+      await response.json();
+      
+      alert("템플릿이 성공적으로 저장되었습니다!");
+      setIsSaveTemplateModalOpen(false);
+      
+      // 저장 후 폼 초기화 (선택사항)
+      setTemplateSaveName("");
+      setTemplateSaveCategory("");
+      setTemplateIsPrivate(false);
+
+    } catch (error) {
+      console.error("템플릿 저장 실패:", error);
+      alert(error instanceof Error ? error.message : "템플릿 저장에 실패했습니다.");
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
   // 캠페인 목록 가져오기
   const fetchCampaigns = async () => {
     setIsLoadingCampaigns(true);
@@ -2698,10 +2806,7 @@ function TargetMarketingDetailContent({
                   </button>
                   <button
                     className={styles.templateActionButton}
-                    onClick={() => {
-                      // 템플릿 저장 기능 (추후 구현)
-                      console.log("템플릿 저장");
-                    }}
+                    onClick={handleOpenSaveTemplateModal}
                   >
                     템플릿 저장
                   </button>
@@ -3608,6 +3713,142 @@ function TargetMarketingDetailContent({
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 템플릿 저장 모달 */}
+      {isSaveTemplateModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.campaignModal}>
+            <div className={styles.modalHeader}>
+              <h2>템플릿 저장</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => {
+                  setIsSaveTemplateModalOpen(false);
+                  setTemplateSaveName("");
+                  setTemplateSaveCategory("");
+                  setTemplateIsPrivate(false);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              <div className={styles.saveTemplateForm}>
+                {/* 템플릿 이름 입력 */}
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>템플릿 이름 *</label>
+                  <input
+                    type="text"
+                    value={templateSaveName}
+                    onChange={(e) => setTemplateSaveName(e.target.value)}
+                    placeholder="템플릿 이름을 입력하세요"
+                    className={styles.formInput}
+                    maxLength={50}
+                  />
+                  <div className={styles.charCount}>
+                    {templateSaveName.length} / 50
+                  </div>
+                </div>
+
+                {/* 카테고리 선택 */}
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>카테고리 *</label>
+                  <select
+                    value={templateSaveCategory}
+                    onChange={(e) => setTemplateSaveCategory(e.target.value)}
+                    className={styles.formSelect}
+                  >
+                    <option value="">카테고리를 선택하세요</option>
+                    {templateCategories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 공개/비공개 설정 */}
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>공개 설정</label>
+                  <div className={styles.radioGroup}>
+                    <label className={styles.radioOption}>
+                      <input
+                        type="radio"
+                        name="privacy"
+                        checked={!templateIsPrivate}
+                        onChange={() => setTemplateIsPrivate(false)}
+                        className={styles.radioInput}
+                      />
+                      공개 (다른 사용자도 볼 수 있음)
+                    </label>
+                    <label className={styles.radioOption}>
+                      <input
+                        type="radio"
+                        name="privacy"
+                        checked={templateIsPrivate}
+                        onChange={() => setTemplateIsPrivate(true)}
+                        className={styles.radioInput}
+                      />
+                      비공개 (나만 볼 수 있음)
+                    </label>
+                  </div>
+                </div>
+
+                {/* 미리보기 정보 */}
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>저장될 내용</label>
+                  <div className={styles.previewInfo}>
+                    <div className={styles.previewItem}>
+                      <span className={styles.previewLabel}>내용:</span>
+                      <span className={styles.previewText}>
+                        {smsTextContent.length > 50 
+                          ? smsTextContent.substring(0, 50) + "..." 
+                          : smsTextContent}
+                      </span>
+                    </div>
+                    <div className={styles.previewItem}>
+                      <span className={styles.previewLabel}>이미지:</span>
+                      <span className={styles.previewText}>
+                        {currentGeneratedImage ? "포함됨" : "없음"}
+                      </span>
+                    </div>
+                    <div className={styles.previewItem}>
+                      <span className={styles.previewLabel}>버튼:</span>
+                      <span className={styles.previewText}>
+                        {dynamicButtons.length > 0 
+                          ? `${dynamicButtons.length}개 버튼 포함` 
+                          : "없음"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.modalCancelButton}
+                onClick={() => {
+                  setIsSaveTemplateModalOpen(false);
+                  setTemplateSaveName("");
+                  setTemplateSaveCategory("");
+                  setTemplateIsPrivate(false);
+                }}
+              >
+                취소
+              </button>
+              <button
+                className={styles.loadCampaignButton}
+                onClick={handleSaveTemplate}
+                disabled={!templateSaveName.trim() || !templateSaveCategory || isSavingTemplate}
+              >
+                {isSavingTemplate ? "저장 중..." : "저장"}
+              </button>
             </div>
           </div>
         </div>

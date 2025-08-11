@@ -2548,3 +2548,114 @@ body .main-content {
   flex-direction: column;
   gap: 8px;
 }
+
+/* 템플릿 저장 모달 스타일 */
+.saveTemplateForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.formInput {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.formInput:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(22, 129, 255, 0.1);
+}
+
+.formSelect {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.formSelect:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(22, 129, 255, 0.1);
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+}
+
+.previewInfo {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.previewItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.previewLabel {
+  font-weight: 600;
+  color: #555;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.previewText {
+  color: #333;
+  line-height: 1.4;
+}
+
+.modalCancelButton {
+  padding: 10px 20px;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalCancelButton:hover {
+  background-color: #e9ecef;
+  color: #5a6268;
+}
