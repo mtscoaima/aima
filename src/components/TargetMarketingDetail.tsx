@@ -1298,8 +1298,9 @@ function TargetMarketingDetailContent({
   }, [refreshTransactions, restoreState]);
 
   // 메시지 전송 처리
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+  const handleSendMessage = async (messageOverride?: string) => {
+    const messageToSend = messageOverride || inputMessage;
+    if (!messageToSend.trim() || isLoading) return;
 
     // 이미지 수정 키워드 감지
     const imageEditKeywords = [
@@ -1327,28 +1328,31 @@ function TargetMarketingDetailContent({
     ];
 
     const hasImageEditKeyword = imageEditKeywords.some((keyword) =>
-      inputMessage.includes(keyword)
+      messageToSend.includes(keyword)
     );
 
     // 현재 이미지가 있고 이미지 수정 키워드가 포함된 경우
     if (currentGeneratedImage && hasImageEditKeyword) {
-      await handleImageEdit(inputMessage);
+      await handleImageEdit(messageToSend);
       return;
     }
 
     const userMessage: Message = {
       id: `user-${Math.random().toString(36).substr(2, 9)}`,
       role: "user",
-      content: inputMessage,
+      content: messageToSend,
       timestamp: new Date(),
     };
 
     // 사용자 입력 내용을 기반으로 제목 업데이트
-    const generatedTitle = generateTemplateTitle(inputMessage);
+    const generatedTitle = generateTemplateTitle(messageToSend);
     setTemplateTitle(generatedTitle);
 
     setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
+    // messageOverride가 없을 때만 input 비우기 (직접 입력한 경우)
+    if (!messageOverride) {
+      setInputMessage("");
+    }
     setIsLoading(true);
     setShowTypingIndicator(true);
 
@@ -1373,7 +1377,7 @@ function TargetMarketingDetailContent({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: inputMessage,
+          message: messageToSend,
           previousMessages: messages,
         }),
       });
@@ -1656,8 +1660,7 @@ function TargetMarketingDetailContent({
   };
 
   const handleQuickBadgeClick = (message: string) => {
-    setInputMessage(message);
-    handleSendMessage();
+    handleSendMessage(message);
   };
 
   // 이미지 편집 처리
@@ -1911,10 +1914,43 @@ function TargetMarketingDetailContent({
                   )}
                   <p>{message.content}</p>
                 </div>
+                {/* AI 답변에만 빠른 버튼 표시 */}
+                {message.role === "assistant" && (
+                  <div className={styles.quickActionButtons}>
+                    <button
+                      className="quick-badge"
+                      onClick={() => handleQuickBadgeClick("이미지를 다른 스타일로 수정해주세요")}
+                      disabled={isLoading || showTypingIndicator}
+                    >
+                      이미지 수정
+                    </button>
+                    <button
+                      className="quick-badge"
+                      onClick={() => handleQuickBadgeClick("텍스트 내용을 수정해주세요")}
+                      disabled={isLoading || showTypingIndicator}
+                    >
+                      텍스트 수정
+                    </button>
+                    <button
+                      className="quick-badge"
+                      onClick={() => handleQuickBadgeClick("타겟 고객층을 수정해주세요")}
+                      disabled={isLoading || showTypingIndicator}
+                    >
+                      타겟 수정
+                    </button>
+                    <button
+                      className="quick-badge"
+                      onClick={() => handleQuickBadgeClick("할인율을 조정해주세요")}
+                      disabled={isLoading || showTypingIndicator}
+                    >
+                      할인율 수정
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {showTypingIndicator && (
-              <div className={`${styles.message} ${styles.assistantMessage}`}>
+              <div className={`${styles.message} ${styles.assistantMessage} ${styles.typingMessage}`}>
                 <div className={styles.messageContent}>
                   <div className={styles.typingIndicator}>
                     <span></span>
@@ -2027,7 +2063,7 @@ function TargetMarketingDetailContent({
                   </div>
                   <button
                     className="start-chat-btn"
-                    onClick={handleSendMessage}
+                    onClick={() => handleSendMessage()}
                     disabled={
                       isLoading || showTypingIndicator || !inputMessage.trim()
                     }

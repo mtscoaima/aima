@@ -143,6 +143,15 @@ body .main-content {
   word-wrap: break-word;
 }
 
+.quickActionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 0 16px 12px 16px;
+  order: 2; /* 타이핑 인디케이터보다 뒤에 표시 */
+}
+
 .messageContent p {
   margin: 0;
   line-height: 1.5;
@@ -192,6 +201,12 @@ body .main-content {
   display: flex;
   gap: 4px;
   padding: 8px 0;
+}
+
+.typingMessage {
+  order: -1; /* 다른 메시지들보다 먼저 표시 */
+  position: relative;
+  z-index: 10;
 }
 
 .typingIndicator span {

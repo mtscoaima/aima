@@ -29,7 +29,7 @@ body .main-content {
     [class*="template-card"]
   ):not([class*="action-button"]):not([class*="pagination"]):not(
     [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]),
+  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]):not([class*="quickActionButtons"]),
 .tab-content
   *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
     [class*="previewButton"]
@@ -39,7 +39,7 @@ body .main-content {
     [class*="template-card"]
   ):not([class*="action-button"]):not([class*="pagination"]):not(
     [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]),
+  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]):not([class*="quickActionButtons"]),
 .landing-container
   *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
     [class*="previewButton"]
@@ -49,7 +49,7 @@ body .main-content {
     [class*="template-card"]
   ):not([class*="action-button"]):not([class*="pagination"]):not(
     [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="templateImage"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]) {
+  ):not([class*="dropdown-item"]):not([class*="templateImage"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]):not([class*="quickActionButtons"]) {
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
