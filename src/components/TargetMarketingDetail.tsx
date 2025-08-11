@@ -122,6 +122,58 @@ function TargetMarketingDetailContent({
   const [isAgeDropdownOpen, setIsAgeDropdownOpen] = useState(false);
   const ageDropdownRef = useRef<HTMLDivElement>(null);
 
+  // 캠페인 불러오기 모달 상태
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
+
+  interface Campaign {
+    id: string | number;
+    name: string;
+    status?: string;
+    approval_status?: string;
+    message_templates?: {
+      name?: string;
+      content?: string;
+      image_url?: string;
+      category?: string;
+    };
+    target_criteria?: {
+      gender?: string;
+      age?: string[];
+      city?: string;
+      district?: string;
+      industry?: {
+        topLevel?: string;
+        specific?: string;
+      };
+      cardAmount?: string;
+      cardAmountInput?: string;
+      cardTime?: {
+        startTime?: string;
+        endTime?: string;
+      };
+    };
+    // 호환성을 위한 이전 필드들
+    targetCriteria?: {
+      gender?: string;
+      age?: string[];
+      city?: string;
+      district?: string;
+      industry?: {
+        topLevel?: string;
+        specific?: string;
+      };
+      cardAmount?: string;
+      cardAmountInput?: string;
+      cardTime?: {
+        startTime?: string;
+        endTime?: string;
+      };
+    };
+  }
+
   // 파일 업로드 관련 상태
   const [showImageDropdown, setShowImageDropdown] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -1663,6 +1715,131 @@ function TargetMarketingDetailContent({
     handleSendMessage(message);
   };
 
+  // 캠페인 목록 가져오기
+  const fetchCampaigns = async () => {
+    setIsLoadingCampaigns(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        setIsLoadingCampaigns(false);
+        return;
+      }
+
+      const response = await fetch("/api/campaigns", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
+        }
+        if (response.status === 403) {
+          throw new Error("캠페인 목록에 접근할 권한이 없습니다.");
+        }
+        throw new Error(`캠페인 목록을 가져오는데 실패했습니다. (${response.status})`);
+      }
+
+      const data = await response.json();
+      
+      // 승인 완료된 캠페인만 필터링
+      const allCampaigns = data.campaigns || [];
+      const approvedCampaigns = allCampaigns.filter((campaign: Campaign) => 
+        campaign.status === 'approved' || 
+        campaign.status === 'APPROVED' ||
+        campaign.approval_status === 'approved' ||
+        campaign.approval_status === 'APPROVED'
+      );
+      
+      setCampaigns(approvedCampaigns);
+    } catch (error) {
+      console.error("캠페인 목록 가져오기 실패:", error);
+      alert(error instanceof Error ? error.message : "캠페인 목록을 가져오는데 실패했습니다.");
+      
+      // 인증 실패 또는 권한 실패 시 모달 닫기
+      if (error instanceof Error && (error.message.includes("인증") || error.message.includes("권한"))) {
+        setIsCampaignModalOpen(false);
+      }
+    } finally {
+      setIsLoadingCampaigns(false);
+    }
+  };
+
+  // 캠페인 불러오기 모달 열기
+  const handleOpenCampaignModal = () => {
+    setIsCampaignModalOpen(true);
+    setSelectedCampaignId(null); // 선택 초기화
+    fetchCampaigns();
+  };
+
+  // 선택된 캠페인 불러오기
+  const handleLoadCampaign = async () => {
+    if (!selectedCampaignId) {
+      alert("캠페인을 선택해주세요.");
+      return;
+    }
+
+    try {
+      // 이미 로드된 캠페인 목록에서 선택된 캠페인 찾기
+      // ID 타입을 맞춰서 비교 (string과 number 모두 지원)
+      const selectedCampaign = campaigns.find(campaign => 
+        campaign.id === selectedCampaignId || 
+        campaign.id.toString() === selectedCampaignId ||
+        selectedCampaignId.toString() === campaign.id.toString()
+      );
+      
+      if (!selectedCampaign) {
+        console.error("캠페인을 찾을 수 없음. 선택된 ID:", selectedCampaignId, "사용 가능한 ID들:", campaigns.map(c => c.id));
+        alert("선택된 캠페인 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+      const campaignData = selectedCampaign;
+      
+      // 템플릿 정보 적용 (message_templates에서 가져오기)
+      const messageTemplate = campaignData.message_templates;
+      if (messageTemplate) {
+        if (messageTemplate.name) {
+          setTemplateTitle(messageTemplate.name);
+        }
+        if (messageTemplate.content) {
+          setSmsTextContent(messageTemplate.content);
+        }
+        if (messageTemplate.image_url) {
+          setCurrentGeneratedImage(messageTemplate.image_url);
+        }
+      }
+
+      // 타겟 정보 적용 (캠페인 데이터에서 직접 가져오기)
+      const targetData = campaignData.target_criteria || campaignData.targetCriteria;
+      if (targetData) {
+        setTargetGender(targetData.gender || "all");
+        setTargetAge(targetData.age || ["all"]);
+        setTargetCity(targetData.city || "all");
+        setTargetDistrict(targetData.district || "all");
+        setTargetTopLevelIndustry(targetData.industry?.topLevel || "all");
+        setTargetIndustry(targetData.industry?.specific || "all");
+        setCardAmount(targetData.cardAmount || "10000");
+        setCardAmountInput(targetData.cardAmountInput || "1");
+        setCardStartTime(targetData.cardTime?.startTime || "08:00");
+        setCardEndTime(targetData.cardTime?.endTime || "18:00");
+      }
+
+      // 모달 닫기
+      setIsCampaignModalOpen(false);
+      setSelectedCampaignId(null);
+      
+      alert("캠페인이 성공적으로 불러와졌습니다.");
+    } catch (error) {
+      console.error("캠페인 불러오기 실패:", error);
+      alert(error instanceof Error ? error.message : "캠페인을 불러오는데 실패했습니다.");
+    }
+  };
+
   // 이미지 편집 처리
   const handleImageEdit = async (prompt: string) => {
     if (!currentGeneratedImage) {
@@ -2085,10 +2262,7 @@ function TargetMarketingDetailContent({
               <div className={styles.templateHeaderActions}>
                 <button
                   className={styles.campaignLoadButton}
-                  onClick={() => {
-                    // 캠페인 불러오기 기능 (추후 구현)
-                    console.log("캠페인 불러오기");
-                  }}
+                  onClick={handleOpenCampaignModal}
                 >
                   캠페인 불러오기
                 </button>
@@ -2828,6 +3002,157 @@ function TargetMarketingDetailContent({
           redirectUrl={window.location.pathname}
         />
       </div>
+
+      {/* 캠페인 불러오기 모달 */}
+      {isCampaignModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.campaignModal}>
+            <div className={styles.modalHeader}>
+              <h2>캠페인 불러오기</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => {
+                  setIsCampaignModalOpen(false);
+                  setSelectedCampaignId(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              {isLoadingCampaigns ? (
+                <div className={styles.loadingContainer}>
+                  <div className={styles.loadingSpinner}></div>
+                  <span>캠페인 목록을 불러오는 중...</span>
+                </div>
+              ) : (
+                <div className={styles.campaignTable}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '50px' }}></th>
+                        <th>캠페인 이름</th>
+                        <th>타겟정보</th>
+                        <th>카드 사용 업종</th>
+                        <th>카드 승인금액</th>
+                        <th>카드 승인시간</th>
+                        <th>승인상태</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {campaigns.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className={styles.noCampaigns}>
+                            승인 완료된 캠페인이 없습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        campaigns.map((campaign) => {
+                          const targetCriteria = campaign.target_criteria || campaign.targetCriteria;
+                          return (
+                            <tr key={campaign.id}>
+                              <td>
+                                <input
+                                  type="radio"
+                                  name="campaign"
+                                  value={campaign.id}
+                                  checked={selectedCampaignId === campaign.id || selectedCampaignId?.toString() === campaign.id?.toString()}
+                                  onChange={(e) => {
+                                    setSelectedCampaignId(e.target.value);
+                                  }}
+                                />
+                              </td>
+                              <td>{campaign.name || '이름 없음'}</td>
+                              <td>
+                                {targetCriteria ? 
+                                  `${targetCriteria.gender || '전체'}/${targetCriteria.age?.join(',') || '전체'}/${targetCriteria.city || '전체'}/${targetCriteria.district || '전체'}` 
+                                  : '전체/전체/전체/전체'
+                                }
+                              </td>
+                              <td>
+                                {/* 카드 사용 업종 정보 */}
+                                {targetCriteria?.industry?.topLevel || '전체'}
+                              </td>
+                              <td>
+                                {/* 카드 승인 금액 - NaN 방지 강화 처리 */}
+                                {(() => {
+                                  const cardAmountValue = targetCriteria?.cardAmount;
+                                  
+                                  // 값이 없거나 빈 문자열인 경우
+                                  if (!cardAmountValue || cardAmountValue === '' || cardAmountValue === 'undefined' || cardAmountValue === 'null') {
+                                    return '미설정';
+                                  }
+                                  
+                                  // 문자열 처리
+                                  let numericValue;
+                                  if (typeof cardAmountValue === 'string') {
+                                    // 'all' 또는 '전체' 같은 문자열 처리
+                                    if (cardAmountValue.toLowerCase() === 'all' || cardAmountValue === '전체') {
+                                      return '전체';
+                                    }
+                                    // 'custom' 같은 특수값 처리
+                                    if (cardAmountValue.toLowerCase() === 'custom') {
+                                      return '사용자 설정';
+                                    }
+                                    // 숫자가 아닌 문자가 포함된 경우 제거 후 변환
+                                    const cleanedValue = cardAmountValue.replace(/[^0-9]/g, '');
+                                    if (cleanedValue === '') return '미설정';
+                                    numericValue = parseInt(cleanedValue);
+                                  } else {
+                                    numericValue = parseInt(cardAmountValue);
+                                  }
+                                  
+                                  // NaN 체크
+                                  if (isNaN(numericValue) || numericValue < 0) {
+                                    return '미설정';
+                                  }
+                                  
+                                  // 0인 경우
+                                  if (numericValue === 0) {
+                                    return '전체';
+                                  }
+                                  
+                                  // 정상적인 금액 표시
+                                  return `₩${(numericValue / 10000).toLocaleString()}만원`;
+                                })()}
+                              </td>
+                              <td>
+                                {targetCriteria?.cardTime && targetCriteria.cardTime.startTime && targetCriteria.cardTime.endTime ? 
+                                  `${targetCriteria.cardTime.startTime}~${targetCriteria.cardTime.endTime}` 
+                                  : '전체시간'
+                                }
+                              </td>
+                              <td>
+                                <span className={styles.approvalStatus}>
+                                  {(campaign.status === 'approved' || campaign.status === 'APPROVED' || 
+                                    campaign.approval_status === 'approved' || campaign.approval_status === 'APPROVED') 
+                                    ? '승인완료' 
+                                    : campaign.status || campaign.approval_status || '대기중'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.loadCampaignButton}
+                onClick={handleLoadCampaign}
+                disabled={!selectedCampaignId || isLoadingCampaigns}
+              >
+                불러오기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

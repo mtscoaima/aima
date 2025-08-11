@@ -433,7 +433,8 @@ export async function GET(request: NextRequest) {
         message_templates (
           name,
           content,
-          image_url
+          image_url,
+          category
         )
       `
       )

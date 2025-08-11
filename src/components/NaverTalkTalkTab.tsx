@@ -82,7 +82,6 @@ export default function NaverTalkTalkTab({
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        console.log("외부 클릭으로 드롭다운 닫힘");
         setShowImageDropdown(false);
       }
     };
@@ -93,10 +92,7 @@ export default function NaverTalkTalkTab({
     };
   }, []);
 
-  // 드롭다운 상태 변화 추적
-  useEffect(() => {
-    console.log("드롭다운 상태 변경됨:", showImageDropdown);
-  }, [showImageDropdown]);
+
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredTemplates.length / templatesPerPage);
