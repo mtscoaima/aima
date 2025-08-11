@@ -113,7 +113,7 @@ body .main-content {
 }
 
 .userMessage .messageContent {
-  border-radius: 30px;
+  border-radius: 30px!important;
   background: #e0e0e0;
   color: #000;
   font-feature-settings: "liga" off, "clig" off;
@@ -135,6 +135,7 @@ body .main-content {
   font-weight: 400;
   line-height: 141%; /* 22.56px */
   letter-spacing: -0.32px;
+  border-radius: 20px !important;
 }
 
 .messageContent {
@@ -253,8 +254,7 @@ body .main-content {
 /* 템플릿 미리보기 카드 */
 .templatePreviewCard {
   background: transparent;
-  overflow: hidden;
-  border-bottom: 7px solid #e6e6e6;
+  overflow: visible;
 }
 
 /* 템플릿 헤더 액션 버튼 */
@@ -343,6 +343,20 @@ body .main-content {
   height: 100% !important;
 }
 
+/* 더 구체적인 선택자로 이미지 스타일 강제 적용 */
+.templatePreviewCard .templateImage,
+.mmsSendSection .templateImage,
+.templateCardContent .templateImage {
+  border-radius: 18px 18px 0 0 !important;
+  overflow: hidden !important;
+}
+
+.templatePreviewCard .templateImage img,
+.mmsSendSection .templateImage img,
+.templateCardContent .templateImage img {
+  border-radius: 18px 18px 0 0 !important;
+}
+
 .imageGeneratingOverlay {
   border-radius: 18px 18px 0 0 !important;
   position: absolute;
@@ -374,11 +388,19 @@ body .main-content {
   justify-content: center;
 }
 
+/* 더 구체적인 선택자로 placeholder 스타일 강제 적용 */
+.templatePreviewCard .templateImagePlaceholder,
+.mmsSendSection .templateImagePlaceholder,
+.templateCardContent .templateImagePlaceholder {
+  border-radius: 18px 18px 0 0 !important;
+  overflow: hidden !important;
+}
+
 .templateTitleInput {
-  border: 2px solid #c7c7c7 !important;
+  border: 1px solid #ddd !important;
   border-radius: 15px !important;
   background: transparent !important;
-  padding: 12px 60px 12px 16px !important;
+  padding: 6px 60px 6px 6px !important;
   outline: none !important;
   transition: border-color 0.2s ease !important;
   box-sizing: border-box !important;
@@ -388,16 +410,24 @@ body .main-content {
   color: #333;
 }
 
+/* 더 구체적인 선택자로 강제 적용 */
+.templatePreviewCard .templateTitleInput,
+.mmsSendSection .templateTitleInput,
+.templateCardContent .templateTitleInput {
+  border: 1px solid #ddd !important;
+  border-radius: 15px !important;
+}
+
 .templateTitleInput:focus {
-  border-color: #007bff !important;
+  border-color: #ddd !important;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
 }
 
 .templateDescriptionTextarea {
-  border: 2px solid #c7c7c7 !important;
+  border: 1px solid #ddd !important;
   border-radius: 15px !important;
   background: transparent !important;
-  padding: 12px !important;
+  padding: 6px 6px 24px 6px !important;
   outline: none !important;
   resize: none !important;
   min-height: 100px !important;
@@ -411,8 +441,16 @@ body .main-content {
   color: #000;
 }
 
+/* 더 구체적인 선택자로 강제 적용 */
+.templatePreviewCard .templateDescriptionTextarea,
+.mmsSendSection .templateDescriptionTextarea,
+.templateCardContent .templateDescriptionTextarea {
+  border: 1px solid #ddd !important;
+  border-radius: 15px !important;
+}
+
 .templateDescriptionTextarea:focus {
-  border-color: #007bff !important;
+  border-color: #ddd !important;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
 }
 
@@ -427,8 +465,8 @@ body .main-content {
 }
 
 .templateActionButton {
-  padding: 6px 4px;
-  font-size: 11px;
+  padding: 10px 12px;
+  font-size: 12px;
   font-weight: 700;
   border: 1px solid #1681ff;
   border-radius: 8px;
@@ -439,10 +477,15 @@ body .main-content {
   transition: all 0.2s ease;
   text-align: center;
   font-family: "Noto Sans KR";
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .templateActionButton.firstButton {
-  padding: 6px 2px;
+  padding: 10px 12px;
+  min-width: 100px;
 }
 
 .templateActionButton:hover {
@@ -519,17 +562,16 @@ body .main-content {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 8px;
 }
 
 .templateFieldLabel {
   font-size: 14px;
   font-weight: 600;
   color: #333;
-  min-width: 50px;
+  min-width: 30px;
   flex-shrink: 0;
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .templateTitleWrapper {
@@ -592,12 +634,15 @@ body .main-content {
 }
 
 .templateDescription .charCount {
-  display: flex;
-  justify-content: flex-end;
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
   color: #9ca3af;
   font-size: 12px;
   font-weight: 400;
-  margin-top: 8px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .charCount {
@@ -622,7 +667,6 @@ body .main-content {
   padding-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
 .filterRow {
@@ -688,7 +732,6 @@ body .main-content {
   padding-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
 .amountCardOptions {
@@ -837,7 +880,39 @@ body .main-content {
   padding-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+}
+
+.timePresetButtons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.timePresetButton {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.timePresetButton:hover {
+  border: 1px solid #1681ff;
+  color: #1681ff;
+}
+
+.timePresetButton.selected {
+  background: rgba(22, 129, 255, 0.1);
+  border: 1px solid #1681ff;
+  color: #1681ff;
 }
 
 .timeSeparator {
@@ -1793,4 +1868,320 @@ body .main-content {
   .customAmountHint {
     font-size: 11px;
   }
+}
+
+/* 커스텀 드롭다운 스타일 */
+.customDropdown {
+  position: relative;
+  width: 100%;
+}
+
+.dropdownTrigger {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  min-height: 40px;
+  transition: border-color 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 32px;
+}
+
+.dropdownTrigger:hover {
+  border-color: #bbb;
+}
+
+.dropdownTrigger:focus {
+  outline: none;
+  border-color: #1681ff;
+  box-shadow: 0 0 0 2px rgba(22, 129, 255, 0.1);
+}
+
+.dropdownValue {
+  font-size: 14px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.dropdownArrow {
+  display: none;
+}
+
+.dropdownArrowOpen {
+  display: none;
+}
+
+.dropdownContent {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdownCheckboxItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdownCheckboxItem:hover {
+  background-color: #f5f5f5;
+}
+
+.dropdownCheckboxItem input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.dropdownCheckboxLabel {
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  user-select: none;
+  flex: 1;
+}
+
+/* 카드 승인 금액 입력 스타일 */
+.amountInputSection {
+  margin-bottom: 16px;
+}
+
+.amountInputWrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: white;
+  max-width: 200px;
+}
+
+.amountInputField {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+}
+
+.amountInputField:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+}
+
+.amountInputUnit {
+  font-size: 14px;
+  color: #666;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.amountButtonOptions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.amountButton {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.amountButton:hover {
+  border-color: #1681ff;
+  color: #1681ff;
+}
+
+.amountButton.selected {
+  background: rgba(22, 129, 255, 0.1);
+  border-color: #1681ff;
+  color: #1681ff;
+}
+
+/* 동적 버튼 영역 스타일 */
+.dynamicButtonsSection {
+  margin-top: 0;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+}
+
+.dynamicButtonsList {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.dynamicButtonItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f8f9fa;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.buttonInputsRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.buttonTextInputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.linkActionsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.buttonTextCharCount {
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: left;
+  margin-left:4px
+}
+
+.buttonTextInput,
+.buttonUrlInput {
+  border: 1px solid #ddd !important;
+  border-radius: 6px !important;
+  padding: 6px !important;
+  font-size: 16px;
+  outline: none !important;
+  transition: border-color 0.2s ease !important;
+  background: white;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.buttonTextInput {
+  
+  max-width: 80px;
+  width: 80px;
+}
+
+.buttonUrlInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.buttonTextInput:focus,
+.buttonUrlInput:focus {
+  border-color: #1681ff !important;
+}
+
+.removeButtonBtn {
+  color: #9ca3af;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.removeButtonBtn:hover {
+  color: #dc3545;
+}
+
+.linkCheckBtn {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #e0e0e0;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: auto;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.linkCheckBtn:hover {
+  background: #d0d0d0;
+  border-color: #bbb;
+}
+
+.addButtonBtn {
+  padding: 6px 16px;
+  background: #e0e0e0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  color: #666;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.addButtonBtn:hover {
+  background: #d0d0d0;
+  border-color: #bbb;
+}
+
+.noButtonsPlaceholder {
+  padding: 12px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 12px;
+  border: 1px dashed #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
 }

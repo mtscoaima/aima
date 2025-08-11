@@ -29,7 +29,7 @@ body .main-content {
     [class*="template-card"]
   ):not([class*="action-button"]):not([class*="pagination"]):not(
     [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]),
+  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]),
 .tab-content
   *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
     [class*="previewButton"]
@@ -39,7 +39,7 @@ body .main-content {
     [class*="template-card"]
   ):not([class*="action-button"]):not([class*="pagination"]):not(
     [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]),
+  ):not([class*="dropdown-item"]):not([class*="image-upload-wrapper"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="templateImage"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]),
 .landing-container
   *:not([class*="templateActionButton"]):not([class*="campaignLoadButton"]):not(
     [class*="previewButton"]
@@ -49,13 +49,90 @@ body .main-content {
     [class*="template-card"]
   ):not([class*="action-button"]):not([class*="pagination"]):not(
     [class*="image-dropdown"]
-  ):not([class*="dropdown-item"]):not([class*="templateImage"]) {
+  ):not([class*="dropdown-item"]):not([class*="templateImage"]):not([class*="templateTitleInput"]):not([class*="templateDescriptionTextarea"]):not([class*="buttonTextInput"]):not([class*="buttonUrlInput"]):not([class*="addButtonBtn"]):not([class*="removeButtonBtn"]):not([class*="linkCheckBtn"]):not([class*="filterSelect"]):not([class*="timeSelect"]):not([class*="amountButton"]):not([class*="timePresetButton"]):not([class*="amountInputWrapper"]):not([class*="dropdownTrigger"]):not([class*="messageContent"]):not([class*="messageImage"]) {
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
 
 /* 필요한 요소들은 스타일 복원 */
+
+/* 타겟 추천 결과 섹션 스타일 복원 */
+.target-marketing-landing .filterSelect {
+  border: 1px solid #c7c7c7 !important;
+  border-radius: 8px !important;
+}
+
+.target-marketing-landing .timeSelect {
+  border: 1px solid #c7c7c7 !important;
+  border-radius: 8px !important;
+}
+
+.target-marketing-landing .amountButton {
+  border: 1px solid #ddd !important;
+  border-radius: 20px !important;
+}
+
+.target-marketing-landing .timePresetButton {
+  border: 1px solid #ddd !important;
+  border-radius: 20px !important;
+}
+
+.target-marketing-landing .amountInputWrapper {
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+}
+
+.target-marketing-landing .dropdownTrigger {
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+}
+
+/* 선택된 버튼 스타일 */
+.target-marketing-landing .amountButton.selected {
+  background: rgba(22, 129, 255, 0.1) !important;
+  border: 1px solid #1681ff !important;
+  color: #1681ff !important;
+}
+
+.target-marketing-landing .timePresetButton.selected {
+  background: rgba(22, 129, 255, 0.1) !important;
+  border: 1px solid #1681ff !important;
+  color: #1681ff !important;
+}
+
+.target-marketing-landing .amountButton:hover {
+  border: 1px solid #1681ff !important;
+  color: #1681ff !important;
+}
+
+.target-marketing-landing .timePresetButton:hover {
+  border: 1px solid #1681ff !important;
+  color: #1681ff !important;
+}
+
+/* 드롭다운 포커스 스타일 */
+.target-marketing-landing .filterSelect:focus {
+  border-color: #1681ff !important;
+}
+
+.target-marketing-landing .timeSelect:focus {
+  border-color: #1681ff !important;
+}
+
+/* 메시지 콘텐츠 스타일 복원 */
+.target-marketing-landing .userMessage .messageContent {
+  border-radius: 30px !important;
+}
+
+.target-marketing-landing .assistantMessage .messageContent {
+  border-radius: 20px !important;
+}
+
+.target-marketing-landing .messageImage {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
 
 /* 채팅 입력창 스타일 복원 */
 .chat-input-field {
@@ -434,6 +511,28 @@ div[class*="mmsSendSection"] div[class*="templateImage"] img {
   border-radius: 18px 18px 0px 0px !important;
 }
 
+/* 템플릿 입력 필드 스타일 강제 적용 */
+[class*="templateTitleInput"] {
+  border: 1px solid #ddd !important;
+  border-radius: 15px !important;
+}
+
+[class*="templateDescriptionTextarea"] {
+  border: 1px solid #ddd !important;
+  border-radius: 15px !important;
+}
+
+/* 더 구체적인 선택자로 강제 적용 */
+div[class*="mmsSendSection"] input[class*="templateTitleInput"] {
+  border: 1px solid #ddd !important;
+  border-radius: 15px !important;
+}
+
+div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
+  border: 1px solid #ddd !important;
+  border-radius: 15px !important;
+}
+
 .landing-container {
   flex: 1;
   display: flex;
@@ -467,7 +566,7 @@ div[class*="mmsSendSection"] div[class*="templateImage"] img {
 .tab-navigation {
   display: flex;
   gap: 8px;
-  margin-bottom: 32px;
+  margin-bottom: 0;
   padding: 0 4px;
 }
 

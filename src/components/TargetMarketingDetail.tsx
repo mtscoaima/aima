@@ -48,6 +48,12 @@ interface Package {
   isPopular?: boolean;
 }
 
+interface DynamicButton {
+  id: string;
+  text: string;
+  url: string;
+}
+
 interface TargetMarketingDetailProps {
   templateId?: number | null;
   useTemplate?: boolean;
@@ -98,18 +104,23 @@ function TargetMarketingDetailContent({
 
   // 타겟 필터 상태들 추가
   const [targetGender, setTargetGender] = useState("all");
-  const [targetAge, setTargetAge] = useState("all");
+  const [targetAge, setTargetAge] = useState<string[]>(["all"]);
   const [targetCity, setTargetCity] = useState("all");
   const [targetDistrict, setTargetDistrict] = useState("all");
   const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
   const [targetIndustry, setTargetIndustry] = useState("all");
   const [cardAmount, setCardAmount] = useState("10000");
   const [customAmount, setCustomAmount] = useState("50");
+  const [cardAmountInput, setCardAmountInput] = useState("1");
   const [cardStartTime, setCardStartTime] = useState("08:00");
   const [cardEndTime, setCardEndTime] = useState("18:00");
 
   // 승인 신청 처리 상태
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+
+  // 드롭다운 상태
+  const [isAgeDropdownOpen, setIsAgeDropdownOpen] = useState(false);
+  const ageDropdownRef = useRef<HTMLDivElement>(null);
 
   // 파일 업로드 관련 상태
   const [showImageDropdown, setShowImageDropdown] = useState(false);
@@ -144,6 +155,137 @@ function TargetMarketingDetailContent({
   const [batchSendTime, setBatchSendTime] = useState("00:00");
   const [targetCount, setTargetCount] = useState(500); // 타겟 대상자 수
   const [adRecipientCount, setAdRecipientCount] = useState(30); // 광고 수신자 수
+
+  // 동적 버튼 관리 상태
+  const [dynamicButtons, setDynamicButtons] = useState<DynamicButton[]>([]);
+
+  // 동적 버튼 관리 함수들
+  const addDynamicButton = () => {
+    if (dynamicButtons.length < 2) {
+      const newButton: DynamicButton = {
+        id: `button-${Date.now()}`,
+        text: "",
+        url: ""
+      };
+      setDynamicButtons([...dynamicButtons, newButton]);
+    }
+  };
+
+  const removeDynamicButton = (id: string) => {
+    setDynamicButtons(dynamicButtons.filter(button => button.id !== id));
+  };
+
+  const updateDynamicButton = (id: string, field: keyof DynamicButton, value: string) => {
+    setDynamicButtons(dynamicButtons.map(button => 
+      button.id === id ? { ...button, [field]: value } : button
+    ));
+  };
+
+  // 링크 확인 함수
+  const handleLinkCheck = (url: string) => {
+    if (!url.trim()) {
+      alert('링크 주소를 입력해주세요.');
+      return;
+    }
+
+    let validUrl = url.trim();
+    if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
+      validUrl = 'https://' + validUrl;
+    }
+
+    try {
+      new URL(validUrl);
+      window.open(validUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      alert('유효하지 않은 URL입니다.');
+    }
+  };
+
+  // 선택된 연령대 표시 함수
+  const getSelectedAgeDisplay = () => {
+    if (targetAge.includes("all")) {
+      return "전체";
+    }
+    
+    const selectedLabels = targetAge.map(value => {
+      const option = targetOptions.age.find(opt => opt.value === value);
+      return option?.label || value;
+    }).filter(Boolean);
+    
+    if (selectedLabels.length === 0) {
+      return "선택하세요";
+    } else if (selectedLabels.length === 1) {
+      return selectedLabels[0];
+    } else if (selectedLabels.length === 2) {
+      return selectedLabels.join(", ");
+    } else {
+      return `${selectedLabels[0]} 외 ${selectedLabels.length - 1}개`;
+    }
+  };
+
+  // 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ageDropdownRef.current && !ageDropdownRef.current.contains(event.target as Node)) {
+        setIsAgeDropdownOpen(false);
+      }
+    };
+
+    if (isAgeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAgeDropdownOpen]);
+
+  // 카드 승인 금액 버튼 클릭 핸들러
+  const handleAmountButtonClick = (optionValue: string) => {
+    setCardAmount(optionValue);
+    
+    // 각 버튼에 따라 input 값 설정
+    switch (optionValue) {
+      case "10000":
+        setCardAmountInput("1");
+        break;
+      case "50000":
+        setCardAmountInput("5");
+        break;
+      case "100000":
+        setCardAmountInput("10");
+        break;
+      case "all":
+        setCardAmountInput("");
+        break;
+      case "custom":
+        // 직접 입력의 경우 현재 customAmount 값 사용
+        setCardAmountInput(customAmount);
+        break;
+      default:
+        setCardAmountInput("1");
+    }
+  };
+
+  // 카드 승인 시간 버튼 클릭 핸들러
+  const handleTimePresetClick = (preset: string) => {
+    switch (preset) {
+      case "morning":
+        setCardStartTime("08:00");
+        setCardEndTime("12:00");
+        break;
+      case "afternoon":
+        setCardStartTime("12:00");
+        setCardEndTime("18:00");
+        break;
+      case "all":
+        setCardStartTime("08:00");
+        setCardEndTime("18:00");
+        break;
+      default:
+        break;
+    }
+  };
 
   // 사용자 입력을 기반으로 템플릿 제목 생성
   const generateTemplateTitle = React.useCallback((content: string) => {
@@ -241,34 +383,48 @@ function TargetMarketingDetailContent({
         setTargetGender("male");
       }
 
-      // 연령대 분석
+      // 연령대 분석 (다중 선택 지원)
+      const detectedAges = [];
+      
       if (
         lowerContent.includes("10대") ||
         lowerContent.includes("학생") ||
         lowerContent.includes("청소년")
       ) {
-        setTargetAge("teens");
-      } else if (
+        detectedAges.push("teens");
+      }
+      
+      if (
         lowerContent.includes("20대") ||
         lowerContent.includes("대학생") ||
         lowerContent.includes("신입")
       ) {
-        setTargetAge("twenties");
-      } else if (
+        detectedAges.push("twenties");
+      }
+      
+      if (
         lowerContent.includes("30대") ||
         lowerContent.includes("직장인")
       ) {
-        setTargetAge("thirties");
-      } else if (
+        detectedAges.push("thirties");
+      }
+      
+      if (
         lowerContent.includes("40대") ||
         lowerContent.includes("중년")
       ) {
-        setTargetAge("forties");
-      } else if (
+        detectedAges.push("forties");
+      }
+      
+      if (
         lowerContent.includes("50대") ||
         lowerContent.includes("시니어")
       ) {
-        setTargetAge("fifties");
+        detectedAges.push("fifties");
+      }
+      
+      if (detectedAges.length > 0) {
+        setTargetAge(detectedAges);
       }
 
       // 지역 분석
@@ -625,6 +781,7 @@ function TargetMarketingDetailContent({
       targetIndustry,
       cardAmount,
       customAmount,
+      cardAmountInput,
       cardStartTime,
       cardEndTime,
       maxRecipients,
@@ -660,13 +817,14 @@ function TargetMarketingDetailContent({
       setSmsTextContent(state.smsTextContent || "");
       setCurrentGeneratedImage(state.currentGeneratedImage || null);
       setTargetGender(state.targetGender || "all");
-      setTargetAge(state.targetAge || "all");
+      setTargetAge(state.targetAge || ["all"]);
       setTargetCity(state.targetCity || "all");
       setTargetDistrict(state.targetDistrict || "all");
       setTargetTopLevelIndustry(state.targetTopLevelIndustry || "all");
       setTargetIndustry(state.targetIndustry || "all");
       setCardAmount(state.cardAmount || "10000");
       setCustomAmount(state.customAmount || "50");
+      setCardAmountInput(state.cardAmountInput || "1");
       setCardStartTime(state.cardStartTime || "08:00");
       setCardEndTime(state.cardEndTime || "18:00");
       setMaxRecipients(state.maxRecipients || "30");
@@ -1628,7 +1786,7 @@ function TargetMarketingDetailContent({
             specific: targetIndustry,
           },
           cardAmount:
-            cardAmount === "custom" ? `${customAmount}0000` : cardAmount,
+            cardAmount === "all" ? cardAmount : `${cardAmountInput}0000`,
           cardTime: {
             startTime: cardStartTime,
             endTime: cardEndTime,
@@ -1987,6 +2145,73 @@ function TargetMarketingDetailContent({
                       </span>
                     </div>
                   </div>
+
+                  {/* 동적 버튼 영역 */}
+                  <div className={styles.templateField}>
+                    <label className={styles.templateFieldLabel}>버튼:</label>
+                    <div className={styles.dynamicButtonsSection}>
+                      <div className={styles.dynamicButtonsList}>
+                        {dynamicButtons.map((button, index) => (
+                          <div key={button.id} className={styles.dynamicButtonItem}>
+                            <div className={styles.buttonInputsRow}>
+                              <div className={styles.buttonTextInputWrapper}>
+                                <input
+                                  type="text"
+                                  placeholder="버튼명"
+                                  value={button.text}
+                                  onChange={(e) => updateDynamicButton(button.id, 'text', e.target.value)}
+                                  className={styles.buttonTextInput}
+                                  maxLength={8}
+                                />
+                                <span className={styles.buttonTextCharCount}>
+                                  {button.text.length} / 8
+                                </span>
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="링크주소"
+                                value={button.url}
+                                onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value)}
+                                className={styles.buttonUrlInput}
+                              />
+                              <div className={styles.linkActionsColumn}>
+                                <button
+                                  className={styles.linkCheckBtn}
+                                  title="링크 확인"
+                                  onClick={() => handleLinkCheck(button.url)}
+                                >
+                                  링크확인
+                                </button>
+                                {index === dynamicButtons.length - 1 && (
+                                  <button
+                                    onClick={() => removeDynamicButton(button.id)}
+                                    className={styles.removeButtonBtn}
+                                  >
+                                    🗑️ 삭제
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {dynamicButtons.length === 0 && (
+                          <div className={styles.noButtonsPlaceholder}>
+                            <span>0 / 2</span>
+                          </div>
+                        )}
+                        
+                        {dynamicButtons.length < 2 && (
+                          <button
+                            onClick={addDynamicButton}
+                            className={styles.addButtonBtn}
+                          >
+                            + 버튼 추가({dynamicButtons.length}/2)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 템플릿 액션 버튼들 */}
@@ -2028,10 +2253,9 @@ function TargetMarketingDetailContent({
 
               {/* 타겟 설정 */}
               <div className={styles.targetFiltersSection}>
-                <div className={styles.sectionTitle}>타겟 설정</div>
+                <div className={styles.sectionTitle}>성별, 연령</div>
                 <div className={styles.filterRow}>
                   <div className={styles.filterGroup}>
-                    <div className={styles.filterLabel}>성별</div>
                     <select
                       className={styles.filterSelect}
                       value={targetGender}
@@ -2045,18 +2269,52 @@ function TargetMarketingDetailContent({
                     </select>
                   </div>
                   <div className={styles.filterGroup}>
-                    <div className={styles.filterLabel}>연령대</div>
-                    <select
-                      className={styles.filterSelect}
-                      value={targetAge}
-                      onChange={(e) => setTargetAge(e.target.value)}
-                    >
-                      {targetOptions.age.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className={styles.customDropdown} ref={ageDropdownRef}>
+                      <div 
+                        className={styles.dropdownTrigger}
+                        onClick={() => setIsAgeDropdownOpen(!isAgeDropdownOpen)}
+                      >
+                        <span className={styles.dropdownValue}>
+                          {getSelectedAgeDisplay()}
+                        </span>
+                        <span className={`${styles.dropdownArrow} ${isAgeDropdownOpen ? styles.dropdownArrowOpen : ''}`}>
+                          ▼
+                        </span>
+                      </div>
+                      {isAgeDropdownOpen && (
+                        <div className={styles.dropdownContent}>
+                          {targetOptions.age.map((option) => (
+                            <label key={option.value} className={styles.dropdownCheckboxItem}>
+                              <input
+                                type="checkbox"
+                                checked={targetAge.includes(option.value)}
+                                onChange={(e) => {
+                                  if (option.value === "all") {
+                                    // "전체" 선택 시 다른 모든 선택 해제
+                                    setTargetAge(e.target.checked ? ["all"] : []);
+                                  } else {
+                                    // 개별 항목 선택/해제
+                                    if (e.target.checked) {
+                                      // "전체"가 선택되어 있다면 제거하고 현재 항목 추가
+                                      const newAges = targetAge.includes("all") 
+                                        ? [option.value] 
+                                        : [...targetAge, option.value];
+                                      setTargetAge(newAges);
+                                    } else {
+                                      // 현재 항목 제거
+                                      const newAges = targetAge.filter(age => age !== option.value);
+                                      // 아무것도 선택되지 않았으면 "전체" 선택
+                                      setTargetAge(newAges.length === 0 ? ["all"] : newAges);
+                                    }
+                                  }
+                                }}
+                              />
+                              <span className={styles.dropdownCheckboxLabel}>{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2066,7 +2324,6 @@ function TargetMarketingDetailContent({
                 <div className={styles.sectionTitle}>카드 사용 위치</div>
                 <div className={styles.filterRow}>
                   <div className={styles.filterGroup}>
-                    <div className={styles.filterLabel}>시/도</div>
                     <select
                       className={styles.filterSelect}
                       value={targetCity}
@@ -2080,7 +2337,6 @@ function TargetMarketingDetailContent({
                     </select>
                   </div>
                   <div className={styles.filterGroup}>
-                    <div className={styles.filterLabel}>시/군/구</div>
                     <select
                       className={styles.filterSelect}
                       value={targetDistrict}
@@ -2098,16 +2354,17 @@ function TargetMarketingDetailContent({
 
               {/* 타겟 업종 */}
               <div className={styles.targetFiltersSection}>
-                <div className={styles.sectionTitle}>타겟 업종</div>
+                <div className={styles.sectionTitle}>카드 사용 업종</div>
                 <div className={styles.filterRow}>
                   <div className={styles.filterGroup}>
-                    <div className={styles.filterLabel}>대분류</div>
                     <select
                       className={styles.filterSelect}
                       value={targetTopLevelIndustry}
-                      onChange={(e) =>
-                        setTargetTopLevelIndustry(e.target.value)
-                      }
+                      onChange={(e) => {
+                        setTargetTopLevelIndustry(e.target.value);
+                        // 대분류 변경 시 세부업종을 "all"로 자동 설정
+                        setTargetIndustry("all");
+                      }}
                     >
                       {targetOptions.topLevelIndustries.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -2116,85 +2373,61 @@ function TargetMarketingDetailContent({
                       ))}
                     </select>
                   </div>
-                  <div className={styles.filterGroup}>
-                    <div className={styles.filterLabel}>세부업종</div>
-                    <select
-                      className={styles.filterSelect}
-                      value={targetIndustry}
-                      onChange={(e) => setTargetIndustry(e.target.value)}
-                    >
-                      {getIndustriesByTopLevel(targetTopLevelIndustry).map(
-                        (option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
                 </div>
               </div>
 
               {/* 카드 승인 금액 */}
               <div className={styles.cardAmountSection}>
                 <div className={styles.sectionTitle}>카드 승인 금액</div>
-                <div className={styles.amountCardOptions}>
-                  {targetOptions.cardAmounts.map((option) => (
-                    <div
-                      key={option.value}
-                      className={`${styles.amountCard} ${
-                        cardAmount === option.value ? styles.selected : ""
-                      }`}
-                      onClick={() => setCardAmount(option.value)}
-                    >
-                      <div className={styles.amountCardLabel}>
-                        {option.label}
-                      </div>
-                      <div className={styles.amountCardRadio}>
-                        <div
-                          className={`${styles.radioCircle} ${
-                            cardAmount === option.value ? styles.checked : ""
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                
+                {/* 금액 입력 필드 */}
+                <div className={styles.amountInputSection}>
+                  <div className={styles.amountInputWrapper}>
+                    <input
+                      type="number"
+                      value={cardAmountInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // 숫자만 입력되도록 하고, 최대 1000만원으로 제한
+                        if (
+                          value === "" ||
+                          (parseInt(value) >= 1 && parseInt(value) <= 1000)
+                        ) {
+                          setCardAmountInput(value);
+                          setCardAmount("custom");
+                        }
+                      }}
+                      placeholder="금액 입력"
+                      className={styles.amountInputField}
+                      min="1"
+                      max="1000"
+                      disabled={cardAmount === "all"}
+                    />
+                    <span className={styles.amountInputUnit}>만원</span>
+                  </div>
                 </div>
 
-                {/* 직접 입력 필드 */}
-                {cardAmount === "custom" && (
-                  <div className={styles.customAmountInput}>
-                    <div className={styles.customAmountWrapper}>
-                      <input
-                        type="number"
-                        value={customAmount}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          // 숫자만 입력되도록 하고, 최대 1000만원으로 제한
-                          if (
-                            value === "" ||
-                            (parseInt(value) >= 1 && parseInt(value) <= 1000)
-                          ) {
-                            setCustomAmount(value);
-                          }
-                        }}
-                        placeholder="50"
-                        className={styles.customAmountField}
-                        min="1"
-                        max="1000"
-                      />
-                      <span className={styles.customAmountUnit}>만원</span>
-                    </div>
-                    <div className={styles.customAmountHint}>
-                      1만원 ~ 1,000만원 사이로 입력해주세요
-                    </div>
-                  </div>
-                )}
+                {/* 금액 선택 버튼들 */}
+                <div className={styles.amountButtonOptions}>
+                  {targetOptions.cardAmounts.filter(option => option.value !== "custom").map((option) => (
+                    <button
+                      key={option.value}
+                      className={`${styles.amountButton} ${
+                        cardAmount === option.value ? styles.selected : ""
+                      }`}
+                      onClick={() => handleAmountButtonClick(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* 카드 승인 시간 */}
               <div className={styles.cardTimeSection}>
                 <div className={styles.sectionTitle}>카드 승인 시간</div>
+                
+                {/* 시간 선택 드롭다운 */}
                 <div className={styles.timeSelectors}>
                   <div className={styles.timeGroup}>
                     <select
@@ -2223,6 +2456,34 @@ function TargetMarketingDetailContent({
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* 시간 프리셋 버튼들 */}
+                <div className={styles.timePresetButtons}>
+                  <button
+                    className={`${styles.timePresetButton} ${
+                      cardStartTime === "08:00" && cardEndTime === "12:00" ? styles.selected : ""
+                    }`}
+                    onClick={() => handleTimePresetClick("morning")}
+                  >
+                    오전
+                  </button>
+                  <button
+                    className={`${styles.timePresetButton} ${
+                      cardStartTime === "12:00" && cardEndTime === "18:00" ? styles.selected : ""
+                    }`}
+                    onClick={() => handleTimePresetClick("afternoon")}
+                  >
+                    오후
+                  </button>
+                  <button
+                    className={`${styles.timePresetButton} ${
+                      cardStartTime === "08:00" && cardEndTime === "18:00" ? styles.selected : ""
+                    }`}
+                    onClick={() => handleTimePresetClick("all")}
+                  >
+                    전체
+                  </button>
                 </div>
               </div>
             </div>
