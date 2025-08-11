@@ -183,7 +183,7 @@ export default function Navigation() {
                     onClick={() => handleNavClick("/target-marketing")}
                     className="landing-nav-menu-item landing-nav-menu-btn"
                   >
-                    AI 타겟마케팅
+                    AI 타깃마케팅
                   </button>
                   <button
                     onClick={() => handleNavClick("/messages/history")}
@@ -266,7 +266,7 @@ export default function Navigation() {
                     onClick={() => handleNavClick("/target-marketing")}
                     className="mobile-menu-item mobile-menu-btn"
                   >
-                    AI 타겟마케팅
+                    AI 타깃마케팅
                   </button>
                   <button
                     onClick={() => handleNavClick("/messages/history")}
