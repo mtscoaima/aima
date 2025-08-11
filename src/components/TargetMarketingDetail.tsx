@@ -206,6 +206,9 @@ function TargetMarketingDetailContent({
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 템플릿 이미지 업로드 관련 상태
+  const imageUploadInputRef = useRef<HTMLInputElement>(null);
 
   // 성공 모달 상태
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -1774,6 +1777,53 @@ function TargetMarketingDetailContent({
     }
   };
 
+  // 템플릿 이미지 업로드 핸들러들
+  const handleImageUploadClick = () => {
+    imageUploadInputRef.current?.click();
+  };
+
+  const handleImageUploadSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 파일 타입 검증 (jpg, jpeg, png, gif만 허용)
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('지원하지 않는 파일 형식입니다.\n허용된 형식: JPG, JPEG, PNG, GIF');
+      return;
+    }
+
+    // 파일 크기 검증 (300KB 이하)
+    const maxSize = 300 * 1024; // 300KB
+    if (file.size > maxSize) {
+      const currentSizeKB = Math.round(file.size / 1024);
+      alert(`파일 크기가 너무 큽니다.\n현재 크기: ${currentSizeKB}KB\n최대 허용: 300KB`);
+      return;
+    }
+
+    // 권장 비율 1:1 안내 (필수는 아님)
+    const img = new window.Image();
+    img.onload = () => {
+      const ratio = img.width / img.height;
+      if (ratio < 0.8 || ratio > 1.2) {
+        // 1:1 비율에서 20% 이상 벗어난 경우 안내
+        alert('권장 이미지 비율은 1:1(정사각형)입니다.\n더 나은 표시를 위해 정사각형 이미지를 사용해주세요.');
+      }
+    };
+    img.src = URL.createObjectURL(file);
+
+    // 이미지 미리보기 생성
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setCurrentGeneratedImage(result);
+    };
+    reader.readAsDataURL(file);
+
+    // 파일 선택 후 input 초기화
+    event.target.value = '';
+  };
+
   const handleQuickBadgeClick = (message: string) => {
     handleSendMessage(message);
   };
@@ -2367,6 +2417,15 @@ function TargetMarketingDetailContent({
                       onChange={handleFileSelect}
                       className={styles.hiddenFileInput}
                     />
+                    
+                    {/* 템플릿 이미지 업로드용 숨겨진 input */}
+                    <input
+                      ref={imageUploadInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif"
+                      onChange={handleImageUploadSelect}
+                      className={styles.hiddenFileInput}
+                    />
                   </div>
                   <div className="quick-start-badges">
                     <button
@@ -2648,10 +2707,7 @@ function TargetMarketingDetailContent({
                   </button>
                   <button
                     className={styles.templateActionButton}
-                    onClick={() => {
-                      // 이미지 업로드 기능 (추후 구현)
-                      console.log("이미지 업로드");
-                    }}
+                    onClick={handleImageUploadClick}
                   >
                     이미지 업로드
                   </button>
@@ -3415,10 +3471,12 @@ function TargetMarketingDetailContent({
                             </td>
                             <td>
                               {template.image_url ? (
-                                <img 
+                                <Image 
                                   src={template.image_url} 
                                   alt="템플릿 이미지" 
-                                  style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
+                                  width={50}
+                                  height={50}
+                                  style={{ objectFit: 'cover', borderRadius: '4px' }}
                                 />
                               ) : (
                                 <div style={{ width: '50px', height: '50px', backgroundColor: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999' }}>
