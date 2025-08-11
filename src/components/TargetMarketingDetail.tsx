@@ -51,7 +51,10 @@ interface Package {
 interface DynamicButton {
   id: string;
   text: string;
-  url: string;
+  linkType: 'web' | 'app';
+  url?: string;        // 웹링크용
+  iosUrl?: string;     // iOS 앱링크용
+  androidUrl?: string; // Android 앱링크용
 }
 
 interface TargetMarketingDetailProps {
@@ -128,6 +131,12 @@ function TargetMarketingDetailContent({
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false);
 
+  // 템플릿 불러오기 모달 상태
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [templateList, setTemplateList] = useState<Template[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+
   // 미리보기 모달 상태
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
@@ -177,6 +186,20 @@ function TargetMarketingDetailContent({
     };
   }
 
+  interface Template {
+    id: string | number;
+    name: string;
+    image_url?: string;
+    content?: string;
+    category?: string;
+    usage_count?: number;
+    created_at: string;
+    updated_at?: string;
+    is_private?: boolean;
+    is_owner?: boolean;
+    buttons?: DynamicButton[];
+  }
+
   // 파일 업로드 관련 상태
   const [showImageDropdown, setShowImageDropdown] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -220,6 +243,7 @@ function TargetMarketingDetailContent({
       const newButton: DynamicButton = {
         id: `button-${Date.now()}`,
         text: "",
+        linkType: 'web',
         url: ""
       };
       setDynamicButtons([...dynamicButtons, newButton]);
@@ -231,28 +255,62 @@ function TargetMarketingDetailContent({
   };
 
   const updateDynamicButton = (id: string, field: keyof DynamicButton, value: string) => {
-    setDynamicButtons(dynamicButtons.map(button => 
-      button.id === id ? { ...button, [field]: value } : button
-    ));
+    setDynamicButtons(dynamicButtons.map(button => {
+      if (button.id === id) {
+        const updatedButton = { ...button, [field]: value };
+        
+        // linkType이 변경될 때 적절한 필드들을 초기화
+        if (field === 'linkType') {
+          if (value === 'web') {
+            updatedButton.iosUrl = undefined;
+            updatedButton.androidUrl = undefined;
+            updatedButton.url = updatedButton.url || "";
+          } else if (value === 'app') {
+            updatedButton.url = undefined;
+            updatedButton.iosUrl = updatedButton.iosUrl || "";
+            updatedButton.androidUrl = updatedButton.androidUrl || "";
+          }
+        }
+        
+        return updatedButton;
+      }
+      return button;
+    }));
   };
 
   // 링크 확인 함수
-  const handleLinkCheck = (url: string) => {
-    if (!url.trim()) {
-      alert('링크 주소를 입력해주세요.');
-      return;
-    }
+  const handleLinkCheck = (button: DynamicButton) => {
+    if (button.linkType === 'web') {
+      if (!button.url?.trim()) {
+        alert('웹링크 주소를 입력해주세요.');
+        return;
+      }
+      
+      let validUrl = button.url.trim();
+      if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
+        validUrl = 'https://' + validUrl;
+      }
 
-    let validUrl = url.trim();
-    if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
-      validUrl = 'https://' + validUrl;
-    }
-
-    try {
-      new URL(validUrl);
-      window.open(validUrl, '_blank', 'noopener,noreferrer');
-    } catch {
-      alert('유효하지 않은 URL입니다.');
+      try {
+        new URL(validUrl);
+        window.open(validUrl, '_blank', 'noopener,noreferrer');
+      } catch {
+        alert('유효하지 않은 URL입니다.');
+      }
+    } else if (button.linkType === 'app') {
+      if (!button.iosUrl?.trim() && !button.androidUrl?.trim()) {
+        alert('iOS 또는 Android 링크 중 하나는 입력해주세요.');
+        return;
+      }
+      
+      let message = '앱링크 확인:\n';
+      if (button.iosUrl?.trim()) {
+        message += `iOS: ${button.iosUrl}\n`;
+      }
+      if (button.androidUrl?.trim()) {
+        message += `Android: ${button.androidUrl}`;
+      }
+      alert(message);
     }
   };
 
@@ -843,6 +901,7 @@ function TargetMarketingDetailContent({
       sendPolicy,
       validityStartDate,
       validityEndDate,
+      dynamicButtons,
       showApprovalModal: true, // 결제 완료 후 발송 모달 다시 열기
       timestamp: Date.now(),
     };
@@ -886,6 +945,7 @@ function TargetMarketingDetailContent({
       setSendPolicy(state.sendPolicy || "realtime");
       // validityStartDate는 읽기 전용이므로 제외
       setValidityEndDate(state.validityEndDate || validityEndDate);
+      setDynamicButtons(state.dynamicButtons || []);
 
       // 결제 완료 후 발송 모달 다시 열기
       if (state.showApprovalModal) {
@@ -1406,7 +1466,7 @@ function TargetMarketingDetailContent({
     setMessages((prev) => [...prev, userMessage]);
     // messageOverride가 없을 때만 input 비우기 (직접 입력한 경우)
     if (!messageOverride) {
-      setInputMessage("");
+    setInputMessage("");
     }
     setIsLoading(true);
     setShowTypingIndicator(true);
@@ -1769,6 +1829,99 @@ function TargetMarketingDetailContent({
       }
     } finally {
       setIsLoadingCampaigns(false);
+    }
+  };
+
+  // 템플릿 목록 가져오기
+  const fetchTemplates = async () => {
+    setIsLoadingTemplates(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        setIsLoadingTemplates(false);
+        return;
+      }
+
+      const response = await fetch("/api/templates", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
+        }
+        if (response.status === 403) {
+          throw new Error("템플릿 목록에 접근할 권한이 없습니다.");
+        }
+        throw new Error(`템플릿 목록을 가져오는데 실패했습니다. (${response.status})`);
+      }
+
+      const data = await response.json();
+      const allTemplates = data.templates || [];
+      
+      setTemplateList(allTemplates);
+    } catch (error) {
+      console.error("템플릿 목록 가져오기 실패:", error);
+      alert(error instanceof Error ? error.message : "템플릿 목록을 가져오는데 실패했습니다.");
+      
+      // 인증 실패 또는 권한 실패 시 모달 닫기
+      if (error instanceof Error && (error.message.includes("인증") || error.message.includes("권한"))) {
+        setIsTemplateModalOpen(false);
+      }
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  // 템플릿 불러오기 모달 열기
+  const handleOpenTemplateModal = () => {
+    setIsTemplateModalOpen(true);
+    setSelectedTemplateId(null); // 선택 초기화
+    fetchTemplates();
+  };
+
+  // 선택된 템플릿 불러오기
+  const handleLoadTemplate = async () => {
+    if (!selectedTemplateId) {
+      alert("템플릿을 선택해주세요.");
+      return;
+    }
+
+    try {
+      // 이미 로드된 템플릿 목록에서 선택된 템플릿 찾기
+      const selectedTemplate = templateList.find(template => 
+        template.id === selectedTemplateId || 
+        template.id.toString() === selectedTemplateId || 
+        selectedTemplateId.toString() === template.id.toString()
+      );
+      
+      if (!selectedTemplate) {
+        alert("선택된 템플릿을 찾을 수 없습니다.");
+        return;
+      }
+
+      // 템플릿 데이터로 폼 필드 업데이트
+      setTemplateTitle(selectedTemplate.name || "AI 생성 콘텐츠");
+      setSmsTextContent(selectedTemplate.content || "");
+      setCurrentGeneratedImage(selectedTemplate.image_url || null);
+      
+      // 버튼 정보가 있으면 업데이트
+      if (selectedTemplate.buttons && selectedTemplate.buttons.length > 0) {
+        setDynamicButtons(selectedTemplate.buttons);
+      } else {
+        setDynamicButtons([]);
+      }
+
+      alert("템플릿이 성공적으로 불러와졌습니다.");
+      setIsTemplateModalOpen(false);
+    } catch (error) {
+      console.error("템플릿 불러오기 실패:", error);
+      alert("템플릿을 불러오는데 실패했습니다.");
     }
   };
 
@@ -2377,18 +2530,70 @@ function TargetMarketingDetailContent({
                                   {button.text.length} / 8
                                 </span>
                               </div>
-                              <input
-                                type="text"
-                                placeholder="링크주소"
-                                value={button.url}
-                                onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value)}
-                                className={styles.buttonUrlInput}
-                              />
+                              
+                              {/* 링크 타입 선택 */}
+                              <div className={styles.linkTypeSection}>
+                                <div className={styles.linkTypeOptions}>
+                                  <label className={styles.radioLabel}>
+                                    <input
+                                      type="radio"
+                                      name={`linkType-${button.id}`}
+                                      value="web"
+                                      checked={button.linkType === 'web'}
+                                      onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app')}
+                                      className={styles.radioInput}
+                                    />
+                                    웹링크
+                                  </label>
+                                  <label className={styles.radioLabel}>
+                                    <input
+                                      type="radio"
+                                      name={`linkType-${button.id}`}
+                                      value="app"
+                                      checked={button.linkType === 'app'}
+                                      onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app')}
+                                      className={styles.radioInput}
+                                    />
+                                    앱링크
+                                  </label>
+                                </div>
+                              </div>
+
+                              {/* 링크 입력창 */}
+                              <div className={styles.linkInputSection}>
+                                {button.linkType === 'web' ? (
+                                  <input
+                                    type="text"
+                                    placeholder="웹링크 주소"
+                                    value={button.url || ''}
+                                    onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value)}
+                                    className={styles.buttonUrlInput}
+                                  />
+                                ) : (
+                                  <div className={styles.appLinkInputs}>
+                                    <input
+                                      type="text"
+                                      placeholder="iOS 앱 링크"
+                                      value={button.iosUrl || ''}
+                                      onChange={(e) => updateDynamicButton(button.id, 'iosUrl', e.target.value)}
+                                      className={styles.buttonUrlInput}
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Android 앱 링크"
+                                      value={button.androidUrl || ''}
+                                      onChange={(e) => updateDynamicButton(button.id, 'androidUrl', e.target.value)}
+                                      className={styles.buttonUrlInput}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+
                               <div className={styles.linkActionsColumn}>
                                 <button
                                   className={styles.linkCheckBtn}
                                   title="링크 확인"
-                                  onClick={() => handleLinkCheck(button.url)}
+                                  onClick={() => handleLinkCheck(button)}
                                 >
                                   링크확인
                                 </button>
@@ -2428,10 +2633,7 @@ function TargetMarketingDetailContent({
                 <div className={styles.templateActions}>
                   <button
                     className={`${styles.templateActionButton} ${styles.firstButton}`}
-                    onClick={() => {
-                      // 템플릿 불러오기 기능 (추후 구현)
-                      console.log("템플릿 불러오기");
-                    }}
+                    onClick={handleOpenTemplateModal}
                   >
                     템플릿 불러오기
                   </button>
@@ -2493,7 +2695,7 @@ function TargetMarketingDetailContent({
                       </div>
                       {isAgeDropdownOpen && (
                         <div className={styles.dropdownContent}>
-                          {targetOptions.age.map((option) => (
+                      {targetOptions.age.map((option) => (
                             <label key={option.value} className={styles.dropdownCheckboxItem}>
                               <input
                                 type="checkbox"
@@ -2593,29 +2795,29 @@ function TargetMarketingDetailContent({
                 {/* 금액 입력 필드 */}
                 <div className={styles.amountInputSection}>
                   <div className={styles.amountInputWrapper}>
-                    <input
-                      type="number"
+                      <input
+                        type="number"
                       value={cardAmountInput}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // 숫자만 입력되도록 하고, 최대 1000만원으로 제한
-                        if (
-                          value === "" ||
-                          (parseInt(value) >= 1 && parseInt(value) <= 1000)
-                        ) {
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // 숫자만 입력되도록 하고, 최대 1000만원으로 제한
+                          if (
+                            value === "" ||
+                            (parseInt(value) >= 1 && parseInt(value) <= 1000)
+                          ) {
                           setCardAmountInput(value);
                           setCardAmount("custom");
-                        }
-                      }}
+                          }
+                        }}
                       placeholder="금액 입력"
                       className={styles.amountInputField}
-                      min="1"
-                      max="1000"
+                        min="1"
+                        max="1000"
                       disabled={cardAmount === "all"}
-                    />
+                      />
                     <span className={styles.amountInputUnit}>만원</span>
-                  </div>
-                </div>
+                    </div>
+                    </div>
 
                 {/* 금액 선택 버튼들 */}
                 <div className={styles.amountButtonOptions}>
@@ -2630,7 +2832,7 @@ function TargetMarketingDetailContent({
                       {option.label}
                     </button>
                   ))}
-                </div>
+                  </div>
               </div>
 
               {/* 카드 승인 시간 */}
@@ -3018,7 +3220,7 @@ function TargetMarketingDetailContent({
               >
                 ✕
               </button>
-            </div>
+    </div>
             
             <div className={styles.modalBody}>
               {isLoadingCampaigns ? (
@@ -3154,6 +3356,112 @@ function TargetMarketingDetailContent({
         </div>
       )}
 
+      {/* 템플릿 불러오기 모달 */}
+      {isTemplateModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.campaignModal}>
+            <div className={styles.modalHeader}>
+              <h2>템플릿 불러오기</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => {
+                  setIsTemplateModalOpen(false);
+                  setSelectedTemplateId(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className={styles.modalBody}>
+              {isLoadingTemplates ? (
+                <div className={styles.loadingContainer}>
+                  <div className={styles.loadingSpinner}></div>
+                  <span>템플릿 목록을 불러오는 중...</span>
+                </div>
+              ) : (
+                <div className={styles.campaignTable}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '50px' }}></th>
+                        <th>이미지</th>
+                        <th>템플릿 이름</th>
+                        <th>카테고리</th>
+                        <th>생성일</th>
+                        <th>수정일</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {templateList.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className={styles.noCampaigns}>
+                            템플릿이 없습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        templateList.map((template) => (
+                          <tr key={template.id}>
+                            <td>
+                              <input
+                                type="radio"
+                                name="template"
+                                value={template.id}
+                                checked={selectedTemplateId === template.id || selectedTemplateId?.toString() === template.id?.toString()}
+                                onChange={(e) => {
+                                  setSelectedTemplateId(e.target.value);
+                                }}
+                              />
+                            </td>
+                            <td>
+                              {template.image_url ? (
+                                <img 
+                                  src={template.image_url} 
+                                  alt="템플릿 이미지" 
+                                  style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
+                                />
+                              ) : (
+                                <div style={{ width: '50px', height: '50px', backgroundColor: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999' }}>
+                                  이미지 없음
+                                </div>
+                              )}
+                            </td>
+                            <td>{template.name || '이름 없음'}</td>
+                            <td>{template.category || '-'}</td>
+                            <td>
+                              {template.created_at ? 
+                                new Date(template.created_at).toLocaleDateString('ko-KR') 
+                                : '-'
+                              }
+                            </td>
+                            <td>
+                              {template.updated_at ? 
+                                new Date(template.updated_at).toLocaleDateString('ko-KR') 
+                                : '-'
+                              }
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.loadCampaignButton}
+                onClick={handleLoadTemplate}
+                disabled={!selectedTemplateId || isLoadingTemplates}
+              >
+                불러오기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 미리보기 모달 */}
       {isPreviewModalOpen && (
         <div className={styles.modalOverlay}>
@@ -3203,8 +3511,26 @@ function TargetMarketingDetailContent({
                               key={index}
                               className={styles.previewButton}
                               onClick={() => {
-                                if (button.url) {
-                                  window.open(button.url, '_blank');
+                                if (button.linkType === 'web' && button.url) {
+                                  let validUrl = button.url.trim();
+                                  if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
+                                    validUrl = 'https://' + validUrl;
+                                  }
+                                  window.open(validUrl, '_blank');
+                                } else if (button.linkType === 'app') {
+                                  // 앱링크의 경우 사용자 에이전트에 따라 적절한 링크 열기
+                                  const userAgent = navigator.userAgent;
+                                  if (/iPad|iPhone|iPod/.test(userAgent) && button.iosUrl) {
+                                    window.open(button.iosUrl, '_blank');
+                                  } else if (/Android/.test(userAgent) && button.androidUrl) {
+                                    window.open(button.androidUrl, '_blank');
+                                  } else {
+                                    // iOS/Android 링크 중 가장 먼저 설정된 것 사용
+                                    const linkToOpen = button.iosUrl || button.androidUrl;
+                                    if (linkToOpen) {
+                                      window.open(linkToOpen, '_blank');
+                                    }
+                                  }
                                 }
                               }}
                             >

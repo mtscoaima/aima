@@ -2383,8 +2383,8 @@ body .main-content {
 
 .buttonInputsRow {
   display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
   width: 100%;
 }
 
@@ -2505,4 +2505,46 @@ body .main-content {
   border: 1px dashed #e0e0e0;
   border-radius: 8px;
   background: #fafafa;
+}
+
+/* 링크 타입 선택 섹션 */
+.linkTypeSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.linkTypeOptions {
+  display: flex;
+  gap: 16px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.radioInput {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary-blue);
+}
+
+/* 링크 입력 섹션 */
+.linkInputSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.appLinkInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }

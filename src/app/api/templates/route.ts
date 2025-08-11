@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("message_templates")
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, user_id"
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, user_id"
       )
       .eq("is_active", true);
 
@@ -95,6 +95,7 @@ export async function GET(request: NextRequest) {
       category: template.category,
       usage_count: template.usage_count,
       created_at: template.created_at,
+      updated_at: template.updated_at,
       is_private: template.is_private,
       is_owner: userId ? template.user_id === parseInt(userId) : false, // 현재 사용자가 소유자인지 여부
     }));
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
         is_active: true,
       })
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private"
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private"
       )
       .single();
 
