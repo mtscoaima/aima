@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { ImageIcon, X } from "lucide-react";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import NaverTalkTalkTab from "@/components/NaverTalkTalkTab";
@@ -35,12 +36,28 @@ interface DetailProps {
   initialImage?: string | null;
 }
 
-export default function TargetMarketingPage() {
+function TargetMarketingPageContent() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("naver-talktalk");
 
   // 뷰 상태 관리
   const [currentView, setCurrentView] = useState<"main" | "detail">("main");
   const [detailProps, setDetailProps] = useState<DetailProps>({});
+
+  // URL 쿼리 파라미터에서 tab 값 읽기 및 뷰 초기화
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabs.some(tab => tab.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  // 탭 변경 시 뷰 초기화
+  useEffect(() => {
+    if (activeTab !== "naver-talktalk" && currentView === "detail") {
+      setCurrentView("main");
+    }
+  }, [activeTab, currentView]);
 
   // 템플릿 생성 모달 관련 상태
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -324,7 +341,7 @@ export default function TargetMarketingPage() {
 
           {/* Tab Content */}
           <div className="tab-content">
-            {currentView === "detail" ? (
+            {currentView === "detail" && activeTab === "naver-talktalk" ? (
               <TargetMarketingDetail {...detailProps} />
             ) : (
               <>
@@ -504,5 +521,13 @@ export default function TargetMarketingPage() {
         )}
       </div>
     </AdvertiserGuardWithDisabled>
+  );
+}
+
+export default function TargetMarketingPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TargetMarketingPageContent />
+    </Suspense>
   );
 }

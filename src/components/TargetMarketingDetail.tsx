@@ -2,8 +2,10 @@
 
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Sparkles, X } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
+import ApprovalRequestComplete from "./ApprovalRequestComplete";
 import { PaymentModal } from "@/components/PaymentModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import {
@@ -70,6 +72,7 @@ function TargetMarketingDetailContent({
   initialMessage,
   initialImage,
 }: TargetMarketingDetailProps) {
+  const router = useRouter();
   const {
     balanceData,
     isLoading: isLoadingCredits,
@@ -219,6 +222,9 @@ function TargetMarketingDetailContent({
 
   // 성공 모달 상태
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  
+  // 승인 요청 완료 페이지 표시 상태
+  const [showApprovalComplete, setShowApprovalComplete] = useState(false);
 
   // 템플릿 제목 상태
   const [templateTitle, setTemplateTitle] = useState("AI 생성 콘텐츠");
@@ -802,8 +808,13 @@ function TargetMarketingDetailContent({
   // 예상금액 계산 함수
   const calculateTotalCost = () => {
     const campaignCostPerItem = 100; // 캠페인 건당 금액 (100원)
-    const maxRecipientsNum = parseInt(maxRecipients) || 0;
-    return campaignCostPerItem * maxRecipientsNum;
+    
+    // 발송 정책에 따라 다른 수신자 수 사용
+    const actualRecipients = sendPolicy === "batch" 
+      ? adRecipientCount  // 일괄 발송: 광고 수신자 수 사용
+      : parseInt(maxRecipients) || 0;  // 실시간 발송: 최대 수신자 수 사용
+    
+    return campaignCostPerItem * actualRecipients;
   };
 
   // 부족한 잔액 계산
@@ -1936,6 +1947,18 @@ function TargetMarketingDetailContent({
     }
   };
 
+  // 승인 요청 완료 페이지 핸들러들
+  const handleApprovalCompleteGoBack = () => {
+    setShowApprovalComplete(false);
+  };
+
+  const handleApprovalCompleteConfirm = () => {
+    // 완료 컴포넌트 숨기기
+    setShowApprovalComplete(false);
+    // 캠페인 관리 탭으로 이동
+    router.push("/target-marketing?tab=campaign-management");
+  };
+
   // 캠페인 목록 가져오기
   const fetchCampaigns = async () => {
     setIsLoadingCampaigns(true);
@@ -2309,7 +2332,7 @@ function TargetMarketingDetailContent({
 
       if (result.success) {
         setShowApprovalModal(false);
-        setShowSuccessModal(true); // 성공 모달 표시
+        setShowApprovalComplete(true); // 승인 요청 완료 페이지 표시
       } else {
         throw new Error(result.message || "캠페인 저장에 실패했습니다.");
       }
@@ -2323,6 +2346,16 @@ function TargetMarketingDetailContent({
       setIsSubmittingApproval(false);
     }
   };
+
+  // 승인 요청 완료 페이지 표시
+  if (showApprovalComplete) {
+    return (
+      <ApprovalRequestComplete
+        onGoBack={handleApprovalCompleteGoBack}
+        onConfirm={handleApprovalCompleteConfirm}
+      />
+    );
+  }
 
   return (
     <div className={styles.targetMarketingContainer}>
@@ -3130,7 +3163,13 @@ function TargetMarketingDetailContent({
                   <input
                     type="checkbox"
                     checked={sendPolicy === "batch"}
-                    onChange={() => setSendPolicy("batch")}
+                    onChange={() => {
+                      setSendPolicy("batch");
+                      // 일괄 발송으로 변경할 때 광고 수신자 수가 타겟 대상자 수를 초과하면 조정
+                      if (adRecipientCount > targetCount) {
+                        setAdRecipientCount(targetCount);
+                      }
+                    }}
                     className={styles.checkbox}
                   />
                   <span>일괄 발송</span>
@@ -3239,10 +3278,22 @@ function TargetMarketingDetailContent({
                         <input
                           type="number"
                           value={targetCount}
-                          onChange={(e) =>
-                            setTargetCount(parseInt(e.target.value) || 500)
-                          }
+                          onChange={(e) => {
+                            const newTargetCount = parseInt(e.target.value) || 500;
+                            setTargetCount(newTargetCount);
+                            
+                            // 타겟 대상자 수가 줄어들면 광고 수신자 수도 조정
+                            if (adRecipientCount > newTargetCount) {
+                              setAdRecipientCount(newTargetCount);
+                            }
+                          }}
                           className={styles.adRecipientInputWithStyle}
+                          disabled={sendPolicy === "batch"}
+                          style={{ 
+                            backgroundColor: sendPolicy === "batch" ? "#f5f5f5" : "white",
+                            cursor: sendPolicy === "batch" ? "not-allowed" : "text",
+                            color: sendPolicy === "batch" ? "#999" : "#333"
+                          }}
                         />
                         <span>명</span>
                       </div>
@@ -3252,17 +3303,26 @@ function TargetMarketingDetailContent({
                         <input
                           type="number"
                           value={adRecipientCount}
-                          onChange={(e) =>
-                            setAdRecipientCount(parseInt(e.target.value) || 30)
-                          }
+                          onChange={(e) => {
+                            const newValue = parseInt(e.target.value) || 0;
+                            // 타겟 대상자 수를 넘지 않도록 제한
+                            const limitedValue = Math.min(newValue, targetCount);
+                            setAdRecipientCount(limitedValue);
+                          }}
                           className={styles.adRecipientInput}
                           max={targetCount}
+                          min={1}
                         />
                         <span>명</span>
                       </div>
 
                       <p className={styles.adRecipientNotice}>
                         ※ 광고 수신자 수는 타겟 대상자 수를 초과할 수 없습니다.
+                        {sendPolicy === "batch" && (
+                          <>
+                            <br />※ 일괄 발송 시 타겟 대상자 수는 수정할 수 없습니다.
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
