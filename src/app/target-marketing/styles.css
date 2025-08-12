@@ -3148,6 +3148,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 .filter-group {
   display: flex;
   align-items: center;
+  min-width: 100px;
 }
 
 .filter-select {
@@ -3286,8 +3287,16 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   text-align: center;
 }
 
-.management-table th:nth-child(2) { width: 20%; } /* 캠페인 이름 */
-.management-table th:nth-child(3) { width: 15%; } /* 타깃정보 */
+.management-table th:nth-child(2),
+.management-table td:nth-child(2) { 
+  width: 20%; 
+  padding-right: 16px !important; /* 캠페인 이름 */
+}
+.management-table th:nth-child(3),
+.management-table td:nth-child(3) { 
+  width: 15%; 
+  padding-left: 16px !important; /* 타깃정보 */
+}
 .management-table th:nth-child(4) { width: 12%; } /* 카드사용업종 */
 .management-table th:nth-child(5) { width: 12%; } /* 카드 승인 금액 */
 .management-table th:nth-child(6) { width: 12%; } /* 카드 승인 시간 */
@@ -3350,60 +3359,79 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 }
 
 .mgmt-btn {
-  padding: 4px 8px;
-  border: none;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
+  background-color: white;
+  color: #374151;
   transition: all 0.2s ease;
   white-space: nowrap;
   min-width: 60px;
 }
 
+.mgmt-btn:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .mgmt-btn.edit-btn {
-  background-color: #007bff;
-  color: white;
+  background-color: white;
+  color: #374151;
+  border-color: #d1d5db;
 }
 
 .mgmt-btn.edit-btn:hover {
-  background-color: #0056b3;
+  background-color: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .mgmt-btn.request-btn {
-  background-color: #28a745;
-  color: white;
+  background-color: white;
+  color: #374151;
+  border-color: #d1d5db;
 }
 
 .mgmt-btn.request-btn:hover {
-  background-color: #1e7e34;
+  background-color: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .mgmt-btn.cancel-btn {
-  background-color: #ffc107;
-  color: #212529;
+  background-color: white;
+  color: #374151;
+  border-color: #d1d5db;
 }
 
 .mgmt-btn.cancel-btn:hover {
-  background-color: #e0a800;
+  background-color: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .mgmt-btn.result-btn {
-  background-color: #dc3545;
-  color: white;
+  background-color: white;
+  color: #374151;
+  border-color: #d1d5db;
 }
 
 .mgmt-btn.result-btn:hover {
-  background-color: #c82333;
+  background-color: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .mgmt-btn.estimate-btn {
-  background-color: #6f42c1;
-  color: white;
+  background-color: white;
+  color: #374151;
+  border-color: #d1d5db;
 }
 
 .mgmt-btn.estimate-btn:hover {
-  background-color: #5a32a3;
+  background-color: #f9fafb;
+  border-color: #9ca3af;
 }
 
 /* 데스크톱에서는 스크롤 없이 */
@@ -3464,13 +3492,17 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 .campaign-table td:nth-child(1) { width: 6%; } /* 사용여부 */
 
 .campaign-table th:nth-child(2),
-.campaign-table td:nth-child(2) { width: 15%; } /* 캠페인 이름 */
+.campaign-table td:nth-child(2) { 
+  width: 15%; 
+  padding-right: 16px !important; /* 캠페인 이름 */
+}
 
 /* 캠페인 이름 편집 스타일 */
 .campaign-name-display {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  justify-content: flex-start;
 }
 
 .campaign-name-display span {
@@ -3478,17 +3510,24 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 }
 
 .edit-name-btn {
-  background: none;
-  border: none;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
   cursor: pointer;
-  padding: 4px;
-  font-size: 14px;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #495057;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  flex-shrink: 0;
 }
 
 .edit-name-btn:hover {
-  opacity: 1;
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,123,255,0.2);
 }
 
 .campaign-name-edit {
@@ -3517,33 +3556,47 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 }
 
 .save-btn, .cancel-btn {
-  background: none;
-  border: none;
+  border: 1px solid;
   cursor: pointer;
-  padding: 4px 6px;
-  font-size: 14px;
-  border-radius: 3px;
-  transition: background-color 0.2s;
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  min-width: 40px;
 }
 
 .save-btn {
-  color: #28a745;
+  background: #28a745;
+  color: white;
+  border-color: #28a745;
 }
 
 .save-btn:hover {
-  background-color: #e8f5e8;
+  background: #218838;
+  border-color: #1e7e34;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(40,167,69,0.2);
 }
 
 .cancel-btn {
-  color: #dc3545;
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
 }
 
 .cancel-btn:hover {
-  background-color: #f8e8e8;
+  background: #5a6268;
+  border-color: #545b62;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(108,117,125,0.2);
 }
 
 .campaign-table th:nth-child(3),
-.campaign-table td:nth-child(3) { width: 8%; } /* 캠페인 비용(건) */
+.campaign-table td:nth-child(3) { 
+  width: 8%; 
+  padding-left: 16px !important; /* 캠페인 비용(건) */
+}
 
 .campaign-table th:nth-child(4),
 .campaign-table td:nth-child(4) { width: 8%; } /* 발송정책 */
@@ -3693,3 +3746,360 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
     margin-left: 16px;
   }
 }
+
+/* 캠페인 수정 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.edit-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.modal-content {
+  padding: 24px;
+}
+
+.section h3 {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row select,
+.form-row input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #f9fafb;
+}
+
+.form-row select:focus,
+.form-row input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background-color: white;
+}
+
+.search-btn {
+  padding: 12px 20px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.search-btn:hover {
+  background-color: #2563eb;
+}
+
+.amount-container,
+.time-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.amount-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.amount-input input {
+  flex: 1;
+  max-width: 120px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #f9fafb;
+}
+
+.amount-input span {
+  font-size: 14px;
+  color: #374151;
+}
+
+.period-buttons,
+.time-period-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.period-btn,
+.time-period-btn {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: white;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.period-btn:hover,
+.time-period-btn:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.period-btn.active,
+.time-period-btn.active {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-inputs select {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: #f9fafb;
+}
+
+.time-inputs span {
+  font-size: 14px;
+  color: #374151;
+}
+
+.estimated-cost {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.cost-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.cost-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.modal-footer .cancel-btn {
+  padding: 12px 24px;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-footer .cancel-btn:hover {
+  background-color: #4b5563;
+}
+
+.modal-footer .save-btn {
+  padding: 12px 24px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-footer .save-btn:hover {
+  background-color: #2563eb;
+}
+
+/* 캠페인 수정 모달 스타일 끝 */
+
+/* 반려사유 모달 스타일 */
+.rejection-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.rejection-info {
+  padding: 20px;
+}
+
+.rejection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.rejection-header .reviewer {
+  font-weight: 600;
+  color: #374151;
+}
+
+.rejection-header .review-date {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.rejection-message {
+  line-height: 1.6;
+  color: #374151;
+  margin-bottom: 20px;
+}
+
+.modification-items {
+  margin: 20px 0;
+}
+
+.modification-items ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.modification-items li {
+  padding: 8px 0;
+  color: #374151;
+  font-size: 14px;
+}
+
+.rejection-footer {
+  margin-top: 20px;
+  color: #374151;
+}
+
+.edit-request-btn {
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s;
+}
+
+.edit-request-btn:hover {
+  background-color: #4b5563;
+}
+
+.approval-request-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background-color 0.2s;
+}
+
+.approval-request-btn:hover {
+  background-color: #2563eb;
+}
+
+/* 반려사유 모달 스타일 끝 */

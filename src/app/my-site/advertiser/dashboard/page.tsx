@@ -362,11 +362,11 @@ export default function AdvertiserDashboard() {
               </div>
             </div>
 
-            {/* 타겟마케팅 캠페인 현황 */}
+            {/* 타깃마케팅 캠페인 현황 */}
             <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-purple-500">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">
-                  타겟마케팅 캠페인 현황
+                  타깃마케팅 캠페인 현황
                 </h2>
                 <Link
                   href="/messages/history"

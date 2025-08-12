@@ -6,6 +6,8 @@ import TargetMarketingDetail from "@/components/TargetMarketingDetail";
 import NaverTalkTalkTab from "@/components/NaverTalkTalkTab";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useBalance } from "@/contexts/BalanceContext";
+import { targetOptions, getDistrictsByCity } from "@/lib/targetOptions";
 import "./styles.css";
 
 interface DetailProps {
@@ -68,6 +70,7 @@ function TargetMarketingPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { refreshTransactions } = useBalance();
 
 
 
@@ -99,6 +102,120 @@ function TargetMarketingPageContent() {
   // 캠페인 이름 수정 관련 상태
   const [editingCampaignId, setEditingCampaignId] = useState<number | null>(null);
   const [editingCampaignName, setEditingCampaignName] = useState("");
+
+  // 캠페인 수정 모달 상태
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<RealCampaign | null>(null);
+  const [editModalEntrySource, setEditModalEntrySource] = useState<"direct" | "from_rejection">("direct");
+  const [editFormData, setEditFormData] = useState({
+    gender: "",
+    age: "",
+    location_city: "",
+    location_district: "",
+    business_type: "",
+    min_amount: "",
+    max_amount: "",
+    amount_period: "1만원 미만",
+    start_time: "8:00",
+    end_time: "12:00",
+    time_period: "오전"
+  });
+
+  // 반려사유 모달 상태
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+  const [rejectionData, setRejectionData] = useState<{
+    rejection_reason: string;
+    rejection_details: string;
+    suggested_modifications: {
+      items: string[];
+      message: string;
+    };
+    admin_user: {
+      name: string;
+      email: string;
+    };
+    created_at: string;
+  } | null>(null);
+
+  // 디버깅: editFormData 변경사항 추적
+  useEffect(() => {
+    if (isEditModalOpen) {      
+      // 데이터 무결성 검증
+      const validationErrors = [];
+      
+      if (!editFormData.gender) validationErrors.push("성별 미선택");
+      if (!editFormData.age) validationErrors.push("연령대 미선택");
+      if (!editFormData.business_type) validationErrors.push("업종 미선택");
+      if (!editFormData.amount_period) validationErrors.push("금액 기간 미선택");
+      if (!editFormData.time_period) validationErrors.push("시간대 미선택");
+      
+      if (validationErrors.length > 0) {
+        console.warn("데이터 검증 경고:", validationErrors);
+      }
+    }
+  }, [editFormData, isEditModalOpen]);
+
+  // 시간 변경 시 자동으로 time_period 업데이트
+  useEffect(() => {
+    if (isEditModalOpen && editFormData.start_time && editFormData.end_time) {
+      const start = parseInt(editFormData.start_time.split(':')[0]);
+      const end = parseInt(editFormData.end_time.split(':')[0]);
+      
+      let detectedPeriod = "전체";
+      
+      // 오전: 08:00-12:00
+      if (start === 8 && end === 12) {
+        detectedPeriod = "오전";
+      }
+      // 오후: 12:00-18:00
+      else if (start === 12 && end === 18) {
+        detectedPeriod = "오후";
+      }
+      // 전체: 00:00-23:00
+      else if (start === 0 && end === 23) {
+        detectedPeriod = "전체";
+      }
+      
+      // time_period가 변경되었을 때만 업데이트 (무한 루프 방지)
+      if (editFormData.time_period !== detectedPeriod) {
+        setEditFormData(prev => ({...prev, time_period: detectedPeriod}));
+      }
+    }
+  }, [editFormData.start_time, editFormData.end_time, isEditModalOpen, editFormData.time_period]);
+
+  // 금액 변경 시 자동으로 amount_period 업데이트
+  useEffect(() => {
+    if (isEditModalOpen) {
+      let detectedPeriod = "전체";
+      
+      if (editFormData.max_amount && editFormData.max_amount !== "") {
+        const maxAmount = parseInt(editFormData.max_amount);
+        
+        if (maxAmount === 10000) {
+          detectedPeriod = "1만원 미만";
+        } else if (maxAmount === 50000) {
+          detectedPeriod = "5만원 미만";
+        } else if (maxAmount === 100000) {
+          detectedPeriod = "10만원 미만";
+        }
+      }
+      
+      // amount_period가 변경되었을 때만 업데이트 (무한 루프 방지)
+      if (editFormData.amount_period !== detectedPeriod) {
+        setEditFormData(prev => ({...prev, amount_period: detectedPeriod}));
+      }
+    }
+  }, [editFormData.max_amount, isEditModalOpen, editFormData.amount_period]);
+
+  // 선택된 도시에 따른 구/군 옵션
+  const getDistrictOptions = () => {
+    if (!editFormData.location_city || editFormData.location_city === "") {
+      return [{ value: "", label: "구/군" }];
+    }
+    
+    const districts = getDistrictsByCity(editFormData.location_city);
+    return [{ value: "", label: "구/군" }, ...districts];
+  };
 
   // URL 쿼리 파라미터에서 tab 값 읽기
   useEffect(() => {
@@ -821,9 +938,506 @@ function TargetMarketingPageContent() {
       );
       setSelectedCampaigns([]);
 
+      // 캠페인 삭제 성공 시 크레딧 잔액 새로고침 (예약금 해제로 인한 잔액 변동 반영)
+      if (succeededDeletes.length > 0) {
+        try {
+          await refreshTransactions();
+        } catch (error) {
+          console.error("크레딧 잔액 새로고침 오류:", error);
+          // 잔액 새로고침 실패는 사용자에게 알리지 않음 (삭제는 성공했으므로)
+        }
+      }
+
     } catch (error) {
       console.error("캠페인 삭제 오류:", error);
       alert("캠페인 삭제 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 승인 요청 함수
+  const handleRequestApproval = async (campaignId: number) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestApproval: true
+        }),
+      });
+
+      if (response.ok) {
+        // 로컬 상태 업데이트
+        setCampaigns(prev =>
+          prev.map(campaign =>
+            campaign.id === campaignId
+              ? { ...campaign, status: "PENDING_APPROVAL" }
+              : campaign
+          )
+        );
+        alert("승인 요청이 성공적으로 처리되었습니다.");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "승인 요청에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("승인 요청 오류:", error);
+      alert("승인 요청 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 데이터 타입 안전성을 위한 유틸리티 함수들
+  const extractStringValue = (obj: Record<string, unknown>, keys: string[]): string => {
+    for (const key of keys) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const value = key.includes('.') ? key.split('.').reduce((o, k) => (o as any)?.[k], obj) : obj[key];
+      if (value && typeof value === 'string') return value;
+    }
+    return "";
+  };
+
+  const extractNumberValue = (obj: Record<string, unknown>, keys: string[]): number => {
+    for (const key of keys) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const value = key.includes('.') ? key.split('.').reduce((o, k) => (o as any)?.[k], obj) : obj[key];
+      if (value !== undefined && value !== null && value !== "") {
+        const num = typeof value === 'number' ? value : parseInt(value.toString());
+        if (!isNaN(num)) return num;
+      }
+    }
+    return 0;
+  };
+
+  const extractArrayValue = (obj: Record<string, unknown>, keys: string[]): string[] => {
+    for (const key of keys) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const value = key.includes('.') ? key.split('.').reduce((o, k) => (o as any)?.[k], obj) : obj[key];
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === 'string') return [value];
+    }
+    return [];
+  };
+
+  // 캠페인 수정 모달 열기
+  const openEditModal = (campaign: RealCampaign, entrySource: "direct" | "from_rejection" = "direct") => {
+    setEditingCampaign(campaign);
+    setEditModalEntrySource(entrySource);
+    
+    // 기존 캠페인 데이터로 폼 초기화
+    const criteria = campaign.target_criteria || {};
+
+    
+    // 빈 객체 또는 null 체크
+    if (!criteria || Object.keys(criteria).length === 0) {
+      console.warn("⚠️ target_criteria가 비어있거나 존재하지 않습니다!");
+      console.warn("기본값으로 초기화됩니다.");
+    }
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const criteriaAny = criteria as any;
+    
+    // === 1. 업종 정보 추출 ===
+    const businessTypeKeys = [
+      'industry.topLevel', 'business_type', 'topLevelIndustry', 'targetTopLevelIndustry',
+      'cardUsageIndustry', 'industry_topLevel', 'industryTopLevel'
+    ];
+    let businessType = extractStringValue(criteriaAny, businessTypeKeys);
+    
+    // 특수값 처리
+    if (!businessType || businessType === "all" || businessType === "전체" || businessType === "0") {
+      businessType = "";
+    }
+
+    // === 2. 성별 정보 추출 ===
+    const genderKeys = ['gender', 'targetGender'];
+    let genderValue = extractStringValue(criteriaAny, genderKeys);
+    
+    // 성별 매핑
+    const genderMapping: { [key: string]: string } = {
+      "여성": "female", "woman": "female", "female": "female",
+      "남성": "male", "man": "male", "male": "male",
+      "전체": "all", "all": "all", "both": "all"
+    };
+    genderValue = genderMapping[genderValue] || genderValue || "all";
+
+    // === 3. 연령 정보 추출 ===
+    const ageKeys = ['ageGroup', 'age', 'targetAge', 'ageGroups'];
+    const ageArray = extractArrayValue(criteriaAny, ageKeys);
+    let ageValue = ageArray.length > 0 ? ageArray[0] : "";
+    
+    // 연령 매핑 (한글 → 영어)
+    const ageMapping: { [key: string]: string } = {
+      "10대": "teens", "teens": "teens",
+      "20대": "twenties", "twenties": "twenties", 
+      "30대": "thirties", "thirties": "thirties",
+      "40대": "forties", "forties": "forties",
+      "50대+": "fifties", "fifties": "fifties", "50대": "fifties",
+      "전체": "all", "all": "all"
+    };
+    ageValue = ageMapping[ageValue] || ageValue || "all";
+
+    // === 4. 지역 정보 추출 ===
+    const cityKeys = ['location.city', 'city', 'targetCity'];
+    const districtKeys = ['location.district', 'district', 'targetDistrict'];
+    
+    let cityValue = extractStringValue(criteriaAny, cityKeys);
+    const districtValue = extractStringValue(criteriaAny, districtKeys);
+    
+    // 도시 매핑 (한글 → 영어)
+    const cityMapping: { [key: string]: string } = {
+      "서울특별시": "seoul", "서울": "seoul", "seoul": "seoul",
+      "부산광역시": "busan", "부산": "busan", "busan": "busan",
+      "대구광역시": "daegu", "대구": "daegu", "daegu": "daegu",
+      "인천광역시": "incheon", "인천": "incheon", "incheon": "incheon",
+      "광주광역시": "gwangju", "광주": "gwangju", "gwangju": "gwangju",
+      "대전광역시": "daejeon", "대전": "daejeon", "daejeon": "daejeon",
+      "울산광역시": "ulsan", "울산": "ulsan", "ulsan": "ulsan",
+      "세종특별자치시": "sejong", "세종": "sejong", "sejong": "sejong",
+      "경기도": "gyeonggi", "경기": "gyeonggi", "gyeonggi": "gyeonggi",
+      "강원특별자치도": "gangwon", "강원도": "gangwon", "강원": "gangwon", "gangwon": "gangwon",
+      "충청북도": "chungbuk", "충북": "chungbuk", "chungbuk": "chungbuk",
+      "충청남도": "chungnam", "충남": "chungnam", "chungnam": "chungnam",
+      "전라북도": "jeonbuk", "전북": "jeonbuk", "jeonbuk": "jeonbuk",
+      "전라남도": "jeonnam", "전남": "jeonnam", "jeonnam": "jeonnam",
+      "경상북도": "gyeongbuk", "경북": "gyeongbuk", "gyeongbuk": "gyeongbuk",
+      "경상남도": "gyeongnam", "경남": "gyeongnam", "gyeongnam": "gyeongnam",
+      "제주특별자치도": "jeju", "제주도": "jeju", "제주": "jeju", "jeju": "jeju"
+    };
+    
+    cityValue = cityMapping[cityValue] || cityValue || "";
+
+    // === 5. 금액 정보 추출 ===
+    const maxAmountKeys = ['max_amount', 'maxAmount', 'cardAmount.max', 'amount.max'];
+    const amountPeriodKeys = ['amount_period', 'amountPeriod', 'cardAmountPeriod', 'period'];
+    
+    const maxAmount = extractNumberValue(criteriaAny, maxAmountKeys);
+    let amountPeriod = extractStringValue(criteriaAny, amountPeriodKeys);
+    
+    // 금액 기간 매핑 (일자 기반 → 금액 기반)
+    const periodMapping: { [key: string]: string } = {
+      "1일": "1만원 미만", "1일 이내": "1만원 미만",
+      "5일": "5만원 미만", "5일 이내": "5만원 미만", 
+      "10일": "10만원 미만", "10일 이내": "10만원 미만",
+      "전체": "전체", "all": "전체"
+    };
+    
+    // 금액값으로부터 자동 감지
+    if (!amountPeriod && maxAmount > 0) {
+      if (maxAmount <= 10000) amountPeriod = "1만원 미만";
+      else if (maxAmount <= 50000) amountPeriod = "5만원 미만";
+      else if (maxAmount <= 100000) amountPeriod = "10만원 미만";
+      else amountPeriod = "전체";
+    }
+    
+    amountPeriod = periodMapping[amountPeriod] || amountPeriod || "1만원 미만";
+
+    // === 6. 시간 정보 추출 ===
+    const startTimeKeys = ['cardTime.startTime', 'start_time', 'startTime', 'timeStart'];
+    const endTimeKeys = ['cardTime.endTime', 'end_time', 'endTime', 'timeEnd'];
+    const timePeriodKeys = ['time_period', 'timePeriod', 'cardTime.period', 'period'];
+    
+    let startTime = extractStringValue(criteriaAny, startTimeKeys) || "08:00";
+    let endTime = extractStringValue(criteriaAny, endTimeKeys) || "12:00";
+    let timePeriod = extractStringValue(criteriaAny, timePeriodKeys);
+    
+    // 시간 형식 정규화 (HH:MM)
+    const normalizeTime = (time: string): string => {
+      if (!time) return "08:00";
+      if (time.includes(':')) return time;
+      if (time.length === 1 || time.length === 2) return `${time.padStart(2, '0')}:00`;
+      return "08:00";
+    };
+    
+    startTime = normalizeTime(startTime);
+    endTime = normalizeTime(endTime);
+    
+    // 시간대 자동 감지
+    if (!timePeriod) {
+      const startHour = parseInt(startTime.split(':')[0]);
+      const endHour = parseInt(endTime.split(':')[0]);
+      
+      if (startHour === 8 && endHour === 12) timePeriod = "오전";
+      else if (startHour === 12 && endHour === 18) timePeriod = "오후";
+      else if (startHour === 0 && endHour === 23) timePeriod = "전체";
+      else timePeriod = "오전";
+    }
+    
+
+    // === 최종 폼 데이터 설정 ===
+    const finalFormData = {
+      gender: genderValue,
+      age: ageValue,
+      location_city: cityValue,
+      location_district: districtValue,
+      business_type: businessType,
+      min_amount: "0", // UI에서 입력 불가하므로 항상 "0"
+      max_amount: maxAmount > 0 ? maxAmount.toString() : "",
+      amount_period: amountPeriod,
+      start_time: startTime,
+      end_time: endTime,
+      time_period: timePeriod
+    };
+    
+   
+    
+    setEditFormData(finalFormData);
+    setIsEditModalOpen(true);
+  };
+
+  // 캠페인 수정 모달 닫기
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingCampaign(null);
+    setEditModalEntrySource("direct");
+    setEditFormData({
+      gender: "",
+      age: "",
+      location_city: "",
+      location_district: "",
+      business_type: "",
+      min_amount: "0", // UI에서 입력 불가하므로 항상 "0"
+      max_amount: "",
+      amount_period: "1만원 미만",
+      start_time: "8:00",
+      end_time: "12:00",
+      time_period: "오전"
+    });
+  };
+
+  // 반려사유 조회
+  const handleViewRejection = async (campaign: RealCampaign) => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/rejection`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRejectionData(data.rejection);
+        setIsRejectionModalOpen(true);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "반려사유 조회에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("반려사유 조회 오류:", error);
+      alert("반려사유 조회 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 반려사유 모달 닫기
+  const closeRejectionModal = () => {
+    setIsRejectionModalOpen(false);
+    setRejectionData(null);
+  };
+
+  // 반려사유 모달에서 수정 버튼 클릭
+  const handleEditFromRejection = () => {
+    if (rejectionData && editingCampaign) {
+      closeRejectionModal();
+      openEditModal(editingCampaign, "from_rejection");
+    }
+  };
+
+  // 캠페인 수정 저장
+  const handleSaveEdit = async (requestApprovalAfterEdit = false) => {
+    if (!editingCampaign) return;
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      // 호환성을 고려한 완전한 데이터 구조 생성
+      const newTargetCriteria = {
+        // === 성별 정보 ===
+        gender: editFormData.gender,
+        
+        // === 연령 정보 (다양한 형태로 저장) ===
+        ageGroup: editFormData.age ? [editFormData.age] : ["all"],
+        age: editFormData.age || "all",
+        
+        // === 지역 정보 (중첩 및 플랫 구조 모두 지원) ===
+        location: {
+          city: editFormData.location_city,
+          district: editFormData.location_district
+        },
+        city: editFormData.location_city,
+        district: editFormData.location_district,
+        
+        // === 업종 정보 (다양한 형태로 저장) ===
+        industry: {
+          topLevel: editFormData.business_type || "all",
+          specific: "all"
+        },
+        business_type: editFormData.business_type || "all",
+        topLevelIndustry: editFormData.business_type || "all",
+        
+        // === 금액 정보 ===
+        min_amount: 0, // 항상 0으로 설정 (UI에서 입력 불가)
+        max_amount: parseInt(editFormData.max_amount) || 0,
+        amount_period: editFormData.amount_period,
+        
+        // === 시간 정보 (중첩 및 플랫 구조 모두 지원) ===
+        cardTime: {
+          startTime: editFormData.start_time,
+          endTime: editFormData.end_time,
+          period: editFormData.time_period
+        },
+        start_time: editFormData.start_time,
+        end_time: editFormData.end_time,
+        time_period: editFormData.time_period,
+        
+        // === 메타데이터 ===
+        updated_at: new Date().toISOString(),
+        data_version: "2.0" // 데이터 구조 버전
+      };
+      
+    
+      const response = await fetch(`/api/campaigns/${editingCampaign.id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          updateTargetCriteria: true,
+          target_criteria: newTargetCriteria
+        }),
+      });
+
+      if (response.ok) {
+        // 로컬 상태 업데이트
+        setCampaigns(prev =>
+          prev.map(campaign =>
+            campaign.id === editingCampaign.id
+              ? {
+                  ...campaign,
+                  target_criteria: newTargetCriteria
+                }
+              : campaign
+          )
+        );
+        
+        // 수정 후 승인요청 처리
+        if (requestApprovalAfterEdit) {
+          try {
+           
+            
+            const approvalResponse = await fetch(`/api/campaigns/${editingCampaign.id}`, {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                requestApproval: true
+              }),
+            });
+
+           
+            
+            if (approvalResponse.ok) {
+              await approvalResponse.json();
+      
+              
+              // 상태를 PENDING_APPROVAL로 업데이트
+              setCampaigns(prev =>
+                prev.map(campaign =>
+                  campaign.id === editingCampaign.id
+                    ? {
+                        ...campaign,
+                        status: "PENDING_APPROVAL" as const,
+                        rejection_reason: undefined // 반려 사유 제거
+                      }
+                    : campaign
+                )
+              );
+              alert("캠페인이 수정되고 승인 요청이 완료되었습니다.");
+            } else {
+              const errorData = await approvalResponse.json().catch(() => ({}));
+              console.error("승인 요청 실패:", errorData);
+              alert("캠페인은 수정되었지만 승인 요청에 실패했습니다: " + (errorData.message || "알 수 없는 오류"));
+            }
+          } catch (approvalError) {
+            console.error("승인 요청 오류:", approvalError);
+            alert("캠페인은 수정되었지만 승인 요청 중 오류가 발생했습니다.");
+          }
+        } else {
+          alert("캠페인이 성공적으로 수정되었습니다.");
+        }
+        
+        closeEditModal();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "캠페인 수정에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("캠페인 수정 오류:", error);
+      alert("캠페인 수정 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 승인 요청 취소 함수
+  const handleCancelApprovalRequest = async (campaignId: number) => {
+    const confirmCancel = window.confirm("승인 요청을 취소하시겠습니까?");
+    if (!confirmCancel) return;
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cancelApprovalRequest: true
+        }),
+      });
+
+      if (response.ok) {
+        // 로컬 상태 업데이트
+        setCampaigns(prev =>
+          prev.map(campaign =>
+            campaign.id === campaignId
+              ? { ...campaign, status: "DRAFT" }
+              : campaign
+          )
+        );
+        alert("승인 요청이 성공적으로 취소되었습니다.");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || "승인 요청 취소에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("승인 요청 취소 오류:", error);
+      alert("승인 요청 취소 중 오류가 발생했습니다.");
     }
   };
 
@@ -887,9 +1501,12 @@ function TargetMarketingPageContent() {
   // 승인 상태 텍스트 변환
   const getApprovalStatusText = (status: string) => {
     switch (status.toLowerCase()) {
-      case "pending":
+      case "draft":
+      case "임시저장":
+        return "등록";
+      case "pending_approval":
       case "승인대기":
-        return "승인대기";
+        return "승인중";
       case "approved":
       case "승인완료":
         return "승인완료";
@@ -915,32 +1532,39 @@ function TargetMarketingPageContent() {
       case "등록":
         return (
           <>
-            <button className="mgmt-btn edit-btn" onClick={() => console.log("수정", campaign.id)}>
+            <button className="mgmt-btn edit-btn" onClick={() => openEditModal(campaign)}>
               수정
             </button>
-            <button className="mgmt-btn request-btn" onClick={() => console.log("승인요청", campaign.id)}>
+            <button className="mgmt-btn request-btn" onClick={() => handleRequestApproval(campaign.id)}>
               승인요청
             </button>
           </>
         );
       case "승인중":
         return (
-          <button className="mgmt-btn cancel-btn" onClick={() => console.log("승인 요청 취소", campaign.id)}>
-            승인 요청 취소
-          </button>
+          <>
+            <button className="mgmt-btn cancel-btn" onClick={() => handleCancelApprovalRequest(campaign.id)}>
+              승인 요청 취소
+            </button>
+            <button className="mgmt-btn edit-btn" onClick={() => openEditModal(campaign)}>
+              수정
+            </button>
+          </>
         );
       case "반려":
         return (
-          <button className="mgmt-btn result-btn" onClick={() => console.log("반려 결과보기", campaign.id)}>
-            반려 결과보기
+          <button
+            className="mgmt-btn result-btn"
+            onClick={() => {
+              setEditingCampaign(campaign);
+              handleViewRejection(campaign);
+            }}
+          >
+            반려 결과 보기
           </button>
         );
-      case "승인대기":
-        return (
-          <button className="mgmt-btn estimate-btn" onClick={() => console.log("캠페인 추정", campaign.id)}>
-            캠페인 추정
-          </button>
-        );
+      case "승인완료":
+        return null; // 버튼 없음
       default:
         return null;
     }
@@ -1247,19 +1871,19 @@ function TargetMarketingPageContent() {
                                   autoFocus
                                 />
                                 <div className="campaign-name-actions">
-                            <button
+                                                              <button
                                     onClick={() => saveEditingCampaignName(campaign.id)}
                                     className="save-btn"
                                     title="저장"
                                   >
-                                    ✓
+                                    저장
                             </button>
                             <button
                                     onClick={cancelEditingCampaignName}
                                     className="cancel-btn"
                                     title="취소"
                                   >
-                                    ✕
+                                    취소
                             </button>
                           </div>
                         </div>
@@ -1271,7 +1895,7 @@ function TargetMarketingPageContent() {
                                   className="edit-name-btn"
                                   title="이름 수정"
                                 >
-                                  ✏️
+                                  수정
                           </button>
                         </div>
                       )}
@@ -1353,6 +1977,267 @@ function TargetMarketingPageContent() {
                 {activeTab === "template-management" &&
                   renderTemplateManagementTab()}
               </>
+        )}
+
+        {/* 캠페인 수정 모달 */}
+        {isEditModalOpen && (
+          <div className="modal-overlay" onClick={closeEditModal}>
+            <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>캠페인 수정</h2>
+                <button className="close-btn" onClick={closeEditModal}>X</button>
+              </div>
+              
+              <div className="modal-content">
+                <div className="section">
+                  <h3>AI 타깃 추천 결과</h3>
+                  
+                                      <div className="form-group">
+                      <label>타깃 설정</label>
+                      <div className="form-row">
+                        <select 
+                          value={editFormData.gender}
+                          onChange={(e) => setEditFormData(prev => ({...prev, gender: e.target.value}))}
+                        >
+                          <option value="">성별</option>
+                          {targetOptions.gender.slice(1).map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <select 
+                          value={editFormData.age}
+                          onChange={(e) => setEditFormData(prev => ({...prev, age: e.target.value}))}
+                        >
+                          <option value="">연령대</option>
+                          {targetOptions.age.slice(1).map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                  <div className="form-group">
+                    <label>카드 사용 위치</label>
+                    <div className="form-row">
+                      <select 
+                        value={editFormData.location_city}
+                        onChange={(e) => {
+                          setEditFormData(prev => ({
+                            ...prev, 
+                            location_city: e.target.value,
+                            location_district: "" // 도시 변경 시 구/군 초기화
+                          }));
+                        }}
+                      >
+                        <option value="">시/도</option>
+                        {targetOptions.cities.slice(1).map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select 
+                        value={editFormData.location_district}
+                        onChange={(e) => setEditFormData(prev => ({...prev, location_district: e.target.value}))}
+                      >
+                        {getDistrictOptions().map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>카드 사용 업종</label>
+                    <div className="form-row">
+                      <select 
+                        value={editFormData.business_type}
+                        onChange={(e) => setEditFormData(prev => ({...prev, business_type: e.target.value}))}
+                      >
+                        <option value="">업종 선택</option>
+                        {targetOptions.topLevelIndustries.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>카드 승인 금액</label>
+                    <div className="amount-container">
+                      <div className="amount-input">
+                        <input 
+                          type="number"
+                          value={editFormData.max_amount}
+                          onChange={(e) => setEditFormData(prev => ({...prev, max_amount: e.target.value}))}
+                          placeholder="제한없음"
+                        />
+                        <span>원</span>
+                        <span>미만</span>
+                      </div>
+                      <div className="period-buttons">
+                        {[
+                          { label: "1만원 미만", value: "1만원 미만", max_amount: "10000" },
+                          { label: "5만원 미만", value: "5만원 미만", max_amount: "50000" },
+                          { label: "10만원 미만", value: "10만원 미만", max_amount: "100000" },
+                          { label: "전체", value: "전체", max_amount: "" }
+                        ].map(period => (
+                          <button 
+                            key={period.value}
+                            type="button"
+                            className={`period-btn ${editFormData.amount_period === period.value ? 'active' : ''}`}
+                            onClick={() => {
+                              setEditFormData(prev => ({
+                                ...prev, 
+                                amount_period: period.value,
+                                max_amount: period.max_amount
+                              }));
+                            }}
+                          >
+                            {period.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>카드 승인 시간</label>
+                    <div className="time-container">
+                      <div className="time-inputs">
+                        <select 
+                          value={editFormData.start_time}
+                          onChange={(e) => setEditFormData(prev => ({...prev, start_time: e.target.value}))}
+                        >
+                          {Array.from({length: 24}, (_, i) => {
+                            const hour = i.toString().padStart(2, '0');
+                            return <option key={hour} value={`${hour}:00`}>{hour}:00</option>;
+                          })}
+                        </select>
+                        <span>~</span>
+                        <select 
+                          value={editFormData.end_time}
+                          onChange={(e) => setEditFormData(prev => ({...prev, end_time: e.target.value}))}
+                        >
+                          {Array.from({length: 24}, (_, i) => {
+                            const hour = i.toString().padStart(2, '0');
+                            return <option key={hour} value={`${hour}:00`}>{hour}:00</option>;
+                          })}
+                        </select>
+                      </div>
+                      <div className="time-period-buttons">
+                        {[
+                          { label: "오전", value: "오전", start_time: "08:00", end_time: "12:00" },
+                          { label: "오후", value: "오후", start_time: "12:00", end_time: "18:00" },
+                          { label: "전체", value: "전체", start_time: "00:00", end_time: "23:00" }
+                        ].map(period => (
+                          <button 
+                            key={period.value}
+                            type="button"
+                            className={`time-period-btn ${editFormData.time_period === period.value ? 'active' : ''}`}
+                            onClick={() => {
+                              setEditFormData(prev => ({
+                                ...prev, 
+                                time_period: period.value,
+                                start_time: period.start_time,
+                                end_time: period.end_time
+                              }));
+                            }}
+                          >
+                            {period.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="estimated-cost">
+                    <span className="cost-label">예상금액</span>
+                    <span className="cost-value">100원/건</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={closeEditModal}>취소</button>
+                {editModalEntrySource === "from_rejection" ? (
+                  <button className="approval-request-btn" onClick={() => handleSaveEdit(true)}>
+                    수정 후 승인 재요청
+                  </button>
+                ) : (
+                  <button className="save-btn" onClick={() => handleSaveEdit(false)}>수정</button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 반려사유 모달 */}
+        {isRejectionModalOpen && rejectionData && (
+          <div className="modal-overlay">
+            <div className="rejection-modal">
+              <div className="modal-header">
+                <h2>반려사유</h2>
+                <button className="close-btn" onClick={closeRejectionModal}>
+                  X
+                </button>
+              </div>
+              
+              <div className="modal-content">
+                <div className="rejection-info">
+                  <div className="rejection-header">
+                    <span className="reviewer">검수자</span>
+                    <span className="review-date">
+                      {new Date(rejectionData.created_at).toLocaleString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit', 
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  
+                  <div className="rejection-message">
+                    안녕하세요. 에이마 캠페인 검수 담당자입니다.<br/>
+                    신청하신 캠페인 설정 항목에 오류가 있어<br/>
+                    아래와 같이 수정 부탁드립니다.
+                  </div>
+                  
+                  {rejectionData.suggested_modifications?.items && (
+                    <div className="modification-items">
+                      <ul>
+                        {rejectionData.suggested_modifications.items.map((item, index) => (
+                          <li key={index}>• {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="rejection-footer">
+                    감사합니다.
+                  </div>
+                </div>
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="edit-request-btn"
+                  onClick={handleEditFromRejection}
+                >
+                  캠페인 수정 후 승인 재요청
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
         </div>

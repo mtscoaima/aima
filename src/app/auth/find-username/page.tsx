@@ -216,7 +216,7 @@ export default function FindUsernamePage() {
           <div className={styles.header}>
             <div className={styles.logoSection}>
               <h1 className={styles.logoText}>MTS플러스</h1>
-              <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
+              <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
             </div>
             <h2 className={styles.title}>아이디 찾기</h2>
           </div>

@@ -76,6 +76,66 @@ export async function DELETE(
       );
     }
 
+    // 예약금 해제 처리 (DRAFT 또는 PENDING_APPROVAL 상태의 캠페인)
+    const campaignCost = campaign.budget || 0;
+    if (campaignCost > 0 && (campaign.status === "DRAFT" || campaign.status === "PENDING_APPROVAL")) {
+      // 해당 캠페인에 대한 예약 트랜잭션이 있는지 확인
+      const { data: reserveTransaction, error: reserveCheckError } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("type", "reserve")
+        .eq("reference_id", `campaign_reserve_${campaignId}`)
+        .eq("status", "completed")
+        .single();
+
+      // 예약 트랜잭션이 있고, 아직 해제되지 않은 경우 해제 처리
+      if (reserveTransaction && !reserveCheckError) {
+        // 이미 해제된 예약금인지 확인
+        const { data: unreserveTransaction, error: unreserveCheckError } = await supabase
+          .from("transactions")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("type", "unreserve")
+          .eq("reference_id", `campaign_unreserve_delete_${campaignId}`)
+          .eq("status", "completed")
+          .single();
+
+        // 아직 해제되지 않은 경우에만 해제 처리
+        if (!unreserveTransaction || unreserveCheckError) {
+          const unreserveTransactionData = {
+            user_id: parseInt(userId),
+            type: "unreserve",
+            amount: campaignCost,
+            description: `캠페인 삭제로 인한 예약 해제 (${campaign.name})`,
+            reference_id: `campaign_unreserve_delete_${campaignId}`,
+            metadata: {
+              campaign_id: campaignId,
+              campaign_name: campaign.name,
+              unreserve_type: "campaign_deletion",
+              original_reserve_reference: `campaign_reserve_${campaignId}`,
+            },
+            status: "completed",
+          };
+
+          const { error: unreserveError } = await supabase
+            .from("transactions")
+            .insert(unreserveTransactionData);
+
+          if (unreserveError) {
+            console.error("예약 해제 오류:", unreserveError);
+            return NextResponse.json(
+              { 
+                success: false, 
+                message: "예약금 해제 처리에 실패했습니다. 다시 시도해주세요." 
+              },
+              { status: 500 }
+            );
+          }
+        }
+      }
+    }
+
     // 관련 데이터 먼저 삭제 (외래키 제약조건 때문)
     try {
       // campaign_targets 삭제
@@ -170,8 +230,182 @@ export async function PATCH(
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { name } = body;
+    const { name, requestApproval, cancelApprovalRequest, updateTargetCriteria, target_criteria } = body;
 
+    // 승인 요청인 경우, 승인 요청 취소인 경우, 타깃 조건 수정인 경우, 이름 수정인 경우 구분
+    if (requestApproval) {
+      // 승인 요청 처리
+      // 캠페인 존재 확인 및 소유자 확인
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("id, status, user_id")
+        .eq("id", campaignId)
+        .eq("user_id", userId)
+        .single();
+
+      if (campaignError || !campaign) {
+        return NextResponse.json(
+          { success: false, message: "캠페인을 찾을 수 없거나 권한이 없습니다." },
+          { status: 404 }
+        );
+      }
+
+      // DRAFT 또는 REJECTED 상태인지 확인
+      if (campaign.status !== "DRAFT" && campaign.status !== "REJECTED") {
+        return NextResponse.json(
+          { success: false, message: "임시저장 또는 반려 상태의 캠페인만 승인 요청할 수 있습니다." },
+          { status: 400 }
+        );
+      }
+
+      // 상태를 PENDING_APPROVAL로 변경 (반려 사유가 있다면 초기화)
+      const updateData: any = {
+        status: "PENDING_APPROVAL",
+        updated_at: new Date().toISOString()
+      };
+      
+      // REJECTED 상태에서 승인 요청하는 경우 반려 관련 정보 초기화
+      if (campaign.status === "REJECTED") {
+        updateData.rejection_reason = null;
+        updateData.approved_by = null;
+        updateData.approved_at = null;
+      }
+
+      const { error: updateError } = await supabase
+        .from("campaigns")
+        .update(updateData)
+        .eq("id", campaignId)
+        .eq("user_id", userId);
+
+      if (updateError) {
+        console.error("캠페인 승인 요청 오류:", updateError);
+        return NextResponse.json(
+          { success: false, message: "승인 요청에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "승인 요청이 성공적으로 처리되었습니다.",
+        data: {
+          id: campaignId,
+          status: "PENDING_APPROVAL",
+        }
+      });
+    } else if (cancelApprovalRequest) {
+      // 승인 요청 취소 처리
+      // 캠페인 존재 확인 및 소유자 확인
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("id, status, user_id")
+        .eq("id", campaignId)
+        .eq("user_id", userId)
+        .single();
+
+      if (campaignError || !campaign) {
+        return NextResponse.json(
+          { success: false, message: "캠페인을 찾을 수 없거나 권한이 없습니다." },
+          { status: 404 }
+        );
+      }
+
+      // PENDING_APPROVAL 상태인지 확인
+      if (campaign.status !== "PENDING_APPROVAL") {
+        return NextResponse.json(
+          { success: false, message: "승인 대기 상태의 캠페인만 취소할 수 있습니다." },
+          { status: 400 }
+        );
+      }
+
+      // 상태를 DRAFT로 변경
+      const { error: updateError } = await supabase
+        .from("campaigns")
+        .update({ 
+          status: "DRAFT",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", campaignId)
+        .eq("user_id", userId);
+
+      if (updateError) {
+        console.error("캠페인 승인 요청 취소 오류:", updateError);
+        return NextResponse.json(
+          { success: false, message: "승인 요청 취소에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "승인 요청이 성공적으로 취소되었습니다.",
+        data: {
+          id: campaignId,
+          status: "DRAFT",
+        }
+      });
+    } else if (updateTargetCriteria) {
+      // 타깃 조건 수정 처리
+      // 캠페인 존재 확인 및 소유자 확인
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("id, status, user_id, target_criteria")
+        .eq("id", campaignId)
+        .eq("user_id", userId)
+        .single();
+
+      if (campaignError || !campaign) {
+        return NextResponse.json(
+          { success: false, message: "캠페인을 찾을 수 없거나 권한이 없습니다." },
+          { status: 404 }
+        );
+      }
+
+      // 수정 가능한 상태인지 확인 (DRAFT, PENDING_APPROVAL, REJECTED 상태만 수정 가능)
+      if (campaign.status !== "DRAFT" && campaign.status !== "PENDING_APPROVAL" && campaign.status !== "REJECTED") {
+        return NextResponse.json(
+          { success: false, message: "등록, 승인 대기, 또는 반려 상태의 캠페인만 수정할 수 있습니다." },
+          { status: 400 }
+        );
+      }
+
+      // 타깃 조건 검증
+      if (!target_criteria || typeof target_criteria !== "object") {
+        return NextResponse.json(
+          { success: false, message: "올바르지 않은 타깃 조건입니다." },
+          { status: 400 }
+        );
+      }
+
+      // 타깃 조건 업데이트
+      const { error: updateError } = await supabase
+        .from("campaigns")
+        .update({ 
+          target_criteria: target_criteria,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", campaignId)
+        .eq("user_id", userId);
+
+      if (updateError) {
+        console.error("캠페인 타깃 조건 수정 오류:", updateError);
+        return NextResponse.json(
+          { success: false, message: "캠페인 수정에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "캠페인이 성공적으로 수정되었습니다.",
+        data: {
+          id: campaignId,
+          target_criteria: target_criteria,
+        }
+      });
+    }
+
+    // 이름 수정 처리
     // 입력 검증
     if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json(

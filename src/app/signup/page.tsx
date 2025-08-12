@@ -305,7 +305,7 @@ export default function SignupPage() {
             <div className={styles.signupHeader}>
               <div className={styles.logoSection}>
                 <h1 className={styles.logoText}>MTS플러스</h1>
-                <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
+                <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
               </div>
             </div>
             <div style={{ textAlign: "center", padding: "2rem" }}>
@@ -1029,7 +1029,7 @@ export default function SignupPage() {
           <div className={styles.signupHeader}>
             <div className={styles.logoSection}>
               <h1 className={styles.logoText}>MTS플러스</h1>
-              <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
+              <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
             </div>
             <h2 className={styles.signupTitle}>회원가입</h2>
             {socialLoginType && (
@@ -1095,7 +1095,7 @@ export default function SignupPage() {
                       직접 마케팅을 진행하는 사업자
                     </p>
                     <ul className={styles.userTypeFeatures}>
-                      <li>타겟 마케팅 서비스 이용</li>
+                      <li>타깃 마케팅 서비스 이용</li>
                       <li>캠페인 생성 및 관리</li>
                       <li>메시지 발송 기능</li>
                     </ul>

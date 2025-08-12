@@ -94,7 +94,7 @@ export function createUsernameEmailTemplate(
           color: #64748b;
           font-size: 14px;
           margin: 5px 0 0 0;
-        ">AI 기반 타겟 마케팅 플랫폼</p>
+        ">AI 기반 타깃 마케팅 플랫폼</p>
       </div>
 
       <div style="margin-bottom: 30px;">
@@ -230,7 +230,7 @@ export function createTempPasswordEmailTemplate(
           color: #64748b;
           font-size: 14px;
           margin: 5px 0 0 0;
-        ">AI 기반 타겟 마케팅 플랫폼</p>
+        ">AI 기반 타깃 마케팅 플랫폼</p>
       </div>
 
       <div style="margin-bottom: 30px;">

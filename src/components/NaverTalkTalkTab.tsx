@@ -374,7 +374,6 @@ export default function NaverTalkTalkTab({
                   className="add-image-btn circle"
                   title="AI 및 파일 추가"
                   onClick={() => {
-                    console.log("+ 버튼 클릭됨, 현재 상태:", showImageDropdown);
                     setShowImageDropdown(!showImageDropdown);
                   }}
                 >

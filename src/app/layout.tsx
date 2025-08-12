@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MTS마케팅 - SaaS 마케팅 플랫폼",
   description:
-    "AI 기반 타겟 마케팅 솔루션으로 효과적인 마케팅 캠페인을 만들어보세요",
+    "AI 기반 타깃 마케팅 솔루션으로 효과적인 마케팅 캠페인을 만들어보세요",
 };
 
 export default function RootLayout({

@@ -2457,7 +2457,7 @@ function TargetMarketingDetailContent({
                     </button>
                     <button
                       className="quick-badge"
-                      onClick={() => handleQuickBadgeClick("타겟 고객층을 수정해주세요")}
+                      onClick={() => handleQuickBadgeClick("타깃 고객층을 수정해주세요")}
                       disabled={isLoading || showTypingIndicator}
                     >
                       타겟 수정
@@ -2855,7 +2855,7 @@ function TargetMarketingDetailContent({
 
             {/* 타겟 추천 결과 섹션 */}
             <div className={styles.targetRecommendationCard}>
-              <div className={styles.templateBadge}>타겟 추천 결과</div>
+              <div className={styles.templateBadge}>타깃 추천 결과</div>
 
               {/* 타겟 설정 */}
               <div className={styles.targetFiltersSection}>
@@ -3144,7 +3144,7 @@ function TargetMarketingDetailContent({
                 </p>
                 <p>
                   ※ 일괄 발송이란? 수집된 고객 데이터를 기반으로, AI가 가장 반응
-                  가능성이 높은 타겟을 선별하여 한 번에 문자 메시지를 발송하는
+                  가능성이 높은 깃을 선별하여 한 번에 문자 메시지를 발송하는
                   방식입니다.
                 </p>
               </div>
@@ -3274,7 +3274,7 @@ function TargetMarketingDetailContent({
                       </div>
 
                       <div className={styles.targetCountInfo}>
-                        <span>타겟 대상자 수</span>
+                        <span>타깃 대상자 수</span>
                         <input
                           type="number"
                           value={targetCount}
@@ -3317,10 +3317,10 @@ function TargetMarketingDetailContent({
                       </div>
 
                       <p className={styles.adRecipientNotice}>
-                        ※ 광고 수신자 수는 타겟 대상자 수를 초과할 수 없습니다.
+                        ※ 광고 수신자 수는 타깃 대상자 수를 초과할 수 없습니다.
                         {sendPolicy === "batch" && (
                           <>
-                            <br />※ 일괄 발송 시 타겟 대상자 수는 수정할 수 없습니다.
+                            <br />※ 일괄 발송 시 타깃 대상자 수는 수정할 수 없습니다.
                           </>
                         )}
                       </p>
@@ -3456,7 +3456,7 @@ function TargetMarketingDetailContent({
                       <tr>
                         <th style={{ width: '50px' }}></th>
                         <th>캠페인 이름</th>
-                        <th>타겟정보</th>
+                        <th>타깃정보</th>
                         <th>카드 사용 업종</th>
                         <th>카드 승인금액</th>
                         <th>카드 승인시간</th>

@@ -194,7 +194,7 @@ export default function Home() {
           />
           <Image
             src="/images/ai-4.png"
-            alt="AI 타겟 예시"
+            alt="AI 타깃 예시"
             width={373}
             height={248}
           />
