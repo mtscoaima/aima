@@ -16,6 +16,11 @@ interface DocumentInfo {
   status?: string;
 }
 
+// IE/Edge 브라우저 호환성을 위한 Navigator 인터페이스 확장
+interface ExtendedNavigator extends Navigator {
+  msSaveOrOpenBlob?: (blob: Blob, fileName: string) => void;
+}
+
 interface UserDocuments {
   businessRegistration?: DocumentInfo;
   employmentCertificate?: DocumentInfo;
@@ -354,9 +359,10 @@ export default function MemberApprovalPage() {
       // 다운로드 실행
       try {
         // 브라우저별 호환성을 위한 다운로드 방법
-        if (window.navigator && (window.navigator as any).msSaveOrOpenBlob) {
+        const extendedNavigator = window.navigator as ExtendedNavigator;
+        if (extendedNavigator && extendedNavigator.msSaveOrOpenBlob) {
           // IE/Edge
-          (window.navigator as any).msSaveOrOpenBlob(blob, fileName);
+          extendedNavigator.msSaveOrOpenBlob(blob, fileName);
         } else {
           // 모던 브라우저
           const url = URL.createObjectURL(blob);
@@ -514,7 +520,7 @@ export default function MemberApprovalPage() {
       <div className="admin-dashboard">
         <div className="admin-main">
           <div className="admin-header">
-            <h1>일반회원 승인</h1>
+            <h1>기업정보 관리</h1>
             <div className="admin-actions">
               <button className="btn-secondary">
                 승인 대기:{" "}
