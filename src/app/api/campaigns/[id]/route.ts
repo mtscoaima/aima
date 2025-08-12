@@ -259,7 +259,13 @@ export async function PATCH(
       }
 
       // 상태를 PENDING_APPROVAL로 변경 (반려 사유가 있다면 초기화)
-      const updateData: any = {
+      const updateData: {
+        status: string;
+        updated_at: string;
+        rejection_reason?: null;
+        approved_by?: null;
+        approved_at?: null;
+      } = {
         status: "PENDING_APPROVAL",
         updated_at: new Date().toISOString()
       };

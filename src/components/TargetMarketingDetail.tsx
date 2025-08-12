@@ -1916,6 +1916,7 @@ function TargetMarketingDetailContent({
           image_url: currentGeneratedImage || null,
           category: templateSaveCategory,
           is_private: templateIsPrivate,
+          buttons: dynamicButtons, // 동적 버튼 데이터 추가
         }),
       });
 

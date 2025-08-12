@@ -37,7 +37,7 @@ export async function GET(
     const { data: template, error } = await supabase
       .from("message_templates")
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, user_id"
+        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, user_id, buttons"
       )
       .eq("id", parseInt(templateId))
       .eq("is_active", true)
@@ -97,7 +97,7 @@ export async function PUT(
     const { id } = await params;
     const templateId = id;
     const body = await request.json();
-    const { name, content, image_url, category } = body;
+    const { name, content, image_url, category, buttons } = body;
 
     // 필수 필드 검증
     if (!name || !content || !category) {
@@ -127,19 +127,41 @@ export async function PUT(
     }
 
     // 템플릿 업데이트 (is_private는 항상 true로 고정)
+    const updateData: {
+      name: string;
+      content: string;
+      image_url: string | null;
+      category: string;
+      is_private: boolean;
+      updated_at: string;
+      buttons?: Array<{
+        id: string;
+        text: string;
+        linkType: 'web' | 'app';
+        url?: string;
+        iosUrl?: string;
+        androidUrl?: string;
+      }>;
+    } = {
+      name,
+      content,
+      image_url,
+      category,
+      is_private: true, // 템플릿 수정 시 항상 비공개로 설정
+      updated_at: new Date().toISOString(),
+    };
+
+    // buttons가 제공된 경우에만 추가
+    if (buttons !== undefined) {
+      updateData.buttons = buttons;
+    }
+
     const { data: updatedTemplate, error } = await supabase
       .from("message_templates")
-      .update({
-        name,
-        content,
-        image_url,
-        category,
-        is_private: true, // 템플릿 수정 시 항상 비공개로 설정
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", parseInt(templateId))
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private"
+        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, buttons"
       )
       .single();
 
@@ -161,6 +183,151 @@ export async function PUT(
     };
 
     return NextResponse.json({ template: responseTemplate });
+  } catch (error) {
+    console.error("API error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // JWT 토큰에서 사용자 ID 추출 (필수)
+    const userId = getUserIdFromToken(request);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+    const templateId = id;
+    const body = await request.json();
+    const { name } = body;
+
+    // 이름 필드 검증
+    if (!name) {
+      return NextResponse.json(
+        { error: "Name is required" },
+        { status: 400 }
+      );
+    }
+
+    // 기존 템플릿 확인 및 권한 검증
+    const { data: existingTemplate, error: fetchError } = await supabase
+      .from("message_templates")
+      .select("user_id, is_active, name, content, image_url, category, buttons")
+      .eq("id", parseInt(templateId))
+      .single();
+
+    if (fetchError || !existingTemplate) {
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 }
+      );
+    }
+
+    // 소유자 권한 확인
+    if (existingTemplate.user_id !== parseInt(userId)) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
+    // 템플릿 이름만 업데이트
+    const { data: updatedTemplate, error } = await supabase
+      .from("message_templates")
+      .update({
+        name,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", parseInt(templateId))
+      .select(
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, buttons"
+      )
+      .single();
+
+    if (error) {
+      console.error("Template name update error:", error);
+      return NextResponse.json(
+        { error: "Failed to update template name" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      template: updatedTemplate,
+      message: "Template name updated successfully"
+    });
+  } catch (error) {
+    console.error("API error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // JWT 토큰에서 사용자 ID 추출 (필수)
+    const userId = getUserIdFromToken(request);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+    const templateId = id;
+
+    // 기존 템플릿 확인 및 권한 검증
+    const { data: existingTemplate, error: fetchError } = await supabase
+      .from("message_templates")
+      .select("user_id, is_active")
+      .eq("id", parseInt(templateId))
+      .single();
+
+    if (fetchError || !existingTemplate) {
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 }
+      );
+    }
+
+    // 소유자 권한 확인
+    if (existingTemplate.user_id !== parseInt(userId)) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
+    // 템플릿을 비활성화 (soft delete)
+    const { error } = await supabase
+      .from("message_templates")
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", parseInt(templateId));
+
+    if (error) {
+      console.error("Template delete error:", error);
+      return NextResponse.json(
+        { error: "Failed to delete template" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      message: "Template deleted successfully"
+    });
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json(

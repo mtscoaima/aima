@@ -116,7 +116,7 @@ export async function GET(
       const fallbackRejection = {
         id: `fallback_${campaignId}`,
         campaign_id: campaignId,
-        admin_user_id: campaignDetail.approved_by_user?.name ? 1 : null,
+        admin_user_id: campaignDetail.approved_by_user?.[0]?.name ? 1 : null,
         rejection_reason: campaignDetail.rejection_reason || "캠페인 검토 결과 수정이 필요합니다.",
         rejection_details: campaignDetail.rejection_reason || "신청하신 캠페인 설정 항목을 검토 후 수정해주세요.",
         suggested_modifications: {
@@ -124,8 +124,8 @@ export async function GET(
           message: "캠페인 설정을 전반적으로 검토해주세요."
         },
         admin_user: {
-          name: campaignDetail.approved_by_user?.name || "관리자",
-          email: campaignDetail.approved_by_user?.email || "admin@example.com"
+          name: campaignDetail.approved_by_user?.[0]?.name || "관리자",
+          email: campaignDetail.approved_by_user?.[0]?.email || "admin@example.com"
         },
         created_at: campaignDetail.approved_at || campaignDetail.updated_at,
         updated_at: campaignDetail.updated_at
