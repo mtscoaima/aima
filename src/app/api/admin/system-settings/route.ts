@@ -78,6 +78,8 @@ export async function GET(request: NextRequest) {
       data: {
         firstLevelCommissionRate: Number(settings.first_level_commission_rate),
         nthLevelDenominator: settings.nth_level_denominator,
+        menuSettings: settings.menu_settings || { main_menu: [], admin_menu: [] },
+        siteSettings: settings.site_settings || {},
         updatedAt: settings.updated_at,
       },
     });
@@ -110,7 +112,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { firstLevelCommissionRate, nthLevelDenominator } = body;
+    const { firstLevelCommissionRate, nthLevelDenominator, menuSettings, siteSettings } = body;
 
     // 입력 값 검증
     if (
@@ -137,12 +139,31 @@ export async function PUT(request: NextRequest) {
     }
 
     // 시스템 설정 업데이트 (첫 번째 레코드 업데이트)
+    interface UpdateData {
+      first_level_commission_rate: number;
+      nth_level_denominator: number;
+      updated_at: string;
+      menu_settings?: object;
+      site_settings?: object;
+    }
+
+    const updateData: UpdateData = {
+      first_level_commission_rate: firstLevelCommissionRate,
+      nth_level_denominator: nthLevelDenominator,
+      updated_at: new Date().toISOString()
+    };
+
+    if (menuSettings) {
+      updateData.menu_settings = menuSettings;
+    }
+
+    if (siteSettings) {
+      updateData.site_settings = siteSettings;
+    }
+
     const { data, error } = await supabase
       .from("system_settings")
-      .update({
-        first_level_commission_rate: firstLevelCommissionRate,
-        nth_level_denominator: nthLevelDenominator,
-      })
+      .update(updateData)
       .eq("id", 1)
       .select()
       .single();
