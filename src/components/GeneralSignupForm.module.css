@@ -1,0 +1,431 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  padding: 20px;
+  padding-top: 140px; /* navigation 높이만큼 상단 여백 추가 */
+}
+
+.wrapper {
+  width: 100%;
+  max-width: 1200px; /* 가로 배치를 위해 더 넓게 설정 */
+}
+
+/* 헤더 */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 40px;
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.logo {
+  font-size: 32px;
+  font-weight: 800;
+  color: #4285f4;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* 폼 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 카드 컨테이너 */
+.cardsContainer {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* 전체동의 섹션 */
+.agreeSection {
+  margin-bottom: 24px;
+}
+
+.agreeAllLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.agreeAllText {
+  color: #1f2937;
+  font-size: 16px;
+  margin-left: 8px;
+}
+
+.agreeDescription {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0 16px 0;
+}
+
+.divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 16px 0;
+}
+
+/* 이용약관 섹션 */
+.termsSection {
+  margin-top: 8px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 20px 0;
+}
+
+.termsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.termItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.termText {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-left: 12px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.required {
+  background: #dc2626;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+.optional {
+  background: #64748b;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+.viewButton {
+  background: none;
+  border: none;
+  color: #4285f4;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.viewButton:hover {
+  color: #3367d6;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0; /* 체크박스가 줄어들지 않도록 */
+}
+
+/* 텍스트 색상 스타일 */
+.requiredText {
+  color: #4285f4; /* 파란색 */
+  font-weight: 600;
+}
+
+.optionalText {
+  color: #64748b; /* 회색 */
+  font-weight: 600;
+}
+
+.asterisk {
+  color: #dc2626; /* 빨간색 */
+}
+
+/* 약관 안내 텍스트 */
+.termsNote {
+  margin-top: 24px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.termsNote ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.termsNote li {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.termsNote li:last-child {
+  margin-bottom: 0;
+}
+
+/* 회원정보 입력 섹션 */
+.infoSection {
+  margin-top: 0; /* 카드 시작이므로 margin 제거 */
+}
+
+
+
+.verifyButton {
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.verifyButton:hover:not(:disabled) {
+  background: #3367d6;
+}
+
+.verifyButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.promptText {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 폼 행 */
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.inputGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #1f2937;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4285f4;
+}
+
+.input:read-only {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.input:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: #dc2626;
+}
+
+.hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.error {
+  font-size: 12px;
+  color: #dc2626;
+  margin: 0;
+}
+
+/* 아이디·비밀번호 설정 섹션 */
+.passwordSection {
+  margin-top: 32px;
+}
+
+/* 추천인 정보 입력 섹션 */
+.referralSection {
+  margin-top: 32px;
+}
+
+/* 가입하기 버튼 */
+.submitButton {
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 32px;
+  width: 100%;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: #3367d6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
+.submitButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1024px) {
+  .wrapper {
+    max-width: 800px;
+  }
+
+  .cardsContainer {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .card {
+    flex: none;
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+    padding-top: 120px;
+  }
+
+  .wrapper {
+    max-width: 500px;
+  }
+
+  .card {
+    padding: 24px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .submitButton {
+    font-size: 16px;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 12px;
+    padding-top: 100px;
+  }
+
+  .wrapper {
+    max-width: 100%;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .inputGroup {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .input {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+
+  .verifyButton {
+    width: 100%;
+  }
+
+  .submitButton {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  .termItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .viewButton {
+    align-self: flex-end;
+  }
+}
