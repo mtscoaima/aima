@@ -90,7 +90,7 @@ export default function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
             <span className="hamburger-line"></span>
           </button>
 
-          <Link href="/admin/dashboard">
+          <Link href="/admin/user-management">
             <svg
               width="106"
               height="28"

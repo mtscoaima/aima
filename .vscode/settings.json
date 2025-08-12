@@ -1,0 +1,14 @@
+{
+    "cSpell.enableFiletypes": [
+        "!css",
+        "!scss",
+        "!less"
+    ],
+    "cSpell.ignorePaths": [
+        "**/*.css",
+        "**/*.module.css",
+        "**/*.scss",
+        "**/*.less"
+    ]
+}
+

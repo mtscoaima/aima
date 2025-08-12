@@ -132,7 +132,7 @@ export default function LoginPage() {
             <div className={styles.loginHeader}>
               <div className={styles.logoSection}>
                 <h1 className={styles.logoText}>MTS플러스</h1>
-                <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
+                <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
               </div>
             </div>
             <div style={{ textAlign: "center", padding: "2rem" }}>
@@ -564,7 +564,7 @@ export default function LoginPage() {
           <div className={styles.loginHeader}>
             <div className={styles.logoSection}>
               <h1 className={styles.logoText}>MTS플러스</h1>
-              <p className={styles.subtitle}>AI 기반 타겟 마케팅 플랫폼</p>
+              <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
             </div>
             <h2 className={styles.loginTitle}>로그인</h2>
           </div>

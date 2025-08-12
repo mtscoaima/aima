@@ -43,7 +43,7 @@ function PaymentSuccessContent() {
       // localStorage에서 리다이렉트 URL 확인
       const redirectUrl = localStorage.getItem("payment_redirect_url");
 
-      // 결제 완료 플래그 설정 (타겟마케팅 페이지로 돌아갈 때만)
+      // 결제 완료 플래그 설정 (타깃마케팅 페이지로 돌아갈 때만)
       if (redirectUrl && redirectUrl.includes("/target-marketing")) {
         localStorage.setItem("payment_completed", "true");
         localStorage.setItem(

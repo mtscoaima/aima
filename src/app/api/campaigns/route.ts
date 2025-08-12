@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
         campaignData.templateDescription || campaignData.content
       ), // 템플릿 설명의 첫 문장 사용
       template_id: messageTemplate.id, // 템플릿 ID 추가
-      status: "PENDING_APPROVAL", // 승인 대기 상태
+      status: "DRAFT", // 임시 저장 상태
       total_recipients: parseInt(campaignData.maxRecipients) || 30,
       sent_count: 0, // 기본값
       success_count: 0, // 기본값
@@ -433,7 +433,8 @@ export async function GET(request: NextRequest) {
         message_templates (
           name,
           content,
-          image_url
+          image_url,
+          category
         )
       `
       )

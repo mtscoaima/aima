@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("message_templates")
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, user_id"
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, user_id"
       )
       .eq("is_active", true);
 
@@ -95,6 +95,7 @@ export async function GET(request: NextRequest) {
       category: template.category,
       usage_count: template.usage_count,
       created_at: template.created_at,
+      updated_at: template.updated_at,
       is_private: template.is_private,
       is_owner: userId ? template.user_id === parseInt(userId) : false, // 현재 사용자가 소유자인지 여부
     }));
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, content, image_url, category, is_private = false } = body;
+    const { name, content, image_url, category, is_private = false, buttons } = body;
 
     // 필수 필드 검증
     if (!name || !content || !category) {
@@ -132,20 +133,44 @@ export async function POST(request: NextRequest) {
     }
 
     // 새 템플릿 생성
+    const insertData: {
+      name: string;
+      content: string;
+      image_url: string | null;
+      category: string;
+      is_private: boolean;
+      user_id: number;
+      usage_count: number;
+      is_active: boolean;
+      buttons?: Array<{
+        id: string;
+        text: string;
+        linkType: 'web' | 'app';
+        url?: string;
+        iosUrl?: string;
+        androidUrl?: string;
+      }>;
+    } = {
+      name,
+      content,
+      image_url,
+      category,
+      is_private,
+      user_id: parseInt(userId), // 모든 템플릿에 user_id 설정
+      usage_count: 0,
+      is_active: true,
+    };
+
+    // buttons가 제공된 경우에만 추가
+    if (buttons !== undefined) {
+      insertData.buttons = buttons;
+    }
+
     const { data: newTemplate, error } = await supabase
       .from("message_templates")
-      .insert({
-        name,
-        content,
-        image_url,
-        category,
-        is_private,
-        user_id: parseInt(userId), // 모든 템플릿에 user_id 설정
-        usage_count: 0,
-        is_active: true,
-      })
+      .insert(insertData)
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private"
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, buttons"
       )
       .single();
 

@@ -24,7 +24,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, type }) => {
               <h3>제1조 목적</h3>
               <p>
                 본 약관은 MTS플러스(이하 &ldquo;회사&rdquo;)가 제공하는 AI 기반
-                타겟 마케팅 플랫폼의 이용조건 및 절차, 이용자와 회사 간의
+                타깃 마케팅 플랫폼의 이용조건 및 절차, 이용자와 회사 간의
                 권리·의무 및 책임사항을 규정함을 목적으로 합니다.
               </p>
 
@@ -32,7 +32,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, type }) => {
               <ul>
                 <li>
                   <strong>&ldquo;서비스&rdquo;</strong>란 회사가 제공하는
-                  B2B/B2C 대상 메시지 발송 및 타겟 마케팅 관련 모든 웹 포탈
+                  B2B/B2C 대상 메시지 발송 및 타깃 마케팅 관련 모든 웹 포탈
                   기능을 의미합니다.
                 </li>
                 <li>
@@ -45,7 +45,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, type }) => {
               <p>회사는 다음과 같은 서비스를 제공합니다:</p>
               <ul>
                 <li>메시지 발송 서비스 (SMS, LMS, MMS, 알림톡, RCS 등)</li>
-                <li>캠페인 생성 및 타겟 마케팅</li>
+                <li>캠페인 생성 및 타깃 마케팅</li>
                 <li>템플릿 생성 및 발송 관리</li>
                 <li>리포트, 통계 및 분석 기능</li>
                 <li>관리자 승인 기능</li>
