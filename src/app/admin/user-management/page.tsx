@@ -18,6 +18,7 @@ interface User {
   phone: string;
   status: "정상" | "정지" | "탈퇴" | "대기" | "거부";
   grade: "일반" | "실버" | "골드" | "VIP";
+  role: "USER" | "SALESPERSON" | "ADMIN";
   joinDate: string;
   updateDate: string;
   lastLogin: string;
@@ -31,6 +32,8 @@ interface UserFormData {
   userType: "개인" | "기업";
   company?: string;
   password?: string;
+  role: "USER" | "SALESPERSON" | "ADMIN";
+  status?: "정상" | "정지" | "탈퇴" | "대기" | "거부";
 }
 
 interface LoginLog {
@@ -87,7 +90,8 @@ export default function UserManagementPage() {
     phone: "",
     userType: "개인",
     company: "",
-    password: ""
+    password: "",
+    role: "USER"
   });
   const [pagination, setPagination] = useState({
     total: 0,
@@ -272,7 +276,7 @@ export default function UserManagementPage() {
     }
   };
 
-  const bulkUpdateUsers = async (userIds: string[], action: string) => {
+  const bulkUpdateUsers = async (userIds: string[], action: string, roleValue?: string) => {
     try {
       const token = tokenManager.getAccessToken();
       if (!token) throw new Error("토큰이 없습니다.");
@@ -283,7 +287,7 @@ export default function UserManagementPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userIds, action }),
+        body: JSON.stringify({ userIds, action, roleValue }),
       });
 
       const data = await response.json();
@@ -403,7 +407,8 @@ export default function UserManagementPage() {
       phone: "",
       userType: "개인",
       company: "",
-      password: ""
+      password: "",
+      role: "USER"
     });
     setShowUserModal(true);
   };
@@ -419,7 +424,9 @@ export default function UserManagementPage() {
       phone: user.phone,
       userType: user.userType,
       company: user.company || "",
-      password: ""
+      password: "",
+      role: user.role,
+      status: user.status
     });
     setShowUserModal(true);
   };
@@ -435,7 +442,9 @@ export default function UserManagementPage() {
       phone: user.phone,
       userType: user.userType,
       company: user.company || "",
-      password: ""
+      password: "",
+      role: user.role,
+      status: user.status
     });
     setShowUserModal(true);
   };
@@ -463,12 +472,29 @@ export default function UserManagementPage() {
       suspend: "정지",
       approve: "승인",
       reject: "거부",
+      changeRole: "권한 변경",
       delete: "삭제"
     };
 
     const actionName = actionNames[action as keyof typeof actionNames] || action;
     
-    if (confirm(`선택한 ${selectedUsers.length}명의 회원을 ${actionName}하시겠습니까?`)) {
+    // 권한 변경의 경우 추가 옵션 선택
+    if (action === 'changeRole') {
+      const newRole = prompt("변경할 권한을 선택하세요:\n1. USER (사용자)\n2. SALESPERSON (영업자)\n3. ADMIN (관리자)\n\n권한 코드를 입력하세요:");
+      if (!newRole || !["USER", "SALESPERSON", "ADMIN"].includes(newRole.toUpperCase())) {
+        alert("유효한 권한을 선택해주세요.");
+        return;
+      }
+      if (confirm(`선택한 ${selectedUsers.length}명의 회원 권한을 ${newRole.toUpperCase()}로 변경하시겠습니까?`)) {
+        try {
+          const result = await bulkUpdateUsers(selectedUsers, action, newRole.toUpperCase());
+          alert(result.message);
+          setSelectedUsers([]); // 선택 해제
+        } catch (error) {
+          alert("일괄 처리에 실패했습니다: " + (error as Error).message);
+        }
+      }
+    } else if (confirm(`선택한 ${selectedUsers.length}명의 회원을 ${actionName}하시겠습니까?`)) {
       try {
         const result = await bulkUpdateUsers(selectedUsers, action);
         alert(result.message);
@@ -542,11 +568,12 @@ export default function UserManagementPage() {
       phone: "",
       userType: "개인",
       company: "",
-      password: ""
+      password: "",
+      role: "USER"
     });
   };
 
-  const handleFormChange = (field: keyof UserFormData, value: string) => {
+  const handleFormChange = (field: keyof UserFormData, value: string | "USER" | "SALESPERSON" | "ADMIN") => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -704,6 +731,7 @@ export default function UserManagementPage() {
             <option value="suspend">정지</option>
             <option value="approve">승인</option>
             <option value="reject">거부</option>
+            <option value="changeRole">권한 변경</option>
             <option value="delete">삭제</option>
           </select>
         </div>
@@ -728,6 +756,7 @@ export default function UserManagementPage() {
             </th>
               <th>사용자ID</th>
               <th>사용자명</th>
+              <th>권한</th>
               <th>기업명</th>
               <th>회원유형</th>
                     <th>이메일</th>
@@ -743,13 +772,13 @@ export default function UserManagementPage() {
                                  <tbody>
                    {loading ? (
                      <tr>
-                       <td colSpan={13} style={{ textAlign: 'center', padding: '40px' }}>
-                         <div className="loading-spinner">로딩 중...</div>
+                       <td colSpan={14} style={{ textAlign: 'center', padding: '40px' }}>
+                         <div>로딩 중...</div>
                        </td>
                      </tr>
                    ) : users.length === 0 ? (
                      <tr>
-                       <td colSpan={13} style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                       <td colSpan={14} style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
                          조회된 회원이 없습니다.
                        </td>
                      </tr>
@@ -765,6 +794,12 @@ export default function UserManagementPage() {
                          </td>
                          <td>{user.userId}</td>
                          <td>{user.name}</td>
+                         <td>
+                           <span className="role-badge">
+                             {user.role === "ADMIN" ? "관리자" : 
+                              user.role === "SALESPERSON" ? "영업자" : "사용자"}
+                           </span>
+                         </td>
                          <td>{user.company || '-'}</td>
                          <td>{user.userType}</td>
                          <td>{user.email}</td>
@@ -1170,6 +1205,37 @@ export default function UserManagementPage() {
                           placeholder="회사명"
                           className="form-input"
                         />
+                      </div>
+                    )}
+                    
+                    <div className="form-group">
+                      <label>권한 *</label>
+                      <select 
+                        value={formData.role}
+                        onChange={(e) => handleFormChange('role', e.target.value as "USER" | "SALESPERSON" | "ADMIN")}
+                        disabled={modalType === 'detail'}
+                        className="form-select"
+                      >
+                        <option value="USER">사용자</option>
+                        <option value="SALESPERSON">영업자</option>
+                        <option value="ADMIN">관리자</option>
+                      </select>
+                    </div>
+                    
+                    {modalType === 'edit' && (
+                      <div className="form-group">
+                        <label>상태</label>
+                        <select 
+                          value={formData.status || "정상"}
+                          onChange={(e) => handleFormChange('status', e.target.value as "정상" | "정지" | "탈퇴" | "대기" | "거부")}
+                          className="form-select"
+                        >
+                          <option value="정상">정상</option>
+                          <option value="정지">정지</option>
+                          <option value="대기">대기</option>
+                          <option value="거부">거부</option>
+                          <option value="탈퇴">탈퇴</option>
+                        </select>
                       </div>
                     )}
                     

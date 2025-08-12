@@ -104,8 +104,7 @@ export async function GET(request: NextRequest) {
         `id, username, name, email, phone_number, company_info, created_at, updated_at, 
          last_login_at, approval_status, is_active, role`,
         { count: "exact" }
-      )
-      .eq("role", "USER");
+      );
 
     // 상태 필터링
     if (status !== "전체") {
@@ -181,6 +180,7 @@ export async function GET(request: NextRequest) {
              user.approval_status === "REJECTED" ? "거부" : "대기")
           : "정지",
         grade: "일반", // 추후 등급 시스템 구현 시 수정
+        role: user.role || "USER",
         joinDate: user.created_at?.split('T')[0] || "",
         updateDate: user.updated_at?.split('T')[0] || "",
         lastLogin: user.last_login_at ? 
@@ -192,8 +192,7 @@ export async function GET(request: NextRequest) {
     // 통계 계산
     const { data: statsData } = await supabase
       .from("users")
-      .select("approval_status, is_active, company_info", { count: "exact" })
-      .eq("role", "USER");
+      .select("approval_status, is_active, company_info, role", { count: "exact" });
 
     const stats = {
       total: count || 0,
@@ -257,7 +256,6 @@ export async function PUT(request: NextRequest) {
       .from("users")
       .select("*")
       .eq("id", userId)
-      .eq("role", "USER")
       .single();
 
     if (currentUserError || !currentUser) {
@@ -278,6 +276,9 @@ export async function PUT(request: NextRequest) {
     if (updateData.name) updateFields.name = updateData.name;
     if (updateData.email) updateFields.email = updateData.email;
     if (updateData.phone) updateFields.phone_number = updateData.phone;
+    if (updateData.role && ['USER', 'SALESPERSON', 'ADMIN'].includes(updateData.role)) {
+      updateFields.role = updateData.role;
+    }
     if (updateData.status !== undefined) {
       // 상태 변환
       if (updateData.status === "정상") {
@@ -327,8 +328,7 @@ export async function PUT(request: NextRequest) {
     const { error: updateError } = await supabase
       .from("users")
       .update(updateFields)
-      .eq("id", userId)
-      .eq("role", "USER");
+      .eq("id", userId);
 
     if (updateError) {
       console.error("Supabase update error:", updateError);
@@ -372,6 +372,14 @@ export async function POST(request: NextRequest) {
       password = "temp123!", // 임시 비밀번호
       role = "USER"
     } = await request.json();
+
+    // role 유효성 검사
+    if (!['USER', 'SALESPERSON', 'ADMIN'].includes(role)) {
+      return NextResponse.json(
+        { message: "유효하지 않은 권한입니다.", success: false },
+        { status: 400 }
+      );
+    }
 
     // 필수 필드 검증
     if (!username || !name || !email || !phone) {
@@ -496,10 +504,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // USER 역할만 삭제 가능
-    if (user.role !== "USER") {
+    // ADMIN 역할은 삭제 불가
+    if (user.role === "ADMIN") {
       return NextResponse.json(
-        { message: "일반 사용자만 삭제할 수 있습니다.", success: false },
+        { message: "관리자 계정은 삭제할 수 없습니다.", success: false },
         { status: 400 }
       );
     }
@@ -508,8 +516,7 @@ export async function DELETE(request: NextRequest) {
     const { error: deleteError } = await supabase
       .from("users")
       .delete()
-      .eq("id", userId)
-      .eq("role", "USER");
+      .eq("id", userId);
 
     if (deleteError) {
       console.error("Delete error:", deleteError);

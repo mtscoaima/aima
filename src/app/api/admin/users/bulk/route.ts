@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userIds, action } = await request.json();
+    const { userIds, action, roleValue } = await request.json();
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json(
@@ -147,6 +147,17 @@ export async function POST(request: NextRequest) {
       case "delete":
         // 삭제는 별도 처리
         break;
+      case "changeRole":
+        if (!roleValue || !['USER', 'SALESPERSON', 'ADMIN'].includes(roleValue)) {
+          return NextResponse.json(
+            { message: "유효한 권한을 선택해주세요.", success: false },
+            { status: 400 }
+          );
+        }
+        updateFields.role = roleValue;
+        actionName = "권한 변경";
+        logMessage = `관리자에 의한 권한 변경: ${roleValue}`;
+        break;
       default:
         return NextResponse.json(
           { message: "지원하지 않는 액션입니다.", success: false },
@@ -159,11 +170,25 @@ export async function POST(request: NextRequest) {
 
     if (action === "delete") {
       // 일괄 삭제
+      // 관리자 계정은 삭제에서 제외
+      const { data: usersToDelete } = await supabase
+        .from("users")
+        .select("id")
+        .in("id", userIds)
+        .neq("role", "ADMIN");
+
+      const deleteIds = usersToDelete?.map(u => u.id) || [];
+      if (deleteIds.length === 0) {
+        return NextResponse.json(
+          { message: "삭제 가능한 회원이 없습니다.", success: false },
+          { status: 400 }
+        );
+      }
+
       const { error: deleteError } = await supabase
         .from("users")
         .delete()
-        .in("id", userIds)
-        .eq("role", "USER");
+        .in("id", deleteIds);
 
       if (deleteError) {
         console.error("Bulk delete error:", deleteError);
@@ -193,8 +218,7 @@ export async function POST(request: NextRequest) {
       const { error: updateError } = await supabase
         .from("users")
         .update(updateFields)
-        .in("id", userIds)
-        .eq("role", "USER");
+        .in("id", userIds);
 
       if (updateError) {
         console.error("Bulk update error:", updateError);
