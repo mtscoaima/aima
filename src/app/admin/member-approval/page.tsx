@@ -270,7 +270,7 @@ export default function MemberApprovalPage() {
         } catch (blobError) {
           console.error("Blob 생성 오류:", blobError);
           // Blob 생성 실패 시 다운로드로 대체
-          downloadFile(docInfo);
+          downloadFile(docInfo).catch(console.error);
           return;
         }
       }
@@ -294,40 +294,95 @@ export default function MemberApprovalPage() {
   };
 
   // 파일 다운로드 함수
-  const downloadFile = (docInfo: DocumentInfo) => {
+  const downloadFile = async (docInfo: DocumentInfo) => {
     try {
+      if (!docInfo.fileData && !docInfo.fileUrl) {
+        alert("다운로드할 파일 데이터가 없습니다.");
+        return;
+      }
+
+      let blob: Blob;
+      let fileName = docInfo.fileName || "document";
+
+      // 파일명 안전하게 처리
+      fileName = fileName.replace(/[^\w\s.-]/g, "").trim();
+      if (!fileName) {
+        fileName = "document";
+      }
+
       if (docInfo.fileData && docInfo.fileType) {
-        // base64 데이터를 Blob으로 변환하여 다운로드
-        const base64Data = docInfo.fileData;
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
+        try {
+          // base64 데이터에서 data URL prefix 제거
+          let base64Data = docInfo.fileData;
+          if (base64Data.includes(",")) {
+            base64Data = base64Data.split(",")[1];
+          }
 
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+          // base64를 Blob으로 변환
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+
+          const byteArray = new Uint8Array(byteNumbers);
+          blob = new Blob([byteArray], { type: docInfo.fileType });
+        } catch (base64Error) {
+          console.error("Base64 변환 오류:", base64Error);
+          alert("파일 데이터를 처리하는 중 오류가 발생했습니다.");
+          return;
         }
-
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: docInfo.fileType });
-
-        // 다운로드 링크 생성
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = docInfo.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // 메모리 정리
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 1000);
+      } else if (docInfo.fileUrl) {
+        // fileUrl에서 직접 다운로드 시도
+        try {
+          const response = await fetch(docInfo.fileUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          blob = await response.blob();
+        } catch (fetchError) {
+          console.error("파일 URL 다운로드 오류:", fetchError);
+          alert("파일을 다운로드할 수 없습니다.");
+          return;
+        }
       } else {
         alert("다운로드할 파일 데이터가 없습니다.");
+        return;
+      }
+
+      // 다운로드 실행
+      try {
+        // 브라우저별 호환성을 위한 다운로드 방법
+        if (window.navigator && (window.navigator as any).msSaveOrOpenBlob) {
+          // IE/Edge
+          (window.navigator as any).msSaveOrOpenBlob(blob, fileName);
+        } else {
+          // 모던 브라우저
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = fileName;
+          link.style.display = "none";
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // 메모리 정리
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 1000);
+        }
+        
+        console.log("파일 다운로드 성공:", fileName);
+      } catch (downloadError) {
+        console.error("다운로드 실행 오류:", downloadError);
+        alert("파일 다운로드 중 오류가 발생했습니다.");
       }
     } catch (error) {
       console.error("파일 다운로드 오류:", error);
-      alert("파일 다운로드 중 오류가 발생했습니다.");
+      alert("파일 다운로드 중 예상치 못한 오류가 발생했습니다.");
     }
   };
 
@@ -384,7 +439,7 @@ export default function MemberApprovalPage() {
             </button>
             <button
               className="document-download"
-              onClick={() => downloadFile(info)}
+              onClick={() => downloadFile(info).catch(console.error)}
               title={`${label} 다운로드`}
             >
               💾
