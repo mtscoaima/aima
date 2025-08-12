@@ -12,7 +12,7 @@ import styles from "./signup.module.css";
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     // 사용자 유형 (영업사원만 사용)
-    userType: "" as "general" | "salesperson" | "",
+    userType: "general" as "general" | "salesperson" | "",
 
     // 기본 정보 (영업사원만 사용)
     username: "",
@@ -533,10 +533,10 @@ export default function SignupPage() {
 
     switch (step) {
       case 1:
-        // 사용자 유형 선택 검증
-        if (!formData.userType) {
-          newErrors.userType = "회원 유형을 선택해주세요.";
-        }
+        // 사용자 유형 선택 검증 - 일반회원이 기본값이므로 검증 불필요
+        // if (!formData.userType) {
+        //   newErrors.userType = "회원 유형을 선택해주세요.";
+        // }
         break;
 
       case 2:
@@ -772,7 +772,10 @@ export default function SignupPage() {
     setIsValidating(true);
     try {
       if (await validateStep(currentStep)) {
-        if ((formData.userType as string) === "salesperson") {
+        // Step 1에서 일반회원을 선택하고 다음 버튼을 누른 경우
+        if (currentStep === 1 && formData.userType === "general") {
+          setShowGeneralSignupForm(true);
+        } else if ((formData.userType as string) === "salesperson") {
           // 영업사원의 경우: 1(회원유형) -> 2(기본정보) -> 3(추천인) -> 4(약관동의)
           setCurrentStep(currentStep + 1);
         } else {

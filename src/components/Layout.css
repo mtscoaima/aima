@@ -22,9 +22,14 @@
 
 .main-content {
   flex: 1;
-  padding-top: 0; /* 헤더가 배너 위에 위치하므로 패딩 제거 */
+  padding-top: 140px; /* Navigation 높이(약 70px) + top 위치(55px) + 여백(15px) */
   margin: 0 auto;
   width: 100%;
+}
+
+/* 홈페이지는 배너가 있으므로 padding 제거 */
+.main-content.home-main-content {
+  padding-top: 0;
 }
 
 /* 헤더 아래 여백이 필요한 페이지들을 위한 스타일 */
@@ -77,11 +82,16 @@
 @media (max-width: 768px) {
   .main-content {
     padding: 16px;
+    padding-top: 100px; /* 모바일: Navigation 높이(60px) + top 위치(20px) + 여백(20px) */
+  }
+
+  /* 홈페이지는 배너가 있으므로 padding 제거 */
+  .main-content.home-main-content {
     padding-top: 0;
   }
 
   .main-content.with-header-padding {
-    padding-top: 120px; /* 모바일에서는 헤더 높이가 약간 작음 */
+    padding-top: 100px; /* 모바일에서는 헤더 높이가 약간 작음 */
   }
 
   .spinner {

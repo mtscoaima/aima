@@ -219,7 +219,7 @@
 /* 회원 유형 선택 스타일 */
 .userTypeSelection {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
   margin-bottom: 24px;
 }

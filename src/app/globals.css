@@ -5399,7 +5399,7 @@ body .landing-root .main-content {
   z-index: 1000;
   background: linear-gradient(135deg, var(--primary) 0%, #0052cc 100%);
   color: white;
-  padding: 16px 0;
+  padding: 8px 0;
   box-shadow: var(--shadow-sm);
 }
 
@@ -5414,18 +5414,18 @@ body .landing-root .main-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px;
 }
 
 .login-prompt-content h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .login-prompt-content p {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.75rem;
   opacity: 0.9;
 }
 
@@ -5434,8 +5434,8 @@ body .landing-root .main-content {
   color: var(--primary);
   border: none;
   border-radius: var(--border-radius-sm);
-  padding: 10px 20px;
-  font-size: 0.9rem;
+  padding: 6px 14px;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
@@ -5476,26 +5476,26 @@ body .landing-root .main-content {
   .login-prompt-content {
     flex-direction: column;
     text-align: center;
-    gap: 12px;
+    gap: 8px;
   }
 
   .login-prompt-content h3 {
-    font-size: 1.1rem;
+    font-size: 0.85rem;
   }
 
   .login-prompt-content p {
-    font-size: 0.9rem;
+    font-size: 0.7rem;
   }
 
   .login-prompt-btn {
-    padding: 12px 24px;
-    font-size: 1rem;
+    padding: 5px 12px;
+    font-size: 0.7rem;
   }
 }
 
 @media (max-width: 480px) {
   .login-prompt-banner {
-    padding: 12px 0;
+    padding: 6px 0;
   }
 
   .login-prompt-content {
@@ -5503,11 +5503,11 @@ body .landing-root .main-content {
   }
 
   .login-prompt-content h3 {
-    font-size: 1rem;
+    font-size: 0.8rem;
   }
 
   .login-prompt-content p {
-    font-size: 0.85rem;
+    font-size: 0.65rem;
   }
 }
 
@@ -5606,7 +5606,7 @@ body .landing-root .main-content {
   right: 0;
   background-color: rgba(0, 102, 255, 0.95);
   color: white;
-  padding: 16px;
+  padding: 8px;
   text-align: center;
   z-index: 1000;
   backdrop-filter: blur(10px);
@@ -5619,19 +5619,19 @@ body .landing-root .main-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .login-prompt-content h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .login-prompt-content p {
   margin: 0;
-  font-size: 14px;
+  font-size: 12px;
   opacity: 0.9;
 }
 
@@ -5639,9 +5639,9 @@ body .landing-root .main-content {
   background-color: white;
   color: #0066ff;
   border: none;
-  padding: 8px 16px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -5653,7 +5653,7 @@ body .landing-root .main-content {
 }
 
 .page-content-disabled {
-  margin-top: 80px;
+  margin-top: 40px;
   opacity: 0.6;
   pointer-events: none;
   user-select: none;
@@ -5673,15 +5673,15 @@ body .landing-root .main-content {
 @media (max-width: 768px) {
   .login-prompt-content {
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
   }
 
   .login-prompt-content h3 {
-    font-size: 16px;
+    font-size: 13px;
   }
 
   .login-prompt-content p {
-    font-size: 13px;
+    font-size: 11px;
   }
 }
 
