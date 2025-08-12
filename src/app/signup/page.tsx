@@ -6,26 +6,27 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import TermsModal, { TermsType } from "@/components/TermsModal";
 import { passwordValidation } from "@/lib/utils";
+import GeneralSignupForm from "@/components/GeneralSignupForm";
 import styles from "./signup.module.css";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
-    // 사용자 유형
+    // 사용자 유형 (영업사원만 사용)
     userType: "" as "general" | "salesperson" | "",
 
-    // 기본 정보
+    // 기본 정보 (영업사원만 사용)
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
     name: "",
     phone: "",
-    birthDate: "", // 생년월일 추가
+    birthDate: "",
     phoneVerified: false,
-    identityVerified: false, // 본인인증 완료 여부 추가
-    ci: "", // CI 값 추가
+    identityVerified: false,
+    ci: "",
 
-    // 기업 정보
+    // 기업 정보 (영업사원만 사용)
     companyName: "",
     ceoName: "",
     businessNumber: "",
@@ -35,20 +36,20 @@ export default function SignupPage() {
     toll080Number: "",
     customerServiceNumber: "",
 
-    // 제출 서류
+    // 제출 서류 (영업사원만 사용)
     businessRegistration: null as File | null,
     employmentCertificate: null as File | null,
 
-    // 세금계산서 정보
+    // 세금계산서 정보 (영업사원만 사용)
     taxInvoiceEmail: "",
     taxInvoiceManager: "",
     taxInvoiceContact: "",
 
-    // 추천인 정보
+    // 추천인 정보 (영업사원만 사용)
     referrerName: "",
     referrerCode: "",
 
-    // 약관 동의
+    // 약관 동의 (영업사원만 사용)
     agreeTerms: false,
     agreePrivacy: false,
     agreeMarketing: false,
@@ -64,6 +65,7 @@ export default function SignupPage() {
   const [socialLoginType, setSocialLoginType] = useState<string | null>(null);
   const [socialUserId, setSocialUserId] = useState<string | null>(null);
   const [verificationId, setVerificationId] = useState<string | null>(null); // 본인인증 ID 추가
+  const [showGeneralSignupForm, setShowGeneralSignupForm] = useState(false); // 새로운 일반회원 폼 표시 여부
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -361,11 +363,17 @@ export default function SignupPage() {
   };
 
   const handleUserTypeSelect = (type: "general" | "salesperson") => {
-    setFormData((prev) => ({
-      ...prev,
-      userType: type,
-    }));
-    setErrors((prev) => ({ ...prev, userType: "" }));
+    if (type === "general") {
+      // 새로운 GeneralSignupForm으로 이동
+      setShowGeneralSignupForm(true);
+    } else {
+      // 영업사원 선택 (현재 주석처리된 상태)
+      setFormData((prev) => ({
+        ...prev,
+        userType: type,
+      }));
+      setErrors((prev) => ({ ...prev, userType: "" }));
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1021,6 +1029,15 @@ export default function SignupPage() {
     );
   }
 
+  // 새로운 일반회원 폼이 선택된 경우
+  if (showGeneralSignupForm) {
+    return (
+      <GeneralSignupForm 
+        onBack={() => setShowGeneralSignupForm(false)}
+      />
+    );
+  }
+
   return (
     <div className={styles.signupContainer}>
       <div className={styles.signupWrapper}>
@@ -1101,6 +1118,8 @@ export default function SignupPage() {
                     </ul>
                   </div>
 
+                  {/* 영업사원 선택 버튼 - 임시 주석처리 */}
+                  {/*
                   <div
                     className={`${styles.userTypeCard} ${
                       formData.userType === "salesperson" ? styles.selected : ""
@@ -1121,6 +1140,7 @@ export default function SignupPage() {
                       <li>추천인 현황 대시보드</li>
                     </ul>
                   </div>
+                  */}
                 </div>
 
                 {errors.userType && (

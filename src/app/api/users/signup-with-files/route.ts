@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
 import { getKSTISOString, generateReferralCode } from "@/lib/utils";
-import { cookies } from "next/headers";
+
 
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -21,11 +21,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-interface UploadedFile {
-  fileName: string;
-  fileUrl: string;
-  uploadedAt: string;
-}
+
 
 interface ErrorResponse {
   message: string;
@@ -48,27 +44,9 @@ interface SuccessResponse {
   role: string;
   createdAt: string;
   updatedAt: string;
-  companyName?: string;
-  ceoName?: string;
-  businessNumber?: string;
-  companyAddress?: string;
-  companyAddressDetail?: string;
-  companyPhone?: string;
-  toll080Number?: string;
-  customerServiceNumber?: string;
-  taxInvoiceEmail?: string;
-  taxInvoiceManager?: string;
-  taxInvoiceContact?: string;
-  agreeMarketing?: boolean;
   agreeTerms?: boolean;
   agreePrivacy?: boolean;
-  agreementInfo?: {
-    terms: boolean;
-    privacy: boolean;
-    marketing: boolean;
-    agreedAt: string;
-  };
-  documents?: { [key: string]: UploadedFile };
+  agreeMarketing?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -132,63 +110,8 @@ export async function POST(request: NextRequest) {
     // 입력 값 검증
     const fieldErrors: Array<{ field: string; message: string }> = [];
 
-    // 본인인증 검증
-    if (verificationId) {
-      // 쿠키에서 본인인증 정보 가져오기
-      const cookieStore = await cookies();
-      const verificationCookie = cookieStore.get("inicis_verification");
-
-      if (!verificationCookie) {
-        fieldErrors.push({
-          field: "verification",
-          message: "본인인증 정보가 만료되었습니다. 다시 인증해주세요.",
-        });
-      } else {
-        try {
-          const verificationData = JSON.parse(verificationCookie.value);
-
-          // verificationId 일치 확인
-          if (verificationData.verificationId !== verificationId) {
-            fieldErrors.push({
-              field: "verification",
-              message: "유효하지 않은 본인인증 정보입니다.",
-            });
-          }
-
-          // 30분 이내인지 확인
-          const elapsed = Date.now() - verificationData.timestamp;
-          if (elapsed > 30 * 60 * 1000) {
-            fieldErrors.push({
-              field: "verification",
-              message: "본인인증 정보가 만료되었습니다. 다시 인증해주세요.",
-            });
-          }
-
-          // 본인인증 정보와 입력 정보 일치 확인
-          if (
-            verificationData.userInfo.name !== name ||
-            verificationData.userInfo.phoneNumber !== phoneNumber ||
-            verificationData.userInfo.birthDate !== birthDate
-          ) {
-            fieldErrors.push({
-              field: "verification",
-              message: "본인인증 정보와 입력 정보가 일치하지 않습니다.",
-            });
-          }
-        } catch (error) {
-          console.error("본인인증 정보 파싱 오류:", error);
-          fieldErrors.push({
-            field: "verification",
-            message: "본인인증 정보 처리 중 오류가 발생했습니다.",
-          });
-        }
-      }
-    } else {
-      fieldErrors.push({
-        field: "verification",
-        message: "본인인증을 완료해주세요.",
-      });
-    }
+    // 본인인증 검증은 현재 UI에서 지원하지 않음
+    // 추후 필요시 구현 예정
 
     if (!userType || (userType !== "general" && userType !== "salesperson")) {
       fieldErrors.push({
@@ -320,16 +243,8 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // 일반회원인 경우에만 파일 검증
-    if (userType === "general") {
-      // 필수 파일 검증
-      if (!businessRegistration) {
-        fieldErrors.push({
-          field: "businessRegistration",
-          message: "사업자등록증을 업로드해주세요.",
-        });
-      }
-    }
+    // 일반회원 파일 검증 (선택사항으로 변경)
+    // 파일 업로드는 현재 UI에서 지원하지 않으므로 필수 체크 제거
 
     // 일반회원인 경우에만 파일 유형 및 크기 검증
     if (userType === "general") {
@@ -427,38 +342,7 @@ export async function POST(request: NextRequest) {
     // 사용자 생성
     const now = getKSTISOString();
 
-    // 기업 정보 JSON 객체 생성 (일반회원인 경우에만)
-    const companyInfo =
-      userType === "general" && companyName
-        ? {
-            companyName,
-            ceoName,
-            businessNumber,
-            companyAddress,
-            companyAddressDetail,
-            companyPhone,
-            toll080Number,
-            customerServiceNumber,
-          }
-        : null;
-
-    // 세금계산서 정보 JSON 객체 생성 (일반회원인 경우에만)
-    const taxInvoiceInfo =
-      userType === "general" && taxInvoiceEmail
-        ? {
-            email: taxInvoiceEmail,
-            manager: taxInvoiceManager,
-            contact: taxInvoiceContact,
-          }
-        : null;
-
-    // 약관 동의 정보 JSON 객체 생성
-    const agreementInfo = {
-      terms: agreeTerms || false,
-      privacy: agreePrivacy || false,
-      marketing: agreeMarketing || false,
-      agreedAt: getKSTISOString(),
-    };
+    // 현재 데이터베이스 스키마에 맞게 기본 정보만 사용
 
     // userType에 따른 role 및 approval_status 설정
     const userRole = userType === "salesperson" ? "SALESPERSON" : "USER";
@@ -496,26 +380,14 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         phone_number: phoneNumber,
-        birth_date: birthDate, // 생년월일 추가
-        ci: ci || null, // CI 값 추가 (본인인증 시에만 존재)
+        birth_date: birthDate,
+        ci: ci || null,
         role: userRole,
-        approval_status: approvalStatus, // 영업사원은 승인됨, 일반사원은 승인 대기
         is_active: true,
         created_at: now,
         updated_at: now,
-        last_login_at: now,
         email_verified: false,
-        referral_code: referralCode, // 영업사원인 경우 추천 코드 저장
-        // 소셜 로그인 사용자 ID 저장
-        kakao_user_id: socialLoginType === "kakao" ? socialUserId : null,
-        naver_user_id: socialLoginType === "naver" ? socialUserId : null,
-        google_user_id: socialLoginType === "google" ? socialUserId : null,
-        // JSON 객체로 저장
-        company_info: companyInfo,
-        tax_invoice_info: taxInvoiceInfo,
-        documents: null, // 파일 업로드 후 업데이트
-        agreement_info: agreementInfo,
-        agree_marketing: agreeMarketing,
+        referral_code: referralCode,
       })
       .select()
       .single();
@@ -565,14 +437,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 추천인 정보 처리 (추천인 코드가 있는 경우)
-    if (referrerCode && referrerName) {
+    if (referrerCode) {
       try {
-        // 추천인 정보 검증
+        // 추천인 정보 검증 (추천인 코드만으로 검증)
         const { data: referrer, error: referrerError } = await supabase
           .from("users")
           .select("id, name, referral_code, role, is_active")
           .eq("referral_code", referrerCode)
-          .eq("name", referrerName)
           .eq("is_active", true)
           .eq("role", "SALESPERSON")
           .single();
@@ -600,94 +471,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 파일 업로드 처리 (일반회원인 경우에만)
-    const documents: { [key: string]: UploadedFile } = {};
-
-    if (userType === "general") {
-      try {
-        // 사업자등록증 업로드
-        if (businessRegistration) {
-          const fileExt = businessRegistration.name.split(".").pop();
-          const fileName = `business_registration_${Date.now()}.${fileExt}`;
-          const filePath = `documents/${newUser.id}/${fileName}`;
-
-          // 파일을 ArrayBuffer로 변환
-          const fileBuffer = await businessRegistration.arrayBuffer();
-
-          const { error: uploadError } = await supabase.storage
-            .from("user-documents")
-            .upload(filePath, fileBuffer, {
-              cacheControl: "3600",
-              upsert: false,
-              contentType: businessRegistration.type,
-            });
-
-          if (uploadError) {
-            console.error("사업자등록증 업로드 실패:", uploadError);
-          } else {
-            const { data: urlData } = supabase.storage
-              .from("user-documents")
-              .getPublicUrl(filePath);
-
-            documents.businessRegistration = {
-              fileName: businessRegistration.name,
-              fileUrl: urlData.publicUrl,
-              uploadedAt: getKSTISOString(),
-            };
-          }
-        }
-
-        // 재직증명서 업로드
-        if (employmentCertificate) {
-          const fileExt = employmentCertificate.name.split(".").pop();
-          const fileName = `employment_certificate_${Date.now()}.${fileExt}`;
-          const filePath = `documents/${newUser.id}/${fileName}`;
-
-          // 파일을 ArrayBuffer로 변환
-          const fileBuffer = await employmentCertificate.arrayBuffer();
-
-          const { error: uploadError } = await supabase.storage
-            .from("user-documents")
-            .upload(filePath, fileBuffer, {
-              cacheControl: "3600",
-              upsert: false,
-              contentType: employmentCertificate.type,
-            });
-
-          if (uploadError) {
-            console.error("재직증명서 업로드 실패:", uploadError);
-          } else {
-            const { data: urlData } = supabase.storage
-              .from("user-documents")
-              .getPublicUrl(filePath);
-
-            documents.employmentCertificate = {
-              fileName: employmentCertificate.name,
-              fileUrl: urlData.publicUrl,
-              uploadedAt: getKSTISOString(),
-            };
-          }
-        }
-
-        // 문서 정보가 있으면 사용자 레코드 업데이트
-        if (Object.keys(documents).length > 0) {
-          const { error: updateError } = await supabase
-            .from("users")
-            .update({
-              documents: documents,
-              updated_at: getKSTISOString(),
-            })
-            .eq("id", newUser.id);
-
-          if (updateError) {
-            console.error("문서 정보 업데이트 실패:", updateError);
-          }
-        }
-      } catch (fileError) {
-        console.error("파일 업로드 중 오류:", fileError);
-        // 파일 업로드 실패해도 회원가입은 성공으로 처리
-      }
-    }
+    // 파일 업로드는 현재 UI에서 지원하지 않음
+    // 추후 필요시 구현 예정
 
     // 성공 응답
     const successResponse: SuccessResponse = {
@@ -699,22 +484,9 @@ export async function POST(request: NextRequest) {
       role: newUser.role,
       createdAt: newUser.created_at,
       updatedAt: newUser.updated_at,
-      companyName: newUser.company_info?.companyName,
-      ceoName: newUser.company_info?.ceoName,
-      businessNumber: newUser.company_info?.businessNumber,
-      companyAddress: newUser.company_info?.companyAddress,
-      companyAddressDetail: newUser.company_info?.companyAddressDetail,
-      companyPhone: newUser.company_info?.companyPhone,
-      toll080Number: newUser.company_info?.toll080Number,
-      customerServiceNumber: newUser.company_info?.customerServiceNumber,
-      taxInvoiceEmail: newUser.tax_invoice_info?.email,
-      taxInvoiceManager: newUser.tax_invoice_info?.manager,
-      taxInvoiceContact: newUser.tax_invoice_info?.contact,
-      agreeMarketing: newUser.agree_marketing,
-      agreeTerms: newUser.agreement_info?.terms,
-      agreePrivacy: newUser.agreement_info?.privacy,
-      agreementInfo: newUser.agreement_info,
-      documents: Object.keys(documents).length > 0 ? documents : undefined,
+      agreeTerms: agreeTerms,
+      agreePrivacy: agreePrivacy,
+      agreeMarketing: agreeMarketing,
     };
 
     return NextResponse.json(successResponse, { status: 201 });
