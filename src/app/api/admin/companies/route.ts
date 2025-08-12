@@ -106,9 +106,9 @@ export async function GET(request: NextRequest) {
     const companyNames = new Set<string>();
     
     (data || []).forEach((user) => {
-      const companyInfo = user.company_info as any;
-      if (companyInfo && companyInfo.companyName) {
-        companyNames.add(companyInfo.companyName);
+      const companyInfo = user.company_info as Record<string, unknown> | null;
+      if (companyInfo && companyInfo.companyName && typeof companyInfo.companyName === 'string') {
+        companyNames.add(companyInfo.companyName as string);
       }
     });
 

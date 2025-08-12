@@ -49,6 +49,29 @@ interface LoginLog {
   sessionStatus: "활성" | "비활성" | "-";
 }
 
+interface GradeSetting {
+  id: number;
+  grade_name: string;
+  min_amount: number;
+  max_amount: number | null;
+  benefits: {
+    benefits?: string[];
+  };
+  userCount?: number;
+}
+
+interface GradeHistory {
+  id: number;
+  user_id: number;
+  previous_grade: string;
+  new_grade: string;
+  change_reason: string;
+  change_type: string;
+  created_at: string;
+  user?: { name: string; username: string; email: string };
+  changer?: { name: string; username: string };
+}
+
 interface UserStats {
   total: number;
   individual: number;
@@ -116,6 +139,19 @@ export default function UserManagementPage() {
   const [showStatusReasonModal, setShowStatusReasonModal] = useState(false);
   const [statusChangeReason, setStatusChangeReason] = useState("");
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+  
+  // 등급 관리 상태
+  const [gradeSettings, setGradeSettings] = useState<GradeSetting[]>([]);
+  const [gradeHistory, setGradeHistory] = useState<GradeHistory[]>([]);
+  const [showGradeSettingModal, setShowGradeSettingModal] = useState(false);
+  const [showBenefitModal, setShowBenefitModal] = useState(false);
+  const [showGradeHistoryModal, setShowGradeHistoryModal] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState<GradeSetting | null>(null);
+  const [manualGradeForm, setManualGradeForm] = useState({
+    userId: "",
+    newGrade: "",
+    reason: ""
+  });
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -413,11 +449,60 @@ export default function UserManagementPage() {
     }
   ]);
 
+  // 등급 설정 가져오기
+  const fetchGradeSettings = useCallback(async () => {
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) return;
+
+      const response = await fetch('/api/admin/grade-settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGradeSettings(data.gradeSettings || []);
+      }
+    } catch (error) {
+      console.error('등급 설정 조회 오류:', error);
+    }
+  }, []);
+
+  // 등급 이력 가져오기
+  const fetchGradeHistory = useCallback(async (userId?: string) => {
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) return;
+
+      const params = new URLSearchParams();
+      if (userId) params.append('userId', userId);
+
+      const response = await fetch(`/api/admin/grade-history?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGradeHistory(data.history || []);
+      }
+    } catch (error) {
+      console.error('등급 이력 조회 오류:', error);
+    }
+  }, []);
+
   // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
     fetchUsers();
     fetchCompanies();
-  }, [fetchUsers, fetchCompanies]);
+    if (activeTab === 'grades') {
+      fetchGradeSettings();
+      fetchGradeHistory();
+    }
+  }, [fetchUsers, fetchCompanies, fetchGradeSettings, fetchGradeHistory, activeTab]);
 
   // 검색 필터 변경 시 첫 페이지로 이동
   useEffect(() => {
@@ -570,13 +655,78 @@ export default function UserManagementPage() {
 
 
 
+
   // 등급 관리 핸들러들
   const handleGradeSettings = () => {
-    console.log("등급 기준 설정");
+    setShowGradeSettingModal(true);
   };
 
   const handleBenefitSettings = () => {
-    console.log("혜택 설정");
+    setShowBenefitModal(true);
+  };
+
+  const handleManualGradeAdjust = async () => {
+    if (!manualGradeForm.userId || !manualGradeForm.newGrade || !manualGradeForm.reason) {
+      alert('모든 필드를 입력해주세요.');
+      return;
+    }
+
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) throw new Error('토큰이 없습니다.');
+
+      const response = await fetch('/api/admin/grade-history', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(manualGradeForm),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(data.message);
+        setManualGradeForm({ userId: '', newGrade: '', reason: '' });
+        fetchUsers();
+        fetchGradeHistory();
+      } else {
+        alert(data.message || '등급 조정에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('등급 조정 오류:', error);
+      alert('등급 조정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const updateGradeSetting = async (gradeId: number, updates: {
+    min_amount?: number;
+    max_amount?: number | null;
+    benefits?: { benefits: string[] };
+  }) => {
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) throw new Error('토큰이 없습니다.');
+
+      const response = await fetch('/api/admin/grade-settings', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ gradeId, updates }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('등급 설정이 수정되었습니다.');
+        fetchGradeSettings();
+        setShowGradeSettingModal(false);
+      }
+    } catch (error) {
+      console.error('등급 설정 수정 오류:', error);
+      alert('등급 설정 수정에 실패했습니다.');
+    }
   };
 
   // 폼 제출 핸들러
@@ -946,63 +1096,89 @@ export default function UserManagementPage() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><span className="grade-badge grade-normal">일반</span></td>
-                <td>전월 사용금액 3만원 이하</td>
-                <td>기본 서비스 이용</td>
-                <td>{users.filter(u => u.grade === "일반").length}명</td>
-                <td><button className="btn-xs btn-secondary">수정</button></td>
-              </tr>
-              <tr>
-                <td><span className="grade-badge grade-silver">실버</span></td>
-                <td>전월 사용금액 3~5만원</td>
-                <td>생일쿠폰 제공</td>
-                <td>{users.filter(u => u.grade === "실버").length}명</td>
-                <td><button className="btn-xs btn-secondary">수정</button></td>
-              </tr>
-              <tr>
-                <td><span className="grade-badge grade-gold">골드</span></td>
-                <td>전월 사용금액 5~10만원</td>
-                <td>포인트 적립 혜택</td>
-                <td>{users.filter(u => u.grade === "골드").length}명</td>
-                <td><button className="btn-xs btn-secondary">수정</button></td>
-              </tr>
-              <tr>
-                <td><span className="grade-badge grade-vip">VIP</span></td>
-                <td>전월 사용금액 10만원 이상</td>
-                <td>전용쿠폰, 우선지원</td>
-                <td>{users.filter(u => u.grade === "VIP").length}명</td>
-                <td><button className="btn-xs btn-secondary">수정</button></td>
-              </tr>
+              {gradeSettings.map((grade) => (
+                <tr key={grade.id}>
+                  <td>
+                    <span className={`grade-badge grade-${grade.grade_name.toLowerCase() === '일반' ? 'normal' : grade.grade_name.toLowerCase()}`}>
+                      {grade.grade_name}
+                    </span>
+                  </td>
+                  <td>
+                    {grade.min_amount.toLocaleString()}원
+                    {grade.max_amount ? ` ~ ${grade.max_amount.toLocaleString()}원` : ' 이상'}
+                  </td>
+                  <td>
+                    {grade.benefits?.benefits?.join(', ') || '기본 서비스'}
+                  </td>
+                  <td>{grade.userCount || 0}명</td>
+                  <td>
+                    <button 
+                      className="btn-xs btn-secondary"
+                      onClick={() => {
+                        setSelectedGrade(grade);
+                        setShowGradeSettingModal(true);
+                      }}
+                    >
+                      수정
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
+        </div>
+        
+        {/* 등급 이력 보기 버튼 */}
+        <div className="grades-actions" style={{ marginTop: '20px' }}>
+          <button 
+            onClick={() => setShowGradeHistoryModal(true)}
+            className="btn-secondary"
+          >
+            등급 변경 이력 보기
+          </button>
         </div>
 
         {/* 수동 등급 조정 */}
         <div className="manual-grade-section">
           <h3>수동 등급 조정</h3>
           <div className="grade-adjust-form">
-            <select className="grade-select">
+            <select 
+              className="grade-select"
+              value={manualGradeForm.userId}
+              onChange={(e) => setManualGradeForm({...manualGradeForm, userId: e.target.value})}
+            >
               <option value="">회원 선택</option>
               {users.map(user => (
                 <option key={user.id} value={user.id}>
-                  {user.name} ({user.userId})
+                  {maskName(user.name)} ({user.userId}) - 현재: {user.grade || '일반'}
                 </option>
               ))}
             </select>
-            <select className="grade-select">
+            <select 
+              className="grade-select"
+              value={manualGradeForm.newGrade}
+              onChange={(e) => setManualGradeForm({...manualGradeForm, newGrade: e.target.value})}
+            >
               <option value="">새 등급 선택</option>
-              <option value="일반">일반</option>
-              <option value="실버">실버</option>
-              <option value="골드">골드</option>
-              <option value="VIP">VIP</option>
+              {gradeSettings.map(grade => (
+                <option key={grade.id} value={grade.grade_name}>
+                  {grade.grade_name}
+                </option>
+              ))}
             </select>
             <input 
               type="text" 
               placeholder="조정 사유 입력"
               className="reason-input"
+              value={manualGradeForm.reason}
+              onChange={(e) => setManualGradeForm({...manualGradeForm, reason: e.target.value})}
             />
-            <button className="btn-primary">등급 조정</button>
+            <button 
+              className="btn-primary"
+              onClick={handleManualGradeAdjust}
+            >
+              등급 조정
+            </button>
           </div>
         </div>
       </div>
@@ -1277,7 +1453,7 @@ export default function UserManagementPage() {
                               setPendingStatusChange(newStatus);
                               setShowStatusReasonModal(true);
                             } else {
-                              handleFormChange('status', newStatus as any);
+                              handleFormChange('status', newStatus as string);
                               handleFormChange('statusReason', '');
                             }
                           }}
@@ -1407,7 +1583,7 @@ export default function UserManagementPage() {
                     className="btn-primary"
                     onClick={() => {
                       if (statusChangeReason.trim()) {
-                        handleFormChange('status', pendingStatusChange as any);
+                        handleFormChange('status', pendingStatusChange as string);
                         handleFormChange('statusReason', statusChangeReason);
                         setShowStatusReasonModal(false);
                         setStatusChangeReason("");
@@ -1419,6 +1595,203 @@ export default function UserManagementPage() {
                     disabled={!statusChangeReason.trim()}
                   >
                     확인
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 등급 설정 모달 */}
+          {showGradeSettingModal && selectedGrade && (
+            <div className="modal-overlay" onClick={() => setShowGradeSettingModal(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                <div className="modal-header">
+                  <h3>{selectedGrade.grade_name} 등급 설정</h3>
+                  <button 
+                    className="modal-close"
+                    onClick={() => setShowGradeSettingModal(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>최소 금액</label>
+                      <input 
+                        type="number"
+                        defaultValue={selectedGrade.min_amount}
+                        className="form-input"
+                        id="min_amount"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>최대 금액 (없으면 비워두세요)</label>
+                      <input 
+                        type="number"
+                        defaultValue={selectedGrade.max_amount || ''}
+                        className="form-input"
+                        id="max_amount"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    className="btn-secondary"
+                    onClick={() => setShowGradeSettingModal(false)}
+                  >
+                    취소
+                  </button>
+                  <button 
+                    className="btn-primary"
+                    onClick={() => {
+                      const minAmount = (document.getElementById('min_amount') as HTMLInputElement).value;
+                      const maxAmount = (document.getElementById('max_amount') as HTMLInputElement).value;
+                      updateGradeSetting(selectedGrade.id, {
+                        min_amount: parseInt(minAmount),
+                        max_amount: maxAmount ? parseInt(maxAmount) : null
+                      });
+                    }}
+                  >
+                    저장
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 등급 이력 모달 */}
+          {showGradeHistoryModal && (
+            <div className="modal-overlay" onClick={() => setShowGradeHistoryModal(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px' }}>
+                <div className="modal-header">
+                  <h3>등급 변경 이력</h3>
+                  <button 
+                    className="modal-close"
+                    onClick={() => setShowGradeHistoryModal(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>변경일시</th>
+                        <th>회원명</th>
+                        <th>이전 등급</th>
+                        <th>→</th>
+                        <th>변경 등급</th>
+                        <th>변경 유형</th>
+                        <th>사유</th>
+                        <th>처리자</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {gradeHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>
+                            등급 변경 이력이 없습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        gradeHistory.map((history) => (
+                          <tr key={history.id}>
+                            <td>{new Date(history.created_at).toLocaleString('ko-KR')}</td>
+                            <td>{history.user?.name || '-'}</td>
+                            <td>
+                              <span className={`grade-badge grade-${history.previous_grade?.toLowerCase() === '일반' ? 'normal' : history.previous_grade?.toLowerCase()}`}>
+                                {history.previous_grade || '-'}
+                              </span>
+                            </td>
+                            <td>→</td>
+                            <td>
+                              <span className={`grade-badge grade-${history.new_grade.toLowerCase() === '일반' ? 'normal' : history.new_grade.toLowerCase()}`}>
+                                {history.new_grade}
+                              </span>
+                            </td>
+                            <td>{history.change_type === 'MANUAL' ? '수동' : '자동'}</td>
+                            <td>{history.change_reason || '-'}</td>
+                            <td>{history.changer?.name || '시스템'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    className="btn-secondary"
+                    onClick={() => setShowGradeHistoryModal(false)}
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 혜택 설정 모달 */}
+          {showBenefitModal && (
+            <div className="modal-overlay" onClick={() => setShowBenefitModal(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+                <div className="modal-header">
+                  <h3>등급별 혜택 설정</h3>
+                  <button 
+                    className="modal-close"
+                    onClick={() => setShowBenefitModal(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body">
+                  {gradeSettings.map((grade) => (
+                    <div key={grade.id} className="benefit-setting-item" style={{ marginBottom: '20px', padding: '15px', border: '1px solid #e0e0e0', borderRadius: '8px' }}>
+                      <h4 style={{ marginBottom: '10px' }}>
+                        <span className={`grade-badge grade-${grade.grade_name.toLowerCase() === '일반' ? 'normal' : grade.grade_name.toLowerCase()}`}>
+                          {grade.grade_name}
+                        </span>
+                      </h4>
+                      <div className="benefit-list">
+                        <div className="form-group">
+                          <label>혜택 목록 (콤마로 구분)</label>
+                          <textarea
+                            className="form-textarea"
+                            rows={3}
+                            defaultValue={grade.benefits?.benefits?.join(', ') || ''}
+                            id={`benefits-${grade.id}`}
+                            placeholder="예: 전용 상담사 배정, 무료 배송, 10% 할인"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    className="btn-secondary"
+                    onClick={() => setShowBenefitModal(false)}
+                  >
+                    취소
+                  </button>
+                  <button 
+                    className="btn-primary"
+                    onClick={async () => {
+                      for (const grade of gradeSettings) {
+                        const benefitsText = (document.getElementById(`benefits-${grade.id}`) as HTMLTextAreaElement)?.value;
+                        if (benefitsText !== undefined) {
+                          const benefits = benefitsText.split(',').map(b => b.trim()).filter(b => b);
+                          await updateGradeSetting(grade.id, {
+                            benefits: { benefits }
+                          });
+                        }
+                      }
+                      setShowBenefitModal(false);
+                      fetchGradeSettings();
+                    }}
+                  >
+                    저장
                   </button>
                 </div>
               </div>

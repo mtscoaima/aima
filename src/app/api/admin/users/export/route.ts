@@ -186,12 +186,12 @@ export async function GET(request: NextRequest) {
     const csvRows = [headers.join(",")];
 
     (data || []).forEach((user) => {
-      const company_info = user.company_info as any;
+      const company_info = user.company_info as Record<string, unknown> | null;
       
       const row = [
         escapeCSV(user.email), // 사용자ID
         escapeCSV(user.name), // 사용자명
-        escapeCSV(company_info?.companyName || ""), // 기업명
+        escapeCSV((company_info?.companyName as string) || ""), // 기업명
         escapeCSV(company_info ? "기업" : "개인"), // 회원유형
         escapeCSV(user.email), // 이메일
         escapeCSV(user.phone_number || ""), // 연락처

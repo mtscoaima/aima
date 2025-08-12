@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       .from("users")
       .select(
         `id, username, name, email, phone_number, company_info, created_at, updated_at, 
-         last_login_at, approval_status, is_active, role`,
+         last_login_at, approval_status, is_active, role, grade, withdrawal_type`,
         { count: "exact" }
       );
 
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
 
     // 데이터 변환
     const usersWithProcessedData = (data || []).map((user) => {
-      const company_info = user.company_info as any;
+      const company_info = user.company_info as Record<string, unknown> | null;
       
       return {
         id: user.id,
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
             ? (user.approval_status === "APPROVED" ? "정상" : 
                user.approval_status === "REJECTED" ? "거부" : "대기")
             : "정지"),
-        grade: "일반", // 추후 등급 시스템 구현 시 수정
+        grade: user.grade || "일반",
         role: user.role || "USER",
         joinDate: user.created_at?.split('T')[0] || "",
         updateDate: user.updated_at?.split('T')[0] || "",
@@ -269,36 +269,36 @@ export async function PUT(request: NextRequest) {
     }
 
     // 업데이트할 데이터 준비
-    const updateFields: any = {
+    const updateFields: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
     // 변경 전 값 저장 (로그용)
-    const changeLog: any = {
+    const changeLog: Record<string, unknown> = {
       changed_at: new Date().toISOString(),
       changed_by: adminId,
-      changes: {}
+      changes: {} as Record<string, unknown>
     };
 
     // 기본 정보 업데이트
     if (updateData.username && updateData.username !== currentUser.username) {
-      changeLog.changes.username = { from: currentUser.username, to: updateData.username };
+      (changeLog.changes as Record<string, unknown>).username = { from: currentUser.username, to: updateData.username };
       updateFields.username = updateData.username;
     }
     if (updateData.name && updateData.name !== currentUser.name) {
-      changeLog.changes.name = { from: currentUser.name, to: updateData.name };
+      (changeLog.changes as Record<string, unknown>).name = { from: currentUser.name, to: updateData.name };
       updateFields.name = updateData.name;
     }
     if (updateData.email && updateData.email !== currentUser.email) {
-      changeLog.changes.email = { from: currentUser.email, to: updateData.email };
+      (changeLog.changes as Record<string, unknown>).email = { from: currentUser.email, to: updateData.email };
       updateFields.email = updateData.email;
     }
     if (updateData.phone && updateData.phone !== currentUser.phone_number) {
-      changeLog.changes.phone = { from: currentUser.phone_number, to: updateData.phone };
+      (changeLog.changes as Record<string, unknown>).phone = { from: currentUser.phone_number, to: updateData.phone };
       updateFields.phone_number = updateData.phone;
     }
     if (updateData.role && ['USER', 'SALESPERSON', 'ADMIN'].includes(updateData.role) && updateData.role !== currentUser.role) {
-      changeLog.changes.role = { from: currentUser.role, to: updateData.role };
+      (changeLog.changes as Record<string, unknown>).role = { from: currentUser.role, to: updateData.role };
       updateFields.role = updateData.role;
     }
     if (updateData.status !== undefined) {
@@ -307,7 +307,7 @@ export async function PUT(request: NextRequest) {
            currentUser.approval_status === "REJECTED" ? "거부" : "대기")
         : "정지";
       
-      changeLog.changes.status = { from: previousStatus, to: updateData.status };
+      (changeLog.changes as Record<string, unknown>).status = { from: previousStatus, to: updateData.status };
       
       // 상태 변환
       if (updateData.status === "정상") {
@@ -370,7 +370,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 변경 로그 저장 (모든 변경사항)
-    if (Object.keys(changeLog.changes).length > 0) {
+    if (Object.keys(changeLog.changes as Record<string, unknown>).length > 0) {
       // 기존 변경 로그 가져오기
       const existingLogs = currentUser.change_logs || [];
       updateFields.change_logs = [...existingLogs, changeLog];
@@ -470,7 +470,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 비밀번호 해시
-    const bcrypt = require("bcryptjs");
+    const bcrypt = await import("bcryptjs");
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 회사 정보 생성

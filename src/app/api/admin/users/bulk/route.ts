@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       .eq("id", adminId)
       .single();
 
-    let updateFields: any = {
+    const updateFields: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     }
 
     let processedCount = 0;
-    let errors: string[] = [];
+    const errors: string[] = [];
 
     if (action === "delete") {
       // 일괄 삭제
