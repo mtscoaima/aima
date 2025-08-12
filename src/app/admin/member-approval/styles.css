@@ -136,31 +136,31 @@
 /* Column widths */
 .user-table th:nth-child(1),
 .user-table td:nth-child(1) {
-  width: 8%;
+  width: 6%;
 } /* ID */
 .user-table th:nth-child(2),
 .user-table td:nth-child(2) {
-  width: 12%;
+  width: 10%;
 } /* 이름 */
 .user-table th:nth-child(3),
 .user-table td:nth-child(3) {
-  width: 20%;
+  width: 18%;
 } /* 이메일 */
 .user-table th:nth-child(4),
 .user-table td:nth-child(4) {
-  width: 13%;
+  width: 12%;
 } /* 연락처 */
 .user-table th:nth-child(5),
 .user-table td:nth-child(5) {
-  width: 18%;
+  width: 16%;
 } /* 회사명 */
 .user-table th:nth-child(6),
 .user-table td:nth-child(6) {
-  width: 13%;
+  width: 12%;
 } /* 가입일 */
 .user-table th:nth-child(7),
 .user-table td:nth-child(7) {
-  width: 10%;
+  width: 18%;
 } /* 문서 */
 .user-table th:nth-child(8),
 .user-table td:nth-child(8) {
@@ -168,7 +168,7 @@
 } /* 상태 */
 .user-table th:nth-child(9),
 .user-table td:nth-child(9) {
-  width: 8%;
+  width: 10%;
 } /* 상태 변경 */
 
 .user-table tbody tr:hover {
@@ -372,6 +372,36 @@
   .user-table td {
     width: auto !important;
     min-width: 60px;
+  }
+
+  /* 모바일에서 문서 컬럼 더 넓게 */
+  .user-table th:nth-child(7),
+  .user-table td:nth-child(7) {
+    min-width: 120px !important;
+  }
+
+  /* 문서 컨테이너 모바일 최적화 */
+  .documents-container {
+    max-width: 120px;
+  }
+
+  .document-item {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .document-link {
+    font-size: 10px;
+    padding: 3px 6px;
+    min-width: 70px;
+    text-align: center;
+  }
+
+  .document-download {
+    align-self: center;
+    min-width: 20px;
+    height: 20px;
+    font-size: 8px;
   }
 }
 
