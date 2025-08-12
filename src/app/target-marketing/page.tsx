@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import TargetMarketingDetail from "@/components/TargetMarketingDetail";
 import NaverTalkTalkTab from "@/components/NaverTalkTalkTab";
+import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useBalance } from "@/contexts/BalanceContext";
@@ -3210,8 +3211,10 @@ function TargetMarketingPageContent() {
 
 export default function TargetMarketingPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <TargetMarketingPageContent />
-    </Suspense>
+    <AdvertiserGuardWithDisabled>
+      <Suspense fallback={<div>Loading...</div>}>
+        <TargetMarketingPageContent />
+      </Suspense>
+    </AdvertiserGuardWithDisabled>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect, ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect, ReactNode } from "react";
 
 interface RoleGuardProps {
   children: ReactNode;
@@ -228,6 +228,8 @@ export function AdvertiserGuardWithDisabled({
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
+
+
   // 로딩 중일 때
   if (isLoading) {
     return (
@@ -275,12 +277,18 @@ export function AdvertiserGuardWithDisabled({
   }
 
   // 로그인한 일반 사용자 중 승인 상태가 PENDING 또는 REJECTED인 경우 비활성화 상태로 렌더링
+  // approval_status가 없거나 APPROVED가 아니면 승인되지 않은 것으로 간주
+  const approvalStatus = user?.approval_status?.toUpperCase() || "PENDING";
+  const isPending = !approvalStatus || approvalStatus.includes("PENDING") || approvalStatus === "PENDING";
+  const isRejected = approvalStatus.includes("REJECTED") || approvalStatus === "REJECTED";
+  const isApproved = approvalStatus === "APPROVED";
+  
   if (
     isAuthenticated &&
     user &&
-    (user.approval_status === "PENDING" || user.approval_status === "REJECTED")
+    !isApproved && // APPROVED가 아닌 모든 경우
+    (isPending || isRejected)
   ) {
-    const isRejected = user.approval_status === "REJECTED";
     const title = isRejected ? "계정 승인 거부" : "계정 승인 필요";
     const message = isRejected
       ? "승인이 거부되었습니다. 고객센터(02-111-1111)로 문의해주세요"
