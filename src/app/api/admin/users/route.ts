@@ -175,10 +175,12 @@ export async function GET(request: NextRequest) {
         userType: company_info ? "기업" : "개인",
         email: user.email,
         phone: user.phone_number,
-        status: user.is_active 
-          ? (user.approval_status === "APPROVED" ? "정상" : 
-             user.approval_status === "REJECTED" ? "거부" : "대기")
-          : "정지",
+        status: user.withdrawal_type 
+          ? (user.withdrawal_type === "VOLUNTARY" ? "자진탈퇴" : "관리자탈퇴")
+          : (user.is_active 
+            ? (user.approval_status === "APPROVED" ? "정상" : 
+               user.approval_status === "REJECTED" ? "거부" : "대기")
+            : "정지"),
         grade: "일반", // 추후 등급 시스템 구현 시 수정
         role: user.role || "USER",
         joinDate: user.created_at?.split('T')[0] || "",
@@ -271,25 +273,68 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
+    // 변경 전 값 저장 (로그용)
+    const changeLog: any = {
+      changed_at: new Date().toISOString(),
+      changed_by: adminId,
+      changes: {}
+    };
+
     // 기본 정보 업데이트
-    if (updateData.username) updateFields.username = updateData.username;
-    if (updateData.name) updateFields.name = updateData.name;
-    if (updateData.email) updateFields.email = updateData.email;
-    if (updateData.phone) updateFields.phone_number = updateData.phone;
-    if (updateData.role && ['USER', 'SALESPERSON', 'ADMIN'].includes(updateData.role)) {
+    if (updateData.username && updateData.username !== currentUser.username) {
+      changeLog.changes.username = { from: currentUser.username, to: updateData.username };
+      updateFields.username = updateData.username;
+    }
+    if (updateData.name && updateData.name !== currentUser.name) {
+      changeLog.changes.name = { from: currentUser.name, to: updateData.name };
+      updateFields.name = updateData.name;
+    }
+    if (updateData.email && updateData.email !== currentUser.email) {
+      changeLog.changes.email = { from: currentUser.email, to: updateData.email };
+      updateFields.email = updateData.email;
+    }
+    if (updateData.phone && updateData.phone !== currentUser.phone_number) {
+      changeLog.changes.phone = { from: currentUser.phone_number, to: updateData.phone };
+      updateFields.phone_number = updateData.phone;
+    }
+    if (updateData.role && ['USER', 'SALESPERSON', 'ADMIN'].includes(updateData.role) && updateData.role !== currentUser.role) {
+      changeLog.changes.role = { from: currentUser.role, to: updateData.role };
       updateFields.role = updateData.role;
     }
     if (updateData.status !== undefined) {
+      const previousStatus = currentUser.is_active 
+        ? (currentUser.approval_status === "APPROVED" ? "정상" : 
+           currentUser.approval_status === "REJECTED" ? "거부" : "대기")
+        : "정지";
+      
+      changeLog.changes.status = { from: previousStatus, to: updateData.status };
+      
       // 상태 변환
       if (updateData.status === "정상") {
         updateFields.is_active = true;
         updateFields.approval_status = "APPROVED";
       } else if (updateData.status === "정지") {
         updateFields.is_active = false;
+        if (updateData.statusReason) {
+          updateFields.status_reason = updateData.statusReason;
+          changeLog.status_reason = updateData.statusReason;
+        }
       } else if (updateData.status === "대기") {
         updateFields.approval_status = "PENDING";
       } else if (updateData.status === "거부") {
         updateFields.approval_status = "REJECTED";
+      } else if (updateData.status === "자진탈퇴") {
+        updateFields.is_active = false;
+        updateFields.withdrawal_type = "VOLUNTARY";
+        updateFields.withdrawal_date = new Date().toISOString();
+      } else if (updateData.status === "관리자탈퇴") {
+        updateFields.is_active = false;
+        updateFields.withdrawal_type = "ADMIN";
+        updateFields.withdrawal_date = new Date().toISOString();
+        if (updateData.statusReason) {
+          updateFields.withdrawal_reason = updateData.statusReason;
+          changeLog.withdrawal_reason = updateData.statusReason;
+        }
       }
     }
 
@@ -322,6 +367,13 @@ export async function PUT(request: NextRequest) {
         new_status: updateFields.approval_status,
         admin_id: adminId,
       };
+    }
+
+    // 변경 로그 저장 (모든 변경사항)
+    if (Object.keys(changeLog.changes).length > 0) {
+      // 기존 변경 로그 가져오기
+      const existingLogs = currentUser.change_logs || [];
+      updateFields.change_logs = [...existingLogs, changeLog];
     }
 
     // 데이터베이스 업데이트

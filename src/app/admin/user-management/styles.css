@@ -235,6 +235,26 @@
   color: #d32f2f;
 }
 
+.status-voluntary-withdrawn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-admin-withdrawn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-pending {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-rejected {
+  background: #fce7f3;
+  color: #9f1239;
+}
+
 .status-success {
   background: #e8f5e8;
   color: #2e7d32;
@@ -569,6 +589,32 @@
   padding: 10px 0;
   font-size: 14px;
   color: #333333;
+}
+
+/* 상태 변경 사유 관련 스타일 */
+.form-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e8ec;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #0066ff;
+}
+
+.status-reason-display {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
 }
 
 /* 모바일 대응 */

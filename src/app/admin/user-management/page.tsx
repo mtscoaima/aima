@@ -16,12 +16,13 @@ interface User {
   userType: "개인" | "기업";
   email: string;
   phone: string;
-  status: "정상" | "정지" | "탈퇴" | "대기" | "거부";
+  status: "정상" | "정지" | "자진탈퇴" | "관리자탈퇴" | "대기" | "거부";
   grade: "일반" | "실버" | "골드" | "VIP";
   role: "USER" | "SALESPERSON" | "ADMIN";
   joinDate: string;
   updateDate: string;
   lastLogin: string;
+  statusReason?: string;
 }
 
 interface UserFormData {
@@ -33,7 +34,8 @@ interface UserFormData {
   company?: string;
   password?: string;
   role: "USER" | "SALESPERSON" | "ADMIN";
-  status?: "정상" | "정지" | "탈퇴" | "대기" | "거부";
+  status?: "정상" | "정지" | "자진탈퇴" | "관리자탈퇴" | "대기" | "거부";
+  statusReason?: string;
 }
 
 interface LoginLog {
@@ -70,6 +72,38 @@ interface ApiResponse<T> {
   };
 }
 
+// 개인정보 마스킹 함수의
+const maskName = (name: string): string => {
+  if (!name || name.length < 2) return name;
+  if (name.length === 2) {
+    return name[0] + '*';
+  }
+  return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
+};
+
+const maskPhone = (phone: string): string => {
+  if (!phone) return phone;
+  // 010-1234-5678 형식
+  const cleaned = phone.replace(/[^0-9]/g, '');
+  if (cleaned.length >= 11) {
+    return `${cleaned.substring(0, 3)}-****-${cleaned.substring(7)}`;
+  }
+  // 02-1234-5678 형식
+  if (cleaned.length >= 10) {
+    return `${cleaned.substring(0, 2)}-****-${cleaned.substring(6)}`;
+  }
+  return phone;
+};
+
+const maskEmail = (email: string): string => {
+  if (!email || !email.includes('@')) return email;
+  const [localPart, domain] = email.split('@');
+  if (localPart.length <= 2) {
+    return `**@${domain}`;
+  }
+  return `${localPart.substring(0, 2)}${'*'.repeat(localPart.length - 2)}@${domain}`;
+};
+
 export default function UserManagementPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"members" | "grades" | "access">("members");
@@ -79,6 +113,9 @@ export default function UserManagementPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [modalType, setModalType] = useState<"add" | "edit" | "detail">("add");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showStatusReasonModal, setShowStatusReasonModal] = useState(false);
+  const [statusChangeReason, setStatusChangeReason] = useState("");
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -597,8 +634,14 @@ export default function UserManagementPage() {
         return "status-active";
       case "정지":
         return "status-suspended";
-      case "탈퇴":
-        return "status-withdrawn";
+      case "자진탈퇴":
+        return "status-voluntary-withdrawn";
+      case "관리자탈퇴":
+        return "status-admin-withdrawn";
+      case "대기":
+        return "status-pending";
+      case "거부":
+        return "status-rejected";
       default:
         return "status-unknown";
     }
@@ -793,7 +836,7 @@ export default function UserManagementPage() {
                            />
                          </td>
                          <td>{user.userId}</td>
-                         <td>{user.name}</td>
+                         <td title={user.name}>{maskName(user.name)}</td>
                          <td>
                            <span className="role-badge">
                              {user.role === "ADMIN" ? "관리자" : 
@@ -802,8 +845,8 @@ export default function UserManagementPage() {
                          </td>
                          <td>{user.company || '-'}</td>
                          <td>{user.userType}</td>
-                         <td>{user.email}</td>
-                         <td>{user.phone}</td>
+                         <td title={user.email}>{maskEmail(user.email)}</td>
+                         <td title={user.phone}>{maskPhone(user.phone)}</td>
                          <td>
                            <span className={`status-badge ${getStatusBadge(user.status)}`}>
                              {user.status}
@@ -1227,15 +1270,31 @@ export default function UserManagementPage() {
                         <label>상태</label>
                         <select 
                           value={formData.status || "정상"}
-                          onChange={(e) => handleFormChange('status', e.target.value as "정상" | "정지" | "탈퇴" | "대기" | "거부")}
+                          onChange={(e) => {
+                            const newStatus = e.target.value;
+                            // 정지, 탈퇴 시 사유 입력 모달 표시
+                            if (newStatus === '정지' || newStatus === '관리자탈퇴') {
+                              setPendingStatusChange(newStatus);
+                              setShowStatusReasonModal(true);
+                            } else {
+                              handleFormChange('status', newStatus as any);
+                              handleFormChange('statusReason', '');
+                            }
+                          }}
                           className="form-select"
                         >
                           <option value="정상">정상</option>
                           <option value="정지">정지</option>
                           <option value="대기">대기</option>
                           <option value="거부">거부</option>
-                          <option value="탈퇴">탈퇴</option>
+                          <option value="자진탈퇴">자진탈퇴</option>
+                          <option value="관리자탈퇴">관리자탈퇴</option>
                         </select>
+                        {formData.statusReason && (
+                          <div className="status-reason-display">
+                            사유: {formData.statusReason}
+                          </div>
+                        )}
                       </div>
                     )}
                     
@@ -1296,6 +1355,71 @@ export default function UserManagementPage() {
                       {modalType === 'add' ? '등록' : '수정'}
                     </button>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 상태 변경 사유 입력 모달 */}
+          {showStatusReasonModal && (
+            <div className="modal-overlay" onClick={() => setShowStatusReasonModal(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                <div className="modal-header">
+                  <h3>상태 변경 사유 입력</h3>
+                  <button 
+                    className="modal-close"
+                    onClick={() => {
+                      setShowStatusReasonModal(false);
+                      setStatusChangeReason("");
+                      setPendingStatusChange(null);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label>
+                      {pendingStatusChange === '정지' ? '정지 사유' : '탈퇴 처리 사유'} *
+                    </label>
+                    <textarea
+                      value={statusChangeReason}
+                      onChange={(e) => setStatusChangeReason(e.target.value)}
+                      placeholder="상태 변경 사유를 입력해주세요"
+                      className="form-textarea"
+                      rows={4}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    className="btn-secondary"
+                    onClick={() => {
+                      setShowStatusReasonModal(false);
+                      setStatusChangeReason("");
+                      setPendingStatusChange(null);
+                    }}
+                  >
+                    취소
+                  </button>
+                  <button 
+                    className="btn-primary"
+                    onClick={() => {
+                      if (statusChangeReason.trim()) {
+                        handleFormChange('status', pendingStatusChange as any);
+                        handleFormChange('statusReason', statusChangeReason);
+                        setShowStatusReasonModal(false);
+                        setStatusChangeReason("");
+                        setPendingStatusChange(null);
+                      } else {
+                        alert('사유를 입력해주세요.');
+                      }
+                    }}
+                    disabled={!statusChangeReason.trim()}
+                  >
+                    확인
+                  </button>
                 </div>
               </div>
             </div>
