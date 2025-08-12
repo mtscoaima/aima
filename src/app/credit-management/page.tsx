@@ -5,7 +5,7 @@ import { useBalance } from "@/contexts/BalanceContext";
 import { CreditBalance } from "@/components/CreditBalance";
 import { CreditPackages } from "@/components/CreditPackages";
 import { PaymentModal } from "@/components/PaymentModal";
-import RoleGuard from "@/components/RoleGuard";
+import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import "./styles.css";
 
 interface Package {
@@ -740,10 +740,8 @@ const CreditManagementPage = () => {
     }
   };
 
-  const allowedRoles = ["USER", "ADMIN"];
-
   return (
-    <RoleGuard allowedRoles={allowedRoles}>
+    <AdvertiserGuardWithDisabled>
       <div className="credit-management-container">
         <div className="cm-container">
           <header className="cm-header">
@@ -785,7 +783,7 @@ const CreditManagementPage = () => {
           packageInfo={selectedPackage}
         />
       </div>
-    </RoleGuard>
+    </AdvertiserGuardWithDisabled>
   );
 };
 

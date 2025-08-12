@@ -87,14 +87,73 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // USER 역할을 가진 사용자 조회
-    const { data, error: dbError } = await supabase
+    // URL 쿼리 파라미터 파싱
+    const { searchParams } = new URL(request.url);
+    const userType = searchParams.get("userType") || "전체";
+    const company = searchParams.get("company") || "전체";
+    const searchType = searchParams.get("searchType") || "사용자ID";
+    const searchTerm = searchParams.get("searchTerm") || "";
+    const status = searchParams.get("status") || "전체";
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+
+    // 기본 쿼리 빌더
+    let query = supabase
       .from("users")
       .select(
-        "id, name, email, phone_number, company_info, created_at, documents, approval_status, approval_log"
-      )
-      .eq("role", "USER")
-      .order("created_at", { ascending: false });
+        `id, username, name, email, phone_number, company_info, created_at, updated_at, 
+         last_login_at, approval_status, is_active, role, grade, withdrawal_type`,
+        { count: "exact" }
+      );
+
+    // 상태 필터링
+    if (status !== "전체") {
+      if (status === "정상") {
+        query = query.eq("is_active", true).eq("approval_status", "APPROVED");
+      } else if (status === "정지") {
+        query = query.eq("is_active", false);
+      } else if (status === "대기") {
+        query = query.eq("approval_status", "PENDING");
+      } else if (status === "거부") {
+        query = query.eq("approval_status", "REJECTED");
+      }
+    }
+
+    // 회원유형 필터링
+    if (userType !== "전체") {
+      if (userType === "개인") {
+        query = query.is("company_info", null);
+      } else if (userType === "기업") {
+        query = query.not("company_info", "is", null);
+      }
+    }
+
+    // 기업명 필터링
+    if (company !== "전체") {
+      query = query.contains("company_info", { companyName: company });
+    }
+
+    // 검색어 필터링
+    if (searchTerm) {
+      if (searchType === "사용자ID") {
+        query = query.ilike("username", `%${searchTerm}%`);
+      } else if (searchType === "사용자이름") {
+        query = query.ilike("name", `%${searchTerm}%`);
+      } else if (searchType === "가입일") {
+        // 날짜 검색 (YYYY-MM-DD 형식)
+        query = query.gte("created_at", `${searchTerm}T00:00:00`)
+                     .lte("created_at", `${searchTerm}T23:59:59`);
+      }
+    }
+
+    // 페이징
+    const offset = (page - 1) * limit;
+    query = query.range(offset, offset + limit - 1);
+
+    // 정렬
+    query = query.order("created_at", { ascending: false });
+
+    const { data, error: dbError, count } = await query;
 
     if (dbError) {
       console.error("Supabase error:", dbError);
@@ -104,14 +163,60 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // approval_status가 없는 경우 기본값 설정
-    const usersWithStatus = (data || []).map((user) => ({
-      ...user,
-      approval_status: user.approval_status || "PENDING",
-    }));
+    // 데이터 변환
+    const usersWithProcessedData = (data || []).map((user) => {
+      const company_info = user.company_info as Record<string, unknown> | null;
+      
+      return {
+        id: user.id,
+        userId: user.username || user.id.toString(), // 실제 로그인 username 사용
+        name: user.name,
+        company: company_info?.companyName || "",
+        userType: company_info ? "기업" : "개인",
+        email: user.email,
+        phone: user.phone_number,
+        status: user.withdrawal_type 
+          ? (user.withdrawal_type === "VOLUNTARY" ? "자진탈퇴" : "관리자탈퇴")
+          : (user.is_active 
+            ? (user.approval_status === "APPROVED" ? "정상" : 
+               user.approval_status === "REJECTED" ? "거부" : "대기")
+            : "정지"),
+        grade: user.grade || "일반",
+        role: user.role || "USER",
+        joinDate: user.created_at?.split('T')[0] || "",
+        updateDate: user.updated_at?.split('T')[0] || "",
+        lastLogin: user.last_login_at ? 
+          new Date(user.last_login_at).toLocaleString('ko-KR') : "-",
+        approval_status: user.approval_status || "PENDING",
+      };
+    });
+
+    // 통계 계산
+    const { data: statsData } = await supabase
+      .from("users")
+      .select("approval_status, is_active, company_info, role", { count: "exact" });
+
+    const stats = {
+      total: count || 0,
+      individual: statsData?.filter(u => !u.company_info).length || 0,
+      business: statsData?.filter(u => u.company_info).length || 0,
+      active: statsData?.filter(u => u.is_active && u.approval_status === "APPROVED").length || 0,
+      suspended: statsData?.filter(u => !u.is_active).length || 0,
+      pending: statsData?.filter(u => u.approval_status === "PENDING").length || 0,
+      rejected: statsData?.filter(u => u.approval_status === "REJECTED").length || 0,
+    };
+
+    const totalPages = Math.ceil((count || 0) / limit);
 
     return NextResponse.json({
-      users: usersWithStatus,
+      users: usersWithProcessedData,
+      stats,
+      pagination: {
+        total: count || 0,
+        page,
+        limit,
+        totalPages,
+      },
       success: true,
     });
   } catch (error) {
@@ -138,36 +243,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { userId, approval_status } = await request.json();
+    const requestData = await request.json();
+    const { userId, ...updateData } = requestData;
 
-    if (!userId || !approval_status) {
+    if (!userId) {
       return NextResponse.json(
-        { message: "사용자 ID와 상태가 필요합니다.", success: false },
+        { message: "사용자 ID가 필요합니다.", success: false },
         { status: 400 }
       );
     }
 
-    // 관리자 정보 조회
-    const { data: adminUser, error: adminError } = await supabase
-      .from("users")
-      .select("name, email")
-      .eq("id", adminId)
-      .single();
-
-    if (adminError || !adminUser) {
-      console.error("Admin user query error:", adminError);
-      return NextResponse.json(
-        { message: "관리자 정보 조회 중 오류가 발생했습니다.", success: false },
-        { status: 500 }
-      );
-    }
-
-    // 현재 사용자의 기존 상태 조회
+    // 현재 사용자 정보 조회
     const { data: currentUser, error: currentUserError } = await supabase
       .from("users")
-      .select("approval_status")
+      .select("*")
       .eq("id", userId)
-      .eq("role", "USER")
       .single();
 
     if (currentUserError || !currentUser) {
@@ -178,43 +268,322 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 상태가 실제로 변경되는 경우에만 로그 기록
-    if (currentUser.approval_status !== approval_status) {
-      // approval_log 생성
-      const approvalLog = {
-        changed_by: adminUser.name || adminUser.email,
-        changed_by_email: adminUser.email,
-        changed_at: new Date().toISOString(),
-        previous_status: currentUser.approval_status || "PENDING",
-        new_status: approval_status,
-        admin_id: adminId,
-      };
+    // 업데이트할 데이터 준비
+    const updateFields: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
 
-      // 상태와 로그 동시 업데이트
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({
-          approval_status,
-          approval_log: approvalLog,
-        })
-        .eq("id", userId)
-        .eq("role", "USER"); // USER 역할만 업데이트 가능
+    // 변경 전 값 저장 (로그용)
+    const changeLog: Record<string, unknown> = {
+      changed_at: new Date().toISOString(),
+      changed_by: adminId,
+      changes: {} as Record<string, unknown>
+    };
 
-      if (updateError) {
-        console.error("Supabase update error:", updateError);
-        return NextResponse.json(
-          { message: "상태 업데이트 중 오류가 발생했습니다.", success: false },
-          { status: 500 }
-        );
+    // 기본 정보 업데이트
+    if (updateData.username && updateData.username !== currentUser.username) {
+      (changeLog.changes as Record<string, unknown>).username = { from: currentUser.username, to: updateData.username };
+      updateFields.username = updateData.username;
+    }
+    if (updateData.name && updateData.name !== currentUser.name) {
+      (changeLog.changes as Record<string, unknown>).name = { from: currentUser.name, to: updateData.name };
+      updateFields.name = updateData.name;
+    }
+    if (updateData.email && updateData.email !== currentUser.email) {
+      (changeLog.changes as Record<string, unknown>).email = { from: currentUser.email, to: updateData.email };
+      updateFields.email = updateData.email;
+    }
+    if (updateData.phone && updateData.phone !== currentUser.phone_number) {
+      (changeLog.changes as Record<string, unknown>).phone = { from: currentUser.phone_number, to: updateData.phone };
+      updateFields.phone_number = updateData.phone;
+    }
+    if (updateData.role && ['USER', 'SALESPERSON', 'ADMIN'].includes(updateData.role) && updateData.role !== currentUser.role) {
+      (changeLog.changes as Record<string, unknown>).role = { from: currentUser.role, to: updateData.role };
+      updateFields.role = updateData.role;
+    }
+    if (updateData.status !== undefined) {
+      const previousStatus = currentUser.is_active 
+        ? (currentUser.approval_status === "APPROVED" ? "정상" : 
+           currentUser.approval_status === "REJECTED" ? "거부" : "대기")
+        : "정지";
+      
+      (changeLog.changes as Record<string, unknown>).status = { from: previousStatus, to: updateData.status };
+      
+      // 상태 변환
+      if (updateData.status === "정상") {
+        updateFields.is_active = true;
+        updateFields.approval_status = "APPROVED";
+      } else if (updateData.status === "정지") {
+        updateFields.is_active = false;
+        if (updateData.statusReason) {
+          updateFields.status_reason = updateData.statusReason;
+          changeLog.status_reason = updateData.statusReason;
+        }
+      } else if (updateData.status === "대기") {
+        updateFields.approval_status = "PENDING";
+      } else if (updateData.status === "거부") {
+        updateFields.approval_status = "REJECTED";
+      } else if (updateData.status === "자진탈퇴") {
+        updateFields.is_active = false;
+        updateFields.withdrawal_type = "VOLUNTARY";
+        updateFields.withdrawal_date = new Date().toISOString();
+      } else if (updateData.status === "관리자탈퇴") {
+        updateFields.is_active = false;
+        updateFields.withdrawal_type = "ADMIN";
+        updateFields.withdrawal_date = new Date().toISOString();
+        if (updateData.statusReason) {
+          updateFields.withdrawal_reason = updateData.statusReason;
+          changeLog.withdrawal_reason = updateData.statusReason;
+        }
       }
     }
 
+    // 기업 정보 업데이트
+    if (updateData.company !== undefined || updateData.userType !== undefined) {
+      if (updateData.userType === "개인") {
+        updateFields.company_info = null;
+      } else if (updateData.userType === "기업" && updateData.company) {
+        const existingCompanyInfo = currentUser.company_info || {};
+        updateFields.company_info = {
+          ...existingCompanyInfo,
+          companyName: updateData.company,
+        };
+      }
+    }
+
+    // 승인 상태 변경 시 로그 기록
+    if (updateFields.approval_status && currentUser.approval_status !== updateFields.approval_status) {
+      const { data: adminUser } = await supabase
+        .from("users")
+        .select("name, email")
+        .eq("id", adminId)
+        .single();
+
+      updateFields.approval_log = {
+        changed_by: adminUser?.name || adminUser?.email,
+        changed_by_email: adminUser?.email,
+        changed_at: new Date().toISOString(),
+        previous_status: currentUser.approval_status || "PENDING",
+        new_status: updateFields.approval_status,
+        admin_id: adminId,
+      };
+    }
+
+    // 변경 로그 저장 (모든 변경사항)
+    if (Object.keys(changeLog.changes as Record<string, unknown>).length > 0) {
+      // 기존 변경 로그 가져오기
+      const existingLogs = currentUser.change_logs || [];
+      updateFields.change_logs = [...existingLogs, changeLog];
+    }
+
+    // 데이터베이스 업데이트
+    const { error: updateError } = await supabase
+      .from("users")
+      .update(updateFields)
+      .eq("id", userId);
+
+    if (updateError) {
+      console.error("Supabase update error:", updateError);
+      return NextResponse.json(
+        { message: "회원 정보 업데이트 중 오류가 발생했습니다.", success: false },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
-      message: "상태가 성공적으로 업데이트되었습니다.",
+      message: "회원 정보가 성공적으로 업데이트되었습니다.",
       success: true,
     });
   } catch (error) {
-    console.error("Error updating user status:", error);
+    console.error("Error updating user:", error);
+    return NextResponse.json(
+      { message: "서버 오류가 발생했습니다.", success: false },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // 관리자 권한 확인
+    const { isValid, error: authError } = await verifyAdminToken(request);
+    if (!isValid) {
+      return NextResponse.json(
+        { message: authError || "관리자 권한이 필요합니다.", success: false },
+        { status: 403 }
+      );
+    }
+
+    const {
+      username,
+      name,
+      email,
+      phone,
+      userType,
+      company,
+      password = "temp123!", // 임시 비밀번호
+      role = "USER"
+    } = await request.json();
+
+    // role 유효성 검사
+    if (!['USER', 'SALESPERSON', 'ADMIN'].includes(role)) {
+      return NextResponse.json(
+        { message: "유효하지 않은 권한입니다.", success: false },
+        { status: 400 }
+      );
+    }
+
+    // 필수 필드 검증
+    if (!username || !name || !email || !phone) {
+      return NextResponse.json(
+        { message: "사용자ID, 이름, 이메일, 연락처는 필수 입력 사항입니다.", success: false },
+        { status: 400 }
+      );
+    }
+
+    // 사용자ID 중복 확인
+    const { data: existingUsername } = await supabase
+      .from("users")
+      .select("id")
+      .eq("username", username)
+      .single();
+
+    if (existingUsername) {
+      return NextResponse.json(
+        { message: "이미 존재하는 사용자ID입니다.", success: false },
+        { status: 400 }
+      );
+    }
+
+    // 이메일 중복 확인
+    const { data: existingEmail } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .single();
+
+    if (existingEmail) {
+      return NextResponse.json(
+        { message: "이미 존재하는 이메일입니다.", success: false },
+        { status: 400 }
+      );
+    }
+
+    // 비밀번호 해시
+    const bcrypt = await import("bcryptjs");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 회사 정보 생성
+    const companyInfo = userType === "기업" && company ? {
+      companyName: company,
+    } : null;
+
+    // 새 사용자 생성
+    const now = new Date().toISOString();
+    const { data: newUser, error: insertError } = await supabase
+      .from("users")
+      .insert({
+        username,
+        name,
+        email,
+        password: hashedPassword,
+        phone_number: phone,
+        role,
+        approval_status: "APPROVED", // 관리자가 생성하는 경우 즉시 승인
+        is_active: true,
+        email_verified: true,
+        company_info: companyInfo,
+        created_at: now,
+        updated_at: now,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Database insert error:", insertError);
+      return NextResponse.json(
+        { message: "회원 등록 중 오류가 발생했습니다.", success: false },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      message: "회원이 성공적으로 등록되었습니다.",
+      user: newUser,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    return NextResponse.json(
+      { message: "서버 오류가 발생했습니다.", success: false },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // 관리자 권한 확인
+    const { isValid, error: authError } = await verifyAdminToken(request);
+    if (!isValid) {
+      return NextResponse.json(
+        { message: authError || "관리자 권한이 필요합니다.", success: false },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { message: "사용자 ID가 필요합니다.", success: false },
+        { status: 400 }
+      );
+    }
+
+    // 사용자 존재 확인
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("id, role")
+      .eq("id", userId)
+      .single();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { message: "사용자를 찾을 수 없습니다.", success: false },
+        { status: 404 }
+      );
+    }
+
+    // ADMIN 역할은 삭제 불가
+    if (user.role === "ADMIN") {
+      return NextResponse.json(
+        { message: "관리자 계정은 삭제할 수 없습니다.", success: false },
+        { status: 400 }
+      );
+    }
+
+    // 사용자 삭제
+    const { error: deleteError } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", userId);
+
+    if (deleteError) {
+      console.error("Delete error:", deleteError);
+      return NextResponse.json(
+        { message: "회원 삭제 중 오류가 발생했습니다.", success: false },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      message: "회원이 성공적으로 삭제되었습니다.",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error);
     return NextResponse.json(
       { message: "서버 오류가 발생했습니다.", success: false },
       { status: 500 }

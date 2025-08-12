@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
       createdAt: user.created_at,
       updatedAt: user.updated_at,
       lastLoginAt: user.last_login_at,
-      approval_status: user.approval_status,
+      approval_status: user.approval_status || "PENDING", // 기본값 설정
       agreeTerms: user.agree_terms || false,
       agreePrivacy: user.agree_privacy || false,
       smsMarketingConsent: user.agree_sms_marketing || false,

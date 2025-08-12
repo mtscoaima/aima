@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
@@ -64,33 +65,33 @@ export async function POST(request: NextRequest) {
     const birthDate = formData.get("birthDate") as string;
 
     // 본인인증 정보 추출
-    const verificationId = formData.get("verificationId") as string;
+    const _verificationId = formData.get("verificationId") as string;
     const ci = formData.get("ci") as string;
 
     // 기업 정보 추출
-    const companyName = formData.get("companyName") as string;
-    const ceoName = formData.get("ceoName") as string;
-    const businessNumber = formData.get("businessNumber") as string;
-    const companyAddress = formData.get("companyAddress") as string;
-    const companyAddressDetail = formData.get("companyAddressDetail") as string;
-    const companyPhone = formData.get("companyPhone") as string;
-    const toll080Number = formData.get("toll080Number") as string;
-    const customerServiceNumber = formData.get(
+    const _companyName = formData.get("companyName") as string;
+    const _ceoName = formData.get("ceoName") as string;
+    const _businessNumber = formData.get("businessNumber") as string;
+    const _companyAddress = formData.get("companyAddress") as string;
+    const _companyAddressDetail = formData.get("companyAddressDetail") as string;
+    const _companyPhone = formData.get("companyPhone") as string;
+    const _toll080Number = formData.get("toll080Number") as string;
+    const _customerServiceNumber = formData.get(
       "customerServiceNumber"
     ) as string;
 
     // 세금계산서 정보 추출
-    const taxInvoiceEmail = formData.get("taxInvoiceEmail") as string;
-    const taxInvoiceManager = formData.get("taxInvoiceManager") as string;
-    const taxInvoiceContact = formData.get("taxInvoiceContact") as string;
+    const _taxInvoiceEmail = formData.get("taxInvoiceEmail") as string;
+    const _taxInvoiceManager = formData.get("taxInvoiceManager") as string;
+    const _taxInvoiceContact = formData.get("taxInvoiceContact") as string;
 
     // 추천인 정보
-    const referrerName = formData.get("referrerName") as string;
+    const _referrerName = formData.get("referrerName") as string;
     const referrerCode = formData.get("referrerCode") as string;
 
     // 소셜 로그인 정보
-    const socialLoginType = formData.get("socialLoginType") as string;
-    const socialUserId = formData.get("socialUserId") as string;
+    const _socialLoginType = formData.get("socialLoginType") as string;
+    const _socialUserId = formData.get("socialUserId") as string;
 
     // 마케팅 동의
     const agreeMarketing = formData.get("agreeMarketing") === "true";
