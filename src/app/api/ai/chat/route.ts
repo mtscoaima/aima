@@ -232,12 +232,22 @@ export async function POST(request: NextRequest) {
           controller.close();
         } catch (error) {
           console.error("스트리밍 오류:", error);
+          
+          let errorMessage = "스트리밍 중 오류가 발생했습니다.";
+          
+          if (error instanceof Error) {
+            if (error.message.includes("exceeded your current quota")) {
+              errorMessage = "AI 서비스 사용량이 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.";
+            } else if (error.message.includes("insufficient_quota")) {
+              errorMessage = "AI 서비스 사용량이 부족합니다. 관리자에게 문의해 주세요.";
+            } else {
+              errorMessage = error.message;
+            }
+          }
+          
           const errorData = JSON.stringify({
             type: "error",
-            error:
-              error instanceof Error
-                ? error.message
-                : "스트리밍 중 오류가 발생했습니다.",
+            error: errorMessage,
           });
           controller.enqueue(
             new TextEncoder().encode(`data: ${errorData}\n\n`)
@@ -258,8 +268,16 @@ export async function POST(request: NextRequest) {
     console.error("OpenAI API 오류:", error);
 
     if (error instanceof Error) {
+      let errorMessage = `AI 서비스 오류: ${error.message}`;
+      
+      if (error.message.includes("exceeded your current quota")) {
+        errorMessage = "AI 서비스 사용량이 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.";
+      } else if (error.message.includes("insufficient_quota")) {
+        errorMessage = "AI 서비스 사용량이 부족합니다. 관리자에게 문의해 주세요.";
+      }
+      
       return NextResponse.json(
-        { error: `AI 서비스 오류: ${error.message}` },
+        { error: errorMessage },
         { status: 500 }
       );
     }

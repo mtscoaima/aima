@@ -331,6 +331,12 @@ export default function NaverTalkTalkTab({
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleStartChat();
+                }
+              }}
               placeholder="Ex) 서울 홍대 헤어샵 오픈 행사 카페 50%할인 이벤트 홍보 여름 맞이 최대 50% 할인 이벤트 홍보 카페 시즌 음료 무료 시음 이벤트 안내"
               className="chat-input-field"
               rows={4}

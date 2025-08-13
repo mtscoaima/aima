@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, Suspense } from "react";
+import React, { useState, useRef, useEffect, Suspense, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Sparkles, X } from "lucide-react";
@@ -1434,7 +1434,7 @@ function TargetMarketingDetailContent({
   }, [refreshTransactions, restoreState]);
 
   // 메시지 전송 처리
-  const handleSendMessage = async (messageOverride?: string) => {
+  const handleSendMessage = useCallback(async (messageOverride?: string) => {
     const messageToSend = messageOverride || inputMessage;
     if (!messageToSend.trim() || isLoading) return;
 
@@ -1730,7 +1730,24 @@ function TargetMarketingDetailContent({
       setIsLoading(false);
       setShowTypingIndicator(false);
     }
-  };
+  }, [messages, inputMessage, isLoading]);
+
+  // 초기 메시지 처리
+  useEffect(() => {
+    if (!isInitialized) {
+      const initialMessage = sessionStorage.getItem("initialMessage");
+      if (initialMessage) {
+        setIsInitialized(true);
+        // 초기 메시지를 자동으로 전송
+        setTimeout(() => {
+          handleSendMessage(initialMessage);
+        }, 500);
+        // 세션 스토리지에서 초기 메시지 제거
+        sessionStorage.removeItem("initialMessage");
+        sessionStorage.removeItem("initialFile");
+      }
+    }
+  }, [isInitialized, handleSendMessage]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
