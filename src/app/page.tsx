@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import SalespersonDashboard from "../components/SalespersonDashboard";
 
 export default function Home() {
   const { isAuthenticated, user } = useAuth();
-  const router = useRouter();
 
   // 로그인 직후에만 적용되는 리다이렉트 로직을 위한 useEffect는 제거
   // 루트 페이지는 로그인 여부와 관계없이 접근 가능하도록 변경
