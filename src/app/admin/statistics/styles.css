@@ -271,6 +271,23 @@
   margin-bottom: 24px;
 }
 
+/* 테이블과 차트 가로 배치 */
+.chart-table-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.chart-table-left {
+  flex: 1;
+  min-width: 400px;
+}
+
+.chart-table-right {
+  flex: 1;
+  min-width: 500px;
+}
+
 .data-preview h4 {
   margin: 0 0 16px 0;
   font-size: 16px;
@@ -302,21 +319,38 @@
   font-size: 14px;
   color: #333333;
   border-bottom: 1px solid #e5e8ec;
+  width: auto;
 }
+
+.data-table th:nth-child(1) { width: 120px; } /* 기간 */
+.data-table th:nth-child(2) { width: 100px; } /* 가입자/로그인 수 */
+.data-table th:nth-child(3) { width: 100px; } /* 탈퇴자/실패 횟수 */
+.data-table th:nth-child(4) { width: 100px; } /* 순증가/성공률 */
+.data-table th:nth-child(5) { width: 100px; } /* 증감률 */
 
 .data-table td {
   padding: 12px 16px;
   font-size: 14px;
   color: #333333;
   border-bottom: 1px solid #f5f7fa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
+
+.data-table td:nth-child(1) { width: 120px; }
+.data-table td:nth-child(2) { width: 100px; }
+.data-table td:nth-child(3) { width: 100px; }
+.data-table td:nth-child(4) { width: 100px; }
+.data-table td:nth-child(5) { width: 100px; }
 
 .data-table tbody tr:hover {
   background: #f8f9fa;
 }
 
 .number-cell {
-  text-align: right;
+  text-align: left;
   font-weight: 500;
 }
 
@@ -333,7 +367,7 @@
   background: #fafbfc;
   border-radius: 8px;
   padding: 20px;
-  margin-top: 20px;
+  margin-top: 40px;
 }
 
 .line-chart-wrapper {
@@ -342,33 +376,17 @@
   border-radius: 8px;
   background: white;
   border: 1px solid #e5e8ec;
+  width: 100%;
 }
 
 .line-chart-svg {
   display: block;
   width: 100%;
   height: 300px;
+  pointer-events: none;
 }
 
-/* 차트 포인트 호버 효과 */
-.chart-point {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
-}
 
-.chart-point:hover {
-  transform: scale(1.3);
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
-}
-
-.signup-point:hover {
-  fill: #0052cc;
-}
-
-.withdrawal-point:hover {
-  fill: #dc2626;
-}
 
 /* 차트 범례 */
 .chart-legend {
@@ -401,6 +419,201 @@
 
 .legend-color.withdrawal-line {
   background: #ef4444;
+}
+
+.legend-color.login-line {
+  background: #22c55e;
+}
+
+.legend-color.failure-line {
+  background: #ef4444;
+}
+
+/* 차트 네비게이션 */
+.chart-navigation-container {
+  margin: 16px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.chart-navigation {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #f8f9fa;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e8ec;
+}
+
+.chart-nav-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-nav-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.chart-nav-btn:disabled {
+  background: #f9fafb;
+  color: #d1d5db;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.chart-info {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+  min-width: 100px;
+  text-align: center;
+}
+
+/* 차트 포인트 기본 스타일 */
+.chart-point {
+  transition: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+.chart-point:hover {
+  transform: none !important;
+  fill: currentColor !important;
+  scale: none !important;
+  filter: none !important;
+}
+
+/* 모든 차트 관련 hover 효과 비활성화 */
+.line-chart-svg * {
+  pointer-events: none !important;
+}
+
+.line-chart-svg {
+  pointer-events: none !important;
+}
+
+/* 사용자 랭킹 섹션 */
+.ranking-container {
+  background: white;
+  border: 1px solid #e5e8ec;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ranking-table-container {
+  border: 1px solid #e5e8ec;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.ranking-table thead {
+  background: #f8f9fa;
+}
+
+.ranking-table th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333333;
+  border-bottom: 1px solid #e5e8ec;
+}
+
+.ranking-table td {
+  padding: 16px 12px;
+  font-size: 14px;
+  color: #333333;
+  border-bottom: 1px solid #f5f7fa;
+  vertical-align: middle;
+}
+
+.ranking-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+/* 순위 뱃지 */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rank-badge.rank-top {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #b8860b;
+  border: 2px solid #f59e0b;
+}
+
+.rank-badge.rank-normal {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+/* 테이블 셀 스타일 */
+.username-cell {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.email-cell {
+  font-family: 'Courier New', monospace;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.datetime-cell {
+  font-family: 'Courier New', monospace;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* 회원 유형 뱃지 */
+.member-type-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.member-type-badge.business {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.member-type-badge.individual {
+  background: #f3e8ff;
+  color: #7c3aed;
 }
 
 
@@ -469,6 +682,18 @@
     text-align: center;
   }
 
+  /* 모바일에서 가로 배치를 세로 배치로 변경 */
+  .chart-table-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .chart-table-left,
+  .chart-table-right {
+    min-width: auto;
+    width: 100%;
+  }
+
   .data-table {
     font-size: 13px;
   }
@@ -494,5 +719,31 @@
   .legend-color {
     width: 14px;
     height: 14px;
+  }
+
+  .ranking-table {
+    font-size: 13px;
+  }
+
+  .ranking-table th,
+  .ranking-table td {
+    padding: 12px 8px;
+  }
+
+  .rank-badge {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .username-cell,
+  .email-cell,
+  .datetime-cell {
+    font-size: 12px;
+  }
+
+  .member-type-badge {
+    font-size: 11px;
+    padding: 3px 8px;
   }
 }

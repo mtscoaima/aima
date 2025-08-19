@@ -29,13 +29,31 @@ const mockSummaryData = {
 };
 
 const mockDailyData = [
+  { date: "2025-01-01", signups: 98, withdrawals: 8 },
+  { date: "2025-01-02", signups: 112, withdrawals: 12 },
+  { date: "2025-01-03", signups: 134, withdrawals: 9 },
+  { date: "2025-01-04", signups: 156, withdrawals: 15 },
+  { date: "2025-01-05", signups: 143, withdrawals: 11 },
+  { date: "2025-01-06", signups: 167, withdrawals: 7 },
+  { date: "2025-01-07", signups: 189, withdrawals: 13 },
+  { date: "2025-01-08", signups: 145, withdrawals: 10 },
+  { date: "2025-01-09", signups: 178, withdrawals: 8 },
+  { date: "2025-01-10", signups: 134, withdrawals: 16 },
+  { date: "2025-01-11", signups: 201, withdrawals: 12 },
+  { date: "2025-01-12", signups: 156, withdrawals: 9 },
+  { date: "2025-01-13", signups: 167, withdrawals: 14 },
+  { date: "2025-01-14", signups: 198, withdrawals: 11 },
   { date: "2025-01-15", signups: 128, withdrawals: 11 },
   { date: "2025-01-16", signups: 145, withdrawals: 8 },
   { date: "2025-01-17", signups: 134, withdrawals: 15 },
   { date: "2025-01-18", signups: 167, withdrawals: 7 },
   { date: "2025-01-19", signups: 189, withdrawals: 12 },
   { date: "2025-01-20", signups: 156, withdrawals: 9 },
-  { date: "2025-01-21", signups: 171, withdrawals: 14 }
+  { date: "2025-01-21", signups: 171, withdrawals: 14 },
+  { date: "2025-01-22", signups: 183, withdrawals: 13 },
+  { date: "2025-01-23", signups: 142, withdrawals: 10 },
+  { date: "2025-01-24", signups: 198, withdrawals: 16 },
+  { date: "2025-01-25", signups: 176, withdrawals: 8 }
 ];
 
 const mockWeeklyData = [
@@ -57,17 +75,13 @@ const mockMonthlyData = [
 
 export default function MemberSignupStatistics() {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("daily");
-  const [chartWidth, setChartWidth] = useState(800);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const itemsPerPage = 10;
 
+  // 기간 변경 시 인덱스 초기화
   useEffect(() => {
-    const updateChartWidth = () => {
-      setChartWidth(window.innerWidth > 768 ? 800 : 600);
-    };
-
-    updateChartWidth();
-    window.addEventListener('resize', updateChartWidth);
-    return () => window.removeEventListener('resize', updateChartWidth);
-  }, []);
+    setCurrentIndex(0);
+  }, [selectedPeriod]);
 
   const getCurrentData = () => {
     switch (selectedPeriod) {
@@ -120,11 +134,29 @@ export default function MemberSignupStatistics() {
   };
 
   const getMaxValue = () => {
-    const data = getCurrentData();
+    const data = getVisibleData();
+    if (data.length === 0) return 100;
     const maxSignups = Math.max(...data.map(item => item.signups));
     const maxWithdrawals = Math.max(...data.map(item => item.withdrawals));
     return Math.max(maxSignups, maxWithdrawals);
   };
+
+  const getVisibleData = () => {
+    const allData = getCurrentData();
+    return allData.slice(currentIndex, currentIndex + itemsPerPage);
+  };
+
+  const handlePrevious = () => {
+    setCurrentIndex(Math.max(0, currentIndex - itemsPerPage));
+  };
+
+  const handleNext = () => {
+    const allData = getCurrentData();
+    setCurrentIndex(Math.min(allData.length - itemsPerPage, currentIndex + itemsPerPage));
+  };
+
+  const canGoPrevious = currentIndex > 0;
+  const canGoNext = currentIndex + itemsPerPage < getCurrentData().length;
 
   return (
     <div className="statistics-content">
@@ -193,198 +225,263 @@ export default function MemberSignupStatistics() {
           </div>
         </div>
         
-        {/* 데이터 테이블 형태로 임시 표시 */}
-        <div className="data-preview">
-          <h4>{getPeriodLabel()} 가입/탈퇴 데이터</h4>
-          <div className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>기간</th>
-                  <th>가입자 수</th>
-                  <th>탈퇴자 수</th>
-                  <th>순증가</th>
-                  <th>증감률</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getCurrentData().slice(-7).map((item, index) => {
-                  const netGrowth = item.signups - item.withdrawals;
-                  const growthRate = index > 0 
-                    ? ((netGrowth - (getCurrentData()[getCurrentData().length - 8 + index - 1]?.signups - getCurrentData()[getCurrentData().length - 8 + index - 1]?.withdrawals || 0)) / (getCurrentData()[getCurrentData().length - 8 + index - 1]?.signups - getCurrentData()[getCurrentData().length - 8 + index - 1]?.withdrawals || 1) * 100).toFixed(1)
-                    : "0.0";
-                  
-                  return (
-                    <tr key={index}>
-                      <td>{'date' in item ? item.date : item.period}</td>
-                      <td className="number-cell">{item.signups.toLocaleString()}</td>
-                      <td className="number-cell">{item.withdrawals.toLocaleString()}</td>
-                      <td className={`number-cell ${netGrowth >= 0 ? 'positive' : 'negative'}`}>
-                        {netGrowth >= 0 ? '+' : ''}{netGrowth.toLocaleString()}
-                      </td>
-                      <td className={`number-cell ${parseFloat(growthRate) >= 0 ? 'positive' : 'negative'}`}>
-                        {parseFloat(growthRate) >= 0 ? '+' : ''}{growthRate}%
-                      </td>
+                {/* 테이블과 차트 가로 배치 */}
+        <div className="chart-table-layout">
+          {/* 왼쪽: 데이터 테이블 */}
+          <div className="chart-table-left">
+            <div className="data-preview">
+              <h4>{getPeriodLabel()} 가입/탈퇴 데이터</h4>
+              <div className="data-table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>기간</th>
+                      <th>가입자 수</th>
+                      <th>탈퇴자 수</th>
+                      <th>순증가</th>
+                      <th>증감률</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        {/* 꺾은선 차트 */}
-        <div className="line-chart-container">
-          <div className="line-chart-wrapper">
-            <svg width="100%" height="300" className="line-chart-svg">
-              {/* 격자 선 */}
-              <defs>
-                <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#f0f0f0" strokeWidth="1"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-              
-              {/* Y축 기준선들 */}
-              {[0, 25, 50, 75, 100].map((percent) => (
-                <g key={percent}>
-                  <line
-                    x1="60"
-                    y1={250 - (percent * 2)}
-                    x2="100%"
-                    y2={250 - (percent * 2)}
-                    stroke="#e5e8ec"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x="50"
-                    y={250 - (percent * 2) + 5}
-                    fontSize="11"
-                    fill="#9ca3af"
-                    textAnchor="end"
-                  >
-                    {Math.round((getMaxValue() * percent) / 100)}
-                  </text>
-                </g>
-              ))}
-              
-              {/* 가입자 꺾은선 */}
-              <polyline
-                fill="none"
-                stroke="#0066ff"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points={getCurrentData()
-                  .map((item, index) => {
-                    const x = 80 + (index * (chartWidth - 120)) / Math.max(getCurrentData().length - 1, 1);
-                    const y = 250 - (item.signups / getMaxValue()) * 200;
-                    return `${x},${y}`;
-                  })
-                  .join(" ")}
-              />
-              
-              {/* 탈퇴자 꺾은선 */}
-              <polyline
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points={getCurrentData()
-                  .map((item, index) => {
-                    const x = 80 + (index * (chartWidth - 120)) / Math.max(getCurrentData().length - 1, 1);
-                    const y = 250 - (item.withdrawals / getMaxValue()) * 200;
-                    return `${x},${y}`;
-                  })
-                  .join(" ")}
-              />
-              
-              {/* 데이터 포인트들 */}
-              {getCurrentData().map((item, index) => {
-                const x = 80 + (index * (chartWidth - 120)) / Math.max(getCurrentData().length - 1, 1);
-                const signupY = 250 - (item.signups / getMaxValue()) * 200;
-                const withdrawalY = 250 - (item.withdrawals / getMaxValue()) * 200;
-                const label = formatChartLabel(item);
-                
-                return (
-                  <g key={index}>
-                    {/* 가입자 포인트 */}
-                    <circle
-                      cx={x}
-                      cy={signupY}
-                      r="5"
-                      fill="#0066ff"
-                      stroke="white"
-                      strokeWidth="2"
-                      className="chart-point signup-point"
-                    />
-                    <text
-                      x={x}
-                      y={signupY - 10}
-                      fontSize="11"
-                      fill="#0066ff"
-                      textAnchor="middle"
-                      fontWeight="600"
-                    >
-                      {item.signups}
-                    </text>
-                    
-                    {/* 탈퇴자 포인트 */}
-                    <circle
-                      cx={x}
-                      cy={withdrawalY}
-                      r="5"
-                      fill="#ef4444"
-                      stroke="white"
-                      strokeWidth="2"
-                      className="chart-point withdrawal-point"
-                    />
-                    <text
-                      x={x}
-                      y={withdrawalY - 10}
-                      fontSize="11"
-                      fill="#ef4444"
-                      textAnchor="middle"
-                      fontWeight="600"
-                    >
-                      {item.withdrawals}
-                    </text>
-                    
-                    {/* X축 라벨 */}
-                    <text
-                      x={x}
-                      y="280"
-                      fontSize="11"
-                      fill="#9ca3af"
-                      textAnchor="middle"
-                    >
-                      {label.main}
-                    </text>
-                    <text
-                      x={x}
-                      y="295"
-                      fontSize="10"
-                      fill="#d1d5db"
-                      textAnchor="middle"
-                    >
-                      {label.sub}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-          
-          {/* 차트 범례 */}
-          <div className="chart-legend">
-            <div className="legend-item">
-              <div className="legend-color signup-line"></div>
-              <span>가입자</span>
+                  </thead>
+                  <tbody>
+                    {getVisibleData().map((item, index) => {
+                      const netGrowth = item.signups - item.withdrawals;
+                      const actualIndex = currentIndex + index;
+                      const growthRate = actualIndex > 0 
+                        ? ((netGrowth - (getCurrentData()[actualIndex - 1]?.signups - getCurrentData()[actualIndex - 1]?.withdrawals || 0)) / (getCurrentData()[actualIndex - 1]?.signups - getCurrentData()[actualIndex - 1]?.withdrawals || 1) * 100).toFixed(1)
+                        : "0.0";
+                      
+                      return (
+                        <tr key={index}>
+                          <td>{'date' in item ? item.date : item.period}</td>
+                          <td className="number-cell">{item.signups.toLocaleString()}</td>
+                          <td className="number-cell">{item.withdrawals.toLocaleString()}</td>
+                          <td className={`number-cell ${netGrowth >= 0 ? 'positive' : 'negative'}`}>
+                            {netGrowth >= 0 ? '+' : ''}{netGrowth.toLocaleString()}
+                          </td>
+                          <td className={`number-cell ${parseFloat(growthRate) >= 0 ? 'positive' : 'negative'}`}>
+                            {parseFloat(growthRate) >= 0 ? '+' : ''}{growthRate}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="legend-item">
-              <div className="legend-color withdrawal-line"></div>
-              <span>탈퇴자</span>
+            
+            {/* 차트 네비게이션 */}
+            <div className="chart-navigation-container">
+              <div className="chart-navigation">
+                <button
+                  className="chart-nav-btn"
+                  onClick={handlePrevious}
+                  disabled={!canGoPrevious}
+                >
+                  ←
+                </button>
+                
+                <div className="chart-info">
+                  {currentIndex + 1}-{Math.min(currentIndex + itemsPerPage, getCurrentData().length)} / {getCurrentData().length}
+                </div>
+                
+                <button
+                  className="chart-nav-btn"
+                  onClick={handleNext}
+                  disabled={!canGoNext}
+                >
+                  →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 오른쪽: 꺾은선 차트 */}
+          <div className="chart-table-right">
+            <div className="line-chart-container">
+              <div className="line-chart-wrapper">
+                <svg width="100%" height="300" viewBox="0 0 800 300" className="line-chart-svg" style={{pointerEvents: 'none'}}>
+                  {/* 격자 선 */}
+                  <defs>
+                    <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#f0f0f0" strokeWidth="1"/>
+                    </pattern>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#grid)" />
+                  
+                  {/* Y축 기준선들 */}
+                  {[0, 25, 50, 75, 100].map((percent) => (
+                    <g key={percent}>
+                      <line
+                        x1="80"
+                        y1={250 - (percent * 2)}
+                        x2="720"
+                        y2={250 - (percent * 2)}
+                        stroke="#e5e8ec"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x="70"
+                        y={250 - (percent * 2) + 5}
+                        fontSize="11"
+                        fill="#9ca3af"
+                        textAnchor="end"
+                      >
+                        {Math.round((getMaxValue() * percent) / 100)}
+                      </text>
+                    </g>
+                  ))}
+                  
+                  {/* 가입자 꺾은선 */}
+                  <polyline
+                    fill="none"
+                    stroke="#0066ff"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={getVisibleData()
+                      .map((item, index) => {
+                        const visibleCount = getVisibleData().length;
+                        if (visibleCount === 1) {
+                          // 데이터가 1개일 때는 중앙에 배치
+                          const x = 400; // viewBox 800의 중앙
+                          const y = 250 - (item.signups / getMaxValue()) * 200;
+                          return `${x},${y}`;
+                        }
+                        // 첫 번째 포인트는 차트 시작점(80), 마지막 포인트는 차트 끝점(720)
+                        const chartArea = 640; // 720 - 80 = 640
+                        const stepWidth = chartArea / (visibleCount - 1);
+                        const x = 80 + (index * stepWidth);
+                        const y = 250 - (item.signups / getMaxValue()) * 200;
+                        return `${x},${y}`;
+                      })
+                      .join(" ")}
+                  />
+                  
+                  {/* 탈퇴자 꺾은선 */}
+                  <polyline
+                    fill="none"
+                    stroke="#ef4444"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={getVisibleData()
+                      .map((item, index) => {
+                        const visibleCount = getVisibleData().length;
+                        if (visibleCount === 1) {
+                          // 데이터가 1개일 때는 중앙에 배치
+                          const x = 400; // viewBox 800의 중앙
+                          const y = 250 - (item.withdrawals / getMaxValue()) * 200;
+                          return `${x},${y}`;
+                        }
+                        // 첫 번째 포인트는 차트 시작점(80), 마지막 포인트는 차트 끝점(720)
+                        const chartArea = 640; // 720 - 80 = 640
+                        const stepWidth = chartArea / (visibleCount - 1);
+                        const x = 80 + (index * stepWidth);
+                        const y = 250 - (item.withdrawals / getMaxValue()) * 200;
+                        return `${x},${y}`;
+                      })
+                      .join(" ")}
+                  />
+                  
+                  {/* 데이터 포인트들 */}
+                  {getVisibleData().map((item, index) => {
+                    const visibleCount = getVisibleData().length;
+                    let x;
+                    if (visibleCount === 1) {
+                      // 데이터가 1개일 때는 중앙에 배치
+                      x = 400; // viewBox 800의 중앙
+                    } else {
+                      // 첫 번째 포인트는 차트 시작점(80), 마지막 포인트는 차트 끝점(720)
+                      const chartArea = 640; // 720 - 80 = 640
+                      const stepWidth = chartArea / (visibleCount - 1);
+                      x = 80 + (index * stepWidth);
+                    }
+                    const signupY = 250 - (item.signups / getMaxValue()) * 200;
+                    const withdrawalY = 250 - (item.withdrawals / getMaxValue()) * 200;
+                    const label = formatChartLabel(item);
+                    
+                    return (
+                      <g key={index}>
+                        {/* 가입자 포인트 */}
+                        <circle
+                          cx={x}
+                          cy={signupY}
+                          r="5"
+                          fill="#0066ff"
+                          stroke="white"
+                          strokeWidth="2"
+                          className="chart-point"
+                          style={{pointerEvents: 'none'}}
+                        />
+                        <text
+                          x={x}
+                          y={signupY - 10}
+                          fontSize="11"
+                          fill="#0066ff"
+                          textAnchor="middle"
+                          fontWeight="600"
+                        >
+                          {item.signups}
+                        </text>
+                        
+                        {/* 탈퇴자 포인트 */}
+                        <circle
+                          cx={x}
+                          cy={withdrawalY}
+                          r="5"
+                          fill="#ef4444"
+                          stroke="white"
+                          strokeWidth="2"
+                          className="chart-point"
+                          style={{pointerEvents: 'none'}}
+                        />
+                        <text
+                          x={x}
+                          y={withdrawalY - 10}
+                          fontSize="11"
+                          fill="#ef4444"
+                          textAnchor="middle"
+                          fontWeight="600"
+                        >
+                          {item.withdrawals}
+                        </text>
+                        
+                        {/* X축 라벨 */}
+                        <text
+                          x={x}
+                          y="280"
+                          fontSize="11"
+                          fill="#9ca3af"
+                          textAnchor="middle"
+                        >
+                          {label.main}
+                        </text>
+                        <text
+                          x={x}
+                          y="295"
+                          fontSize="10"
+                          fill="#d1d5db"
+                          textAnchor="middle"
+                        >
+                          {label.sub}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+              
+              {/* 차트 범례 */}
+              <div className="chart-legend">
+                <div className="legend-item">
+                  <div className="legend-color signup-line"></div>
+                  <span>가입자</span>
+                </div>
+                <div className="legend-item">
+                  <div className="legend-color withdrawal-line"></div>
+                  <span>탈퇴자</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
