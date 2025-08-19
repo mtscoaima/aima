@@ -30,7 +30,7 @@ export default function Navigation() {
 
   const isHomePage = pathname === "/";
   const isAdminPage = pathname.startsWith("/admin");
-  const isAuthPage = pathname === "/login" || pathname === "/signup";
+  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/auth/find-username" || pathname === "/auth/find-password";
   const isBusinessVerificationPage =
     pathname === "/my-site/advertiser/business-verification";
 

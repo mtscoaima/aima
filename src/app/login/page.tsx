@@ -699,17 +699,17 @@ export default function LoginPage() {
               {isLoading ? "로그인 중..." : "로그인"}
             </button>
           </form>
- {/* 회원가입 링크 */}
- <div className={styles.signupLink}>
+
+          {/* 회원가입 링크 */}
+          <div className={styles.signupLink}>
             <span>아직 회원이 아니신가요?</span>
             <Link href="/signup" className={styles.signupButton}>
               회원가입
             </Link>
           </div>
+
           {/* SNS 로그인 섹션 */}
           <div className={styles.snsLoginSection}>
-          
-
             <div className={styles.socialLoginHeader}>
               <span className={styles.socialLoginText}>간편 로그인</span>
             </div>
