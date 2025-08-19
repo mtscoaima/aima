@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend,
 } from "chart.js";
-import { Line, Bar } from "react-chartjs-2";
+import { Line } from "react-chartjs-2";
 import Link from "next/link";
 import { AdvertiserLoginRequiredGuard } from "@/components/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,19 +24,44 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend
 );
 
+interface AdCostData {
+  recent7Days: {
+    startDate: string;
+    endDate: string;
+    totalCost: number;
+  };
+  previous7Days: {
+    startDate: string;
+    endDate: string;
+    totalCost: number;
+  };
+}
+
 export default function AdvertiserDashboard() {
   const { user } = useAuth();
-  const { formatCurrency, calculateBalance } = useBalance();
+  const { balanceData, formatCurrency, isLoading: isBalanceLoading } = useBalance();
 
   // 사용자 정보 상태
   const [userData, setUserData] = useState<UserInfoResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 광고비 데이터 상태
+  const [adCostData, setAdCostData] = useState<AdCostData | null>(null);
+  const [isAdCostLoading, setIsAdCostLoading] = useState(true);
+  
+  // 캠페인 현황 날짜 상태
+  const [campaignDateRange, setCampaignDateRange] = useState(() => {
+    const today = new Date();
+    const endDate = new Date(today);
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 6); // 오늘 포함 7일
+    return { startDate, endDate };
+  });
 
   // 회사 정보 존재 여부 확인 함수
   const hasCompanyInfo = (userData: UserInfoResponse | null): boolean => {
@@ -91,6 +115,36 @@ export default function AdvertiserDashboard() {
     }
   };
 
+  // 광고비 데이터 로드
+  const loadAdCostData = useCallback(async () => {
+    try {
+      setIsAdCostLoading(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("인증 토큰이 없습니다.");
+      }
+
+      const response = await fetch("/api/campaigns/ad-costs", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("광고비 데이터 로드 실패");
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        setAdCostData(result.data);
+      }
+    } catch (error) {
+      console.error("광고비 데이터 로드 실패:", error);
+    } finally {
+      setIsAdCostLoading(false);
+    }
+  }, []);
+
   // 사용자 정보 로드
   useEffect(() => {
     const loadUserData = async () => {
@@ -107,60 +161,118 @@ export default function AdvertiserDashboard() {
 
     if (user) {
       loadUserData();
+      loadAdCostData();
     }
-  }, [user]);
+  }, [user, loadAdCostData]);
 
-  // 메시지 발송 현황 차트 데이터 (월간)
-  const messageChartData = {
-    labels: ["1", "5", "10", "15", "20", "25", "30"],
-    datasets: [
-      {
-        label: "성공",
-        data: [12, 19, 8, 15, 20, 25, 18],
-        borderColor: "rgb(54, 162, 235)",
-        backgroundColor: "rgba(54, 162, 235, 0.5)",
-        tension: 0.1,
-      },
-      {
-        label: "실패",
-        data: [2, 3, 1, 4, 2, 3, 1],
-        borderColor: "rgb(255, 99, 132)",
-        backgroundColor: "rgba(255, 99, 132, 0.5)",
-        tension: 0.1,
-      },
-    ],
-  };
-
-  // 타켓마케팅 발송 현황 차트 데이터
-  const campaignChartData = {
-    labels: ["캠페인A", "캠페인B", "캠페인C", "캠페인D"],
-    datasets: [
-      {
-        label: "대상자수",
-        data: [1200, 1900, 800, 1500],
-        backgroundColor: "rgba(54, 162, 235, 0.5)",
-      },
-      {
-        label: "반응률(%)",
-        data: [15, 7, 20, 12],
-        backgroundColor: "rgba(75, 192, 192, 0.5)",
-      },
-    ],
-  };
-
+  // 차트 설정
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
     plugins: {
       legend: {
-        position: "bottom" as const,
+        display: false,
+      },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
       },
     },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+      },
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: '#f0f0f0',
+        },
+      },
+    },
+    elements: {
+      line: {
+        tension: 0.1,
+      },
+      point: {
+        radius: 4,
+        hoverRadius: 6,
+      },
+    },
+  };
+
+     // 각 차트별 데이터 - 현재 선택된 날짜 범위에 따라 라벨 생성
+   const generateChartLabels = () => {
+     const labels = [];
+     const startDate = new Date(campaignDateRange.startDate);
+     
+     for (let i = 0; i < 7; i++) {
+       const currentDate = new Date(startDate);
+       currentDate.setDate(startDate.getDate() + i);
+       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+       const day = String(currentDate.getDate()).padStart(2, '0');
+       labels.push(`${month}.${day}`);
+     }
+     
+     return labels;
+   };
+
+   const chartData = {
+     labels: generateChartLabels(),
+     datasets: [
+       {
+         data: [100, 110, 105, 125, 95, 80, 110], // 7일 데이터
+         borderColor: '#3b82f6',
+         backgroundColor: '#3b82f6',
+         borderWidth: 2,
+       },
+     ],
+   };
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  // 캠페인 날짜 포맷팅 함수
+  const formatCampaignDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  };
+
+  // 날짜 범위 이동 함수
+  const moveDateRange = (direction: 'prev' | 'next') => {
+    setCampaignDateRange(current => {
+      const newStartDate = new Date(current.startDate);
+      const newEndDate = new Date(current.endDate);
+      
+      if (direction === 'prev') {
+        // 이전 7일로 이동
+        newStartDate.setDate(current.startDate.getDate() - 7);
+        newEndDate.setDate(current.endDate.getDate() - 7);
+      } else {
+        // 이후 7일로 이동 (단, 오늘을 넘지 않도록)
+        const today = new Date();
+        const potentialEndDate = new Date(current.endDate);
+        potentialEndDate.setDate(current.endDate.getDate() + 7);
+        
+        if (potentialEndDate <= today) {
+          newStartDate.setDate(current.startDate.getDate() + 7);
+          newEndDate.setDate(current.endDate.getDate() + 7);
+        } else {
+          // 오늘을 넘지 않는 범위에서 최대한 이동
+          newEndDate.setTime(today.getTime());
+          newStartDate.setTime(today.getTime());
+          newStartDate.setDate(today.getDate() - 6);
+        }
+      }
+      
+      return { startDate: newStartDate, endDate: newEndDate };
+    });
   };
 
   return (
@@ -206,192 +318,157 @@ export default function AdvertiserDashboard() {
         )}
 
         <div className="max-w-7xl mx-auto px-4">
-          {/* 3개 카드 레이아웃 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* 회원정보 카드 */}
-            <div className="bg-white rounded-lg shadow p-4 border border-gray-50 flex flex-col justify-between">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-lg font-semibold mb-4">{user?.name}님</h2>
-                <p className="text-gray-600 mb-6">
-                  {userData?.username ||
-                    userData?.email ||
-                    user?.email ||
-                    "example1234"}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Link
-                  href="/my-site/advertiser/profile"
-                  className="flex-1 bg-blue-50 border border-blue-600 text-blue-600 py-2 px-4 rounded text-sm hover:bg-blue-100 text-center"
-                >
-                  회원정보변경
-                </Link>
-                <Link
-                  href="/my-site/advertiser/profile?tab=businessInfo"
-                  className="flex-1 bg-blue-500 text-white py-2 px-4 rounded text-sm hover:bg-blue-600 text-center"
-                >
-                  사업자정보변경
-                </Link>
-              </div>
+          {/* 상단 3개 카드 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {/* 광고비 합계 카드 */}
+            <div className="bg-white rounded-xl border-2 border-gray-300 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">광고비 합계</h3>
+              {isAdCostLoading ? (
+                <div className="space-y-4">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                  </div>
+                </div>
+              ) : adCostData ? (
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">
+                      최근 7일 <span className="text-xs">({formatDate(adCostData.recent7Days.startDate)} ~ {formatDate(adCostData.recent7Days.endDate)})</span>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">{adCostData.recent7Days.totalCost.toLocaleString()} 원</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">
+                      이전 7일 <span className="text-xs">({formatDate(adCostData.previous7Days.startDate)} ~ {formatDate(adCostData.previous7Days.endDate)})</span>
+                    </div>
+                    <div className="text-xl font-medium text-gray-700">{adCostData.previous7Days.totalCost.toLocaleString()} 원</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  데이터를 불러올 수 없습니다
+                </div>
+              )}
             </div>
 
-            {/* 요금제 카드 */}
-            <div className="bg-white rounded-lg shadow p-4 border border-gray-50">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">요금제</h2>
-              </div>
+                         {/* 충전금/적립금 카드 */}
+             <div className="bg-white rounded-xl border-2 border-gray-300 p-6 flex flex-col justify-center">
+               <div className="space-y-4">
+                 {isBalanceLoading ? (
+                   <div className="animate-pulse">
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="text-center">
+                         <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 mx-auto"></div>
+                         <div className="h-6 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                       </div>
+                       <div className="text-center border-l pl-4">
+                         <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 mx-auto"></div>
+                         <div className="h-6 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                       </div>
+                     </div>
+                     <div className="flex justify-center pt-2">
+                       <div className="h-9 bg-gray-200 rounded w-20"></div>
+                     </div>
+                   </div>
+                 ) : (
+                   <>
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="text-center">
+                         <div className="text-sm text-gray-900 font-semibold mb-1">충전금</div>
+                         <div className="text-xl text-gray-900">{formatCurrency(balanceData.balance)}</div>
+                       </div>
+                       <div className="text-center border-l pl-4">
+                         <div className="text-sm text-gray-900 font-semibold mb-1">적립금</div>
+                         <div className="text-xl text-gray-900">{Math.floor(balanceData.balance / 20).toLocaleString()} P</div>
+                       </div>
+                     </div>
+                     <div className="flex justify-center pt-2">
+                       <Link href="/credit-management" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 inline-block">
+                         충전하기
+                       </Link>
+                     </div>
+                   </>
+                 )}
+               </div>
+             </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">회원요금제</span>
-                  <Link href="/credit-management" className="font-medium">
-                    <span className="text-black hover:text-blue-600">
-                      {user?.payment_mode === "prepaid"
-                        ? "선불 요금제"
-                        : "후불 요금제"}
-                    </span>{" "}
-                    <span className="text-blue-600">&gt;</span>
-                  </Link>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">캠페인요금제</span>
-                  <Link href="/credit-management" className="font-medium">
-                    <span className="text-black hover:text-blue-600">
-                      미사용
-                    </span>{" "}
-                    <span className="text-blue-600">&gt;</span>
-                  </Link>
-                </div>
-                <div className="border-t pt-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">잔액</span>
-                    <Link
-                      href="/credit-management"
-                      className="text-blue-600 hover:underline"
-                    >
-                      충전하기 &gt;
-                    </Link>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">충전금</span>
-                    <span className="font-medium">
-                      {formatCurrency(calculateBalance())}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">포인트</span>
-                    <span className="font-medium">
-                      {Math.floor(calculateBalance() / 20)} P
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 문자 발신번호 카드 */}
-            <div className="bg-white rounded-lg shadow p-4 border border-gray-50">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">문자 발신번호</h2>
-                <Link
-                  href="/my-site/advertiser/profile?tab=sendingNumber"
-                  className="text-blue-600 text-sm hover:underline"
-                >
-                  발신번호관리 &gt;
-                </Link>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">기본발신번호</span>
-                  <span className="font-medium">010-222-5357</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">인증완료</span>
-                  <span className="font-medium">1건</span>
-                </div>
+            {/* 주변업체 모니터링 카드 */}
+            <div className="bg-white rounded-xl border-2 border-gray-300 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">주변업체 모니터링</h3>
+              <div className="text-center py-8">
+                <div className="text-gray-500 text-lg">준비중입니다</div>
               </div>
             </div>
           </div>
 
-          {/* 차트 섹션 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* 메시지 발송현황 요약 */}
-            <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-green-500">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">메시지 발송현황 요약</h2>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/messages/history"
-                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
-                  >
-                    자세히보기
-                  </Link>
-                  <span className="text-gray-500 text-sm">(이번 달)</span>
+          {/* 캠페인 현황 섹션 */}
+          <div className="bg-white p-6">
+                         <div className="flex items-center justify-between mb-6">
+               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                 캠페인 현황
+               </h3>
+               <div className="flex items-center gap-4">
+                 <button 
+                   onClick={() => moveDateRange('prev')}
+                   className="text-gray-400 hover:text-gray-600 transition-colors"
+                 >
+                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                   </svg>
+                 </button>
+                 <span className="text-gray-600">
+                   지난 7일 : {formatCampaignDate(campaignDateRange.startDate)} ~ {formatCampaignDate(campaignDateRange.endDate)}
+                 </span>
+                 <button 
+                   onClick={() => moveDateRange('next')}
+                   className={`transition-colors ${
+                     campaignDateRange.endDate.toDateString() === new Date().toDateString()
+                       ? 'text-gray-300 cursor-not-allowed'
+                       : 'text-gray-400 hover:text-gray-600'
+                   }`}
+                   disabled={campaignDateRange.endDate.toDateString() === new Date().toDateString()}
+                 >
+                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                     <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                   </svg>
+                 </button>
+               </div>
+             </div>
+
+            {/* 4개 차트 그리드 */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* 발송 차트 */}
+              <div className="text-center">
+                <h4 className="text-base font-medium text-gray-700 mb-4">발송</h4>
+                <div className="h-48 mb-2">
+                  <Line data={chartData} options={chartOptions} />
                 </div>
               </div>
 
-              <div className="h-64 mb-4">
-                <Line data={messageChartData} options={chartOptions} />
-              </div>
-
-              <div className="grid grid-cols-5 gap-4 text-center">
-                <div>
-                  <p className="text-sm text-gray-600">총 발송건수</p>
-                  <p className="font-bold text-lg">128건</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">성공건수</p>
-                  <p className="font-bold text-lg text-blue-600">117건</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">실패건수</p>
-                  <p className="font-bold text-lg text-red-600">11건</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">성공률</p>
-                  <p className="font-bold text-lg">91.4%</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">최근 발송일시</p>
-                  <p className="font-medium text-sm">
-                    2025.05.10
-                    <br />
-                    11:42
-                  </p>
+              {/* 오픈 차트 */}
+              <div className="text-center">
+                <h4 className="text-base font-medium text-gray-700 mb-4">오픈 (Imp.)</h4>
+                <div className="h-48 mb-2">
+                  <Line data={chartData} options={chartOptions} />
                 </div>
               </div>
-            </div>
 
-            {/* 타깃마케팅 캠페인 현황 */}
-            <div className="bg-white rounded-lg shadow p-4 border-t-4 border-t-purple-500">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">
-                  타깃마케팅 캠페인 현황
-                </h2>
-                <Link
-                  href="/messages/history"
-                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
-                >
-                  자세히보기
-                </Link>
+              {/* 클릭 차트 */}
+              <div className="text-center">
+                <h4 className="text-base font-medium text-gray-700 mb-4">클릭</h4>
+                <div className="h-48 mb-2">
+                  <Line data={chartData} options={chartOptions} />
+                </div>
               </div>
 
-              <div className="h-64 mb-4">
-                <Bar data={campaignChartData} options={chartOptions} />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-sm text-gray-600">진행 중 캠페인</p>
-                  <p className="font-bold text-lg text-blue-600">2건</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">완료된 캠페인</p>
-                  <p className="font-bold text-lg">4건</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">평균 반응률</p>
-                  <p className="font-bold text-lg">13.5%</p>
+              {/* 전환 차트 */}
+              <div className="text-center">
+                <h4 className="text-base font-medium text-gray-700 mb-4">전환</h4>
+                <div className="h-48 mb-2">
+                  <Line data={chartData} options={chartOptions} />
                 </div>
               </div>
             </div>
