@@ -6,8 +6,8 @@ import styles from "./styles.module.css";
 
 export default function FindUsernamePage() {
   const [selectedMethod, setSelectedMethod] = useState<
-    "phone" | "email" | null
-  >(null);
+    "phone" | "email"
+  >("phone");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -91,6 +91,23 @@ export default function FindUsernamePage() {
         setIsVerificationLoading(false);
         return;
       }
+
+      // 팝업 닫힘 감지
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          setIsVerificationLoading(false);
+        }
+      }, 1000);
+
+      // 타임아웃 설정 (5분)
+      setTimeout(() => {
+        if (!popup.closed) {
+          popup.close();
+        }
+        clearInterval(checkClosed);
+        setIsVerificationLoading(false);
+      }, 300000);
 
       // 폼 생성 및 제출
       const form = document.createElement("form");
@@ -201,7 +218,7 @@ export default function FindUsernamePage() {
   };
 
   const resetForm = () => {
-    setSelectedMethod(null);
+    setSelectedMethod("phone");
     setShowResult(false);
     setFoundUsernames([]);
     setResultMessage("");
@@ -211,32 +228,12 @@ export default function FindUsernamePage() {
   return (
     <div className={styles.container}>
       <div className={styles.wrapper}>
+        {/* 헤더 */}
+        <div className={styles.header}>
+          <h1 className={styles.title}>아이디 찾기</h1>
+        </div>
+        
         <div className={styles.card}>
-          {/* 헤더 */}
-          <div className={styles.header}>
-            <div className={styles.logoSection}>
-              <h1 className={styles.logoText}>MTS플러스</h1>
-              <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
-            </div>
-            <h2 className={styles.title}>아이디 찾기</h2>
-          </div>
-
-          {/* 단계 표시 */}
-          {!showResult && (
-            <div className={styles.stepIndicator}>
-              <div className={`${styles.step} ${styles.active}`}>
-                <span className={styles.stepNumber}>1</span>
-                <span className={styles.stepText}>인증방법 선택</span>
-              </div>
-              {selectedMethod && (
-                <div className={`${styles.step} ${styles.active}`}>
-                  <span className={styles.stepNumber}>2</span>
-                  <span className={styles.stepText}>정보 입력</span>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* 콘텐츠 영역 */}
           <div className={styles.content}>
             {showResult ? (
@@ -268,26 +265,6 @@ export default function FindUsernamePage() {
                   </Link>
                 </div>
               </div>
-            ) : !selectedMethod ? (
-              // 인증방법 선택 단계
-              <div className={styles.methodSelection}>
-                <div className={styles.methodButtons}>
-                  <button
-                    type="button"
-                    className={styles.methodButton}
-                    onClick={() => handleMethodSelect("phone")}
-                  >
-                    휴대폰 본인인증
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.methodButton}
-                    onClick={() => handleMethodSelect("email")}
-                  >
-                    이메일 인증
-                  </button>
-                </div>
-              </div>
             ) : selectedMethod === "phone" ? (
               // 휴대폰 인증 단계
               <div className={styles.phoneVerification}>
@@ -307,6 +284,9 @@ export default function FindUsernamePage() {
                     이메일 인증
                   </button>
                 </div>
+                <p className={styles.methodDescription}>
+                  본인 인증으로 가입된 아이디인 경우에만 가능합니다.
+                </p>
                 <div className={styles.form}>
                   <button
                     type="button"
@@ -340,7 +320,7 @@ export default function FindUsernamePage() {
                   </button>
                 </div>
                 <p className={styles.methodDescription}>
-                  회원정보에 등록된 이메일 주소로 아이디 정보를 보내드립니다.
+                  회원정보에 등록된 이메일로 아이디를 발송해드립니다.
                 </p>
                 <form onSubmit={handleEmailSubmit} className={styles.form}>
                   <div className={styles.formGroup}>
@@ -369,7 +349,7 @@ export default function FindUsernamePage() {
                       value={formData.email}
                       onChange={handleInputChange}
                       className={styles.formInput}
-                      placeholder="이메일 주소를 정확히 주세요"
+                      placeholder="이메일 주소를 입력해 주세요"
                       required
                     />
                   </div>

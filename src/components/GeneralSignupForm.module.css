@@ -3,14 +3,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8fafc;
+  background: white;
   padding: 20px;
-  padding-top: 140px; /* navigation 높이만큼 상단 여백 추가 */
 }
 
 .wrapper {
   width: 100%;
-  max-width: 1200px; /* 가로 배치를 위해 더 넓게 설정 */
 }
 
 /* 헤더 */
@@ -52,8 +50,9 @@
 /* 카드 컨테이너 */
 .cardsContainer {
   display: flex;
+  flex-direction: column;
   gap: 24px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 /* 전체동의 섹션 */
@@ -181,7 +180,7 @@
 .termsNote {
   margin-top: 24px;
   padding: 16px;
-  background: #f8fafc;
+  background: white;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
 }
@@ -307,11 +306,6 @@
   margin-top: 32px;
 }
 
-/* 추천인 정보 입력 섹션 */
-.referralSection {
-  margin-top: 32px;
-}
-
 /* 가입하기 버튼 */
 .submitButton {
   background: #4285f4;
@@ -343,11 +337,10 @@
 /* 반응형 디자인 */
 @media (max-width: 1024px) {
   .wrapper {
-    max-width: 800px;
+    width: 100%;
   }
 
   .cardsContainer {
-    flex-direction: column;
     gap: 20px;
   }
 
@@ -360,11 +353,11 @@
 @media (max-width: 768px) {
   .container {
     padding: 16px;
-    padding-top: 120px;
+    margin-top: -100px; /* 모바일에서 Layout의 padding-top 값만큼 위로 올림 */
   }
 
   .wrapper {
-    max-width: 500px;
+    width: 100%;
   }
 
   .card {
@@ -384,11 +377,11 @@
 @media (max-width: 480px) {
   .container {
     padding: 12px;
-    padding-top: 100px;
+    margin-top: -100px; /* 모바일에서 Layout의 padding-top 값만큼 위로 올림 */
   }
 
   .wrapper {
-    max-width: 100%;
+    width: 100%;
   }
 
   .card {
@@ -428,4 +421,97 @@
   .viewButton {
     align-self: flex-end;
   }
+}
+
+/* 경고 모달 스타일 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modalCloseButton {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.modalCloseButton:hover {
+  background-color: #f3f4f6;
+}
+
+.modalBody {
+  padding: 20px;
+}
+
+.modalBody p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.modalFooter {
+  padding: 20px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modalButton {
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modalButton:hover {
+  background: #3367d6;
 }

@@ -4,7 +4,6 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  padding-top: max(140px, calc(100vh * 0.15)); /* 동적 상단 여백 */
   z-index: 1;
   position: relative;
 }
@@ -12,6 +11,19 @@
 .loginWrapper {
   width: 100%;
   max-width: 440px;
+}
+
+/* 헤더 */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
 }
 
 .loginCard {
@@ -94,6 +106,45 @@
   color: #9ca3af;
 }
 
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInputWrapper .formInput {
+  padding-right: 50px;
+}
+
+.passwordToggleBtn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.passwordToggleBtn:hover {
+  color: #0070f3;
+  background-color: rgba(0, 112, 243, 0.05);
+}
+
+.passwordToggleBtn:disabled {
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.passwordToggleBtn svg {
+  flex-shrink: 0;
+}
+
 .formOptions {
   display: flex;
   justify-content: space-between;
@@ -133,6 +184,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.findLinksExternal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  text-align: center;
 }
 
 .linkSeparator {
@@ -189,8 +249,6 @@
 
 .signupLink {
   text-align: center;
-  padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
 }
 
 .signupLink span {
@@ -324,7 +382,6 @@
   .loginContainer {
     min-height: calc(100vh - 100px);
     padding: 16px;
-    padding-top: 120px; /* 모바일에서 줄어든 navigation 높이 + 여백 */
   }
 
   .loginCard {
@@ -338,13 +395,16 @@
   .loginTitle {
     font-size: 24px;
   }
+
+  .title {
+    font-size: 20px;
+  }
 }
 
 @media (max-width: 480px) {
   .loginContainer {
     min-height: calc(100vh - 80px);
     padding: 12px;
-    padding-top: 100px;
   }
 
   .loginCard {
@@ -359,6 +419,10 @@
     font-size: 20px;
   }
 
+  .title {
+    font-size: 18px;
+  }
+
   .formInput {
     padding: 12px 14px;
     font-size: 15px;
@@ -367,6 +431,10 @@
   .loginButton {
     padding: 14px;
     font-size: 15px;
+  }
+  
+  .findLinksExternal {
+    margin-top: 16px;
   }
 }
 
@@ -438,14 +506,12 @@
 /* 확대 시에도 안정적인 레이아웃 */
 @media (min-width: 1200px) {
   .loginContainer {
-    padding-top: 160px;
   }
 }
 
 /* 높이가 작은 화면에서의 최적화 */
 @media (max-height: 700px) {
   .loginContainer {
-    padding-top: max(120px, calc(100vh * 0.18)); /* 높이 비례 증가 */
     min-height: calc(100vh - 100px);
   }
 
@@ -457,7 +523,6 @@
 
 @media (max-height: 600px) {
   .loginContainer {
-    padding-top: max(100px, calc(100vh * 0.2)); /* 더 큰 비율 */
     min-height: calc(100vh - 80px);
   }
 
@@ -477,7 +542,6 @@
 
 @media (max-height: 500px) {
   .loginContainer {
-    padding-top: max(80px, calc(100vh * 0.22)); /* 최대 비율 */
     min-height: calc(100vh - 60px);
   }
 
@@ -507,7 +571,6 @@
 
 @media (max-height: 400px) {
   .loginContainer {
-    padding-top: max(60px, calc(100vh * 0.25)); /* 극소 높이 대응 */
     min-height: calc(100vh - 40px);
   }
 
@@ -550,7 +613,6 @@
 /* 가로 화면 모드에서 높이 최적화 */
 @media (orientation: landscape) and (max-height: 500px) {
   .loginContainer {
-    padding-top: max(50px, calc(100vh * 0.15));
     padding-bottom: 20px;
     min-height: auto;
   }
@@ -588,9 +650,7 @@
     margin-bottom: 10px;
   }
 
-  .signupLink {
-    padding-top: 10px;
-  }
+
 }
 
 /* 터치 디바이스 최적화 */
@@ -616,7 +676,6 @@
   .loginContainer {
     min-height: calc(100vh - 60px);
     padding: 8px;
-    padding-top: max(80px, calc(100vh * 0.2)); /* 동적 상단 여백 */
   }
 
   .loginCard {
@@ -642,8 +701,10 @@
     font-size: 14px;
   }
 
-  .signupLink {
-    padding-top: 16px;
+
+  
+  .findLinksExternal {
+    margin-top: 14px;
   }
 }
 
@@ -651,7 +712,6 @@
 @media (max-width: 280px) {
   .loginContainer {
     padding: 4px;
-    padding-top: max(60px, calc(100vh * 0.15));
   }
 
   .loginCard {
@@ -677,15 +737,16 @@
     font-size: 13px;
   }
 
-  .signupLink {
-    padding-top: 12px;
+  
+  
+  .findLinksExternal {
+    margin-top: 12px;
   }
 }
 
 /* 화면 확대/축소 대응 강화 */
 @media (min-zoom: 150%) {
   .loginContainer {
-    padding-top: max(100px, calc(100vh * 0.15));
     min-height: calc(100vh - 80px);
   }
 
@@ -696,7 +757,6 @@
 
 @media (min-zoom: 200%) {
   .loginContainer {
-    padding-top: max(80px, calc(100vh * 0.15));
     min-height: calc(100vh - 60px);
   }
 
@@ -723,7 +783,6 @@
 /* 화면 비율에 따른 최적화 */
 @media (max-aspect-ratio: 1/2) {
   .loginContainer {
-    padding-top: max(60px, calc(100vh * 0.15));
     padding-bottom: 20px;
   }
 
@@ -744,7 +803,6 @@
 @media (max-width: 1024px) {
   .loginContainer {
     padding: 15px;
-    padding-top: max(120px, calc(100vh * 0.12));
   }
 
   .loginCard {
@@ -763,7 +821,6 @@
 
 @media (max-width: 900px) {
   .loginContainer {
-    padding-top: max(110px, calc(100vh * 0.1));
   }
 
   .loginCard {
@@ -794,7 +851,6 @@
 @media (max-width: 320px) {
   .loginContainer {
     padding: 8px;
-    padding-top: max(100px, calc(100vh * 0.08));
   }
 
   .loginCard {
@@ -822,9 +878,7 @@
   }
 
   .formOptions {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    justify-content: flex-start;
   }
 
   .checkboxText,
@@ -836,12 +890,15 @@
   .signupButton {
     font-size: 13px;
   }
+  
+  .findLinksExternal {
+    margin-top: 16px;
+  }
 }
 
 /* 가로 모드 최적화 */
 @media (max-width: 900px) and (orientation: landscape) {
   .loginContainer {
-    padding-top: 80px;
     min-height: calc(100vh - 80px);
   }
 
@@ -889,6 +946,18 @@
     display: flex;
     align-items: center;
   }
+  
+  .findLinksExternal .forgotLink {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .passwordToggleBtn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
 }
 
 /* 터치 디바이스에서 SNS 버튼 최적화 */
@@ -904,10 +973,28 @@
   }
 }
 
+/* 작은 화면에서 비밀번호 버튼 최적화 */
+@media (max-width: 480px) {
+  .passwordInputWrapper .formInput {
+    padding-right: 40px;
+  }
+
+  .passwordToggleBtn {
+    right: 8px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 4px;
+  }
+
+  .passwordToggleBtn svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 /* 고해상도 디스플레이 */
 @media (min-width: 1400px) {
   .loginContainer {
-    padding-top: max(160px, calc(100vh * 0.18));
   }
 
   .loginCard {
@@ -931,5 +1018,14 @@
   .loginButton {
     padding: 18px;
     font-size: 17px;
+  }
+
+  .passwordInputWrapper .formInput {
+    padding-right: 60px;
+  }
+
+  .passwordToggleBtn {
+    right: 14px;
+    padding: 6px;
   }
 }

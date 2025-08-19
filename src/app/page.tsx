@@ -1,39 +1,23 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import SalespersonDashboard from "../components/SalespersonDashboard";
 
 export default function Home() {
   const { isAuthenticated, user } = useAuth();
-  const router = useRouter();
 
-  // 관리자로 로그인한 경우 회원관리 페이지로 리다이렉트
-  useEffect(() => {
-    if (isAuthenticated && user?.role === "ADMIN") {
-      router.push("/admin/user-management");
-    }
-  }, [isAuthenticated, user, router]);
+  // 로그인 직후에만 적용되는 리다이렉트 로직을 위한 useEffect는 제거
+  // 루트 페이지는 로그인 여부와 관계없이 접근 가능하도록 변경
 
   // 영업사원으로 로그인한 경우 전용 대시보드 표시
   if (isAuthenticated && user?.role === "SALESPERSON") {
     return <SalespersonDashboard />;
   }
 
-  // 관리자인 경우 리다이렉트 중이므로 로딩 표시
-  if (isAuthenticated && user?.role === "ADMIN") {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <div className="loading-text">
-          <p>회원관리 페이지로 이동 중...</p>
-        </div>
-      </div>
-    );
-  }
+  // 로그인된 사용자도 랜딩 페이지에 접근할 수 있도록 자동 리다이렉트 제거
 
   return (
     <div className="landing-root">

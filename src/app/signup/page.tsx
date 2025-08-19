@@ -65,22 +65,28 @@ export default function SignupPage() {
   const [socialLoginType, setSocialLoginType] = useState<string | null>(null);
   const [socialUserId, setSocialUserId] = useState<string | null>(null);
   const [verificationId, setVerificationId] = useState<string | null>(null); // 본인인증 ID 추가
-  const [showGeneralSignupForm, setShowGeneralSignupForm] = useState(false); // 새로운 일반회원 폼 표시 여부
+  const [showGeneralSignupForm, setShowGeneralSignupForm] = useState(true); // 새로운 일반회원 폼 표시 여부 - 기본값을 true로 설정
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTermsType, setCurrentTermsType] =
     useState<TermsType>("service");
 
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
-  // 이미 로그인된 사용자는 루트 페이지로 리다이렉트
+  // 이미 로그인된 사용자는 대시보드로 리다이렉트
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace("/");
+    if (isAuthenticated && user) {
+      if (user.role === "ADMIN") {
+        router.replace("/admin/user-management");
+      } else if (user.role === "SALESPERSON") {
+        router.replace("/salesperson/referrals");
+      } else {
+        router.replace("/my-site/advertiser/dashboard");
+      }
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
   // URL에서 social 파라미터와 socialUserId 확인
   useEffect(() => {
@@ -311,7 +317,7 @@ export default function SignupPage() {
               </div>
             </div>
             <div style={{ textAlign: "center", padding: "2rem" }}>
-              <p>이미 로그인되어 있습니다. 메인 페이지로 이동합니다...</p>
+              <p>이미 로그인되어 있습니다. 대시보드로 이동합니다...</p>
             </div>
           </div>
         </div>
@@ -1034,11 +1040,7 @@ export default function SignupPage() {
 
   // 새로운 일반회원 폼이 선택된 경우
   if (showGeneralSignupForm) {
-    return (
-      <GeneralSignupForm 
-        onBack={() => setShowGeneralSignupForm(false)}
-      />
-    );
+    return <GeneralSignupForm />;
   }
 
   return (
