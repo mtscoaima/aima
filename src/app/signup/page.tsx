@@ -65,7 +65,7 @@ export default function SignupPage() {
   const [socialLoginType, setSocialLoginType] = useState<string | null>(null);
   const [socialUserId, setSocialUserId] = useState<string | null>(null);
   const [verificationId, setVerificationId] = useState<string | null>(null); // 본인인증 ID 추가
-  const [showGeneralSignupForm, setShowGeneralSignupForm] = useState(false); // 새로운 일반회원 폼 표시 여부
+  const [showGeneralSignupForm, setShowGeneralSignupForm] = useState(true); // 새로운 일반회원 폼 표시 여부 - 기본값을 true로 설정
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1034,11 +1034,7 @@ export default function SignupPage() {
 
   // 새로운 일반회원 폼이 선택된 경우
   if (showGeneralSignupForm) {
-    return (
-      <GeneralSignupForm 
-        onBack={() => setShowGeneralSignupForm(false)}
-      />
-    );
+    return <GeneralSignupForm />;
   }
 
   return (

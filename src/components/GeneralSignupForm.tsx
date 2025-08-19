@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { passwordValidation } from "@/lib/utils";
 import TermsModal, { TermsType } from "@/components/TermsModal";
 import styles from "./GeneralSignupForm.module.css";
 
-interface GeneralSignupFormProps {
-  onBack?: () => void;
-}
-
-export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
+export default function GeneralSignupForm() {
   const [formData, setFormData] = useState({
     // 기본 정보
     username: "",
@@ -20,12 +16,6 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
     name: "",
     birthDate: "",
     phone: "",
-    phoneVerified: false,
-    identityVerified: false,
-    ci: "",
-
-    // 추천인 정보
-    referrerCode: "",
 
     // 약관 동의
     agreeTerms: false,
@@ -35,7 +25,7 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [showWarningModal, setShowWarningModal] = useState(false);
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,31 +33,7 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
 
   const router = useRouter();
 
-  // 본인인증 팝업 메시지 리스너
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
 
-      if (event.data.type === "inicis-auth-success") {
-        const { userInfo, verificationId: vId } = event.data;
-        setFormData((prev) => ({
-          ...prev,
-          name: userInfo.name,
-          phone: userInfo.phoneNumber,
-          birthDate: userInfo.birthDate,
-          phoneVerified: true,
-          identityVerified: true,
-        }));
-        setVerificationId(vId);
-        alert("본인인증이 완료되었습니다.");
-      } else if (event.data.type === "inicis-auth-failed") {
-        alert(`본인인증에 실패했습니다: ${event.data.resultMsg}`);
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -82,74 +48,16 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
     }
   };
 
-  const handleIdentityVerification = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/inicis-auth/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name || undefined,
-          phoneNumber: formData.phone || undefined,
-          birthDate: formData.birthDate || undefined,
-        }),
-      });
+  const handleIdentityVerification = () => {
+    setShowWarningModal(true);
+  };
 
-      if (!response.ok) {
-        throw new Error("본인인증 요청에 실패했습니다.");
-      }
-
-      const data = await response.json();
-
-      const width = 400;
-      const height = 640;
-      const left = (window.innerWidth - width) / 2;
-      const top = (window.innerHeight - height) / 2;
-
-      const popup = window.open(
-        "",
-        "inicis_identity_auth",
-        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-      );
-
-      if (!popup || popup.closed || typeof popup.closed === "undefined") {
-        alert("팝업이 차단되었습니다. 팝업 차단을 해제해주세요.");
-        return;
-      }
-
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = data.authUrl;
-      form.target = "inicis_identity_auth";
-
-      Object.entries(data.params).forEach(([key, value]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = value as string;
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-    } catch (error) {
-      console.error("본인인증 요청 오류:", error);
-      alert("본인인증 요청 중 오류가 발생했습니다.");
-    } finally {
-      setIsLoading(false);
-    }
+  const closeWarningModal = () => {
+    setShowWarningModal(false);
   };
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-
-    // 본인인증 확인
-    if (!formData.identityVerified) {
-      newErrors.identity = "본인인증을 완료해주세요.";
-    }
 
     // 이름 확인
     if (!formData.name) {
@@ -234,19 +142,6 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
       formDataToSend.append("phoneNumber", formData.phone);
       formDataToSend.append("birthDate", formData.birthDate);
       
-      // 본인인증 정보
-      if (verificationId) {
-        formDataToSend.append("verificationId", verificationId);
-      }
-      if (formData.ci) {
-        formDataToSend.append("ci", formData.ci);
-      }
-      
-      // 추천인 정보
-      if (formData.referrerCode) {
-        formDataToSend.append("referrerCode", formData.referrerCode);
-      }
-      
       // 약관 동의
       formDataToSend.append("agreeTerms", formData.agreeTerms.toString());
       formDataToSend.append("agreePrivacy", formData.agreePrivacy.toString());
@@ -315,7 +210,6 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
         <form onSubmit={handleSubmit} className={styles.form}>
             
           <div className={styles.cardsContainer}>
-            <div>
             {/* 약관 동의 카드 */}
             <div className={styles.card}>
               {/* 전체동의 */}
@@ -410,22 +304,13 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
               {/* 추가 텍스트 */}
               <div className={styles.termsNote}>
                 <ul>
-                  <li>필수 수집 항목은 서비스 이용에 필요한 최소한의 정보로, 서비스 이용을 위해 꼭 동의해 주세요.</li>
-                  <li>선택적 수집 항목(마케팅·이벤트 정보 수신 등)은 동의하지 않아도 회원가입 할 수 있지만 혜택 안내가 제한될 수 있어요.</li>
+                  <li>필수 항목은 서비스 이용에 필요한 정보로, 동의해야 서비스 이용이 가능합니다.</li>
+                  <li>마케팅 정보 수집 및 활용 동의는 선택 사항으로, 동의하지 않아도 가입은 가능하나 혜택 안내를 받지 못할 수 있습니다.</li>
                 </ul>
               </div>
                           </div>
                           
             </div>
-                     {/* 가입하기 버튼 */}
-          <button
-            type="submit"
-            className={styles.submitButton}
-            disabled={isLoading}
-          >
-            {isLoading ? "가입 중..." : "가입하기"}
-          </button>
-          </div>
 
             {/* 회원정보 입력 카드 */}
             <div className={styles.card}>
@@ -445,18 +330,15 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
                     onChange={handleInputChange}
                     className={`${styles.input} ${errors.name ? styles.inputError : ""}`}
                     placeholder="이름을 입력해 주세요"
-                    disabled={!formData.identityVerified}
                   />
-                  {!formData.identityVerified && (
-                    <button
-                      type="button"
-                      onClick={handleIdentityVerification}
-                      className={styles.verifyButton}
-                      disabled={isLoading}
-                    >
-                      본인인증
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleIdentityVerification}
+                    className={styles.verifyButton}
+                    disabled={isLoading}
+                  >
+                    본인인증
+                  </button>
                 </div>
                 {errors.name && (
                   <p className={styles.error}>{errors.name}</p>
@@ -472,7 +354,6 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
                   onChange={handleInputChange}
                   className={`${styles.input} ${errors.birthDate ? styles.inputError : ""}`}
                   placeholder="생년월일을 입력해 주세요"
-                  disabled={!formData.identityVerified}
                 />
                 {errors.birthDate && (
                   <p className={styles.error}>{errors.birthDate}</p>
@@ -488,16 +369,11 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
                   onChange={handleInputChange}
                   className={`${styles.input} ${errors.phone ? styles.inputError : ""}`}
                   placeholder="휴대폰 번호를 입력해 주세요"
-                  disabled={!formData.identityVerified}
                 />
                 {errors.phone && (
                   <p className={styles.error}>{errors.phone}</p>
                 )}
               </div>
-              
-              {errors.identity && (
-                <p className={styles.error}>{errors.identity}</p>
-              )}
             </div>
 
             {/* 아이디·비밀번호 설정 */}
@@ -579,30 +455,17 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
               </div>
             </div>
 
-            {/* 추천인 정보 입력 */}
-            <div className={styles.referralSection}>
-              <h3 className={styles.sectionTitle}>추천인 정보 입력</h3>
-              
-              <div className={styles.formRow}>
-                <label className={styles.label}>
-                  추천인 아이디 (선택)
-                </label>
-                <input
-                  type="text"
-                  name="referrerCode"
-                  value={formData.referrerCode}
-                  onChange={handleInputChange}
-                  placeholder="example1234"
-                  className={styles.input}
-                />
-                <p className={styles.hint}>
-                  아이디는 4~15자 이내 영문 소문자와 숫자만 입력해 주세요
-                </p>
-              </div>
-            </div>
-
             </div>
           </div>
+
+          {/* 가입하기 버튼 */}
+          <button
+            type="submit"
+            className={styles.submitButton}
+            disabled={isLoading}
+          >
+            {isLoading ? "가입 중..." : "가입하기"}
+          </button>
 
  
         </form>
@@ -614,6 +477,28 @@ export default function GeneralSignupForm({ }: GeneralSignupFormProps) {
         onClose={closeTermsModal}
         type={currentTermsType}
       />
+
+      {/* 경고 모달 */}
+      {showWarningModal && (
+        <div className={styles.modalOverlay} onClick={closeWarningModal}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>알림</h3>
+              <button className={styles.modalCloseButton} onClick={closeWarningModal}>
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p>본인인증 키 준비 중입니다. 이름, 생년월일, 휴대폰 번호를 직접 입력해 주세요.</p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.modalButton} onClick={closeWarningModal}>
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
