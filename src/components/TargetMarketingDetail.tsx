@@ -1433,6 +1433,60 @@ function TargetMarketingDetailContent({
     }
   }, [refreshTransactions, restoreState]);
 
+  // 이미지 편집 처리
+  const handleImageEdit = useCallback(async (prompt: string) => {
+    if (!currentGeneratedImage) {
+      alert("편집할 이미지가 없습니다. 먼저 이미지를 생성해주세요.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setShowTypingIndicator(true);
+
+      const response = await fetch("/api/ai/edit-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          baseImageUrl: currentGeneratedImage,
+          editPrompt: prompt,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.editedImageUrl) {
+        setCurrentGeneratedImage(data.editedImageUrl);
+
+        const editedMessage: Message = {
+          id: `edited-${Math.random().toString(36).substr(2, 9)}`,
+          role: "assistant",
+          content: `✨ 이미지가 수정되었습니다: ${prompt}`,
+          timestamp: new Date(),
+          imageUrl: data.editedImageUrl,
+        };
+        setMessages((prev) => [...prev, editedMessage]);
+      } else {
+        throw new Error(data.error || "이미지 편집에 실패했습니다.");
+      }
+    } catch (error) {
+      const errorMessage: Message = {
+        id: `edit-error-${Math.random().toString(36).substr(2, 9)}`,
+        role: "assistant",
+        content: `❌ 이미지 편집 중 오류가 발생했습니다: ${
+          error instanceof Error ? error.message : "알 수 없는 오류"
+        }`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setShowTypingIndicator(false);
+    }
+  }, [currentGeneratedImage]);
+
   // 메시지 전송 처리
   const handleSendMessage = useCallback(async (messageOverride?: string) => {
     const messageToSend = messageOverride || inputMessage;
@@ -1730,7 +1784,7 @@ function TargetMarketingDetailContent({
       setIsLoading(false);
       setShowTypingIndicator(false);
     }
-  }, [messages, inputMessage, isLoading]);
+  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, handleImageEdit, smsTextContent, templateTitle]);
 
   // 초기 메시지 처리
   useEffect(() => {
@@ -2192,60 +2246,6 @@ function TargetMarketingDetailContent({
     } catch (error) {
       console.error("캠페인 불러오기 실패:", error);
       alert(error instanceof Error ? error.message : "캠페인을 불러오는데 실패했습니다.");
-    }
-  };
-
-  // 이미지 편집 처리
-  const handleImageEdit = async (prompt: string) => {
-    if (!currentGeneratedImage) {
-      alert("편집할 이미지가 없습니다. 먼저 이미지를 생성해주세요.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setShowTypingIndicator(true);
-
-      const response = await fetch("/api/ai/edit-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          baseImageUrl: currentGeneratedImage,
-          editPrompt: prompt,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.editedImageUrl) {
-        setCurrentGeneratedImage(data.editedImageUrl);
-
-        const editedMessage: Message = {
-          id: `edited-${Math.random().toString(36).substr(2, 9)}`,
-          role: "assistant",
-          content: `✨ 이미지가 수정되었습니다: ${prompt}`,
-          timestamp: new Date(),
-          imageUrl: data.editedImageUrl,
-        };
-        setMessages((prev) => [...prev, editedMessage]);
-      } else {
-        throw new Error(data.error || "이미지 편집에 실패했습니다.");
-      }
-    } catch (error) {
-      const errorMessage: Message = {
-        id: `edit-error-${Math.random().toString(36).substr(2, 9)}`,
-        role: "assistant",
-        content: `❌ 이미지 편집 중 오류가 발생했습니다: ${
-          error instanceof Error ? error.message : "알 수 없는 오류"
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      setShowTypingIndicator(false);
     }
   };
 
