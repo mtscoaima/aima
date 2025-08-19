@@ -381,7 +381,6 @@ export default function MemberApprovalPage() {
           }, 1000);
         }
         
-        console.log("파일 다운로드 성공:", fileName);
       } catch (downloadError) {
         console.error("다운로드 실행 오류:", downloadError);
         alert("파일 다운로드 중 오류가 발생했습니다.");
