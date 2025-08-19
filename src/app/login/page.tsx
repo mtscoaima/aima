@@ -45,8 +45,9 @@ export default function LoginPage() {
     password: "",
     rememberMe: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
 
-  const { login, isLoading, error, isAuthenticated } = useAuth();
+  const { login, isLoading, error, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
   // 카카오 SDK 초기화
@@ -116,12 +117,18 @@ export default function LoginPage() {
     };
   }, []);
 
-  // 이미 로그인된 사용자는 루트 페이지로 리다이렉트
+  // 이미 로그인된 사용자는 대시보드로 리다이렉트
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace("/");
+    if (isAuthenticated && user) {
+      if (user.role === "ADMIN") {
+        router.replace("/admin/user-management");
+      } else if (user.role === "SALESPERSON") {
+        router.replace("/salesperson/referrals");
+      } else {
+        router.replace("/my-site/advertiser/dashboard");
+      }
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
   // 로그인된 사용자에게는 로딩 화면 표시
   if (isAuthenticated) {
@@ -129,14 +136,9 @@ export default function LoginPage() {
       <div className={styles.loginContainer}>
         <div className={styles.loginWrapper}>
           <div className={styles.loginCard}>
-            <div className={styles.loginHeader}>
-              <div className={styles.logoSection}>
-                <h1 className={styles.logoText}>MTS플러스</h1>
-                <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
-              </div>
-            </div>
+
             <div style={{ textAlign: "center", padding: "2rem" }}>
-              <p>이미 로그인되어 있습니다. 메인 페이지로 이동합니다...</p>
+              <p>이미 로그인되어 있습니다. 대시보드로 이동합니다...</p>
             </div>
           </div>
         </div>
@@ -152,17 +154,27 @@ export default function LoginPage() {
     }));
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      await login({
+      const userData = await login({
         username: formData.username,
         password: formData.password,
       });
 
-      // 로그인 성공 시 메인 페이지로 이동
-      router.push("/");
+      // 로그인 성공 시 사용자 역할에 따라 대시보드로 이동
+      if (userData.role === "ADMIN") {
+        router.push("/admin/user-management");
+      } else if (userData.role === "SALESPERSON") {
+        router.push("/salesperson/referrals");
+      } else {
+        router.push("/my-site/advertiser/dashboard");
+      }
     } catch (err) {
       // 에러는 AuthContext에서 처리됨
       console.error("로그인 실패:", err);
@@ -291,8 +303,15 @@ export default function LoginPage() {
           const { tokenManager } = await import("@/lib/api");
           tokenManager.setTokens(data.accessToken, data.refreshToken);
 
-          // 페이지 새로고침으로 인증 상태 업데이트
-          window.location.href = "/";
+          // 사용자 역할에 따라 적절한 페이지로 리다이렉트
+          const userRole = data.user?.role;
+          if (userRole === "ADMIN") {
+            window.location.href = "/admin/user-management";
+          } else if (userRole === "SALESPERSON") {
+            window.location.href = "/salesperson/referrals";
+          } else {
+            window.location.href = "/my-site/advertiser/dashboard";
+          }
         }
       } else {
         console.error("❌ 카카오 로그인 API 오류:", data);
@@ -423,8 +442,15 @@ export default function LoginPage() {
           const { tokenManager } = await import("@/lib/api");
           tokenManager.setTokens(data.accessToken, data.refreshToken);
 
-          // 페이지 새로고침으로 인증 상태 업데이트
-          window.location.href = "/";
+          // 사용자 역할에 따라 적절한 페이지로 리다이렉트
+          const userRole = data.user?.role;
+          if (userRole === "ADMIN") {
+            window.location.href = "/admin/user-management";
+          } else if (userRole === "SALESPERSON") {
+            window.location.href = "/salesperson/referrals";
+          } else {
+            window.location.href = "/my-site/advertiser/dashboard";
+          }
         }
       } else {
         console.error("❌ [네이버 로그인] API 오류:", data);
@@ -539,8 +565,15 @@ export default function LoginPage() {
           const { tokenManager } = await import("@/lib/api");
           tokenManager.setTokens(data.accessToken, data.refreshToken);
 
-          // 페이지 새로고침으로 인증 상태 업데이트
-          window.location.href = "/";
+          // 사용자 역할에 따라 적절한 페이지로 리다이렉트
+          const userRole = data.user?.role;
+          if (userRole === "ADMIN") {
+            window.location.href = "/admin/user-management";
+          } else if (userRole === "SALESPERSON") {
+            window.location.href = "/salesperson/referrals";
+          } else {
+            window.location.href = "/my-site/advertiser/dashboard";
+          }
         }
       } else {
         console.error("🔴 구글 로그인 API 오류:", data);
@@ -559,15 +592,13 @@ export default function LoginPage() {
   return (
     <div className={styles.loginContainer}>
       <div className={styles.loginWrapper}>
+        {/* 헤더 */}
+        <div className={styles.header}>
+          <h1 className={styles.title}>로그인</h1>
+        </div>
+        
         <div className={styles.loginCard}>
-          {/* 로고 및 제목 */}
-          <div className={styles.loginHeader}>
-            <div className={styles.logoSection}>
-              <h1 className={styles.logoText}>MTS플러스</h1>
-              <p className={styles.subtitle}>AI 기반 타깃 마케팅 플랫폼</p>
-            </div>
-            <h2 className={styles.loginTitle}>로그인</h2>
-          </div>
+
 
           {/* 에러 메시지 */}
           {error && <div className={styles.errorMessage}>{error}</div>}
@@ -595,17 +626,55 @@ export default function LoginPage() {
               <label htmlFor="password" className={styles.formLabel}>
                 비밀번호
               </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className={styles.formInput}
-                placeholder="8~20자의 영문, 숫자, 특수기호 조합"
-                required
-                disabled={isLoading}
-              />
+              <div className={styles.passwordInputWrapper}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={styles.formInput}
+                  placeholder="8~20자의 영문, 숫자, 특수기호 조합"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className={styles.passwordToggleBtn}
+                  disabled={isLoading}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    {showPassword ? (
+                      <>
+                        <path
+                          d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+                          fill="currentColor"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <path
+                          d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+                          fill="currentColor"
+                        />
+                        <path
+                          d="M3 3L21 21"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </>
+                    )}
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div className={styles.formOptions}>
@@ -618,17 +687,8 @@ export default function LoginPage() {
                   className={styles.checkboxInput}
                   disabled={isLoading}
                 />
-                <span className={styles.checkboxText}>로그인 상태 유지</span>
+                <span className={styles.checkboxText}>로그인 유지</span>
               </label>
-              <div className={styles.findLinks}>
-                <Link href="/auth/find-username" className={styles.forgotLink}>
-                  아이디 찾기
-                </Link>
-                <span className={styles.linkSeparator}>|</span>
-                <Link href="/auth/find-password" className={styles.forgotLink}>
-                  비밀번호 찾기
-                </Link>
-              </div>
             </div>
 
             <button
@@ -639,12 +699,16 @@ export default function LoginPage() {
               {isLoading ? "로그인 중..." : "로그인"}
             </button>
           </form>
-
+ {/* 회원가입 링크 */}
+ <div className={styles.signupLink}>
+            <span>아직 회원이 아니신가요?</span>
+            <Link href="/signup" className={styles.signupButton}>
+              회원가입
+            </Link>
+          </div>
           {/* SNS 로그인 섹션 */}
           <div className={styles.snsLoginSection}>
-            <div className={styles.divider}>
-              <span className={styles.dividerText}>또는</span>
-            </div>
+          
 
             <div className={styles.socialLoginHeader}>
               <span className={styles.socialLoginText}>간편 로그인</span>
@@ -707,13 +771,18 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* 회원가입 링크 */}
-          <div className={styles.signupLink}>
-            <span>아직 계정이 없으신가요?</span>
-            <Link href="/signup" className={styles.signupButton}>
-              회원가입
-            </Link>
-          </div>
+         
+        </div>
+        
+        {/* 아이디/비밀번호 찾기 링크 - modal 외부 */}
+        <div className={styles.findLinksExternal}>
+          <Link href="/auth/find-username" className={styles.forgotLink}>
+            아이디 찾기
+          </Link>
+          <span className={styles.linkSeparator}>|</span>
+          <Link href="/auth/find-password" className={styles.forgotLink}>
+            비밀번호 찾기
+          </Link>
         </div>
       </div>
     </div>

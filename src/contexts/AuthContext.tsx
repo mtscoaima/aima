@@ -39,7 +39,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (loginData: LoginRequest) => Promise<void>;
+  login: (loginData: LoginRequest) => Promise<User>;
   signup: (signupData: SignupRequest) => Promise<void>;
   logout: () => void;
   error: string | null;
@@ -231,6 +231,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 사용자 정보 설정 (캐시도 함께 업데이트)
       updateUser(response.user);
+      
+      // 사용자 정보 반환 (리다이렉트에 사용)
+      return response.user;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "로그인에 실패했습니다.";
