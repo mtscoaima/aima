@@ -9,15 +9,12 @@ import "./styles.css";
 // 세금계산서 인터페이스
 interface TaxInvoice {
   id: number;
-  invoiceNumber: string;
   issueDate: string;
   businessNumber: string;
   companyName: string;
   supplyAmount: number;
   taxAmount: number;
-  totalAmount: number;
-  periodStart?: string;
-  periodEnd?: string;
+  chargeAmount: number;
   status: "issued" | "cancelled";
   createdAt: string;
   updatedAt?: string;
@@ -66,15 +63,12 @@ function TaxInvoiceEditModal({
   isSubmitting,
 }: TaxInvoiceEditModalProps) {
   const [formData, setFormData] = useState({
-    invoiceNumber: taxInvoice?.invoiceNumber || "",
     issueDate: taxInvoice?.issueDate || "",
     businessNumber: taxInvoice?.businessNumber || "",
     companyName: taxInvoice?.companyName || "",
     supplyAmount: taxInvoice?.supplyAmount || 0,
     taxAmount: taxInvoice?.taxAmount || 0,
-    totalAmount: taxInvoice?.totalAmount || 0,
-    periodStart: taxInvoice?.periodStart || "",
-    periodEnd: taxInvoice?.periodEnd || "",
+    chargeAmount: taxInvoice?.chargeAmount || 0,
     status: taxInvoice?.status || "issued",
   });
 
@@ -84,15 +78,12 @@ function TaxInvoiceEditModal({
   useEffect(() => {
     if (taxInvoice) {
       setFormData({
-        invoiceNumber: taxInvoice.invoiceNumber || "",
         issueDate: taxInvoice.issueDate || "",
         businessNumber: taxInvoice.businessNumber || "",
         companyName: taxInvoice.companyName || "",
         supplyAmount: taxInvoice.supplyAmount || 0,
         taxAmount: taxInvoice.taxAmount || 0,
-        totalAmount: taxInvoice.totalAmount || 0,
-        periodStart: taxInvoice.periodStart || "",
-        periodEnd: taxInvoice.periodEnd || "",
+        chargeAmount: taxInvoice.chargeAmount || 0,
         status: taxInvoice.status || "issued",
       });
       setErrors({});
@@ -113,7 +104,7 @@ function TaxInvoiceEditModal({
       const supply =
         field === "supplyAmount" ? Number(value) : formData.supplyAmount;
       const tax = field === "taxAmount" ? Number(value) : formData.taxAmount;
-      setFormData((prev) => ({ ...prev, totalAmount: supply + tax }));
+      setFormData((prev) => ({ ...prev, chargeAmount: supply + tax }));
     }
   };
 
@@ -121,9 +112,7 @@ function TaxInvoiceEditModal({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.invoiceNumber.trim()) {
-      newErrors.invoiceNumber = "계산서 번호는 필수입니다.";
-    }
+    // 계산서 번호 검증 제거 (더 이상 사용하지 않음)
 
     if (!formData.issueDate) {
       newErrors.issueDate = "발행일은 필수입니다.";
@@ -145,8 +134,8 @@ function TaxInvoiceEditModal({
       newErrors.taxAmount = "세액은 0 이상이어야 합니다.";
     }
 
-    if (formData.totalAmount <= 0) {
-      newErrors.totalAmount = "총 금액은 0보다 커야 합니다.";
+    if (formData.chargeAmount <= 0) {
+      newErrors.chargeAmount = "총 금액은 0보다 커야 합니다.";
     }
 
     setErrors(newErrors);
@@ -192,29 +181,7 @@ function TaxInvoiceEditModal({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                계산서 번호
-              </label>
-              <input
-                type="text"
-                value={formData.invoiceNumber}
-                onChange={(e) =>
-                  handleInputChange("invoiceNumber", e.target.value)
-                }
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                  errors.invoiceNumber
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-blue-500"
-                }`}
-                disabled={isSubmitting}
-              />
-              {errors.invoiceNumber && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.invoiceNumber}
-                </p>
-              )}
-            </div>
+            {/* 계산서 번호 필드 제거 */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -353,7 +320,7 @@ function TaxInvoiceEditModal({
               </label>
               <input
                 type="number"
-                value={formData.totalAmount}
+                value={formData.chargeAmount}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
               />
@@ -362,33 +329,7 @@ function TaxInvoiceEditModal({
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                과세기간 시작
-              </label>
-              <input
-                type="date"
-                value={formData.periodStart}
-                onChange={(e) =>
-                  handleInputChange("periodStart", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                과세기간 종료
-              </label>
-              <input
-                type="date"
-                value={formData.periodEnd}
-                onChange={(e) => handleInputChange("periodEnd", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isSubmitting}
-              />
-            </div>
+            {/* 과세기간 필드들 제거 */}
           </div>
         </div>
 
@@ -710,9 +651,9 @@ export default function TaxInvoiceManagement() {
   };
 
   // 세금계산서 삭제 핸들러
-  const handleDeleteTaxInvoice = (invoiceId: number, invoiceNumber: string) => {
+  const handleDeleteTaxInvoice = (invoiceId: number) => {
     setSelectedTaxInvoice({ id: invoiceId } as TaxInvoice);
-    setDeleteInvoiceNumber(invoiceNumber);
+    setDeleteInvoiceNumber(`ID: ${invoiceId}`);
     setIsDeleteModalOpen(true);
   };
 
@@ -967,7 +908,7 @@ export default function TaxInvoiceManagement() {
   // 통계 계산 (실제 데이터 기준)
   const totalInvoices = pagination.totalCount;
   const totalAmount = invoices.reduce(
-    (sum, invoice) => sum + invoice.totalAmount,
+    (sum, invoice) => sum + invoice.chargeAmount,
     0
   );
   const monthlyInvoices = invoices.filter(
@@ -1049,26 +990,29 @@ export default function TaxInvoiceManagement() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        계산서 번호
+                        작성일
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        사업자등록번호
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         업체명
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        발행일
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        공급가액
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        총 금액
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        세액
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        상태
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        충전금액
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {isLoading ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center">
+                        <td colSpan={6} className="px-6 py-12 text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                           <span className="text-gray-500">
                             데이터를 불러오는 중...
@@ -1077,14 +1021,14 @@ export default function TaxInvoiceManagement() {
                       </tr>
                     ) : error ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center">
+                        <td colSpan={6} className="px-6 py-12 text-center">
                           <span className="text-red-500">오류: {error}</span>
                         </td>
                       </tr>
                     ) : invoices.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           className="px-6 py-12 text-center text-gray-500"
                         >
                           발행된 세금계산서가 없습니다.
@@ -1093,28 +1037,23 @@ export default function TaxInvoiceManagement() {
                     ) : (
                       invoices.slice(0, 5).map((invoice) => (
                         <tr key={invoice.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {invoice.invoiceNumber}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {invoice.companyName}
-                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {formatDate(invoice.issueDate)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatCurrency(invoice.totalAmount)}
+                            {invoice.businessNumber}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                invoice.status === "issued"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {invoice.status === "issued" ? "발행" : "취소"}
-                            </span>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {invoice.companyName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            {formatCurrency(invoice.supplyAmount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            {formatCurrency(invoice.taxAmount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                            {formatCurrency(invoice.chargeAmount)}
                           </td>
                         </tr>
                       ))
@@ -1144,8 +1083,7 @@ export default function TaxInvoiceManagement() {
                   <li>• 최대 파일 크기: 10MB</li>
                   <li>• 첫 번째 행은 헤더로 사용됩니다</li>
                   <li>
-                    • 필수 컬럼: 계산서번호, 발행일, 사업자번호, 업체명,
-                    공급가액, 세액, 총금액
+                    • 필수 컬럼: 작성일, 사업자등록번호, 업체명, 공급가액, 세액, 충전금액
                   </li>
                 </ul>
                 <button
@@ -1460,25 +1398,22 @@ export default function TaxInvoiceManagement() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          계산서 번호
+                          작성일
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          발행일
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          사업자번호
+                          사업자등록번호
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           업체명
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           공급가액
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           세액
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          총 금액
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          충전금액
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           상태
@@ -1491,9 +1426,6 @@ export default function TaxInvoiceManagement() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {invoices.map((invoice) => (
                         <tr key={invoice.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {invoice.invoiceNumber}
-                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {formatDate(invoice.issueDate)}
                           </td>
@@ -1503,14 +1435,14 @@ export default function TaxInvoiceManagement() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {invoice.companyName}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                             {formatCurrency(invoice.supplyAmount)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                             {formatCurrency(invoice.taxAmount)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatCurrency(invoice.totalAmount)}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                            {formatCurrency(invoice.chargeAmount)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
@@ -1541,10 +1473,7 @@ export default function TaxInvoiceManagement() {
                               </button>
                               <button
                                 onClick={() =>
-                                  handleDeleteTaxInvoice(
-                                    invoice.id,
-                                    invoice.invoiceNumber
-                                  )
+                                  handleDeleteTaxInvoice(invoice.id)
                                 }
                                 className="text-red-600 hover:text-red-900 text-xs bg-red-50 hover:bg-red-100 px-2 py-1 rounded"
                                 title="삭제"
@@ -1601,7 +1530,7 @@ export default function TaxInvoiceManagement() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-gray-900">
-                              {invoice.invoiceNumber}
+                              ID: {invoice.id}
                             </span>
                             <span
                               className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -1630,10 +1559,7 @@ export default function TaxInvoiceManagement() {
                             </button>
                             <button
                               onClick={() =>
-                                handleDeleteTaxInvoice(
-                                  invoice.id,
-                                  invoice.invoiceNumber
-                                )
+                                handleDeleteTaxInvoice(invoice.id)
                               }
                               className="text-red-600 hover:text-red-900 text-xs bg-red-50 hover:bg-red-100 px-2 py-1 rounded"
                               title="삭제"
@@ -1677,7 +1603,7 @@ export default function TaxInvoiceManagement() {
                           <div className="col-span-2">
                             <span className="text-gray-500">총 금액:</span>
                             <span className="ml-1 font-medium text-gray-900">
-                              {formatCurrency(invoice.totalAmount)}
+                              {formatCurrency(invoice.chargeAmount)}
                             </span>
                           </div>
                         </div>
@@ -1805,14 +1731,7 @@ export default function TaxInvoiceManagement() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    계산서 번호
-                  </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {selectedTaxInvoice.invoiceNumber}
-                  </p>
-                </div>
+                {/* 계산서 번호 필드 제거 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     발행일
@@ -1875,7 +1794,7 @@ export default function TaxInvoiceManagement() {
                     총 금액
                   </label>
                   <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded font-semibold">
-                    {formatCurrency(selectedTaxInvoice.totalAmount)} 원
+                    {formatCurrency(selectedTaxInvoice.chargeAmount)} 원
                   </p>
                 </div>
                 <div>

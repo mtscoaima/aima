@@ -73,16 +73,12 @@ export async function GET(request: NextRequest) {
       .select(
         `
         id,
-        invoice_number,
         issue_date,
         business_number,
         company_name,
         supply_amount,
         tax_amount,
-        total_amount,
-        period_start,
-        period_end,
-        status,
+        charge_amount,
         created_at
       `
       )
@@ -139,7 +135,7 @@ export async function GET(request: NextRequest) {
         ),
         supply_amount: Number(invoice.supply_amount),
         tax_amount: Number(invoice.tax_amount),
-        total_amount: Number(invoice.total_amount),
+        charge_amount: Number(invoice.charge_amount),
       })) || [];
 
     // 페이지네이션 정보

@@ -35,13 +35,12 @@ interface UploadResult {
 
 // 세금계산서 데이터 인터페이스
 interface TaxInvoiceData {
-  invoiceNumber: string;
   issueDate: string;
   businessNumber: string;
   companyName: string;
   supplyAmount: number;
   taxAmount: number;
-  totalAmount: number;
+  chargeAmount: number;
 }
 
 // 관리자 권한 검증 함수
@@ -144,27 +143,23 @@ function validateTaxInvoiceData(
   const errors: string[] = [];
   const rowNum = rowIndex + 2; // 헤더 제외하고 1부터 시작
 
-  // 필수 필드 검증
-  const invoiceNumber = row["계산서 번호"]?.toString().trim();
-  if (!invoiceNumber) {
-    errors.push(`${rowNum}행: 계산서 번호가 누락되었습니다`);
-  }
+  // 계산서 번호는 더 이상 필요하지 않음 (DB에서 제거됨)
 
-  const issueDate = validateAndFormatDate(row["발행일"] as string);
+  const issueDate = validateAndFormatDate(row["작성일"] as string);
   if (!issueDate) {
     errors.push(
-      `${rowNum}행: 발행일이 올바르지 않습니다 (YYYY-MM-DD 형식 필요)`
+      `${rowNum}행: 작성일이 올바르지 않습니다 (YYYY-MM-DD 형식 필요)`
     );
   }
 
-  const businessNumber = row["사업자번호"]?.toString().trim();
+  const businessNumber = row["사업자등록번호"]?.toString().trim();
   if (!businessNumber) {
-    errors.push(`${rowNum}행: 사업자번호가 누락되었습니다`);
+    errors.push(`${rowNum}행: 사업자등록번호가 누락되었습니다`);
   } else {
     const normalizedBizNum = normalizeBizNumber(businessNumber);
     if (!/^\d{10}$/.test(normalizedBizNum)) {
       errors.push(
-        `${rowNum}행: 사업자번호 형식이 올바르지 않습니다 (10자리 숫자)`
+        `${rowNum}행: 사업자등록번호 형식이 올바르지 않습니다 (10자리 숫자)`
       );
     }
   }
@@ -184,9 +179,9 @@ function validateTaxInvoiceData(
     errors.push(`${rowNum}행: 세액이 올바르지 않습니다 (숫자 필요)`);
   }
 
-  const totalAmount = validateAndFormatNumber(row["총 금액"]);
-  if (totalAmount === null) {
-    errors.push(`${rowNum}행: 총 금액이 올바르지 않습니다 (숫자 필요)`);
+  const chargeAmount = validateAndFormatNumber(row["충전금액"]);
+  if (chargeAmount === null) {
+    errors.push(`${rowNum}행: 충전금액이 올바르지 않습니다 (숫자 필요)`);
   }
 
   if (errors.length > 0) {
@@ -194,13 +189,12 @@ function validateTaxInvoiceData(
   }
 
   const data: TaxInvoiceData = {
-    invoiceNumber: invoiceNumber!,
     issueDate: issueDate!,
     businessNumber: normalizeBizNumber(businessNumber!),
     companyName: companyName!,
     supplyAmount: supplyAmount!,
     taxAmount: taxAmount!,
-    totalAmount: totalAmount!,
+    chargeAmount: chargeAmount!,
   };
 
   return { isValid: true, data, errors: [] };
@@ -342,23 +336,7 @@ export async function POST(request: NextRequest) {
 
       const validData = validation.data!;
 
-      // 중복 계산서 번호 체크
-      const { data: existingInvoice } = await supabase
-        .from("tax_invoices")
-        .select("id")
-        .eq("invoice_number", validData.invoiceNumber)
-        .single();
-
-      if (existingInvoice) {
-        result.failed++;
-        result.details.duplicates++;
-        result.errors.push(
-          `${i + 2}행: 세금계산서 번호 '${
-            validData.invoiceNumber
-          }'가 이미 존재합니다`
-        );
-        continue;
-      }
+      // 중복 체크 로직 제거 (invoice_number 컬럼이 제거되어 더 이상 필요 없음)
 
       // 사업자등록번호로 사용자 찾기
       const { data: users, error: userError } = await supabase
@@ -404,15 +382,12 @@ export async function POST(request: NextRequest) {
     if (validDataList.length > 0) {
       const insertData = validDataList.map((item) => ({
         user_id: item.userId,
-        invoice_number: item.invoiceNumber,
         issue_date: item.issueDate,
         business_number: item.businessNumber,
         company_name: item.companyName,
         supply_amount: item.supplyAmount,
         tax_amount: item.taxAmount,
-        total_amount: item.totalAmount,
-        period_start: null,
-        period_end: null,
+        charge_amount: item.chargeAmount,
         status: "issued",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
