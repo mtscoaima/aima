@@ -7,13 +7,11 @@ import { tokenManager } from "@/lib/api";
 export interface TaxInvoice {
   id: number;
   issue_date: string;
-  invoice_number: string;
   business_number: string;
   company_name: string;
   supply_amount: number;
   tax_amount: number;
-  total_amount: number;
-  status: string;
+  charge_amount: number;
 }
 
 interface TaxInvoiceTabProps {
@@ -418,10 +416,7 @@ export default function TaxInvoiceTab({
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                    발행일
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                    계산서 번호
+                    작성일
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                     사업자등록번호
@@ -436,17 +431,14 @@ export default function TaxInvoiceTab({
                     세액
                   </th>
                   <th className="px-6 py-3 text-right text-sm font-medium text-gray-700">
-                    총 금액
-                  </th>
-                  <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">
-                    상태
+                    충전금액
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {taxInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <div className="text-gray-500">
                         <svg
                           className="w-12 h-12 text-gray-300 mx-auto mb-4"
@@ -472,9 +464,6 @@ export default function TaxInvoiceTab({
                         {invoice.issue_date}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        {invoice.invoice_number}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
                         {invoice.business_number}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
@@ -487,18 +476,7 @@ export default function TaxInvoiceTab({
                         {invoice.tax_amount.toLocaleString()}원
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
-                        {invoice.total_amount.toLocaleString()}원
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            invoice.status === "issued"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {invoice.status === "issued" ? "발행" : "취소"}
-                        </span>
+                        {invoice.charge_amount.toLocaleString()}원
                       </td>
                     </tr>
                   ))

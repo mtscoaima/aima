@@ -114,16 +114,12 @@ export async function GET(request: NextRequest) {
       .select(
         `
         id,
-        invoice_number,
         issue_date,
         business_number,
         company_name,
         supply_amount,
         tax_amount,
-        total_amount,
-        period_start,
-        period_end,
-        status,
+        charge_amount,
         created_at,
         users!inner(
           id,
@@ -176,23 +172,16 @@ export async function GET(request: NextRequest) {
 
         return {
           순번: index + 1,
-          "계산서 번호": invoice.invoice_number,
-          발행일: formatDate(invoice.issue_date as string),
-          사업자번호: invoice.business_number,
+          작성일: formatDate(invoice.issue_date as string),
+          사업자등록번호: invoice.business_number,
           업체명: invoice.company_name,
           담당자명: taxInvoiceInfo?.manager || users?.name || "-",
           "담당자 이메일": taxInvoiceInfo?.email || users?.email || "-",
           "담당자 연락처": taxInvoiceInfo?.contact || "-",
           공급가액: invoice.supply_amount,
           세액: invoice.tax_amount,
-          "총 금액": invoice.total_amount,
-          "과세기간 시작": invoice.period_start
-            ? formatDate(invoice.period_start as string)
-            : "-",
-          "과세기간 종료": invoice.period_end
-            ? formatDate(invoice.period_end as string)
-            : "-",
-          상태: invoice.status === "issued" ? "발행" : "취소",
+          충전금액: invoice.charge_amount,
+
           등록일: formatDate(invoice.created_at as string),
         };
       }
@@ -205,25 +194,21 @@ export async function GET(request: NextRequest) {
     // 컬럼 너비 설정
     const columnWidths = [
       { wch: 6 }, // 순번
-      { wch: 15 }, // 계산서 번호
-      { wch: 12 }, // 발행일
-      { wch: 15 }, // 사업자번호
+      { wch: 12 }, // 작성일
+      { wch: 17 }, // 사업자등록번호
       { wch: 20 }, // 업체명
       { wch: 15 }, // 담당자명
       { wch: 25 }, // 담당자 이메일
       { wch: 15 }, // 담당자 연락처
       { wch: 12 }, // 공급가액
       { wch: 10 }, // 세액
-      { wch: 12 }, // 총 금액
-      { wch: 12 }, // 과세기간 시작
-      { wch: 12 }, // 과세기간 종료
-      { wch: 8 }, // 상태
+      { wch: 12 }, // 충전금액
       { wch: 12 }, // 등록일
     ];
     worksheet["!cols"] = columnWidths;
 
     // 헤더 스타일 설정
-    const headerRange = XLSX.utils.decode_range(worksheet["!ref"] || "A1:O1");
+    const headerRange = XLSX.utils.decode_range(worksheet["!ref"] || "A1:K1");
     for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
       if (!worksheet[cellAddress]) continue;
@@ -258,8 +243,8 @@ export async function GET(request: NextRequest) {
 
         // 숫자 필드에 대한 정렬 설정
         const colIndex = col - headerRange.s.c;
-        if ([8, 9, 10].includes(colIndex)) {
-          // 공급가액, 세액, 총 금액
+        if ([7, 8, 9].includes(colIndex)) {
+          // 공급가액, 세액, 충전금액
           worksheet[cellAddress].s.alignment = { horizontal: "right" };
         }
       }

@@ -86,16 +86,12 @@ export async function GET(
       .select(
         `
         id,
-        invoice_number,
         issue_date,
         business_number,
         company_name,
         supply_amount,
         tax_amount,
-        total_amount,
-        period_start,
-        period_end,
-        file_url,
+        charge_amount,
         status,
         created_at,
         updated_at,
@@ -148,16 +144,12 @@ export async function GET(
     // 응답 데이터 포맷팅
     const formattedData = {
       id: taxInvoice.id,
-      invoiceNumber: taxInvoice.invoice_number,
       issueDate: taxInvoice.issue_date,
       businessNumber: taxInvoice.business_number,
       companyName: taxInvoice.company_name,
       supplyAmount: taxInvoice.supply_amount,
       taxAmount: taxInvoice.tax_amount,
-      totalAmount: taxInvoice.total_amount,
-      periodStart: taxInvoice.period_start,
-      periodEnd: taxInvoice.period_end,
-      fileUrl: taxInvoice.file_url,
+      chargeAmount: taxInvoice.charge_amount,
       status: taxInvoice.status,
       createdAt: taxInvoice.created_at,
       updatedAt: taxInvoice.updated_at,
@@ -230,27 +222,23 @@ export async function PUT(
 
     const body = await request.json();
     const {
-      invoiceNumber,
       issueDate,
       businessNumber,
       companyName,
       supplyAmount,
       taxAmount,
-      totalAmount,
-      periodStart,
-      periodEnd,
+      chargeAmount,
       status,
     } = body;
 
     // 필수 필드 검증
     if (
-      !invoiceNumber ||
       !issueDate ||
       !businessNumber ||
       !companyName ||
       supplyAmount === undefined ||
       taxAmount === undefined ||
-      totalAmount === undefined
+      chargeAmount === undefined
     ) {
       return NextResponse.json(
         {
@@ -288,15 +276,12 @@ export async function PUT(
     const { data: updatedInvoice, error: updateError } = await supabase
       .from("tax_invoices")
       .update({
-        invoice_number: invoiceNumber,
         issue_date: issueDate,
         business_number: businessNumber.replace(/[-\s]/g, ""), // 사업자번호 정규화
         company_name: companyName,
         supply_amount: parseFloat(supplyAmount),
         tax_amount: parseFloat(taxAmount),
-        total_amount: parseFloat(totalAmount),
-        period_start: periodStart || null,
-        period_end: periodEnd || null,
+        charge_amount: parseFloat(chargeAmount),
         status: status || "issued",
         updated_at: new Date().toISOString(),
       })
@@ -323,15 +308,12 @@ export async function PUT(
         message: "세금계산서가 성공적으로 수정되었습니다",
         data: {
           id: updatedInvoice.id,
-          invoiceNumber: updatedInvoice.invoice_number,
           issueDate: updatedInvoice.issue_date,
           businessNumber: updatedInvoice.business_number,
           companyName: updatedInvoice.company_name,
           supplyAmount: updatedInvoice.supply_amount,
           taxAmount: updatedInvoice.tax_amount,
-          totalAmount: updatedInvoice.total_amount,
-          periodStart: updatedInvoice.period_start,
-          periodEnd: updatedInvoice.period_end,
+          chargeAmount: updatedInvoice.charge_amount,
           status: updatedInvoice.status,
           updatedAt: updatedInvoice.updated_at,
         },
@@ -393,7 +375,7 @@ export async function DELETE(
     // 세금계산서 존재 여부 확인
     const { data: existingInvoice, error: checkError } = await supabase
       .from("tax_invoices")
-      .select("id, invoice_number")
+      .select("id")
       .eq("id", invoiceId)
       .single();
 
@@ -435,7 +417,6 @@ export async function DELETE(
         message: "세금계산서가 성공적으로 삭제되었습니다",
         data: {
           id: invoiceId,
-          invoiceNumber: existingInvoice.invoice_number,
           deletedAt: getKSTISOString(),
         },
         timestamp: getKSTISOString(),

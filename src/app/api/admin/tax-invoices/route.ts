@@ -132,13 +132,12 @@ export async function GET(request: NextRequest) {
       .select(
         `
         id,
-        invoice_number,
         issue_date,
         business_number,
         company_name,
         supply_amount,
         tax_amount,
-        total_amount,
+        charge_amount,
         status,
         created_at,
         users!inner(
@@ -178,13 +177,12 @@ export async function GET(request: NextRequest) {
         const users = invoice.users as any;
         return {
           id: invoice.id,
-          invoiceNumber: invoice.invoice_number,
           issueDate: invoice.issue_date,
           businessNumber: invoice.business_number,
           companyName: invoice.company_name,
           supplyAmount: invoice.supply_amount,
           taxAmount: invoice.tax_amount,
-          totalAmount: invoice.total_amount,
+          chargeAmount: invoice.charge_amount,
           status: invoice.status,
           createdAt: invoice.created_at,
           user: {

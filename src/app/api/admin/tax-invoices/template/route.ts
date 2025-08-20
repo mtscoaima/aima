@@ -50,22 +50,20 @@ export async function GET(request: NextRequest) {
     // 엑셀 템플릿 데이터 생성
     const templateData = [
       {
-        "계산서 번호": "2024-001",
-        발행일: "2024-01-15",
-        사업자번호: "123-45-67890",
+        작성일: "2024-01-15",
+        사업자등록번호: "123-45-67890",
         업체명: "주식회사 샘플",
         공급가액: 100000,
         세액: 10000,
-        "총 금액": 110000,
+        충전금액: 110000,
       },
       {
-        "계산서 번호": "2024-002",
-        발행일: "2024-01-16",
-        사업자번호: "987-65-43210",
+        작성일: "2024-01-16",
+        사업자등록번호: "987-65-43210",
         업체명: "테스트 기업",
         공급가액: 200000,
         세액: 20000,
-        "총 금액": 220000,
+        충전금액: 220000,
       },
     ];
 
@@ -77,18 +75,17 @@ export async function GET(request: NextRequest) {
 
     // 컬럼 너비 설정
     const columnWidths = [
-      { wch: 15 }, // 계산서 번호
-      { wch: 12 }, // 발행일
-      { wch: 15 }, // 사업자번호
+      { wch: 12 }, // 작성일
+      { wch: 17 }, // 사업자등록번호
       { wch: 20 }, // 업체명
       { wch: 12 }, // 공급가액
       { wch: 10 }, // 세액
-      { wch: 12 }, // 총 금액
+      { wch: 12 }, // 충전금액
     ];
     worksheet["!cols"] = columnWidths;
 
     // 헤더 스타일 설정
-    const headerRange = XLSX.utils.decode_range(worksheet["!ref"] || "A1:G1");
+    const headerRange = XLSX.utils.decode_range(worksheet["!ref"] || "A1:F1");
     for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
       if (!worksheet[cellAddress]) continue;

@@ -62,16 +62,12 @@ export async function GET(request: NextRequest) {
       .from("tax_invoices")
       .select(
         `
-        invoice_number,
         issue_date,
         business_number,
         company_name,
         supply_amount,
         tax_amount,
-        total_amount,
-        period_start,
-        period_end,
-        status,
+        charge_amount,
         created_at
       `
       )
@@ -107,8 +103,7 @@ export async function GET(request: NextRequest) {
     // 엑셀 데이터 준비
     const excelData = taxInvoices.map((invoice, index) => ({
       순번: index + 1,
-      "계산서 번호": invoice.invoice_number,
-      발행일: invoice.issue_date,
+      작성일: invoice.issue_date,
       사업자등록번호: invoice.business_number?.replace(
         /(\d{3})(\d{2})(\d{5})/,
         "$1-$2-$3"
@@ -116,10 +111,7 @@ export async function GET(request: NextRequest) {
       업체명: invoice.company_name,
       공급가액: Number(invoice.supply_amount),
       세액: Number(invoice.tax_amount),
-      "총 금액": Number(invoice.total_amount),
-      "과세기간 시작": invoice.period_start,
-      "과세기간 종료": invoice.period_end,
-      상태: invoice.status === "issued" ? "발행" : "취소",
+      충전금액: Number(invoice.charge_amount),
       등록일: new Date(invoice.created_at).toLocaleDateString("ko-KR"),
     }));
 

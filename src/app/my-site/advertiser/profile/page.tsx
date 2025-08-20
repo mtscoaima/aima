@@ -321,7 +321,7 @@ export default function ProfilePage() {
 
       // 로컬 상태 업데이트 (세금계산서 담당자 정보만)
       setUserData((prev) => ({
-        ...prev,
+      ...prev,
         taxInvoiceInfo: {
           manager: emailData.name,
           contact: emailData.phone,
@@ -399,7 +399,7 @@ export default function ProfilePage() {
           />
         );
       case "password":
-        return (
+    return (
           <PasswordTab
             isSaving={isSaving}
             setIsSaving={setIsSaving}
@@ -628,9 +628,9 @@ export default function ProfilePage() {
                   확인
                 </button>
               </div>
-                          </div>
-                            </div>
-                          )}
+            </div>
+          </div>
+        )}
 
 
       </div>
