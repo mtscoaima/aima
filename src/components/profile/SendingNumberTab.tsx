@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface SenderNumber {
   id: number;
@@ -13,37 +14,30 @@ interface SenderNumber {
   isUserPhone?: boolean;
 }
 
-interface User {
-  phoneNumber?: string;
-}
-
-interface SendingNumberTabProps {
-  user: User | null;
-}
-
-export default function SendingNumberTab({
-  user,
-}: SendingNumberTabProps) {
+export default function SendingNumberTab() {
+  const router = useRouter();
+  
   // 발신번호 관리 관련 상태
   const [senderNumbers, setSenderNumbers] = useState<SenderNumber[]>([]);
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
-  const [defaultNumber, setDefaultNumber] = useState<string>("");
   const [senderNumbersLoading, setSenderNumbersLoading] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
   const [remainingCount, setRemainingCount] = useState(10);
 
   // 발신번호 모달 상태
-  const [isChangeDefaultModalOpen, setIsChangeDefaultModalOpen] = useState(false);
   const [isAddNumberModalOpen, setIsAddNumberModalOpen] = useState(false);
-  const [selectedDefaultNumber, setSelectedDefaultNumber] = useState<number | null>(null);
+  const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
+  const [numbersToDelete, setNumbersToDelete] = useState<SenderNumber[]>([]);
+  const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [newNumberForm, setNewNumberForm] = useState({
     phoneNumber: "",
     displayName: "",
+    carrier: "",
+    documents: null as File | null,
   });
 
   // 전화번호 형식 변환 함수
   const formatPhoneNumber = (phoneNumber?: string) => {
-    if (!phoneNumber) return null;
+    if (!phoneNumber) return phoneNumber;
 
     // 하이픈이 이미 있는 경우 그대로 반환
     if (phoneNumber.includes("-")) {
@@ -106,8 +100,6 @@ export default function SendingNumberTab({
       const data = await response.json();
 
       setSenderNumbers(data.senderNumbers || []);
-      setDefaultNumber(data.defaultNumber || "");
-      setTotalCount(data.totalCount || 0);
       setRemainingCount(data.remainingCount || 10);
     } catch (error) {
       console.error("❌ 발신번호 목록 조회 오류:", error);
@@ -122,8 +114,8 @@ export default function SendingNumberTab({
     fetchSenderNumbers();
   }, []);
 
-  // 발신번호 삭제 처리
-  const handleDeleteNumbers = async () => {
+  // 발신번호 삭제 모달 열기
+  const handleDeleteNumbers = () => {
     if (selectedNumbers.length === 0) {
       alert("삭제할 발신번호를 선택해주세요.");
       return;
@@ -138,10 +130,19 @@ export default function SendingNumberTab({
       return;
     }
 
-    if (!confirm("선택한 발신번호를 삭제하시겠습니까?")) {
-      return;
-    }
+    // 준비중 모달 열기
+    setIsComingSoonModalOpen(true);
+    
+    // 기존 로직은 주석 처리
+    // const numbersToDelete = senderNumbers.filter(
+    //   (num) => selectedNumbers.includes(num.id)
+    // );
+    // setNumbersToDelete(numbersToDelete);
+    // setIsDeleteConfirmModalOpen(true);
+  };
 
+  // 발신번호 삭제 확인 처리
+  const confirmDeleteNumbers = async () => {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -164,6 +165,8 @@ export default function SendingNumberTab({
 
       alert("선택한 발신번호가 삭제되었습니다.");
       setSelectedNumbers([]);
+      setIsDeleteConfirmModalOpen(false);
+      setNumbersToDelete([]);
       await fetchSenderNumbers(); // 목록 새로고침
     } catch (error) {
       console.error("발신번호 삭제 오류:", error);
@@ -173,55 +176,27 @@ export default function SendingNumberTab({
     }
   };
 
-  // 기본 발신번호 변경 모달 열기
-  const openChangeDefaultModal = () => {
-    setIsChangeDefaultModalOpen(true);
-    // 현재 기본 발신번호 선택
-    const currentDefault = senderNumbers.find((num) => num.isDefault);
-    setSelectedDefaultNumber(currentDefault?.id || null);
+  // 발신번호 삭제 모달 닫기
+  const closeDeleteConfirmModal = () => {
+    setIsDeleteConfirmModalOpen(false);
+    setNumbersToDelete([]);
   };
 
-  // 기본 발신번호 변경 처리
-  const handleChangeDefaultNumber = async (newDefaultId: number) => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("로그인이 필요합니다");
-      }
 
-      const response = await fetch(
-        `/api/sender-numbers/${newDefaultId}/set-default`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || "기본 발신번호 변경에 실패했습니다"
-        );
-      }
-
-      alert("기본 발신번호가 변경되었습니다.");
-      await fetchSenderNumbers(); // 목록 새로고침
-    } catch (error) {
-      console.error("기본 발신번호 변경 오류:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "기본 발신번호 변경에 실패했습니다."
-      );
-    }
-  };
 
   // 발신번호 추가 모달 열기
   const openAddNumberModal = () => {
-    setNewNumberForm({ phoneNumber: "", displayName: "" });
-    setIsAddNumberModalOpen(true);
+    // 준비중 모달 열기
+    setIsComingSoonModalOpen(true);
+    
+    // 기존 로직은 주석 처리
+    // setNewNumberForm({ 
+    //   phoneNumber: "", 
+    //   displayName: "", 
+    //   carrier: "", 
+    //   documents: null 
+    // });
+    // setIsAddNumberModalOpen(true);
   };
 
   // 발신번호 추가 처리
@@ -230,6 +205,18 @@ export default function SendingNumberTab({
       alert("전화번호를 입력해주세요.");
       return;
     }
+
+    if (!newNumberForm.carrier) {
+      alert("통신사를 선택해주세요.");
+      return;
+    }
+
+    if (!newNumberForm.displayName) {
+      alert("발신번호 명의자를 입력해주세요.");
+      return;
+    }
+
+    // 서류는 선택사항이므로 검증하지 않음
 
     // 전화번호 형식 검증 (두 가지 형식 허용)
     const digitsOnly = newNumberForm.phoneNumber.replace(/[^0-9]/g, "");
@@ -250,6 +237,7 @@ export default function SendingNumberTab({
         throw new Error("로그인이 필요합니다");
       }
 
+      // JSON으로 간단하게 전송
       const response = await fetch("/api/sender-numbers", {
         method: "POST",
         headers: {
@@ -258,7 +246,9 @@ export default function SendingNumberTab({
         },
         body: JSON.stringify({
           phoneNumber: newNumberForm.phoneNumber,
-          displayName: newNumberForm.displayName || "미등록",
+          displayName: newNumberForm.displayName,
+          carrier: newNumberForm.carrier,
+          hasDocuments: !!newNumberForm.documents, // 서류 제출 여부만 전송
         }),
       });
 
@@ -267,9 +257,9 @@ export default function SendingNumberTab({
         throw new Error(errorData.message || "발신번호 추가에 실패했습니다");
       }
 
-      alert("발신번호가 추가되었습니다.");
+      alert("발신번호 등록 신청이 완료되었습니다. 심사 결과를 기다려주세요.");
       setIsAddNumberModalOpen(false);
-      setNewNumberForm({ phoneNumber: "", displayName: "" });
+      setNewNumberForm({ phoneNumber: "", displayName: "", carrier: "", documents: null });
       await fetchSenderNumbers(); // 목록 새로고침
     } catch (error) {
       console.error("발신번호 추가 오류:", error);
@@ -280,7 +270,12 @@ export default function SendingNumberTab({
   };
 
   // 발신번호명 수정 처리
-  const handleEditNumberName = async (id: number) => {
+  const handleEditNumberName = async () => {
+    // 준비중 모달 열기
+    setIsComingSoonModalOpen(true);
+    
+    // 기존 로직은 주석 처리
+    /*
     const currentNumber = senderNumbers.find((num) => num.id === id);
     if (!currentNumber) return;
 
@@ -320,6 +315,7 @@ export default function SendingNumberTab({
           : "발신번호명 수정에 실패했습니다."
       );
     }
+    */
   };
   return (
     <div className="space-y-6">
@@ -328,77 +324,33 @@ export default function SendingNumberTab({
         발신번호는 문자 메시지 발송에 사용되며 최대 10개까지 등록할 수 있습니다.
       </p>
 
-      {/* 기본 발신번호 및 등록한 번호 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 기본 발신번호 */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            기본 발신번호
-          </h3>
-          <div className="flex items-center justify-between">
-            <span className="text-xl font-medium text-gray-900">
-              {defaultNumber ||
-                formatPhoneNumber(user?.phoneNumber) ||
-                "기본 발신번호 없음"}
-            </span>
-            <button
-              onClick={() => {
-                if (senderNumbers.length === 0) {
-                  alert(
-                    "등록된 발신번호가 없습니다. 먼저 발신번호를 추가해주세요."
-                  );
-                  return;
-                }
-                const nonDefaultNumbers = senderNumbers.filter(
-                  (num) => !num.isDefault
-                );
-                if (nonDefaultNumbers.length === 0) {
-                  alert("변경 가능한 발신번호가 없습니다.");
-                  return;
-                }
-                openChangeDefaultModal();
-              }}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors disabled:bg-gray-300"
-              disabled={senderNumbers.length <= 1}
-            >
-              변경하기
-            </button>
-          </div>
-        </div>
 
-        {/* 등록한 번호 */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            등록한 번호
-          </h3>
-          <div className="flex items-center justify-between">
-            <span className="text-lg text-gray-700">
-              {totalCount}/10 (잔여번호 {remainingCount}개)
-            </span>
-            <button
-              onClick={openAddNumberModal}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors disabled:bg-gray-300"
-              disabled={remainingCount <= 0 || senderNumbersLoading}
-            >
-              {senderNumbersLoading ? "로딩중..." : "추가하기"}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* 발신번호 목록 */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white">
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            발신번호 목록
-          </h3>
-          <button
-            onClick={handleDeleteNumbers}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors disabled:bg-gray-300"
-            disabled={selectedNumbers.length === 0 || senderNumbersLoading}
-          >
-            {senderNumbersLoading ? "처리중..." : "삭제"}
-          </button>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">
+              발신번호 목록
+            </h3>
+            <div className="flex items-center space-x-2">
+
+              <button
+                onClick={openAddNumberModal}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:bg-blue-300"
+                disabled={remainingCount <= 0 || senderNumbersLoading}
+              >
+                {senderNumbersLoading ? "로딩중..." : "신규 발신번호 등록"}
+              </button>
+              <button
+                onClick={handleDeleteNumbers}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors disabled:bg-gray-300"
+                disabled={selectedNumbers.length === 0 || senderNumbersLoading}
+              >
+                {senderNumbersLoading ? "처리중..." : "삭제"}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -472,21 +424,11 @@ export default function SendingNumberTab({
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-900">
-                          {number.number}
+                          {formatPhoneNumber(number.number)}
                         </span>
-                        {number.isUserPhone && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            본인
-                          </span>
-                        )}
                         {number.isDefault && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             기본
-                          </span>
-                        )}
-                        {number.isVerified && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            인증완료
                           </span>
                         )}
                       </div>
@@ -497,7 +439,7 @@ export default function SendingNumberTab({
                           {number.name}
                         </span>
                         <button
-                          onClick={() => handleEditNumberName(number.id)}
+                          onClick={() => handleEditNumberName()}
                           className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
                         >
                           수정
@@ -519,78 +461,41 @@ export default function SendingNumberTab({
           </table>
         </div>
       </div>
-
-      {/* 기본 발신번호 변경 모달 */}
-      {isChangeDefaultModalOpen && (
+      {/* 발신번호 삭제 확인 모달 */}
+      {isDeleteConfirmModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              기본 발신번호 변경
+              확인
             </h3>
 
-            <div className="space-y-3 mb-6">
-              {senderNumbers.map((number) => (
-                <label
-                  key={number.id}
-                  className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                >
-                  <input
-                    type="radio"
-                    name="defaultNumber"
-                    value={number.id}
-                    checked={selectedDefaultNumber === number.id}
-                    onChange={() => setSelectedDefaultNumber(number.id)}
-                    className="mr-3"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-900">
-                        {number.number}
-                      </span>
-                      {number.isDefault && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                          현재 기본
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600">{number.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-gray-500">
-                        등록: {number.registrationDate}
-                      </span>
-                      {number.isVerified && (
-                        <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded">
-                          인증완료
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </label>
-              ))}
+            <div className="mb-6">
+              <div className="mb-4">
+                {numbersToDelete.map((number) => (
+                  <p key={number.id} className="text-sm text-gray-700 mb-2">
+                    [{formatPhoneNumber(number.number)}]번호를 삭제하시겠습니까?
+                  </p>
+                ))}
+              </div>
+              
+              <p className="text-sm text-gray-600 leading-relaxed">
+                삭제한 발신번호를 재사용하시려면 필요서류 구비 후 다시 신청해 주셔야 합니다. 
+                서류 미비 시 발신번호 재등록이 불가하여, 심사에는 시간이 소요되오니 삭제 전 꼭 숙지 바랍니다.
+              </p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-3">
               <button
-                onClick={() => {
-                  setIsChangeDefaultModalOpen(false);
-                  setSelectedDefaultNumber(null);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                onClick={closeDeleteConfirmModal}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
               >
                 취소
               </button>
               <button
-                onClick={() => {
-                  if (selectedDefaultNumber) {
-                    handleChangeDefaultNumber(selectedDefaultNumber);
-                    setIsChangeDefaultModalOpen(false);
-                    setSelectedDefaultNumber(null);
-                  }
-                }}
-                disabled={!selectedDefaultNumber}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                onClick={confirmDeleteNumbers}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
               >
-                변경하기
+                확인
               </button>
             </div>
           </div>
@@ -600,70 +505,201 @@ export default function SendingNumberTab({
       {/* 발신번호 추가 모달 */}
       {isAddNumberModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              발신번호 추가
-            </h3>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  전화번호 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newNumberForm.phoneNumber}
-                  onChange={(e) =>
-                    setNewNumberForm((prev) => ({
-                      ...prev,
-                      phoneNumber: e.target.value,
-                    }))
-                  }
-                  placeholder="010-XXXX-XXXX 또는 01XXXXXXXXX"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  maxLength={13}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  발신번호명 (선택)
-                </label>
-                <input
-                  type="text"
-                  value={newNumberForm.displayName}
-                  onChange={(e) =>
-                    setNewNumberForm((prev) => ({
-                      ...prev,
-                      displayName: e.target.value,
-                    }))
-                  }
-                  placeholder="발신번호명을 입력해주세요"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  maxLength={100}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  입력하지 않으면 &lsquo;미등록&rsquo;으로 설정됩니다.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">
+                발신번호 등록
+              </h3>
               <button
                 onClick={() => {
                   setIsAddNumberModalOpen(false);
-                  setNewNumberForm({ phoneNumber: "", displayName: "" });
+                  setNewNumberForm({ phoneNumber: "", displayName: "", carrier: "", documents: null });
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* 통신사 */}
+              <div className="flex items-center">
+                <label className="block text-sm font-medium text-gray-700 w-32">
+                  통신사
+                </label>
+                <div className="flex-1">
+                  <select
+                    value={newNumberForm.carrier}
+                    onChange={(e) =>
+                      setNewNumberForm((prev) => ({
+                        ...prev,
+                        carrier: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">통신사 선택</option>
+                    <option value="skt">SKT</option>
+                    <option value="kt">KT</option>
+                    <option value="lgu">LG U+</option>
+                    <option value="skt_mvno">SKT 알뜰폰</option>
+                    <option value="kt_mvno">KT 알뜰폰</option>
+                    <option value="lgu_mvno">LG U+ 알뜰폰</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 발신번호 입력 */}
+              <div className="flex items-center">
+                <label className="block text-sm font-medium text-gray-700 w-32">
+                  발신번호 입력
+                </label>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={newNumberForm.phoneNumber}
+                    onChange={(e) =>
+                      setNewNumberForm((prev) => ({
+                        ...prev,
+                        phoneNumber: e.target.value,
+                      }))
+                    }
+                    placeholder="010-1111-4574"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    maxLength={13}
+                  />
+                </div>
+              </div>
+
+              {/* 발신번호 명의자 */}
+              <div className="flex items-center">
+                <label className="block text-sm font-medium text-gray-700 w-32">
+                  발신번호 명의자
+                </label>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={newNumberForm.displayName}
+                    onChange={(e) =>
+                      setNewNumberForm((prev) => ({
+                        ...prev,
+                        displayName: e.target.value,
+                      }))
+                    }
+                    placeholder="명의자를 입력해주세요."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* 증빙서류 제출 */}
+              <div className="flex items-start">
+                <label className="block text-sm font-medium text-gray-700 w-32 mt-2">
+                  증빙서류 제출 <span className="text-gray-500 text-xs">(선택)</span>
+                </label>
+                <div className="flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.pdf,.jpg,.jpeg,.png';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                          setNewNumberForm((prev) => ({
+                            ...prev,
+                            documents: file,
+                          }));
+                        }
+                      };
+                      input.click();
+                    }}
+                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                  >
+                    파일 첨부
+                  </button>
+                  {newNumberForm.documents && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      선택된 파일: {newNumberForm.documents.name}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    서류는 나중에 제출할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 증빙서류 안내 */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="text-sm text-gray-700 space-y-2">
+                  <div>
+                    <p className="font-medium">1. 사업자 대표 또는 재직원</p>
+                    <ul className="ml-4 space-y-1">
+                      <li>- 통신서비스 이용가입증명원</li>
+                      <li>- 번호소유자 재직증명서 (선택사항)</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <p className="font-medium">2. 자회사, 계열사등 다른 사업자</p>
+                    <ul className="ml-4 space-y-1">
+                      <li>- 통신서비스 이용가입증명원</li>
+                      <li>- 위임 관계증명서</li>
+                      <li>- 발신번호 위임장</li>
+                      <li>- 위임자 사업자등록증</li>
+                    </ul>
+                  </div>
+                  
+                  <p className="text-xs text-gray-600 mt-3">
+                    ※증빙서류 관련 도움 요청→ <span 
+                      className="text-blue-500 underline cursor-pointer hover:text-blue-700"
+                      onClick={() => router.push('/support?tab=inquiry')}
+                    >고객센터 문의</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => {
+                  setIsAddNumberModalOpen(false);
+                  setNewNumberForm({ phoneNumber: "", displayName: "", carrier: "", documents: null });
+                }}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleAddNumber}
-                disabled={!newNumberForm.phoneNumber}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                disabled={!newNumberForm.phoneNumber || !newNumberForm.carrier || !newNumberForm.displayName}
+                className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                추가하기
+                등록하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 준비중 모달 */}
+      {isComingSoonModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm mx-4">
+            <div className="text-center">
+              <div className="text-gray-400 text-6xl mb-4">⏳</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                발신번호 관리
+              </h3>
+              <p className="text-gray-600 mb-6">
+                준비중입니다
+              </p>
+              <button
+                onClick={() => setIsComingSoonModalOpen(false)}
+                className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+              >
+                확인
               </button>
             </div>
           </div>

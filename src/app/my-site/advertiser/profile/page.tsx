@@ -406,10 +406,8 @@ export default function ProfilePage() {
           />
         );
       case "sendingNumber":
-    return (
-          <SendingNumberTab
-            user={user}
-          />
+        return (
+          <SendingNumberTab />
         );
       case "taxInvoice":
         return (
