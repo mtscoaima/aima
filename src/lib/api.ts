@@ -130,6 +130,8 @@ export interface UserInfoResponse {
     toll080Number?: string;
     customerServiceNumber?: string;
     businessType?: string;
+    businessCategory?: string;
+    businessType2?: string;
     faxNumber?: string;
     homepage?: string;
   };

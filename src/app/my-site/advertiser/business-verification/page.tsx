@@ -179,12 +179,15 @@ export default function BusinessVerificationPage() {
 
           // 기업정보 설정
           if (companyInfo) {
+            const companyInfoData = companyInfo as Record<string, unknown>;
+            
             setBusinessType(companyInfo.businessType || "individual");
             setBusinessName(companyInfo.companyName || "");
             setRepresentativeName(companyInfo.ceoName || "");
             setBusinessNumber(companyInfo.businessNumber || "");
+            setBusinessCategory(typeof companyInfoData.businessCategory === 'string' ? companyInfoData.businessCategory : "");
+            setBusinessType2(typeof companyInfoData.businessType2 === 'string' ? companyInfoData.businessType2 : "");
             setHomepage(companyInfo.homepage || "");
-            // businessCategory, businessType2는 기본값 그대로 사용
 
             // 주소 정보 설정
             if (companyInfo.companyAddress) {
@@ -555,7 +558,19 @@ export default function BusinessVerificationPage() {
       return;
     }
 
-    // 6. 인증정보 (사업자등록증/증명원) 파일 첨부
+    // 6. 업태 입력 확인
+    if (!businessCategory.trim()) {
+      showAlertModal("알림", "업태를 입력해주세요.");
+      return;
+    }
+
+    // 7. 업종 입력 확인
+    if (!businessType2.trim()) {
+      showAlertModal("알림", "업종을 입력해주세요.");
+      return;
+    }
+
+    // 8. 인증정보 (사업자등록증/증명원) 파일 첨부
     if (!businessDocumentFile && !existingBusinessDocument) {
       showAlertModal(
         "알림",
@@ -747,8 +762,7 @@ export default function BusinessVerificationPage() {
             <h1>사업자정보 인증</h1>
             <div className="bv-description">
               <p>
-                • 기업 정보/재직 시 정보 입력 및 필요 서류 첨부 후 신청 버튼을
-                클릭하시면 사업자 인증 신청이 완료됩니다.
+                • 사업자 정보, 세금계산서 정보 입력 및 필요 서류 첨부 후 인증 버튼을 클릭하시면 사업자 인증 신청이 완료됩니다.
               </p>
               <p>• 관리자 승인까지 영업일 1~3일 소요됩니다.</p>
             </div>
@@ -885,8 +899,8 @@ export default function BusinessVerificationPage() {
                     </td>
                   </tr>
                   <tr>
-                    <td className="label-cell">
-                      업태<span className="optional-mark">(선택)</span>
+                    <td className="label-cell required">
+                      업태<span className="required-mark">*</span>
                     </td>
                     <td className="input-cell">
                       <input
@@ -894,13 +908,13 @@ export default function BusinessVerificationPage() {
                         value={businessCategory}
                         onChange={(e) => setBusinessCategory(e.target.value)}
                         className="table-input"
-                        placeholder="선택"
+                        placeholder="업태를 입력해주세요"
                       />
                     </td>
                   </tr>
                   <tr>
-                    <td className="label-cell">
-                      업종<span className="optional-mark">(선택)</span>
+                    <td className="label-cell required">
+                      업종<span className="required-mark">*</span>
                     </td>
                     <td className="input-cell">
                       <input
@@ -908,7 +922,7 @@ export default function BusinessVerificationPage() {
                         value={businessType2}
                         onChange={(e) => setBusinessType2(e.target.value)}
                         className="table-input"
-                        placeholder="선택"
+                        placeholder="업종을 입력해주세요"
                       />
                     </td>
                   </tr>
@@ -1011,7 +1025,7 @@ export default function BusinessVerificationPage() {
             {/* 재직자 인증 섹션 */}
             <div className="form-section">
               <h2 className="section-title optional">
-                재직자 인증<span className="optional-mark">(선택)</span>
+                재직자 인증
               </h2>
 
               <table className="info-table">
@@ -1042,14 +1056,9 @@ export default function BusinessVerificationPage() {
                         </button>
                       </div>
                       <div className="upload-description">
-                        <p>• 대표자가 아닌 임직원인 경우 제출</p>
+                        <p>• 대표자가 아닌 임직원인 경우, 재직 여부 확인을 위해 서류 제출이 필요합니다.</p>
                         <p>
-                          • 해당 사업체 근무 여부를 확인합니다. 임직원만
-                          제출해주세요.
-                        </p>
-                        <p>
-                          • 본인의 재직증명서를 제출해주시고, 주민번호 뒷자리와
-                          주소는 가려서 제출해주세요.
+                          • 임직원 본인에 한해 재직증명서를 제출해 주시며, 주민등록번호 뒷자리와 주소는 반드시 가려서 제출해 주시기 바랍니다.
                         </p>
                       </div>
                     </td>
@@ -1062,7 +1071,7 @@ export default function BusinessVerificationPage() {
             <div className="form-section">
               <div className="section-header">
                 <h2 className="section-title optional">
-                  세금계산서 담당자<span className="optional-mark">(선택)</span>
+                  세금계산서 담당자
                 </h2>
                 <div className="checkbox-group inline">
                   <label className="checkbox-option">
@@ -1147,13 +1156,7 @@ export default function BusinessVerificationPage() {
               <h2 className="section-title">세금계산서 발급 안내</h2>
               <div className="info-content">
                 <p>
-                  • 세금계산서는 매월 사용분을 합산하여 다음달 10일 자동으로
-                  발행됩니다.
-                </p>
-                <p>• 부가가치세법에 의거, 실사용금액을 기준으로 발행됩니다.</p>
-                <p>
-                  • 카드 전표는 단순 영수증으로, 부가가치세 신고는 세금계산서를
-                  기준으로만 진행해 주세요.
+                  • 부가가치세법에 의거, 세금계산서는 매월 충전금액을 합산하여 다음달 10일 자동으로 발행됩니다.
                 </p>
               </div>
             </div>
@@ -1284,7 +1287,7 @@ export default function BusinessVerificationPage() {
         }
 
         .bv-header h1 {
-          color: #1681ff;
+          color: #000000;
           font-family: "Noto Sans KR";
           font-size: 24px;
           font-weight: 600;
