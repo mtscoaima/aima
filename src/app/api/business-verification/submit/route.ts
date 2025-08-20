@@ -25,6 +25,7 @@ interface BusinessVerificationData {
   detailAddress: string;
   businessCategory: string;
   businessType2: string;
+  homepage: string;
   managerName: string;
   managerPhone: string;
   managerEmail: string;
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
       detailAddress: data.detailAddress,
       businessCategory: data.businessCategory,
       businessType2: data.businessType2,
+      homepage: data.homepage,
       submittedAt: new Date().toISOString(),
     };
 
