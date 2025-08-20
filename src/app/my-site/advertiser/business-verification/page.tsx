@@ -75,6 +75,7 @@ export default function BusinessVerificationPage() {
   const [address, setAddress] = useState("");
   const [businessCategory, setBusinessCategory] = useState("");
   const [businessType2, setBusinessType2] = useState("");
+  const [homepage, setHomepage] = useState("");
   const [managerName, setManagerName] = useState("");
   const [managerPhone, setManagerPhone] = useState("");
   const [managerEmail, setManagerEmail] = useState("");
@@ -182,6 +183,7 @@ export default function BusinessVerificationPage() {
             setBusinessName(companyInfo.companyName || "");
             setRepresentativeName(companyInfo.ceoName || "");
             setBusinessNumber(companyInfo.businessNumber || "");
+            setHomepage(companyInfo.homepage || "");
             // businessCategory, businessType2는 기본값 그대로 사용
 
             // 주소 정보 설정
@@ -587,6 +589,7 @@ export default function BusinessVerificationPage() {
         detailAddress,
         businessCategory,
         businessType2,
+        homepage,
         managerName,
         managerPhone,
         managerEmail,
@@ -906,6 +909,20 @@ export default function BusinessVerificationPage() {
                         onChange={(e) => setBusinessType2(e.target.value)}
                         className="table-input"
                         placeholder="선택"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label-cell">
+                      홈페이지 URL<span className="optional-mark">(선택)</span>
+                    </td>
+                    <td className="input-cell">
+                      <input
+                        type="text"
+                        value={homepage}
+                        onChange={(e) => setHomepage(e.target.value)}
+                        className="table-input"
+                        placeholder="www.example.com"
                       />
                     </td>
                   </tr>

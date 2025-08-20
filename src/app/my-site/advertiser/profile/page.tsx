@@ -90,6 +90,7 @@ export default function ProfilePage() {
     | "password"
     | "sendingNumber"
     | "taxInvoice"
+    | "secureLogin"
     | "발신번호관리"
   >("memberInfo");
 
@@ -99,6 +100,7 @@ export default function ProfilePage() {
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   const [isWithdrawalCompleteModalOpen, setIsWithdrawalCompleteModalOpen] =
     useState(false);
+  const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // 휴대폰 변경 관련 상태
@@ -122,6 +124,9 @@ export default function ProfilePage() {
     phone: "",
     email: "",
   });
+
+  // 홈페이지 URL 편집 데이터
+  const [editableHomepage, setEditableHomepage] = useState("");
 
   // 재직증명서 수정 모달 상태
   const [isEmploymentCertModalOpen, setIsEmploymentCertModalOpen] =
@@ -716,6 +721,9 @@ export default function ProfilePage() {
           homepage: profileData.homepage || "",
           businessType: profileData.businessType || "",
         });
+
+        // 홈페이지 URL 편집 상태 초기화
+        setEditableHomepage(profileData.homepage === "-" ? "" : profileData.homepage || "");
 
         setError(null);
       } catch (err) {
@@ -1542,7 +1550,7 @@ export default function ProfilePage() {
     setIsTaxInvoiceEmailModalOpen(true);
   };
 
-  // userData가 변경될 때 editTaxInvoiceData 초기화 (세금계산서 담당자 정보에서)
+  // userData가 변경될 때 editTaxInvoiceData와 editableHomepage 초기화 (세금계산서 담당자 정보에서)
   useEffect(() => {
     if (
       userData.taxInvoiceInfo ||
@@ -1556,11 +1564,17 @@ export default function ProfilePage() {
         email: userData.taxInvoiceInfo?.email || userData.email || "",
       });
     }
+    
+    // 홈페이지 URL 초기화
+    if (userData.homepage) {
+      setEditableHomepage(userData.homepage === "-" ? "" : userData.homepage);
+    }
   }, [
     userData.taxInvoiceInfo,
     userData.name,
     userData.phoneNumber,
     userData.email,
+    userData.homepage,
   ]);
 
   // 세금계산서 담당자 인라인 편집 데이터 변경
@@ -1597,8 +1611,9 @@ export default function ProfilePage() {
         return;
       }
 
-      // API 호출로 세금계산서 담당자 정보만 업데이트
+      // API 호출로 홈페이지 URL과 세금계산서 담당자 정보 동시 업데이트
       await updateUserInfo({
+        homepage: editableHomepage,
         taxInvoiceInfo: {
           manager: editTaxInvoiceData.name,
           contact: editTaxInvoiceData.phone,
@@ -1606,9 +1621,10 @@ export default function ProfilePage() {
         },
       });
 
-      // 로컬 상태 업데이트 (세금계산서 담당자 정보만)
+      // 로컬 상태 업데이트 (홈페이지 URL과 세금계산서 담당자 정보)
       setUserData((prev) => ({
         ...prev,
+        homepage: editableHomepage || "-",
         taxInvoiceInfo: {
           manager: editTaxInvoiceData.name,
           contact: editTaxInvoiceData.phone,
@@ -1616,10 +1632,10 @@ export default function ProfilePage() {
         },
       }));
 
-      alert("세금계산서 담당자 정보가 성공적으로 수정되었습니다.");
+      alert("홈페이지 URL과 세금계산서 담당자 정보가 성공적으로 수정되었습니다.");
     } catch (error) {
-      console.error("세금계산서 담당자 정보 수정 실패:", error);
-      alert("세금계산서 담당자 정보 수정에 실패했습니다. 다시 시도해주세요.");
+      console.error("홈페이지 URL 및 세금계산서 담당자 정보 수정 실패:", error);
+      alert("홈페이지 URL 및 세금계산서 담당자 정보 수정에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsSaving(false);
     }
@@ -1780,10 +1796,29 @@ export default function ProfilePage() {
         return renderSendingNumberTab();
       case "taxInvoice":
         return renderTaxInvoiceTab();
+      case "secureLogin":
+        return renderSecureLoginTab();
       default:
         return null;
     }
   };
+
+  // 보안 로그인 탭
+  const renderSecureLoginTab = () => (
+    <div className="space-y-6">
+      {/* 탭 설명 */}
+      <p className="text-sm text-gray-600">
+        보안 로그인 기능을 설정할 수 있습니다.
+      </p>
+      
+      {/* 준비중 메시지 */}
+      <div className="text-center py-12">
+        <div className="text-gray-400 text-6xl mb-4">🔒</div>
+        <h3 className="text-xl font-semibold text-gray-700 mb-2">보안 로그인</h3>
+        <p className="text-gray-500">준비중입니다</p>
+      </div>
+    </div>
+  );
 
   // 회원정보변경 탭
   const renderMemberInfoTab = () => (
@@ -1935,14 +1970,14 @@ export default function ProfilePage() {
         </div>
 
         {/* 회원 탈퇴 링크 */}
-        <div className="flex justify-end mt-4">
+        <div className="flex justify-center mt-4">
           <p className="text-sm text-gray-600">
-            더 이상 서비스를 이용하지 않을 경우{" "}
+            더이상 서비스를 이용하지 않을 경우{" "}
             <button
               onClick={handleWithdrawalClick}
               className="text-blue-500 hover:text-blue-700 underline font-medium"
             >
-              회원 탈퇴
+              회원탈퇴
             </button>
           </p>
         </div>
@@ -2185,6 +2220,25 @@ export default function ProfilePage() {
                   </td>
                   <td className="py-4 px-4 text-sm text-gray-900">
                     {isNotVerified ? "" : "-"}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-44 border-r border-gray-200">
+                    홈페이지 URL
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-900">
+                    {isNotVerified ? (
+                      ""
+                    ) : (
+                      <input
+                        type="text"
+                        value={editableHomepage}
+                        onChange={(e) => setEditableHomepage(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder="www.example.com"
+                        disabled={userData.approval_status !== "APPROVED"}
+                      />
+                    )}
                   </td>
                 </tr>
                 <tr>
@@ -3609,7 +3663,7 @@ export default function ProfilePage() {
           <h1
             className="text-2xl font-semibold"
             style={{
-              color: "#1681ff",
+              color: "#000000",
               fontFamily: '"Noto Sans KR"',
               fontSize: "24px",
               fontWeight: 600,
@@ -3686,6 +3740,22 @@ export default function ProfilePage() {
           >
             세금계산서
             {activeTab === "taxInvoice" && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+            )}
+          </button>
+          <button
+            className={`pb-3 px-1 font-medium text-sm transition-colors duration-200 relative ${
+              activeTab === "secureLogin"
+                ? "text-blue-500"
+                : "text-gray-500 hover:text-blue-500"
+            }`}
+            onClick={() => {
+              setActiveTab("secureLogin");
+              setIsComingSoonModalOpen(true);
+            }}
+          >
+            보안 로그인
+            {activeTab === "secureLogin" && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
             )}
           </button>
@@ -4814,6 +4884,29 @@ export default function ProfilePage() {
                   className="px-4 py-2 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {isEmploymentCertUploading ? "업로드 중..." : "수정"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 준비중 모달 */}
+        {isComingSoonModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+              <div className="text-center">
+                <div className="text-gray-400 text-6xl mb-4">🔒</div>
+                <h2 className="text-xl font-semibold text-black mb-2">
+                  보안 로그인
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  준비중입니다
+                </p>
+                <button
+                  onClick={() => setIsComingSoonModalOpen(false)}
+                  className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+                >
+                  확인
                 </button>
               </div>
             </div>
