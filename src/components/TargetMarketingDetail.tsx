@@ -1671,16 +1671,16 @@ function TargetMarketingDetailContent({
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex flex-col max-w-[70%] mb-3 ${
+                className={`flex flex-col max-w-[80%] mb-4 ${
                   message.role === "user"
                     ? "self-end"
                     : "self-start"
                 }`}
               >
-                <div className={`p-3 px-4 break-words text-sm leading-relaxed ${
+                <div className={`p-4 break-words text-sm leading-relaxed relative ${
                   message.role === "user"
-                    ? "bg-blue-600 text-white rounded-2xl rounded-br-md"
-                    : "bg-gray-100 text-gray-700 rounded-2xl rounded-bl-md"
+                    ? "bg-gray-200 text-gray-800 rounded-3xl"
+                    : "bg-trasparent text-gray-800 rounded-3xl"
                 }`}>
                   {message.imageUrl && (
                     <div className="relative mb-3 overflow-hidden rounded-lg max-w-[300px]">
@@ -1747,32 +1747,32 @@ function TargetMarketingDetailContent({
                   )}
                   <p>{message.content}</p>
                 </div>
-                {/* AI 답변에만 빠른 버튼 표시 */}
-                {message.role === "assistant" && (
-                  <div className="flex gap-2 mt-3 flex-wrap">
+                {/* AI 답변에만 빠른 버튼 표시 (로딩 중이 아닐 때만) */}
+                {message.role === "assistant" && !showTypingIndicator && (
+                  <div className="flex gap-2 mt-4 flex-wrap">
                     <button
-                      className="bg-gray-100 text-gray-600 border-none rounded-full px-3 py-1 text-xs font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleQuickBadgeClick("이미지를 다른 스타일로 수정해주세요")}
                       disabled={isLoading || showTypingIndicator}
                     >
                       이미지 수정
                     </button>
                     <button
-                      className="bg-gray-100 text-gray-600 border-none rounded-full px-3 py-1 text-xs font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleQuickBadgeClick("텍스트 내용을 수정해주세요")}
                       disabled={isLoading || showTypingIndicator}
                     >
                       텍스트 수정
                     </button>
                     <button
-                      className="bg-gray-100 text-gray-600 border-none rounded-full px-3 py-1 text-xs font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleQuickBadgeClick("타깃 고객층을 수정해주세요")}
                       disabled={isLoading || showTypingIndicator}
                     >
-                      타겟 수정
+                      타깃 수정
                     </button>
                     <button
-                      className="bg-gray-100 text-gray-600 border-none rounded-full px-3 py-1 text-xs font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleQuickBadgeClick("할인율을 조정해주세요")}
                       disabled={isLoading || showTypingIndicator}
                     >
@@ -1783,8 +1783,8 @@ function TargetMarketingDetailContent({
               </div>
             ))}
             {showTypingIndicator && (
-              <div className="flex flex-col max-w-[70%] mb-3 self-start">
-                <div className="p-3 px-4 break-words text-sm leading-relaxed bg-gray-100 text-gray-700 rounded-2xl rounded-bl-md">
+              <div className="flex flex-col max-w-[80%] mb-4 self-start">
+                <div className="p-4 break-words text-sm leading-relaxed text-gray-800 rounded-3xl relative">
                   <div className="flex gap-1 items-center">
                     <span className="w-1.5 h-1.5 bg-gray-600 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></span>
                     <span className="w-1.5 h-1.5 bg-gray-600 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></span>
@@ -1796,43 +1796,43 @@ function TargetMarketingDetailContent({
           </div>
 
           <div className="pt-4">
-            <div className="w-full max-w-[1000px]">
-              <div className="relative bg-white rounded-2xl shadow-lg p-4 flex flex-col gap-4 border-none">
+            <div className="w-full max-w-4xl">
+              <div className="rounded-2xl bg-white shadow-[0px_4px_13px_0px_rgba(0,0,0,0.25)] p-4 flex flex-col gap-4 border-none">
                 <textarea
                   ref={textareaRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="어떤 광고를 만들고 싶나요?"
-                  className="w-full p-3 px-4 text-base border-none rounded-xl resize-none min-h-[80px] font-inherit bg-transparent transition-colors outline-none placeholder-gray-400"
+                  className="w-full text-base resize-none transition-colors duration-200 font-inherit border-none outline-none placeholder-gray-400 whitespace-pre-line"
                   rows={4}
                   disabled={isLoading || showTypingIndicator}
                 />
 
                 {/* 첨부된 파일 미리보기 */}
                 {selectedFile && (
-                  <div className="relative mt-3 p-3 border border-gray-300 rounded-lg bg-gray-50 flex items-center gap-3">
+                  <div className="relative mt-3 p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-center gap-3">
                     {filePreviewUrl ? (
-                      <div className="relative flex flex-shrink-0">
+                      <div className="w-20 h-15 rounded-lg overflow-hidden flex-shrink-0">
                         <Image
                           src={filePreviewUrl}
                           alt="미리보기"
                           width={80}
                           height={60}
-                          className="rounded object-cover"
+                          style={{ objectFit: "cover" }}
                         />
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="text-2xl">📄</div>
-                        <div className="font-medium text-gray-700 text-sm">{selectedFile.name}</div>
-                        <div className="text-gray-600 text-xs">
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="text-2xl text-gray-500">📄</div>
+                        <div className="text-sm font-medium text-gray-700 break-all flex-1">{selectedFile.name}</div>
+                        <div className="text-xs text-gray-500 whitespace-nowrap">
                           {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                         </div>
                       </div>
                     )}
                     <button
-                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white border-none text-xs cursor-pointer flex items-center justify-center font-bold hover:bg-red-700"
+                      className="absolute top-2 right-2 w-6 h-6 bg-black bg-opacity-60 text-white border-none rounded-full flex items-center justify-center cursor-pointer text-xs transition-colors hover:bg-black hover:bg-opacity-80"
                       onClick={handleRemoveFile}
                       title="파일 제거"
                     >
@@ -1841,19 +1841,19 @@ function TargetMarketingDetailContent({
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 justify-between flex-wrap">
-                  <div className="relative flex" ref={dropdownRef}>
+                <div className="flex items-end gap-3 mt-2 flex-wrap justify-between">
+                  <div className="relative inline-block" ref={dropdownRef}>
                     <button
-                      className="bg-blue-600 text-white border-none rounded-full w-8 h-8 flex items-center justify-center cursor-pointer text-[32px] leading-none transition-colors hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                      className="w-8 h-8 rounded-full bg-blue-500 text-white border-none flex items-center justify-center cursor-pointer text-[32px] font-bold leading-none transition-colors hover:bg-blue-600"
                       title="AI 및 파일 추가"
                       onClick={() => setShowImageDropdown(!showImageDropdown)}
                     >
                       <span>+</span>
                     </button>
                     {showImageDropdown && (
-                      <div className="absolute top-full left-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[200px] mt-1">
+                      <div className="absolute top-full left-0 bg-white border border-red-500 rounded-lg shadow-[0_2px_10px_rgba(0,0,0,0.1)] z-[9999] min-w-[200px] mt-2">
                         <button
-                          className="block w-full p-3 px-4 border-none bg-transparent text-left text-sm cursor-pointer transition-colors hover:bg-gray-50"
+                          className="block w-full px-4 py-3 bg-none border-none text-left cursor-pointer text-gray-800 text-sm transition-colors hover:bg-gray-50"
                           onClick={handleFileButtonClick}
                         >
                           📎 사진 및 파일 추가
@@ -1865,21 +1865,12 @@ function TargetMarketingDetailContent({
                       type="file"
                       accept="image/*,.pdf,.txt,.doc,.docx"
                       onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    
-                    {/* 템플릿 이미지 업로드용 숨겨진 input */}
-                    <input
-                      ref={imageUploadInputRef}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif"
-                      onChange={handleImageUploadSelect}
-                      className="hidden"
+                      style={{ display: "none" }}
                     />
                   </div>
-                  <div className="flex gap-2 items-center py-1 flex-wrap flex-1 min-w-0">
+                  <div className="flex gap-2 flex-1 flex-wrap py-0.5 min-w-0 items-center">
                     <button
-                      className="bg-gray-100 text-gray-600 border-none rounded-full px-3 py-1 text-xs font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-blue-50 hover:text-blue-600"
+                      className="bg-gray-100 text-gray-600 border-none rounded-full px-4 h-8 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
                       onClick={() =>
                         handleQuickBadgeClick("단골 고객을 위한 특별 이벤트")
                       }
@@ -1887,7 +1878,7 @@ function TargetMarketingDetailContent({
                       단골 이벤트
                     </button>
                     <button
-                      className="bg-gray-100 text-gray-600 border-none rounded-full px-3 py-1 text-xs font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-blue-50 hover:text-blue-600"
+                      className="bg-gray-100 text-gray-600 border-none rounded-full px-4 h-8 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
                       onClick={() =>
                         handleQuickBadgeClick("할인 이벤트 진행 중입니다")
                       }
@@ -1895,16 +1886,25 @@ function TargetMarketingDetailContent({
                       할인 이벤트
                     </button>
                     <button
-                      className="bg-gray-100 text-gray-600 border-none rounded-full px-3 py-1 text-xs font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-blue-50 hover:text-blue-600"
+                      className="bg-gray-100 text-gray-600 border-none rounded-full px-4 h-8 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
                       onClick={() =>
                         handleQuickBadgeClick("신규 고객 유치를 위한 특별 혜택")
                       }
                     >
                       고객유치 이벤트
                     </button>
+                    
+                    {/* 템플릿 이미지 업로드용 숨겨진 input */}
+                    <input
+                      ref={imageUploadInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif"
+                      onChange={handleImageUploadSelect}
+                      style={{ display: "none" }}
+                    />
                   </div>
                   <button
-                    className="px-6 py-3 bg-blue-600 text-white border-none rounded-3xl text-base font-medium cursor-pointer text-center leading-[120%] tracking-[-0.32px] transition-all flex items-center justify-center min-w-[80px] h-11 flex-shrink-0 font-sans hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    className="self-end px-6 py-3 rounded-full bg-blue-500 text-white text-center text-base font-medium leading-[120%] tracking-[-0.32px] border-none cursor-pointer transition-all flex items-center justify-center min-w-[80px] h-11 flex-shrink-0 font-sans hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     onClick={() => handleSendMessage()}
                     disabled={
                       isLoading || showTypingIndicator || !inputMessage.trim()
