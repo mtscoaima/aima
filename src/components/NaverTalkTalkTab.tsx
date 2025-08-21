@@ -337,7 +337,10 @@ export default function NaverTalkTalkTab({
                   handleStartChat();
                 }
               }}
-              placeholder="Ex) 서울 홍대 헤어샵 오픈 행사 카페 50%할인 이벤트 홍보 여름 맞이 최대 50% 할인 이벤트 홍보 카페 시즌 음료 무료 시음 이벤트 안내"
+              placeholder={`Ex) 서울 홍대 헤어샵 오픈 행사 카페 50%할인 이벤트 홍보
+                            여름 맞이 최대 50% 할인 이벤트 홍보
+                            카페 시즌 음료 무료 사이즈 업 이벤트 안내`
+                          }
               className="chat-input-field"
               rows={4}
             />
@@ -415,10 +418,10 @@ export default function NaverTalkTalkTab({
                 <button
                   className="quick-badge"
                   onClick={() =>
-                    handleQuickBadgeClick("단골 고객을 위한 특별 이벤트")
+                    handleQuickBadgeClick("런칭 이벤트 특별 할인 혜택")
                   }
                 >
-                  단골 이벤트
+                  런칭 이벤트
                 </button>
                 <button
                   className="quick-badge"
@@ -435,6 +438,14 @@ export default function NaverTalkTalkTab({
                   }
                 >
                   고객유치 이벤트
+                </button>
+                <button
+                  className="quick-badge"
+                  onClick={() =>
+                    handleQuickBadgeClick("협력업체와 함께하는 특별 이벤트")
+                  }
+                >
+                  협력 이벤트
                 </button>
               </div>
               <button
@@ -485,7 +496,6 @@ export default function NaverTalkTalkTab({
             <div className="templates-grid">
               {currentTemplates.map((template) => (
                 <div key={template.id} className="template-card">
-                  <div className="grand-opening-badge">GRAND OPENING</div>
                   <div className="template-image">
                     <Image
                       src={template.image_url || "/images/No Image"}
@@ -504,6 +514,7 @@ export default function NaverTalkTalkTab({
                     />
                   </div>
                   <div className="template-content">
+                    <div className="grand-opening-text">🎉 GRAND OPENING 🎉</div>
                     <h3 className="template-title">{template.name}</h3>
                     <p className="template-description">{template.content}</p>
                     <div className="template-actions">
