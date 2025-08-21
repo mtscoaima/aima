@@ -12,6 +12,7 @@ interface CreateCampaignRequest {
   title?: string;
   content: string;
   imageUrl: string;
+  adMedium: "naver_talktalk" | "sms";
   sendPolicy: "realtime" | "batch";
   validityStartDate?: string;
   validityEndDate?: string;
@@ -92,11 +93,11 @@ export async function POST(request: NextRequest) {
     const campaignData: CreateCampaignRequest = await request.json();
 
     // 필수 필드 검증
-
     if (
       !campaignData.content ||
       !campaignData.imageUrl ||
-      !campaignData.sendPolicy
+      !campaignData.sendPolicy ||
+      !campaignData.adMedium
     ) {
       return NextResponse.json(
         { success: false, message: "필수 정보가 누락되었습니다." },
@@ -320,6 +321,7 @@ export async function POST(request: NextRequest) {
           : campaignData.targetFilters.cardTime.endTime + ":00",
       schedule_timezone: "Asia/Seoul",
       schedule_days_of_week: [1, 2, 3, 4, 5, 6, 7], // 모든 요일
+      ad_medium: campaignData.adMedium, // 광고매체 추가
       created_at: kstTime,
       updated_at: kstTime,
     };

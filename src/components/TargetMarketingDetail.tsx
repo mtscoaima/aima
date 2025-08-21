@@ -40,7 +40,6 @@ import {
   BUTTON_CONSTRAINTS
 } from "@/constants/targetMarketing";
 // 분리된 모달 컴포넌트들
-import ApprovalModal from "@/components/modals/ApprovalModal";
 import CampaignModal from "@/components/modals/CampaignModal";
 import TemplateModal from "@/components/modals/TemplateModal";
 import PreviewModal from "@/components/modals/PreviewModal";
@@ -83,11 +82,10 @@ function TargetMarketingDetailContent({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [sendPolicy, setSendPolicy] = useState<"realtime" | "batch">(
     "realtime"
   );
-  const [validityStartDate] = useState(dateUtils.getTodayString());
+  const [validityStartDate, setValidityStartDate] = useState(dateUtils.getTodayString());
   const [validityEndDate, setValidityEndDate] = useState(dateUtils.getDateAfterWeek());
   const [maxRecipients, setMaxRecipients] = useState(CAMPAIGN_CONSTANTS.DEFAULT_MAX_RECIPIENTS);
   const [selectedPeriod, setSelectedPeriod] = useState<
@@ -106,6 +104,13 @@ function TargetMarketingDetailContent({
   const [cardAmountInput, setCardAmountInput] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT_INPUT);
   const [cardStartTime, setCardStartTime] = useState(CAMPAIGN_CONSTANTS.DEFAULT_START_TIME);
   const [cardEndTime, setCardEndTime] = useState(CAMPAIGN_CONSTANTS.DEFAULT_END_TIME);
+  
+  // 카드 승인 금액 관련 상태
+  const [selectedAmountButton, setSelectedAmountButton] = useState("10000"); // 기본값: 1만원
+  const [cardAmountInputValue, setCardAmountInputValue] = useState("10,000원");
+
+  // 카드 승인 시간 관련 상태
+  const [selectedTimeButton, setSelectedTimeButton] = useState("morning"); // 기본값: 오전
 
   // 승인 신청 처리 상태
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
@@ -155,6 +160,12 @@ function TargetMarketingDetailContent({
   // 템플릿 제목 상태
   const [templateTitle, setTemplateTitle] = useState("AI 생성 콘텐츠");
 
+  // 캠페인 이름 상태 (별도로 관리)
+  const [campaignName, setCampaignName] = useState("");
+
+  // 광고매체 상태 (naver_talktalk 또는 sms)
+  const [adMedium, setAdMedium] = useState<"naver_talktalk" | "sms">("naver_talktalk");
+
   // 기존 템플릿 ID 상태 (템플릿 사용하기로 온 경우)
   const [existingTemplateId, setExistingTemplateId] = useState<number | null>(
     null
@@ -183,6 +194,7 @@ function TargetMarketingDetailContent({
   const { generateTemplateTitle } = useTemplateGeneration();
   const { analyzeTargetContent } = useTargetAnalysis();
   const { addDynamicButton, removeDynamicButton, updateDynamicButton, handleLinkCheck } = useDynamicButtons();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { getAllTimeOptions, getSelectedAgeDisplay } = useTargetOptions();
   const { calculateTotalCost, calculateRequiredCredits } = useCalculations();
 
@@ -204,34 +216,42 @@ function TargetMarketingDetailContent({
   }, [isAgeDropdownOpen]);
 
   // 카드 승인 금액 버튼 클릭 핸들러
-  const handleAmountButtonClick = (optionValue: string) => {
-    setCardAmount(optionValue);
+  const handleCardAmountButtonClick = (buttonValue: string) => {
+    setSelectedAmountButton(buttonValue);
     
     // 각 버튼에 따라 input 값 설정
-    switch (optionValue) {
+    switch (buttonValue) {
       case "10000":
+        setCardAmountInputValue("10,000원");
+        setCardAmount("10000");
         setCardAmountInput("1");
         break;
       case "50000":
+        setCardAmountInputValue("50,000원");
+        setCardAmount("50000");
         setCardAmountInput("5");
         break;
       case "100000":
+        setCardAmountInputValue("100,000원");
+        setCardAmount("100000");
         setCardAmountInput("10");
         break;
       case "all":
+        setCardAmountInputValue("전체");
+        setCardAmount("all");
         setCardAmountInput("");
         break;
-      case "custom":
-        // 직접 입력의 경우 현재 customAmount 값 사용
-        setCardAmountInput(customAmount);
-        break;
       default:
+        setCardAmountInputValue("10,000원");
+        setCardAmount("10000");
         setCardAmountInput("1");
     }
   };
 
   // 카드 승인 시간 버튼 클릭 핸들러
-  const handleTimePresetClick = (preset: string) => {
+  const handleCardTimeButtonClick = (preset: string) => {
+    setSelectedTimeButton(preset);
+    
     switch (preset) {
       case "morning":
         setCardStartTime("08:00");
@@ -242,12 +262,22 @@ function TargetMarketingDetailContent({
         setCardEndTime("18:00");
         break;
       case "all":
-        setCardStartTime("08:00");
-        setCardEndTime("18:00");
+        setCardStartTime("00:00");
+        setCardEndTime("23:00");
         break;
       default:
         break;
     }
+  };
+
+  // 시간 옵션 생성 함수
+  const generateTimeOptions = () => {
+    const timeOptions = [];
+    for (let hour = 0; hour < 24; hour++) {
+      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+      timeOptions.push(timeString);
+    }
+    return timeOptions;
   };
 
 
@@ -292,7 +322,9 @@ function TargetMarketingDetailContent({
 
   // 유효기간 설정 함수
   const setPeriod = (period: "week" | "month" | "year") => {
+    const todayString = dateUtils.getTodayString();
     const endDate = dateUtils.getDateAfterPeriod(period);
+    setValidityStartDate(todayString);
     setValidityEndDate(endDate);
     setSelectedPeriod(period);
   };
@@ -326,11 +358,11 @@ function TargetMarketingDetailContent({
       if (!recommendedPackage) {
         // 패키지 목록이 없거나 가장 큰 패키지로도 부족한 경우
         const { packages } = await creditService.getCreditPackages();
-        
-        if (packages.length === 0) {
+
+      if (packages.length === 0) {
           alert(ERROR_MESSAGES.NO_PACKAGES_AVAILABLE);
-          return;
-        }
+        return;
+      }
 
         const largestPackage = packages.sort((a, b) => b.credits - a.credits)[0];
         alert(
@@ -358,6 +390,8 @@ function TargetMarketingDetailContent({
   const saveCurrentState = () => {
     const currentState = {
       templateTitle,
+      campaignName,
+      adMedium,
       smsTextContent,
       currentGeneratedImage,
       targetGender,
@@ -376,7 +410,6 @@ function TargetMarketingDetailContent({
       validityStartDate,
       validityEndDate,
       dynamicButtons,
-      showApprovalModal: true, // 결제 완료 후 발송 모달 다시 열기
     };
 
     storageUtils.saveTargetMarketingState(currentState);
@@ -390,6 +423,8 @@ function TargetMarketingDetailContent({
 
       // 상태 복원
       setTemplateTitle(state.templateTitle || "AI 생성 콘텐츠");
+      setCampaignName(state.campaignName || "");
+      setAdMedium(state.adMedium || "naver_talktalk");
       setSmsTextContent(state.smsTextContent || "");
       setCurrentGeneratedImage(state.currentGeneratedImage || null);
       setTargetGender(state.targetGender || "all");
@@ -405,16 +440,9 @@ function TargetMarketingDetailContent({
       setCardEndTime(state.cardEndTime || "18:00");
       setMaxRecipients(state.maxRecipients || "30");
       setSendPolicy(state.sendPolicy || "realtime");
-      // validityStartDate는 읽기 전용이므로 제외
+      setValidityStartDate(state.validityStartDate || validityStartDate);
       setValidityEndDate(state.validityEndDate || validityEndDate);
       setDynamicButtons(state.dynamicButtons || []);
-
-      // 결제 완료 후 발송 모달 다시 열기
-      if (state.showApprovalModal) {
-        setTimeout(() => {
-          setShowApprovalModal(true);
-        }, 1000);
-      }
 
       // 저장된 상태 제거
       storageUtils.clearTargetMarketingState();
@@ -424,7 +452,7 @@ function TargetMarketingDetailContent({
       storageUtils.clearTargetMarketingState();
       return false;
     }
-  }, [validityEndDate]);
+  }, [validityStartDate, validityEndDate]);
 
   // 크레딧 충전 모달 열기 (권장 패키지 자동 선택)
   const openCreditModal = () => {
@@ -877,20 +905,20 @@ function TargetMarketingDetailContent({
       setShowTypingIndicator(true);
 
       const data = await aiService.editImage({
-        baseImageUrl: currentGeneratedImage,
-        editPrompt: prompt,
+          baseImageUrl: currentGeneratedImage,
+          editPrompt: prompt,
       });
 
       setCurrentGeneratedImage(data.imageUrl);
 
-      const editedMessage: Message = {
+        const editedMessage: Message = {
         id: idUtils.generateEditedImageId(),
-        role: "assistant",
-        content: `✨ 이미지가 수정되었습니다: ${prompt}`,
-        timestamp: new Date(),
+          role: "assistant",
+          content: `✨ 이미지가 수정되었습니다: ${prompt}`,
+          timestamp: new Date(),
         imageUrl: data.imageUrl,
-      };
-      setMessages((prev) => [...prev, editedMessage]);
+        };
+        setMessages((prev) => [...prev, editedMessage]);
     } catch (error) {
       const errorMessage: Message = {
         id: idUtils.generateErrorMessageId(),
@@ -1343,12 +1371,12 @@ function TargetMarketingDetailContent({
       }
 
       await templateService.saveTemplate({
-        name: templateSaveName.trim(),
-        content: smsTextContent.trim(),
-        image_url: currentGeneratedImage || null,
-        category: templateSaveCategory,
-        is_private: templateIsPrivate,
-        buttons: dynamicButtons, // 동적 버튼 데이터 추가
+          name: templateSaveName.trim(),
+          content: smsTextContent.trim(),
+          image_url: currentGeneratedImage || null,
+          category: templateSaveCategory,
+          is_private: templateIsPrivate,
+          buttons: dynamicButtons, // 동적 버튼 데이터 추가
       }, token);
       
       alert(SUCCESS_MESSAGES.TEMPLATE_SAVED);
@@ -1596,9 +1624,10 @@ function TargetMarketingDetailContent({
 
       // 캠페인 데이터 준비
       const campaignData = {
-        title: templateTitle, // 템플릿의 실제 제목 사용
+        title: campaignName || templateTitle, // 캠페인 이름 우선, 없으면 템플릿 제목 사용
         content: smsTextContent,
         imageUrl: currentGeneratedImage,
+        adMedium: adMedium, // 광고매체 추가 (naver_talktalk 또는 sms)
         sendPolicy: sendPolicy, // 실제 선택된 발송 정책
         validityStartDate: sendPolicy === "realtime" ? validityStartDate : null,
         validityEndDate: sendPolicy === "realtime" ? validityEndDate : null,
@@ -1636,7 +1665,6 @@ function TargetMarketingDetailContent({
       const result = await campaignService.createCampaign(campaignData as campaignService.CreateCampaignRequest, token);
 
       if (result.success) {
-        setShowApprovalModal(false);
         setShowApprovalComplete(true); // 승인 요청 완료 페이지 표시
       } else {
         throw new Error(result.message || "캠페인 저장에 실패했습니다.");
@@ -1920,66 +1948,117 @@ function TargetMarketingDetailContent({
 
         {/* 우측: 캠페인 설정 영역 */}
         <div className="flex-shrink-0">
-          <div className="w-[400px] bg-white border-l border-gray-200 flex flex-col max-h-screen overflow-y-auto p-6 gap-6">
-            {/* 템플릿 미리보기 카드 */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-              {/* 상단 버튼 영역 */}
+          <div className="w-[480px] bg-gray-200 border-l border-gray-200 flex flex-col max-h-screen overflow-y-auto">
+            {/* 캠페인 설정 섹션 */}
+            <div className="bg-gray-100 p-4">
               <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-semibold text-gray-800">캠페인 설정</h3>
                 <button
-                  className="px-4 py-2 bg-blue-600 text-white border-none rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-blue-700"
+                  className="px-3 py-1.5 bg-white text-blue-600 border border-blue-600 rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-blue-100"
                   onClick={handleOpenCampaignModal}
                 >
                   캠페인 불러오기
                 </button>
               </div>
+              
+              {/* 공고제목 섹션 */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-sm font-medium text-gray-700">광고매체</label>
+                                  <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="adMedium" 
+                      value="naver_talktalk" 
+                      checked={adMedium === "naver_talktalk"} 
+                      onChange={(e) => setAdMedium(e.target.value as "naver_talktalk")}
+                      className="text-blue-600" 
+                    />
+                    <span className={`text-xs ${adMedium === "naver_talktalk" ? "text-blue-600" : "text-gray-600"}`}>네이버톡톡</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="adMedium" 
+                      value="sms" 
+                      checked={adMedium === "sms"} 
+                      onChange={(e) => setAdMedium(e.target.value as "sms")}
+                      className="text-blue-600" 
+                    />
+                    <span className={`text-xs ${adMedium === "sms" ? "text-blue-600" : "text-gray-600"}`}>문자메세지</span>
+                  </label>
+                </div>
+                </div>
+                <div className="relative flex items-center">
+                  <label className="text-sm font-medium text-gray-700 mr-2 flex-shrink-0">캠페인 이름</label>
+                  <input
+                    value={campaignName}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 20) {
+                        setCampaignName(e.target.value);
+                      }
+                    }}
+                    placeholder="캠페인 타이틀을 입력해 주세요"
+                    className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                    maxLength={20}
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">
+                    {campaignName.length} / 20
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 템플릿 생성결과 섹션 */}
+            <div className="bg-gray-100 mb-1 p-4">
               <div className="flex justify-between items-center mb-4">
-                <div className="text-sm font-semibold text-gray-800">템플릿 생성결과</div>
+                <div className="text-base font-semibold text-gray-800">템플릿 생성결과</div>
                 <button
-                  className="px-3 py-1 bg-gray-100 text-gray-700 border-none rounded text-sm cursor-pointer hover:bg-gray-200"
+                  className="px-3 py-1.5 bg-white text-blue-600 border border-blue-600 rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-blue-100"
                   onClick={() => setIsPreviewModalOpen(true)}
                 >
                   미리보기
                 </button>
               </div>
-              <div className="flex flex-col gap-4">
-                {currentGeneratedImage ? (
-                  <div className="relative h-40 overflow-hidden rounded-lg flex-shrink-0">
-                    <Image
-                      src={currentGeneratedImage}
-                      alt="생성된 템플릿 이미지"
-                      width={300}
-                      height={200}
-                      className="w-full h-full object-cover"
-                    />
-                    {isImageGenerating && (
-                      <div className="absolute inset-0 bg-black/70 flex items-center justify-center flex-col text-white text-sm rounded-lg">
-                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        <span>이미지 생성 중...</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="relative h-40 bg-gray-100 flex items-center justify-center rounded-lg flex-shrink-0">
-                    <div className="flex flex-col items-center gap-2 text-gray-500 text-center">
-                      {isImageGenerating ? (
-                        <>
-                          <div className="w-6 h-6 border-2 border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
-                          <span>AI가 이미지를 생성하고 있습니다...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={32} />
-                          <span>AI가 이미지를 생성하면 여기에 표시됩니다</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
                 <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">제목:</label>
-                    <div className="flex flex-col">
-                      <div className="relative flex items-center">
+                 {currentGeneratedImage ? (
+                   <div className="relative w-full aspect-square overflow-hidden rounded-lg flex-shrink-0">
+                     <Image
+                       src={currentGeneratedImage}
+                       alt="생성된 템플릿 이미지"
+                       width={192}
+                       height={192}
+                       className="w-full h-full object-cover"
+                     />
+                     {isImageGenerating && (
+                       <div className="absolute inset-0 bg-black/70 flex items-center justify-center flex-col text-white text-sm rounded-lg">
+                         <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                         <span>이미지 생성 중...</span>
+                       </div>
+                     )}
+                   </div>
+                 ) : (
+                   <div className="relative w-48 aspect-square bg-gray-100 flex items-center justify-center rounded-lg flex-shrink-0 mx-auto">
+                     <div className="flex flex-col items-center gap-2 text-gray-500 text-center p-4">
+                       {isImageGenerating ? (
+                         <>
+                           <div className="w-6 h-6 border-2 border-gray-400 border-t-blue-600 rounded-full animate-spin"></div>
+                           <span className="text-xs">AI가 이미지를 생성하고 있습니다...</span>
+                         </>
+                       ) : (
+                         <>
+                           <Sparkles size={32} />
+                           <span className="text-xs text-center">AI가 이미지를 생성하면 여기에 표시됩니다</span>
+                         </>
+                       )}
+                     </div>
+                   </div>
+                 )}
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-2">
+                    <label className="text-sm font-medium text-gray-700 min-w-8">제목:</label>
+                      <div className="relative w-full flex items-center">
                         <input
                           value={templateTitle}
                           onChange={(e) => {
@@ -1988,18 +2067,17 @@ function TargetMarketingDetailContent({
                             }
                           }}
                           placeholder="템플릿 제목을 입력하세요"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                          className="w-full px-3 py-2 border bg-white border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
                           maxLength={TEXT_LIMITS.TEMPLATE_TITLE_MAX}
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
                           {templateTitle.length} / {TEXT_LIMITS.TEMPLATE_TITLE_MAX}
                         </span>
                       </div>
-                    </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">내용:</label>
-                    <div className="relative">
+                  <div className="flex gap-2">
+                    <label className="text-sm font-medium text-gray-700 min-w-8">내용:</label>
+                    <div className="relative w-full">
                       <textarea
                         value={smsTextContent || ""}
                         onChange={(e) => {
@@ -2008,7 +2086,7 @@ function TargetMarketingDetailContent({
                           }
                         }}
                         placeholder="AI가 생성한 마케팅 콘텐츠가 여기에 표시됩니다."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:border-blue-500"
                         rows={4}
                         maxLength={TEXT_LIMITS.SMS_CONTENT_MAX}
                       />
@@ -2019,9 +2097,9 @@ function TargetMarketingDetailContent({
                   </div>
 
                   {/* 동적 버튼 영역 */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-gray-700">버튼:</label>
-                    <div className="border border-gray-200 rounded-lg p-3">
+                  <div className="flex gap-2">
+                    <label className="text-sm font-medium text-gray-700 min-w-8">버튼:</label>
+                    <div className="border border-gray-200 rounded-lg p-3 w-full">
                       <div className="space-y-3">
                         {dynamicButtons.map((button, index) => (
                           <div key={button.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
@@ -2100,7 +2178,7 @@ function TargetMarketingDetailContent({
 
                               <div className="col-span-2 flex gap-2 justify-end">
                                 <button
-                                  className="px-3 py-1 text-sm bg-blue-600 text-white border-none rounded cursor-pointer hover:bg-blue-700"
+                                  className="px-3 py-1 text-sm bg-gray-200 text-gray-800 border-none rounded cursor-pointer hover:bg-blue-100"
                                   title="링크 확인"
                                   onClick={() => handleLinkCheck(button)}
                                 >
@@ -2109,9 +2187,9 @@ function TargetMarketingDetailContent({
                                 {index === dynamicButtons.length - 1 && (
                                   <button
                                     onClick={() => removeDynamicButton(button.id, dynamicButtons, setDynamicButtons)}
-                                    className="px-3 py-1 text-sm bg-red-600 text-white border-none rounded cursor-pointer hover:bg-red-700"
+                                    className="px-3 py-1 text-sm text-gray-600 border-none rounded cursor-pointer hover:text-gray-700"
                                   >
-                                    🗑️ 삭제
+                                    삭제
                                   </button>
                                 )}
                               </div>
@@ -2141,19 +2219,19 @@ function TargetMarketingDetailContent({
                 {/* 템플릿 액션 버튼들 */}
                 <div className="flex gap-2 pt-4 border-t border-gray-200">
                   <button
-                    className="flex-1 px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded cursor-pointer hover:bg-gray-200 text-gray-700"
+                    className="flex-1 px-3 py-1.5 bg-white text-blue-600 border border-blue-600 rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-blue-100"
                     onClick={handleOpenTemplateModal}
                   >
                     템플릿 불러오기
                   </button>
                   <button
-                    className="flex-1 px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded cursor-pointer hover:bg-gray-200 text-gray-700"
+                    className="flex-1 px-3 py-1.5 bg-white text-blue-600 border border-blue-600 rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-blue-100"
                     onClick={handleOpenSaveTemplateModal}
                   >
                     템플릿 저장
                   </button>
                   <button
-                    className="flex-1 px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded cursor-pointer hover:bg-gray-200 text-gray-700"
+                    className="flex-1 px-3 py-1.5 bg-white text-blue-600 border border-blue-600 rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-blue-100"
                     onClick={handleImageUploadClick}
                   >
                     이미지 업로드
@@ -2162,313 +2240,574 @@ function TargetMarketingDetailContent({
               </div>
             </div>
 
-            {/* 타겟 추천 결과 섹션 */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-              <div className="text-sm font-semibold text-gray-800 mb-4">타깃 추천 결과</div>
-
-              {/* 타겟 설정 */}
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">성별, 연령</div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                      value={targetGender}
-                      onChange={(e) => setTargetGender(e.target.value)}
-                    >
-                      {targetOptions.gender.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex-1">
-                    <div className="relative" ref={ageDropdownRef}>
-                      <div 
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded bg-white cursor-pointer flex justify-between items-center hover:border-blue-500"
-                        onClick={() => setIsAgeDropdownOpen(!isAgeDropdownOpen)}
-                      >
-                        <span className="text-gray-700">
-                          {getSelectedAgeDisplay(targetAge)}
-                        </span>
-                        <span className={`transform transition-transform ${isAgeDropdownOpen ? 'rotate-180' : ''}`}>
-                          ▼
-                        </span>
-                      </div>
-                      {isAgeDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {targetOptions.age.map((option) => (
-                            <label key={option.value} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={targetAge.includes(option.value)}
-                                onChange={(e) => {
-                                  if (option.value === "all") {
-                                    // "전체" 선택 시 다른 모든 선택 해제
-                                    setTargetAge(e.target.checked ? ["all"] : []);
-                                  } else {
-                                    // 개별 항목 선택/해제
-                                    if (e.target.checked) {
-                                      // "전체"가 선택되어 있다면 제거하고 현재 항목 추가
-                                      const newAges = targetAge.includes("all") 
-                                        ? [option.value] 
-                                        : [...targetAge, option.value];
-                                      setTargetAge(newAges);
-                                    } else {
-                                      // 현재 항목 제거
-                                      const newAges = targetAge.filter(age => age !== option.value);
-                                      // 아무것도 선택되지 않았으면 "전체" 선택
-                                      setTargetAge(newAges.length === 0 ? ["all"] : newAges);
-                                    }
-                                  }
-                                }}
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm text-gray-700">{option.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+            {/* 광고 수신자 설정 섹션 */}
+            <div className="bg-gray-100 p-4 mb-1">
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-base font-semibold text-gray-800">광고 수신자 설정</div>
+                <div className="flex items-center gap-1">
+                  <input type="checkbox" className="w-4 h-4" />
+                  <span className="text-xs text-gray-800">전문가 검토 요청하기</span>
                 </div>
               </div>
-
-              {/* 카드 사용 위치 */}
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 위치</div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                      value={targetCity}
-                      onChange={(e) => setTargetCity(e.target.value)}
-                    >
-                      {targetOptions.cities.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                      value={targetDistrict}
-                      onChange={(e) => setTargetDistrict(e.target.value)}
-                    >
-                      {getDistrictsByCity(targetCity).map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+              
+              {/* 예상 수신자 수 */}
+              <div className="mb-4 rounded-lg">
+                <div className="flex bg-gray-200 text-sm font-semibold text-gray-700 mb-1 justify-between p-2 rounded">
+                  <div>예상 수신자 수</div>
+                  <div>
+                    총
+                    <span className="text-sm font-semibold text-blue-600">50</span>
+                    명
                   </div>
                 </div>
+                <div className="text-xs text-gray-500 mt-1 ml-2">※ 예상 수신자 수 란?</div>
+                <div className="text-xs text-gray-500 ml-2">통계치를 기반하여 예측한 광고 수신자수입니다.</div>
               </div>
 
-              {/* 타겟 업종 */}
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 업종</div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                      value={targetTopLevelIndustry}
-                      onChange={(e) => {
-                        setTargetTopLevelIndustry(e.target.value);
-                        // 대분류 변경 시 세부업종을 "all"로 자동 설정
-                        setTargetIndustry("all");
-                      }}
-                    >
-                      {targetOptions.topLevelIndustries.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                             {/* 성별 */}
+               <div className="mb-4">
+                 <div className="text-sm font-medium text-gray-700 mb-2">성별</div>
+                 <div className="flex gap-2">
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value="여성"
+                     >
+                       <option>여성</option>
+                     </select>
+                   </div>
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       defaultValue="70%"
+                     >
+                       {Array.from({ length: 101 }, (_, i) => (
+                         <option key={i} value={`${i}%`}>{i}%</option>
+                       ))}
+                     </select>
+                       </div>
+                         </div>
+                 <div className="flex gap-2 mt-2">
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value="남성"
+                     >
+                       <option>남성</option>
+                     </select>
+                     </div>
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       defaultValue="30%"
+                     >
+                       {Array.from({ length: 101 }, (_, i) => (
+                         <option key={i} value={`${i}%`}>{i}%</option>
+                       ))}
+                     </select>
+                   </div>
+                 </div>
+               </div>
+
+                             {/* 연령 */}
+               <div className="mb-4">
+                 <div className="text-sm font-medium text-gray-700 mb-2">연령</div>
+                 <select
+                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                   defaultValue="30대"
+                 >
+                   {Array.from({ length: 9 }, (_, i) => {
+                     const age = (i + 1) * 10;
+                     return (
+                       <option key={age} value={`${age}대`}>
+                         {age}대
+                       </option>
+                     );
+                   })}
+                 </select>
+               </div>
+
+                             {/* 카드 사용 위치 */}
+               <div className="mb-6">
+                 <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 위치</div>
+                 <div className="flex gap-4">
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value={targetCity}
+                       onChange={(e) => setTargetCity(e.target.value)}
+                     >
+                       {targetOptions.cities.map((option) => (
+                         <option key={option.value} value={option.value}>
+                           {option.label}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value={targetDistrict}
+                       onChange={(e) => setTargetDistrict(e.target.value)}
+                     >
+                       {getDistrictsByCity(targetCity).map((option) => (
+                         <option key={option.value} value={option.value}>
+                           {option.label}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                 </div>
+               </div>
+
+                             {/* 타겟 업종 */}
+               <div className="mb-4">
+                 <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 업종</div>
+                 <div className="grid grid-cols-2 gap-2">
+                   <div>
+                     <div className="text-xs text-gray-500 mb-1">대분류</div>
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value={targetTopLevelIndustry}
+                       onChange={(e) => {
+                         setTargetTopLevelIndustry(e.target.value);
+                         // 대분류 변경 시 세부업종을 "all"로 자동 설정
+                         setTargetIndustry("all");
+                       }}
+                     >
+                       {targetOptions.topLevelIndustries.map((option) => (
+                         <option key={option.value} value={option.value}>
+                           {option.label}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                   <div>
+                     <div className="text-xs text-gray-500 mb-1">세부업종</div>
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value={targetIndustry}
+                       onChange={(e) => setTargetIndustry(e.target.value)}
+                     >
+                       {getIndustriesByTopLevel(targetTopLevelIndustry).map((option) => (
+                         <option key={option.value} value={option.value}>
+                           {option.label}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                 </div>
+               </div>
+
+                             {/* 카드 승인 금액 */}
+               <div className="mb-4">
+                 <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 금액</div>
+                 
+                 {/* 금액 입력 필드 */}
+                 <div className="mb-3">
+                   <div className="relative flex items-center">
+                       <input
+                       type="text"
+                       value={cardAmountInputValue}
+                       onChange={(e) => setCardAmountInputValue(e.target.value)}
+                       placeholder="금액 입력"
+                       className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                     />
+                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">미만</span>
+                     </div>
+                     </div>
+
+                 {/* 금액 선택 버튼들 */}
+                 <div className="flex gap-2 mb-4">
+                   <button 
+                     className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors flex-1 ${
+                       selectedAmountButton === "10000" 
+                         ? "bg-blue-100 text-blue-600 border-blue-600" 
+                         : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                     }`}
+                     onClick={() => handleCardAmountButtonClick("10000")}
+                   >
+                     1만원 미만
+                   </button>
+                   <button 
+                     className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors flex-1 ${
+                       selectedAmountButton === "50000" 
+                         ? "bg-blue-100 text-blue-600 border-blue-600" 
+                         : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                     }`}
+                     onClick={() => handleCardAmountButtonClick("50000")}
+                   >
+                     5만원 미만
+                   </button>
+                   <button 
+                     className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors flex-1 ${
+                       selectedAmountButton === "100000" 
+                         ? "bg-blue-100 text-blue-600 border-blue-600" 
+                         : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                     }`}
+                     onClick={() => handleCardAmountButtonClick("100000")}
+                   >
+                     10만원 미만
+                   </button>
+                   <button 
+                     className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors flex-1 ${
+                       selectedAmountButton === "all" 
+                         ? "bg-blue-100 text-blue-600 border-blue-600" 
+                         : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                     }`}
+                     onClick={() => handleCardAmountButtonClick("all")}
+                   >
+                     전체
+                   </button>
+                   </div>
+               </div>
+
+                                            {/* 카드 승인 시간 */}
+               <div className="mb-4">
+                 <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 시간</div>
+                 
+                 {/* 시간 선택 드롭다운 */}
+                 <div className="flex items-center gap-2 mb-3">
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value={cardStartTime}
+                       onChange={(e) => setCardStartTime(e.target.value)}
+                     >
+                       {generateTimeOptions().map((time) => (
+                         <option key={`start-${time}`} value={time}>
+                           {time}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                   <span className="text-gray-500 px-2">~</span>
+                   <div className="flex-1">
+                     <select
+                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                       value={cardEndTime}
+                       onChange={(e) => setCardEndTime(e.target.value)}
+                     >
+                       {generateTimeOptions().map((time) => (
+                         <option key={`end-${time}`} value={time}>
+                           {time}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                 </div>
+
+                 {/* 시간 프리셋 버튼들 */}
+                 <div className="grid grid-cols-3 gap-2 mb-4">
+                   <button 
+                     className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors ${
+                       selectedTimeButton === "morning" 
+                         ? "bg-blue-100 text-blue-600 border-blue-600" 
+                         : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                     }`}
+                     onClick={() => handleCardTimeButtonClick("morning")}
+                   >
+                     오전
+                   </button>
+                   <button 
+                     className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors ${
+                       selectedTimeButton === "afternoon" 
+                         ? "bg-blue-100 text-blue-600 border-blue-600" 
+                         : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                     }`}
+                     onClick={() => handleCardTimeButtonClick("afternoon")}
+                   >
+                     오후
+                   </button>
+                   <button 
+                     className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors ${
+                       selectedTimeButton === "all" 
+                         ? "bg-blue-100 text-blue-600 border-blue-600" 
+                         : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                     }`}
+                     onClick={() => handleCardTimeButtonClick("all")}
+                   >
+                     전체
+                   </button>
+             </div>
+           </div>
+
+                             {/* 희망 수신자 입력 */}
+               <div className="mb-4">
+                 <div className="text-sm font-medium text-gray-700 mb-2">희망 수신자 입력</div>
+                 <textarea
+                   placeholder="원하시는 광고 수신자를 직접 입력해 주세요."
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:border-blue-500 bg-white"
+                   rows={3}
+                 />
+             </div>
+          </div>
+
+            {/* 발송 정책 설정 섹션 */}
+            <div className="bg-gray-100 p-4">
+              <h3 className="text-base font-semibold text-gray-800 mb-4">발송 정책 설정</h3>
+              
+              <div>
+                <p className="text-sm text-gray-800 mb-2">
+                  ※ 실시간 발송이란? 카드 승인 시점에 해당 카드를 사용한 광고 수신자에게 즉시 광고 메시지를 발송하는 방식입니다.
+                </p>
               </div>
 
-              {/* 카드 승인 금액 */}
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 금액</div>
+              {/* 발송 방식 선택 */}
+              <div className="space-y-3 mb-2 flex items-center gap-3">
+                <label className="flex items-center gap-1 cursor-pointer mb-0">
+                  <input
+                    type="radio"
+                    name="sendPolicy"
+                    checked={sendPolicy === "realtime"}
+                    onChange={() => setSendPolicy("realtime")}
+                    className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  />
+                  <span className="text-sm font-semibold text-gray-700 leading-4">실시간 발송</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="sendPolicy"
+                    checked={sendPolicy === "batch"}
+                    onChange={() => {
+                      setSendPolicy("batch");
+                      // 일괄 발송으로 변경할 때 광고 수신자 수가 타겟 대상자 수를 초과하면 조정
+                      if (adRecipientCount > targetCount) {
+                        setAdRecipientCount(targetCount);
+                      }
+                    }}
+                    className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  />
+                  <span className="text-sm font-semibold text-gray-700 leading-4">일괄 발송</span>
+                </label>
+              </div>
+
+              {/* 실시간 발송 설정 */}
+              {sendPolicy === "realtime" && (
+                <div className="mb-4">
+                  <div className="text-sm font-medium text-gray-700 mb-3">실시간 발송 설정</div>
                 
-                {/* 금액 입력 필드 */}
-                <div className="mb-3">
-                  <div className="relative flex items-center">
+                {/* 유효 기간 */}
+                <div className="mb-4">
+                  <div className="text-xs text-gray-600 mb-2">유효 기간</div>
+                  <div className="flex items-center gap-2 mb-3">
+                                          <input
+                      type="date"
+                      value={validityStartDate}
+                      onChange={(e) => setValidityStartDate(e.target.value)}
+                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                    />
+                    <span className="text-gray-500">-</span>
                       <input
-                        type="number"
-                      value={cardAmountInput}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          // 숫자만 입력되도록 하고, 최대 1000만원으로 제한
-                          if (
-                            value === "" ||
-                            (parseInt(value) >= 1 && parseInt(value) <= 1000)
-                          ) {
-                          setCardAmountInput(value);
-                          setCardAmount("custom");
-                          }
-                        }}
-                      placeholder="금액 입력"
-                      className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-l focus:outline-none focus:border-blue-500"
-                        min="1"
-                        max="1000"
-                      disabled={cardAmount === "all"}
+                        type="date"
+                        value={validityEndDate}
+                        onChange={(e) => setValidityEndDate(e.target.value)}
+                      className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
                       />
-                    <span className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r text-sm text-gray-600">만원</span>
                     </div>
-                    </div>
-
-                {/* 금액 선택 버튼들 */}
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  {targetOptions.cardAmounts.filter(option => option.value !== "custom").map((option) => (
-                    <button
-                      key={option.value}
-                      className={`px-4 py-2 text-sm border rounded cursor-pointer transition-colors ${
-                        cardAmount === option.value 
-                          ? "bg-blue-600 text-white border-blue-600" 
-                          : "bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:text-blue-600"
+                  <div className="flex gap-2 mb-4">
+                                          <button
+                    className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors ${
+                      selectedPeriod === "week" 
+                        ? "bg-blue-100 text-blue-600 border-blue-600" 
+                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
                       }`}
-                      onClick={() => handleAmountButtonClick(option.value)}
+                      onClick={() => setPeriod("week")}
                     >
-                      {option.label}
+                      일주일
                     </button>
-                  ))}
+                                          <button
+                    className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors ${
+                      selectedPeriod === "month" 
+                        ? "bg-blue-100 text-blue-600 border-blue-600" 
+                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                      }`}
+                      onClick={() => setPeriod("month")}
+                    >
+                      한달
+                    </button>
+                                          <button
+                    className={`px-4 py-2 text-xs border rounded cursor-pointer transition-colors ${
+                      selectedPeriod === "year" 
+                        ? "bg-blue-100 text-blue-600 border-blue-600" 
+                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                      }`}
+                      onClick={() => setPeriod("year")}
+                    >
+                      1년
+                    </button>
+                    </div>
                   </div>
-              </div>
 
-              {/* 카드 승인 시간 */}
-              <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 시간</div>
-                
-                {/* 시간 선택 드롭다운 */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                      value={cardStartTime}
-                      onChange={(e) => setCardStartTime(e.target.value)}
-                    >
-                      {getAllTimeOptions().map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <span className="text-gray-500 px-2">~</span>
-                  <div className="flex-1">
-                    <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                      value={cardEndTime}
-                      onChange={(e) => setCardEndTime(e.target.value)}
-                    >
-                      {getAllTimeOptions().map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                                  {/* 일 최대 건수 */}
+                  <div className="mb-4">
+                    <div className="text-xs text-gray-600 mb-2">일 최대 건수</div>
+                    <input
+                      type="text"
+                      value={maxRecipients + "건"}
+                      onChange={(e) => setMaxRecipients(e.target.value.replace("건", ""))}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                      placeholder="30건"
+                    />
                   </div>
                 </div>
+              )}
 
-                {/* 시간 프리셋 버튼들 */}
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    className={`px-4 py-2 text-sm border rounded cursor-pointer transition-colors ${
-                      cardStartTime === "08:00" && cardEndTime === "12:00" 
-                        ? "bg-blue-600 text-white border-blue-600" 
-                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:text-blue-600"
-                    }`}
-                    onClick={() => handleTimePresetClick("morning")}
-                  >
-                    오전
-                  </button>
-                  <button
-                    className={`px-4 py-2 text-sm border rounded cursor-pointer transition-colors ${
-                      cardStartTime === "12:00" && cardEndTime === "18:00" 
-                        ? "bg-blue-600 text-white border-blue-600" 
-                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:text-blue-600"
-                    }`}
-                    onClick={() => handleTimePresetClick("afternoon")}
-                  >
-                    오후
-                  </button>
-                  <button
-                    className={`px-4 py-2 text-sm border rounded cursor-pointer transition-colors ${
-                      cardStartTime === "08:00" && cardEndTime === "18:00" 
-                        ? "bg-blue-600 text-white border-blue-600" 
-                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:text-blue-600"
-                    }`}
-                    onClick={() => handleTimePresetClick("all")}
-                  >
-                    전체
-                  </button>
+              {/* 일괄 발송 설정 */}
+              {sendPolicy === "batch" && (
+                <div className="mb-4">
+                  <div className="text-sm font-medium text-gray-700 mb-3">일괄 발송 설정</div>
+                  
+                  <div className="mb-3">
+                    <div className="text-xs text-gray-600 mb-1">발송 일·시간</div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      ※ 발송 일·시는 승인 이후에 가능합니다. (승인은 2일 정도 소요)
+                    </p>
+                    <div className="flex gap-2 mb-4">
+                        <select
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                          value={batchSendDate}
+                          onChange={(e) => setBatchSendDate(e.target.value)}
+                        >
+                        <option value="오늘+3일">오늘+3일</option>
+                        <option value="오늘+7일">오늘+7일</option>
+                        <option value="오늘+14일">오늘+14일</option>
+                        </select>
+                        <select
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                          value={batchSendTime}
+                          onChange={(e) => setBatchSendTime(e.target.value)}
+                        >
+                        <option value="00:00">00:00</option>
+                        <option value="09:00">09:00</option>
+                        <option value="12:00">12:00</option>
+                        <option value="15:00">15:00</option>
+                        <option value="18:00">18:00</option>
+                        </select>
+                    </div>
+                      </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600">타겟 대상자 수</span>
+                        <input
+                          type="number"
+                          value={targetCount}
+                          onChange={(e) => {
+                            const newTargetCount = parseInt(e.target.value) || 500;
+                            setTargetCount(newTargetCount);
+                            
+                            // 타겟 대상자 수가 줄어들면 광고 수신자 수도 조정
+                            if (adRecipientCount > newTargetCount) {
+                              setAdRecipientCount(newTargetCount);
+                            }
+                          }}
+                        className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-gray-100 cursor-not-allowed text-gray-600"
+                          disabled={sendPolicy === "batch"}
+                        />
+                      <span className="text-xs text-gray-600">명</span>
+                      </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600">광고 수신자 수</span>
+                        <input
+                          type="number"
+                          value={adRecipientCount}
+                          onChange={(e) => {
+                            const newValue = parseInt(e.target.value) || 0;
+                            // 타겟 대상자 수를 넘지 않도록 제한
+                            const limitedValue = Math.min(newValue, targetCount);
+                            setAdRecipientCount(limitedValue);
+                          }}
+                        className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                          max={targetCount}
+                          min={1}
+                        />
+                      <span className="text-xs text-gray-600">명</span>
+                    </div>
+                      </div>
+
+                  <p className="text-xs text-gray-500 mt-3">
+                    ※ 광고 수신자 수는 타겟 대상자 수를 초과할 수 없습니다.
+                    <br />※ 일괄 발송 시 타겟 대상자 수는 수정할 수 없습니다.
+                      </p>
+                    </div>
+              )}
+            </div>
+
+            {/* 예상단가 섹션 */}
+            <div className="bg-white p-4">
+              <h3 className="text-base font-semibold text-gray-800 mb-4">예상단가</h3>
+              <div className="text-xs text-gray-600 mb-2">
+                ※ 실시간 발송이면 카드 승인 시간에 해당 카드를 사용한
+                광고 수신자에게 즉시 광고 메시지를 발송하는 방식입니다.
                 </div>
-              </div>
+
+              <div className="bg-white p-4 rounded-lg space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-700">캠페인</span>
+                  <span className="text-sm font-semibold text-gray-900">100원/건</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-gray-200 pt-2">
+                  <span className="text-base font-semibold text-gray-900">합계</span>
+                  <span className="text-base font-semibold text-blue-600">
+                    {calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount).toLocaleString()}원
+                  </span>
+                    </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-700">충전 잔액</span>
+                  <span className="text-sm">
+                    {isLoadingCredits ? (
+                      <span className="text-gray-500">500원</span>
+                    ) : (
+                      <>
+                        <span className="font-semibold text-gray-900">
+                          {userCredits.toLocaleString()}
+                        </span>
+                        <span className="text-gray-600 ml-1">원</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+                {calculateRequiredCredits(calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount), userCredits) > 0 && (
+                  <div className="bg-red-50 p-3 rounded border border-red-200 text-center">
+                    <span className="text-sm text-red-600">
+                      ⊗ 크레딧을 충전해주세요.
+                    </span>
+                      <button
+                      className="ml-2 px-3 py-1 bg-blue-600 text-white border-none rounded text-sm font-medium cursor-pointer transition-colors hover:bg-blue-700"
+                        onClick={openCreditModal}
+                      >
+                      충전하기
+                      </button>
+                  </div>
+                )}
+            </div>
+
+              {/* 승인 신청 버튼 */}
+              <div className="pt-4">
+              <button
+                  className="w-full px-6 py-3 bg-blue-600 text-white border-none rounded-lg text-base font-medium cursor-pointer transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                onClick={handleApprovalSubmit}
+                disabled={isSubmittingApproval}
+              >
+                {isSubmittingApproval ? (
+                  <>
+                      <div className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    승인 신청 중...
+                  </>
+                ) : (
+                  "승인 신청"
+                )}
+              </button>
             </div>
           </div>
-
-          {/* 예상금액 */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <div className="text-sm font-medium text-gray-700 mb-1">예상금액</div>
-            <div className="text-lg font-semibold text-gray-900">
-              <span className="text-blue-600">100크레딧/</span>
-              <span className="text-gray-600">건</span>
-            </div>
-          </div>
-
-          {/* 승인 신청 버튼 */}
-          <div className="pt-4">
-            <button
-              className="w-full px-6 py-3 bg-blue-600 text-white border-none rounded-lg text-base font-medium cursor-pointer transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              onClick={() => {
-                if (smsTextContent.trim() && currentGeneratedImage) {
-                  setShowApprovalModal(true);
-                } else {
-                  alert(ERROR_MESSAGES.TEMPLATE_GENERATION_REQUIRED);
-                }
-              }}
-            >
-              승인 신청
-            </button>
-          </div>
+        </div>
         </div>
       </div>
 
-      {/* 발송 정책 선택 모달 */}
-      <ApprovalModal
-        isOpen={showApprovalModal}
-        onClose={() => setShowApprovalModal(false)}
-        onSubmit={handleApprovalSubmit}
-        isSubmitting={isSubmittingApproval}
-        sendPolicy={sendPolicy}
-        setSendPolicy={setSendPolicy}
-        validityStartDate={validityStartDate}
-        validityEndDate={validityEndDate}
-        setValidityEndDate={setValidityEndDate}
-        selectedPeriod={selectedPeriod}
-        setPeriod={setPeriod}
-        maxRecipients={maxRecipients}
-        setMaxRecipients={setMaxRecipients}
-        batchSendDate={batchSendDate}
-        setBatchSendDate={setBatchSendDate}
-        batchSendTime={batchSendTime}
-        setBatchSendTime={setBatchSendTime}
-        targetCount={targetCount}
-        setTargetCount={setTargetCount}
-        adRecipientCount={adRecipientCount}
-        setAdRecipientCount={setAdRecipientCount}
-        calculateTotalCost={calculateTotalCost}
-        calculateRequiredCredits={calculateRequiredCredits}
-        userCredits={userCredits}
-        isLoadingCredits={isLoadingCredits}
-        openCreditModal={openCreditModal}
-      />
+
 
       {/* 성공 모달 */}
       <SuccessModal
