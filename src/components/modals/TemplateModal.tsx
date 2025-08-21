@@ -50,71 +50,75 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
           ) : (
             <div>
               <table className="w-full border-collapse">
-                <thead className="border-b border-gray-200">
+                <thead className="border-b border-gray-200 bg-gray-200">
                   <tr>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '50px' }}></th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">이미지</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">템플릿 이름</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">카테고리</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">생성일</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">수정일</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '60px' }}></th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '100px' }}>이미지</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '250px' }}>템플릿 이름</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '150px' }}>카테고리</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>생성일</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>수정일</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {templateList.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-gray-500">
-                        템플릿이 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    templateList.map((template) => (
-                      <tr key={template.id}>
-                        <td>
-                          <input
-                            type="radio"
-                            name="template"
-                            value={template.id}
-                            checked={selectedTemplateId === template.id || selectedTemplateId?.toString() === template.id?.toString()}
-                            onChange={(e) => {
-                              setSelectedTemplateId(e.target.value);
-                            }}
-                          />
-                        </td>
-                        <td>
-                          {template.image_url ? (
-                            <Image 
-                              src={template.image_url} 
-                              alt="템플릿 이미지" 
-                              width={50}
-                              height={50}
-                              style={{ objectFit: 'cover', borderRadius: '4px' }}
-                            />
-                          ) : (
-                            <div style={{ width: '50px', height: '50px', backgroundColor: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999' }}>
-                              이미지 없음
-                            </div>
-                          )}
-                        </td>
-                        <td>{template.name || '이름 없음'}</td>
-                        <td>{template.category || '-'}</td>
-                        <td>
-                          {template.created_at ? 
-                            new Date(template.created_at).toLocaleDateString('ko-KR') 
-                            : '-'
-                          }
-                        </td>
-                        <td>
-                          {template.updated_at ? 
-                            new Date(template.updated_at).toLocaleDateString('ko-KR') 
-                            : '-'
-                          }
+              </table>
+              <div className="overflow-y-auto" style={{ maxHeight: '240px' }}>
+                <table className="w-full border-collapse">
+                  <tbody className="divide-y divide-gray-200">
+                    {templateList.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-gray-500">
+                          템플릿이 없습니다.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      templateList.map((template) => (
+                        <tr key={template.id}>
+                          <td className="py-3 px-4" style={{ width: '60px' }}>
+                            <input
+                              type="radio"
+                              name="template"
+                              value={template.id}
+                              checked={selectedTemplateId === template.id || selectedTemplateId?.toString() === template.id?.toString()}
+                              onChange={(e) => {
+                                setSelectedTemplateId(e.target.value);
+                              }}
+                            />
+                          </td>
+                          <td className="py-3 px-4" style={{ width: '100px' }}>
+                            {template.image_url ? (
+                              <Image 
+                                src={template.image_url} 
+                                alt="템플릿 이미지" 
+                                width={50}
+                                height={50}
+                                style={{ objectFit: 'cover', borderRadius: '4px' }}
+                              />
+                            ) : (
+                              <div style={{ width: '50px', height: '50px', backgroundColor: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#999' }}>
+                                이미지 없음
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 truncate" style={{ width: '250px' }}>{template.name || '이름 없음'}</td>
+                          <td className="py-3 px-4 truncate" style={{ width: '150px' }}>{template.category || '-'}</td>
+                          <td className="py-3 px-4 whitespace-nowrap" style={{ width: '120px' }}>
+                            {template.created_at ? 
+                              new Date(template.created_at).toLocaleDateString('ko-KR') 
+                              : '-'
+                            }
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap" style={{ width: '120px' }}>
+                            {template.updated_at ? 
+                              new Date(template.updated_at).toLocaleDateString('ko-KR') 
+                              : '-'
+                            }
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

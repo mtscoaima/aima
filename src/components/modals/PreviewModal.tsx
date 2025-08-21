@@ -59,7 +59,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[70vh] flex items-center justify-center">
-          <div className="bg-gray-900 rounded-3xl p-6 shadow-2xl">
+          <div className="bg-gray-200 rounded-3xl p-3 shadow-2xl">
             <div className="bg-white rounded-2xl p-4 max-w-xs">
               {currentGeneratedImage && (
                 <div className="relative mb-4">

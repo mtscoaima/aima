@@ -56,6 +56,7 @@ import * as dateUtils from "@/utils/dateUtils";
 import * as validationUtils from "@/utils/validationUtils";
 import * as storageUtils from "@/utils/storageUtils";
 import * as idUtils from "@/utils/idUtils";
+import { tokenManager } from "@/lib/api";
 // styles import removed - using Tailwind CSS instead
 
 function TargetMarketingDetailContent({
@@ -1363,7 +1364,7 @@ function TargetMarketingDetailContent({
     setIsSavingTemplate(true);
 
     try {
-      const token = storageUtils.getAccessToken();
+      const token = tokenManager.getAccessToken();
       if (!token) {
         alert(ERROR_MESSAGES.LOGIN_REQUIRED);
         setIsSavingTemplate(false);
@@ -1411,7 +1412,7 @@ function TargetMarketingDetailContent({
   const fetchCampaigns = async () => {
     setIsLoadingCampaigns(true);
     try {
-      const token = storageUtils.getAccessToken();
+      const token = tokenManager.getAccessToken();
       if (!token) {
         alert("로그인이 필요합니다.");
         setIsLoadingCampaigns(false);
@@ -1437,7 +1438,7 @@ function TargetMarketingDetailContent({
   const fetchTemplates = async () => {
     setIsLoadingTemplates(true);
     try {
-      const token = storageUtils.getAccessToken();
+      const token = tokenManager.getAccessToken();
       if (!token) {
         alert("로그인이 필요합니다.");
         setIsLoadingTemplates(false);
@@ -1596,7 +1597,7 @@ function TargetMarketingDetailContent({
     setIsSubmittingApproval(true);
 
     try {
-      const token = storageUtils.getAccessToken();
+      const token = tokenManager.getAccessToken();
       if (!token) {
         alert(ERROR_MESSAGES.LOGIN_REQUIRED);
         return;
