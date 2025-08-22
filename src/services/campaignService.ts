@@ -31,7 +31,7 @@ export interface CreateCampaignRequest {
   maxRecipients: string;
   targetCount?: number | null;
   existingTemplateId?: string | null;
-  templateTitle?: string;
+  // templateTitle 제거됨 - template_id로 대체 가능
   buttons?: DynamicButton[];
   genderRatio?: {
     female: number;

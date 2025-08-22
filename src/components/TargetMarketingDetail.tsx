@@ -1653,7 +1653,7 @@ function TargetMarketingDetailContent({
         maxRecipients: actualMaxRecipients.toString(), // 실제 설정된 수신자 수
         targetCount: sendPolicy === "batch" ? targetCount : null, // 타겟 대상자 수
         existingTemplateId: existingTemplateId, // 기존 템플릿 ID 전달
-        templateTitle: templateTitle, // 템플릿 제목 추가
+        // templateTitle 제거됨 - 데이터베이스에서 삭제된 필드
         buttons: dynamicButtons, // 동적 버튼 데이터 추가
         genderRatio: {
           female: femaleRatio,
