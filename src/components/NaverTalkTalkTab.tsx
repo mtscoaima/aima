@@ -122,7 +122,7 @@ export default function NaverTalkTalkTab({
       pages.push(
         <button
           key="prev"
-          className="pagination-btn prev-next"
+          className="w-auto min-w-[50px] px-3 py-1.5 border-none bg-gray-100 rounded-lg text-gray-600 text-center text-sm font-medium leading-[120%] tracking-[-0.28px] cursor-pointer transition-all flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
           onClick={() => handlePageChange(currentPage - 1)}
         >
           이전
@@ -135,7 +135,7 @@ export default function NaverTalkTalkTab({
       pages.push(
         <button
           key={1}
-          className="pagination-btn"
+          className="w-8 h-8 border-none bg-gray-100 rounded-lg text-gray-600 text-center text-sm font-medium leading-[120%] tracking-[-0.28px] cursor-pointer transition-all flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
           onClick={() => handlePageChange(1)}
         >
           1
@@ -143,7 +143,7 @@ export default function NaverTalkTalkTab({
       );
       if (startPage > 2) {
         pages.push(
-          <span key="ellipsis1" className="pagination-ellipsis">
+          <span key="ellipsis1" className="px-2 text-gray-600 text-sm font-medium leading-[120%] tracking-[-0.28px] flex items-center justify-center select-none">
             ...
           </span>
         );
@@ -155,7 +155,11 @@ export default function NaverTalkTalkTab({
       pages.push(
         <button
           key={i}
-          className={`pagination-btn ${currentPage === i ? "active" : ""}`}
+          className={`w-8 h-8 border-none rounded-lg text-center text-sm font-medium leading-[120%] tracking-[-0.28px] cursor-pointer transition-all flex items-center justify-center ${
+            currentPage === i 
+              ? "border border-blue-500 bg-blue-50 text-blue-600" 
+              : "bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600"
+          }`}
           onClick={() => handlePageChange(i)}
         >
           {i}
@@ -167,7 +171,7 @@ export default function NaverTalkTalkTab({
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
         pages.push(
-          <span key="ellipsis2" className="pagination-ellipsis">
+          <span key="ellipsis2" className="px-2 text-gray-600 text-sm font-medium leading-[120%] tracking-[-0.28px] flex items-center justify-center select-none">
             ...
           </span>
         );
@@ -175,7 +179,7 @@ export default function NaverTalkTalkTab({
       pages.push(
         <button
           key={totalPages}
-          className="pagination-btn"
+          className="w-8 h-8 border-none bg-gray-100 rounded-lg text-gray-600 text-center text-sm font-medium leading-[120%] tracking-[-0.28px] cursor-pointer transition-all flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
           onClick={() => handlePageChange(totalPages)}
         >
           {totalPages}
@@ -188,7 +192,7 @@ export default function NaverTalkTalkTab({
       pages.push(
         <button
           key="next"
-          className="pagination-btn prev-next"
+          className="w-auto min-w-[50px] px-3 py-1.5 border-none bg-gray-100 rounded-lg text-gray-600 text-center text-sm font-medium leading-[120%] tracking-[-0.28px] cursor-pointer transition-all flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
           onClick={() => handlePageChange(currentPage + 1)}
         >
           다음
@@ -196,7 +200,7 @@ export default function NaverTalkTalkTab({
       );
     }
 
-    return <div className="pagination">{pages}</div>;
+    return <div className="flex items-center justify-center gap-2 mt-8 max-w-6xl mx-auto flex-wrap">{pages}</div>;
   };
 
   const handleStartChat = (message?: string) => {
@@ -312,22 +316,22 @@ export default function NaverTalkTalkTab({
 
   return (
     <>
-      <div className="landing-content">
-        <div className="chat-bot-icon">
+      <div className="flex-1 flex flex-col items-center text-center mb-16 border-none rounded-none bg-transparent">
+        <div className="flex items-center justify-center">
           <Image
             src="/images/ChatGPT.png"
             alt="AI 챗봇"
             width={120}
             height={120}
-            className="robot-image"
+            className="rounded-xl"
           />
         </div>
 
-        <h2>어떤 광고를 만들고 싶나요?</h2>
+        <h2 className="text-black text-2xl font-medium leading-[120%] tracking-[-0.48px] mb-9 font-sans">어떤 광고를 만들고 싶나요?</h2>
 
         {/* Input Section */}
-        <div className="input-section">
-          <div className="chat-input-container">
+        <div className="w-full max-w-4xl">
+          <div className="rounded-2xl bg-white shadow-[0px_4px_13px_0px_rgba(0,0,0,0.25)] p-4 flex flex-col gap-4 border-none">
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -337,16 +341,19 @@ export default function NaverTalkTalkTab({
                   handleStartChat();
                 }
               }}
-              placeholder="Ex) 서울 홍대 헤어샵 오픈 행사 카페 50%할인 이벤트 홍보 여름 맞이 최대 50% 할인 이벤트 홍보 카페 시즌 음료 무료 시음 이벤트 안내"
-              className="chat-input-field"
+              placeholder={`Ex) 서울 홍대 헤어샵 오픈 행사 카페 50%할인 이벤트 홍보
+                            여름 맞이 최대 50% 할인 이벤트 홍보
+                            카페 시즌 음료 무료 사이즈 업 이벤트 안내`
+                          }
+              className="w-full text-base resize-none transition-colors duration-200 font-inherit border-none outline-none placeholder-gray-400 whitespace-pre-line"
               rows={4}
             />
 
             {/* 첨부된 파일 미리보기 */}
             {selectedFile && (
-              <div className="attached-file-preview">
+              <div className="relative mt-3 p-3 border border-gray-200 rounded-lg bg-gray-50 flex items-center gap-3">
                 {filePreviewUrl ? (
-                  <div className="file-preview-image">
+                  <div className="w-20 h-15 rounded-lg overflow-hidden flex-shrink-0">
                     <Image
                       src={filePreviewUrl}
                       alt="미리보기"
@@ -356,16 +363,16 @@ export default function NaverTalkTalkTab({
                     />
                   </div>
                 ) : (
-                  <div className="file-preview-document">
-                    <div className="file-icon">📄</div>
-                    <div className="file-name">{selectedFile.name}</div>
-                    <div className="file-size">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="text-2xl text-gray-500">📄</div>
+                    <div className="text-sm font-medium text-gray-700 break-all flex-1">{selectedFile.name}</div>
+                    <div className="text-xs text-gray-500 whitespace-nowrap">
                       {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                     </div>
                   </div>
                 )}
                 <button
-                  className="remove-file-btn"
+                  className="absolute top-2 right-2 w-6 h-6 bg-black bg-opacity-60 text-white border-none rounded-full flex items-center justify-center cursor-pointer text-xs transition-colors hover:bg-black hover:bg-opacity-80"
                   onClick={handleRemoveFile}
                   title="파일 제거"
                 >
@@ -374,10 +381,10 @@ export default function NaverTalkTalkTab({
               </div>
             )}
 
-            <div className="input-controls">
-              <div className="image-upload-wrapper" ref={dropdownRef}>
+            <div className="flex items-end gap-3 mt-2 flex-wrap justify-between">
+              <div className="relative inline-block" ref={dropdownRef}>
                 <button
-                  className="add-image-btn circle"
+                  className="w-8 h-8 rounded-full bg-blue-500 text-white border-none flex items-center justify-center cursor-pointer text-[32px] font-bold leading-none transition-colors hover:bg-blue-600"
                   title="AI 및 파일 추가"
                   onClick={() => {
                     setShowImageDropdown(!showImageDropdown);
@@ -386,16 +393,9 @@ export default function NaverTalkTalkTab({
                   <span>+</span>
                 </button>
                 {showImageDropdown && (
-                  <div
-                    className="image-dropdown"
-                    style={{
-                      backgroundColor: "white",
-                      border: "1px solid red",
-                      zIndex: 9999,
-                    }}
-                  >
+                  <div className="absolute top-full left-0 bg-white border border-red-500 rounded-lg shadow-[0_2px_10px_rgba(0,0,0,0.1)] z-[9999] min-w-[200px] mt-2">
                     <button
-                      className="dropdown-item"
+                      className="block w-full px-4 py-3 bg-none border-none text-left cursor-pointer text-gray-800 text-sm transition-colors hover:bg-gray-50"
                       onClick={handleFileButtonClick}
                     >
                       📎 사진 및 파일 추가
@@ -411,17 +411,17 @@ export default function NaverTalkTalkTab({
                   style={{ display: "none" }}
                 />
               </div>
-              <div className="quick-start-badges">
+              <div className="flex gap-2 flex-1 flex-wrap py-0.5 min-w-0 items-center">
                 <button
-                  className="quick-badge"
+                  className="bg-gray-100 text-gray-600 border-none rounded-full px-4 h-8 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
                   onClick={() =>
-                    handleQuickBadgeClick("단골 고객을 위한 특별 이벤트")
+                    handleQuickBadgeClick("런칭 이벤트 특별 할인 혜택")
                   }
                 >
-                  단골 이벤트
+                  런칭 이벤트
                 </button>
                 <button
-                  className="quick-badge"
+                  className="bg-gray-100 text-gray-600 border-none rounded-full px-4 h-8 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
                   onClick={() =>
                     handleQuickBadgeClick("할인 이벤트 진행 중입니다")
                   }
@@ -429,16 +429,24 @@ export default function NaverTalkTalkTab({
                   할인 이벤트
                 </button>
                 <button
-                  className="quick-badge"
+                  className="bg-gray-100 text-gray-600 border-none rounded-full px-4 h-8 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
                   onClick={() =>
                     handleQuickBadgeClick("신규 고객 유치를 위한 특별 혜택")
                   }
                 >
                   고객유치 이벤트
                 </button>
+                <button
+                  className="bg-gray-100 text-gray-600 border-none rounded-full px-4 h-8 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 flex items-center justify-center hover:bg-blue-50 hover:text-blue-600"
+                  onClick={() =>
+                    handleQuickBadgeClick("협력업체와 함께하는 특별 이벤트")
+                  }
+                >
+                  협력 이벤트
+                </button>
               </div>
               <button
-                className="start-chat-btn"
+                className="self-end px-6 py-3 rounded-full bg-blue-500 text-white text-center text-base font-medium leading-[120%] tracking-[-0.32px] border-none cursor-pointer transition-all flex items-center justify-center min-w-[80px] h-11 flex-shrink-0 font-sans hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 onClick={() => handleStartChat()}
                 disabled={isLoading || !inputValue.trim()}
               >
@@ -450,18 +458,20 @@ export default function NaverTalkTalkTab({
       </div>
 
       {/* Template Section */}
-      <div className="template-section">
-        <div className="template-header">
-          <h2>템플릿으로 시작</h2>
+      <div className="w-full py-10 border-none rounded-none bg-transparent">
+        <div className="flex items-center gap-2 mb-4 max-w-6xl mx-auto">
+          <h2 className="text-black text-2xl font-medium leading-[120%] tracking-[-0.48px] m-0 font-sans">템플릿으로 시작</h2>
         </div>
 
         {/* Category Tabs */}
-        <div className="category-tabs">
+        <div className="flex gap-2 mb-6 px-1 overflow-x-auto scrollbar-none max-w-6xl mx-auto">
           {categories.map((category) => (
             <button
               key={category}
-              className={`category-tab ${
-                selectedCategory === category ? "active" : ""
+              className={`px-4 py-2 border-none rounded-lg text-center text-sm font-medium leading-[120%] tracking-[-0.28px] cursor-pointer whitespace-nowrap transition-all flex-shrink-0 font-sans ${
+                selectedCategory === category 
+                  ? "border border-blue-500 bg-blue-50 text-blue-600" 
+                  : "bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600"
               }`}
               onClick={() => setSelectedCategory(category)}
             >
@@ -472,27 +482,27 @@ export default function NaverTalkTalkTab({
 
         {/* Templates Grid */}
         {isTemplatesLoading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>템플릿을 불러오는 중...</p>
+          <div className="flex flex-col items-center justify-center py-20 px-5 text-center max-w-6xl mx-auto">
+            <div className="w-10 h-10 border-[3px] border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-500 text-sm m-0">템플릿을 불러오는 중...</p>
           </div>
         ) : currentTemplates.length === 0 ? (
-          <div className="empty-state">
-            <p>해당 카테고리의 템플릿이 없습니다.</p>
+          <div className="flex flex-col items-center justify-center py-20 px-5 text-center max-w-6xl mx-auto">
+            <p className="text-gray-500 text-sm m-0">해당 카테고리의 템플릿이 없습니다.</p>
           </div>
         ) : (
           <>
-            <div className="templates-grid">
+            <div className="grid grid-cols-1 gap-5 mb-8 max-w-6xl mx-auto items-stretch sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {currentTemplates.map((template) => (
-                <div key={template.id} className="template-card">
-                  <div className="grand-opening-badge">GRAND OPENING</div>
-                  <div className="template-image">
+                <div key={template.id} className="bg-white rounded-lg overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.1)] transition-all duration-200 relative border border-gray-200 flex flex-col h-full hover:translate-y-[-2px] hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]">
+                  <div className="relative h-40 overflow-hidden flex-shrink-0">
                     <Image
                       src={template.image_url || "/images/No Image"}
                       alt={template.name}
                       width={220}
                       height={150}
                       style={{ objectFit: "cover" }}
+                      className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = "none";
@@ -503,13 +513,14 @@ export default function NaverTalkTalkTab({
                       }}
                     />
                   </div>
-                  <div className="template-content">
-                    <h3 className="template-title">{template.name}</h3>
-                    <p className="template-description">{template.content}</p>
-                    <div className="template-actions">
+                  <div className="p-4 flex flex-col flex-1">
+                    <div className="text-black text-xs font-medium text-left mb-1 tracking-[-0.1px] font-sans">🎉 GRAND OPENING 🎉</div>
+                    <div className="text-black text-sm font-semibold leading-[120%] tracking-[-0.1px] m-0 mb-2 pb-2 border-b border-gray-200 font-sans">{template.name}</div>
+                    <p className="text-black text-xs font-normal leading-[147%] tracking-[-0.184px] mt-2 mb-0 pb-3 border-b border-gray-200 font-sans line-clamp-3">{template.content}</p>
+                    <div className="flex justify-center mt-auto pt-3">
                       <button
                         onClick={() => handleUseTemplate(template.id)}
-                        className="action-button primary"
+                        className="px-3 py-2 rounded-md text-xs font-medium cursor-pointer transition-all border border-blue-600 text-center bg-blue-600 text-white hover:bg-blue-800 hover:border-blue-800"
                       >
                         템플릿 사용하기
                       </button>

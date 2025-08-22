@@ -12,6 +12,7 @@ interface CreateCampaignRequest {
   title?: string;
   content: string;
   imageUrl: string;
+  adMedium: "naver_talktalk" | "sms";
   sendPolicy: "realtime" | "batch";
   validityStartDate?: string;
   validityEndDate?: string;
@@ -20,6 +21,20 @@ interface CreateCampaignRequest {
   maxRecipients: string;
   targetCount?: number; // 타겟 대상자 수
   existingTemplateId?: number; // 기존 템플릿 ID (템플릿 사용하기로 온 경우)
+  // templateTitle 제거됨 - template_id로 대체 가능
+  buttons?: {
+    id: string;
+    text: string;
+    linkType: 'web' | 'app';
+    url?: string;
+    iosUrl?: string;
+    androidUrl?: string;
+  }[]; // 동적 버튼 데이터
+  genderRatio?: {
+    female: number;
+    male: number;
+  }; // 성별 비율 데이터
+  desiredRecipients?: string | null; // 희망 수신자 직접 입력
   targetFilters: {
     gender: string;
     ageGroup: string;
@@ -35,7 +50,7 @@ interface CreateCampaignRequest {
     };
   };
   estimatedCost: number;
-  templateDescription?: string;
+  templateDescription?: string; // 설명 템트
 }
 
 export async function POST(request: NextRequest) {
@@ -92,11 +107,11 @@ export async function POST(request: NextRequest) {
     const campaignData: CreateCampaignRequest = await request.json();
 
     // 필수 필드 검증
-
     if (
       !campaignData.content ||
       !campaignData.imageUrl ||
-      !campaignData.sendPolicy
+      !campaignData.sendPolicy ||
+      !campaignData.adMedium
     ) {
       return NextResponse.json(
         { success: false, message: "필수 정보가 누락되었습니다." },
@@ -252,12 +267,7 @@ export async function POST(request: NextRequest) {
       templateTitle: campaignData.title || messageTemplate.name, // 템플릿 제목 저장
     };
 
-    // description을 템플릿 설명의 첫 문장으로 설정
-    const getFirstSentence = (text: string) => {
-      if (!text) return "";
-      const sentences = text.split(/[.!?]\s+/);
-      return sentences[0] || text;
-    };
+    // getFirstSentence 함수 제거됨 - description 필드 사용 안함
 
     // 발송 시작 날짜 결정 (실시간: validityStartDate, 일괄: scheduledSendDate)
     let scheduleStartDate = null;
@@ -296,9 +306,7 @@ export async function POST(request: NextRequest) {
     const campaign = {
       user_id: userId,
       name: campaignData.title || messageTemplate.name, // 템플릿의 제목 사용
-      description: getFirstSentence(
-        campaignData.templateDescription || campaignData.content
-      ), // 템플릿 설명의 첫 문장 사용
+      // description 필드 제거됨 - 템플릿에서 자동 생성 가능
       template_id: messageTemplate.id, // 템플릿 ID 추가
       status: "DRAFT", // 임시 저장 상태
       total_recipients: parseInt(campaignData.maxRecipients) || 30,
@@ -318,8 +326,13 @@ export async function POST(request: NextRequest) {
         campaignData.sendPolicy === "batch" && campaignData.scheduledSendTime
           ? campaignData.scheduledSendTime + ":00"
           : campaignData.targetFilters.cardTime.endTime + ":00",
-      schedule_timezone: "Asia/Seoul",
-      schedule_days_of_week: [1, 2, 3, 4, 5, 6, 7], // 모든 요일
+      // schedule_timezone, schedule_days_of_week 필드 제거됨 - 고정값이므로 애플리케이션에서 처리
+      ad_medium: campaignData.adMedium, // 광고매체 추가
+      // 새로 추가된 필드들
+      // template_title 필드 제거됨 - template_id로 대체 가능
+      buttons: campaignData.buttons || [],
+      gender_ratio: campaignData.genderRatio || null,
+      desired_recipients: campaignData.desiredRecipients || null,
       created_at: kstTime,
       updated_at: kstTime,
     };

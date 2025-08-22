@@ -122,7 +122,7 @@ body .main-content {
 
 /* 채팅 입력창 스타일 */
 .chat-input-field {
-  border: 1px solid #ddd;
+  border: none;
   border-radius: 15px;
   padding: 16px;
   font-size: 16px;
@@ -133,7 +133,7 @@ body .main-content {
 }
 
 .chat-input-field:focus {
-  border-color: var(--primary-blue);
+  outline: none;
 }
 
 .chat-input-field::placeholder {
@@ -142,8 +142,8 @@ body .main-content {
 
 /* 원형 버튼 스타일 */
 .add-image-btn.circle {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--primary-blue);
   color: white;
@@ -152,8 +152,9 @@ body .main-content {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 32px;
   font-weight: bold;
+  line-height: 1;
   transition: background-color 0.2s ease;
 }
 
@@ -670,7 +671,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 
 .input-section {
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
 }
 
 .chat-input-container {
@@ -691,6 +692,7 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   min-height: 100px;
   transition: border-color 0.2s ease;
   font-family: inherit;
+  border: none;
 }
 
 .chat-input-field:focus {
@@ -813,17 +815,19 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   gap: 12px;
   margin-top: 8px;
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 .add-image-btn {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   background: var(--primary-blue);
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: 32px;
   font-weight: bold;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -958,10 +962,8 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   display: flex;
   gap: 8px;
   flex: 1;
-  overflow-x: auto;
+  flex-wrap: wrap;
   padding: 2px 0;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   min-width: 0;
   align-items: center;
 }
@@ -975,13 +977,17 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   color: #6d6d6d;
   border: none;
   border-radius: 20px;
-  padding: 8px 16px;
+  padding: 0 16px;
+  height: 32px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .quick-badge:hover:not(:disabled) {
@@ -1144,6 +1150,16 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   display: flex;
   flex-direction: column;
   flex: 1;
+}
+
+.grand-opening-text {
+  color: #ff6b35;
+  font-family: "Noto Sans KR";
+  font-size: 10px;
+  font-weight: 600;
+  text-align: left;
+  margin-bottom: 4px;
+  letter-spacing: -0.1px;
 }
 
 .template-title {
@@ -1404,6 +1420,10 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
     padding: 30px 20px;
   }
 
+  .input-section {
+    max-width: 95%;
+  }
+
   .target-marketing-content {
     gap: 15px;
     padding: 15px 20px;
@@ -1419,6 +1439,10 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   .landing-container {
     padding: 25px 15px;
     margin: 15px;
+  }
+
+  .input-section {
+    max-width: 100%;
   }
 
   .landing-header h1 {
@@ -1543,7 +1567,8 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 
   .quick-badge {
     font-size: 13px;
-    padding: 6px 12px;
+    padding: 0 12px;
+    height: 32px;
   }
 
   .add-image-btn {
@@ -1574,6 +1599,11 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 
   .template-card {
     padding: 12px;
+  }
+
+  .grand-opening-text {
+    font-size: 11px;
+    margin-bottom: 4px;
   }
 
   .template-title {
@@ -1676,13 +1706,14 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
   /* 소형 화면: 더 작은 컨트롤 */
   .quick-badge {
     font-size: 12px;
-    padding: 5px 10px;
+    padding: 0 10px;
+    height: 32px;
   }
 
   .add-image-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
+    width: 32px;
+    height: 32px;
+    font-size: 32px;
   }
 
   /* 모바일에서 드롭다운 위치 조정 */
@@ -1715,6 +1746,11 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 
   .template-card {
     padding: 10px;
+  }
+
+  .grand-opening-text {
+    font-size: 10px;
+    margin-bottom: 3px;
   }
 
   .template-title {
@@ -1849,6 +1885,11 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
     padding: 8px;
   }
 
+  .grand-opening-text {
+    font-size: 9px;
+    margin-bottom: 2px;
+  }
+
   .template-title {
     font-size: 12px;
     margin-bottom: 3px;
@@ -1926,8 +1967,8 @@ div[class*="mmsSendSection"] textarea[class*="templateDescriptionTextarea"] {
 
   .add-image-btn,
   .quick-badge {
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 32px;
+    min-width: 32px;
   }
 
   .quick-badge {
