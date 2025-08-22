@@ -188,6 +188,13 @@ function TargetMarketingDetailContent({
   const [targetCount, setTargetCount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_TARGET_COUNT); // 타겟 대상자 수
   const [adRecipientCount, setAdRecipientCount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_AD_RECIPIENT_COUNT); // 광고 수신자 수
 
+  // 성별 비율 관리 상태
+  const [femaleRatio, setFemaleRatio] = useState(70); // 여성 비율
+  const [maleRatio, setMaleRatio] = useState(30); // 남성 비율
+
+  // 희망 수신자 입력 상태
+  const [desiredRecipients, setDesiredRecipients] = useState(""); // 희망 수신자 직접 입력
+
   // 동적 버튼 관리 상태
   const [dynamicButtons, setDynamicButtons] = useState<DynamicButton[]>([]);
 
@@ -411,6 +418,9 @@ function TargetMarketingDetailContent({
       validityStartDate,
       validityEndDate,
       dynamicButtons,
+      femaleRatio,
+      maleRatio,
+      desiredRecipients,
     };
 
     storageUtils.saveTargetMarketingState(currentState);
@@ -444,6 +454,9 @@ function TargetMarketingDetailContent({
       setValidityStartDate(state.validityStartDate || validityStartDate);
       setValidityEndDate(state.validityEndDate || validityEndDate);
       setDynamicButtons(state.dynamicButtons || []);
+      setFemaleRatio(state.femaleRatio || 70);
+      setMaleRatio(state.maleRatio || 30);
+      setDesiredRecipients(state.desiredRecipients || "");
 
       // 저장된 상태 제거
       storageUtils.clearTargetMarketingState();
@@ -1640,6 +1653,13 @@ function TargetMarketingDetailContent({
         maxRecipients: actualMaxRecipients.toString(), // 실제 설정된 수신자 수
         targetCount: sendPolicy === "batch" ? targetCount : null, // 타겟 대상자 수
         existingTemplateId: existingTemplateId, // 기존 템플릿 ID 전달
+        templateTitle: templateTitle, // 템플릿 제목 추가
+        buttons: dynamicButtons, // 동적 버튼 데이터 추가
+        genderRatio: {
+          female: femaleRatio,
+          male: maleRatio,
+        }, // 성별 비율 데이터 추가
+        desiredRecipients: desiredRecipients.trim() || null, // 희망 수신자 입력 추가
         targetFilters: {
           gender: targetGender,
           ageGroup: targetAge,
@@ -2273,6 +2293,7 @@ function TargetMarketingDetailContent({
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
                        value="여성"
+                       disabled
                      >
                        <option>여성</option>
                      </select>
@@ -2280,7 +2301,12 @@ function TargetMarketingDetailContent({
                    <div className="flex-1">
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       defaultValue="70%"
+                       value={`${femaleRatio}%`}
+                       onChange={(e) => {
+                         const newFemaleRatio = parseInt(e.target.value.replace('%', ''));
+                         setFemaleRatio(newFemaleRatio);
+                         setMaleRatio(100 - newFemaleRatio);
+                       }}
                      >
                        {Array.from({ length: 101 }, (_, i) => (
                          <option key={i} value={`${i}%`}>{i}%</option>
@@ -2293,6 +2319,7 @@ function TargetMarketingDetailContent({
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
                        value="남성"
+                       disabled
                      >
                        <option>남성</option>
                      </select>
@@ -2300,7 +2327,12 @@ function TargetMarketingDetailContent({
                    <div className="flex-1">
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       defaultValue="30%"
+                       value={`${maleRatio}%`}
+                       onChange={(e) => {
+                         const newMaleRatio = parseInt(e.target.value.replace('%', ''));
+                         setMaleRatio(newMaleRatio);
+                         setFemaleRatio(100 - newMaleRatio);
+                       }}
                      >
                        {Array.from({ length: 101 }, (_, i) => (
                          <option key={i} value={`${i}%`}>{i}%</option>
@@ -2537,10 +2569,16 @@ function TargetMarketingDetailContent({
                <div className="mb-4">
                  <div className="text-sm font-medium text-gray-700 mb-2">희망 수신자 입력</div>
                  <textarea
+                   value={desiredRecipients}
+                   onChange={(e) => setDesiredRecipients(e.target.value)}
                    placeholder="원하시는 광고 수신자를 직접 입력해 주세요."
                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:border-blue-500 bg-white"
                    rows={3}
+                   maxLength={500}
                  />
+                 <div className="text-xs text-gray-500 mt-1 text-right">
+                   {desiredRecipients.length} / 500
+                 </div>
              </div>
           </div>
 
@@ -2758,30 +2796,33 @@ function TargetMarketingDetailContent({
                     </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-700">충전 잔액</span>
-                  <span className="text-sm">
-                    {isLoadingCredits ? (
-                      <span className="text-gray-500">500원</span>
-                    ) : (
-                      <>
-                        <span className="font-semibold text-gray-900">
-                          {userCredits.toLocaleString()}
-                        </span>
-                        <span className="text-gray-600 ml-1">원</span>
-                      </>
-                    )}
-                  </span>
-                </div>
-                {calculateRequiredCredits(calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount), userCredits) > 0 && (
-                  <div className="bg-red-50 p-3 rounded border border-red-200 text-center">
-                    <span className="text-sm text-red-600">
-                      ⊗ 크레딧을 충전해주세요.
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      {isLoadingCredits ? (
+                        <span className="text-gray-500">500원</span>
+                      ) : (
+                        <>
+                          <span className="font-semibold text-gray-900">
+                            {userCredits.toLocaleString()}
+                          </span>
+                          <span className="text-gray-600 ml-1">원</span>
+                        </>
+                      )}
                     </span>
-                      <button
-                      className="ml-2 px-3 py-1 bg-blue-600 text-white border-none rounded text-sm font-medium cursor-pointer transition-colors hover:bg-blue-700"
-                        onClick={openCreditModal}
-                      >
-                      충전하기
-                      </button>
+                   
+                  </div>
+                </div>
+                                {calculateRequiredCredits(calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount), userCredits) > 0 && (
+                  <div className="flex flex-col w-fit ml-auto">
+                   <button
+                      className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded cursor-pointer transition-colors hover:bg-blue-700"
+                      onClick={openCreditModal}
+                    >
+                      + 충전하기
+                    </button>
+                    <span className="text-sm font-semibold text-red-600">
+                      ⊗ 잔액을 충전해주세요.
+                    </span>
                   </div>
                 )}
             </div>

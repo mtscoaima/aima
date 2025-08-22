@@ -21,6 +21,20 @@ interface CreateCampaignRequest {
   maxRecipients: string;
   targetCount?: number; // 타겟 대상자 수
   existingTemplateId?: number; // 기존 템플릿 ID (템플릿 사용하기로 온 경우)
+  templateTitle?: string; // 템플릿 제목
+  buttons?: {
+    id: string;
+    text: string;
+    linkType: 'web' | 'app';
+    url?: string;
+    iosUrl?: string;
+    androidUrl?: string;
+  }[]; // 동적 버튼 데이터
+  genderRatio?: {
+    female: number;
+    male: number;
+  }; // 성별 비율 데이터
+  desiredRecipients?: string | null; // 희망 수신자 직접 입력
   targetFilters: {
     gender: string;
     ageGroup: string;
@@ -322,6 +336,11 @@ export async function POST(request: NextRequest) {
       schedule_timezone: "Asia/Seoul",
       schedule_days_of_week: [1, 2, 3, 4, 5, 6, 7], // 모든 요일
       ad_medium: campaignData.adMedium, // 광고매체 추가
+      // 새로 추가된 필드들
+      template_title: campaignData.templateTitle || null,
+      buttons: campaignData.buttons || [],
+      gender_ratio: campaignData.genderRatio || null,
+      desired_recipients: campaignData.desiredRecipients || null,
       created_at: kstTime,
       updated_at: kstTime,
     };

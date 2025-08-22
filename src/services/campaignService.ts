@@ -1,4 +1,4 @@
-import { Campaign } from "@/types/targetMarketing";
+import { Campaign, DynamicButton } from "@/types/targetMarketing";
 
 export interface CampaignTargetFilters {
   gender: string;
@@ -31,6 +31,13 @@ export interface CreateCampaignRequest {
   maxRecipients: string;
   targetCount?: number | null;
   existingTemplateId?: string | null;
+  templateTitle?: string;
+  buttons?: DynamicButton[];
+  genderRatio?: {
+    female: number;
+    male: number;
+  };
+  desiredRecipients?: string | null;
   targetFilters: CampaignTargetFilters;
   estimatedCost: number;
   templateDescription: string;
