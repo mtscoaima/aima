@@ -21,7 +21,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const handleButtonClick = (button: DynamicButton, index: number) => {
+  const handleButtonClick = (button: DynamicButton) => {
     if (button.linkType === 'web' && button.url) {
       let validUrl = button.url.trim();
       if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
@@ -92,7 +92,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                         <button
                           key={index}
                           className="w-full py-2 px-4 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                          onClick={() => handleButtonClick(button, index)}
+                          onClick={() => handleButtonClick(button)}
                         >
                           {button.text || `버튼${index + 1}`}
                         </button>

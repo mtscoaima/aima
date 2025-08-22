@@ -154,7 +154,7 @@ export const isWithinMinutes = (timestamp: number, minutes: number): boolean => 
  */
 export const isValidDateString = (dateString: string): boolean => {
   const date = new Date(dateString);
-  return !isNaN(date.getTime()) && dateString.match(/^\d{4}-\d{2}-\d{2}$/);
+  return !isNaN(date.getTime()) && !!dateString.match(/^\d{4}-\d{2}-\d{2}$/);
 };
 
 /**

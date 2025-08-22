@@ -7,7 +7,7 @@ export interface StorageOptions {
   compress?: boolean;
 }
 
-export interface StorageItem<T = any> {
+export interface StorageItem<T = unknown> {
   data: T;
   timestamp: number;
   expirationMinutes?: number;
@@ -32,7 +32,7 @@ export const safeJsonParse = <T>(jsonString: string | null, defaultValue: T): T 
 /**
  * 안전한 JSON 문자열화
  */
-export const safeJsonStringify = (data: any): string | null => {
+export const safeJsonStringify = (data: unknown): string | null => {
   try {
     return JSON.stringify(data);
   } catch (error) {
@@ -279,14 +279,14 @@ export const clearPaymentCompleted = (): boolean => {
 /**
  * 템플릿 데이터 임시 저장 (템플릿 선택 시 사용)
  */
-export const saveSelectedTemplate = (templateData: any): boolean => {
+export const saveSelectedTemplate = (templateData: unknown): boolean => {
   return setLocalStorageItem("selectedTemplate", templateData);
 };
 
 /**
  * 저장된 템플릿 데이터 조회 및 제거
  */
-export const getAndClearSelectedTemplate = (): any | null => {
+export const getAndClearSelectedTemplate = (): unknown | null => {
   const templateData = getLocalStorageItem("selectedTemplate", null);
   if (templateData) {
     removeLocalStorageItem("selectedTemplate");
@@ -315,14 +315,14 @@ export const getAndClearInitialMessage = (): string | null => {
 /**
  * 초기 파일 정보 임시 저장
  */
-export const saveInitialFile = (fileInfo: any): boolean => {
+export const saveInitialFile = (fileInfo: unknown): boolean => {
   return setSessionStorageItem("initialFile", fileInfo, { expirationMinutes: 10 });
 };
 
 /**
  * 저장된 초기 파일 정보 조회 및 제거
  */
-export const getAndClearInitialFile = (): any | null => {
+export const getAndClearInitialFile = (): unknown | null => {
   const fileInfo = getSessionStorageItem("initialFile", null);
   if (fileInfo) {
     removeSessionStorageItem("initialFile");
@@ -333,7 +333,7 @@ export const getAndClearInitialFile = (): any | null => {
 /**
  * 타겟 마케팅 상태 저장 (결제 전 상태 보존)
  */
-export const saveTargetMarketingState = (state: any): boolean => {
+export const saveTargetMarketingState = (state: Record<string, unknown>): boolean => {
   const stateWithTimestamp = {
     ...state,
     timestamp: Date.now(),
@@ -344,8 +344,8 @@ export const saveTargetMarketingState = (state: any): boolean => {
 /**
  * 타겟 마케팅 상태 복원
  */
-export const restoreTargetMarketingState = (): any | null => {
-  const state = getSessionStorageItem("targetMarketingState", null);
+export const restoreTargetMarketingState = (): Record<string, unknown> | null => {
+  const state = getSessionStorageItem("targetMarketingState", null) as Record<string, unknown> & { timestamp: number } | null;
   
   if (!state) {
     return null;
@@ -416,7 +416,7 @@ export const cleanupExpiredItems = (): { local: number; session: number } => {
       if (localStorage.hasOwnProperty(key)) {
         const jsonString = localStorage.getItem(key);
         if (jsonString) {
-          const storageItem = safeJsonParse(jsonString, null);
+          const storageItem = safeJsonParse(jsonString, null) as { expirationMinutes?: number; timestamp: number } | null;
           if (storageItem && storageItem.expirationMinutes) {
             const expirationTime = storageItem.timestamp + (storageItem.expirationMinutes * 60 * 1000);
             if (Date.now() > expirationTime) {
@@ -437,7 +437,7 @@ export const cleanupExpiredItems = (): { local: number; session: number } => {
       if (sessionStorage.hasOwnProperty(key)) {
         const jsonString = sessionStorage.getItem(key);
         if (jsonString) {
-          const storageItem = safeJsonParse(jsonString, null);
+          const storageItem = safeJsonParse(jsonString, null) as { expirationMinutes?: number; timestamp: number } | null;
           if (storageItem && storageItem.expirationMinutes) {
             const expirationTime = storageItem.timestamp + (storageItem.expirationMinutes * 60 * 1000);
             if (Date.now() > expirationTime) {

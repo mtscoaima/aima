@@ -94,7 +94,7 @@ export const sendChatMessageStreaming = async (
             if (data.imageUrl) {
               currentImageUrl = data.imageUrl;
             }
-          } catch (parseError) {
+          } catch {
             // JSON 파싱 오류는 무시 (불완전한 chunk일 수 있음)
           }
         }

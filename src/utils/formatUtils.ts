@@ -202,7 +202,7 @@ export const formatArrayToString = (arr: string[], separator: string = ", "): st
 /**
  * 객체를 쿼리 스트링으로 변환
  */
-export const formatObjectToQueryString = (obj: Record<string, any>): string => {
+export const formatObjectToQueryString = (obj: Record<string, unknown>): string => {
   const params = new URLSearchParams();
   
   Object.entries(obj).forEach(([key, value]) => {

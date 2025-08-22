@@ -207,7 +207,7 @@ export const uploadTemplateImage = async (
 export const extractTextFromFile = async (
   file: File,
   token: string
-): Promise<{ text: string; metadata?: Record<string, any> }> => {
+): Promise<{ text: string; metadata?: Record<string, unknown> }> => {
   // 파일 유효성 검증
   const validation = validateFile(file);
   if (!validation.isValid) {

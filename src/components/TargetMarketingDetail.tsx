@@ -429,34 +429,36 @@ function TargetMarketingDetailContent({
   // 저장된 상태 복원
   const restoreState = React.useCallback(() => {
     try {
-      const state = storageUtils.restoreTargetMarketingState();
+      const state = storageUtils.restoreTargetMarketingState() as {
+        [key: string]: unknown;
+      } | null;
       if (!state) return false;
 
       // 상태 복원
-      setTemplateTitle(state.templateTitle || "AI 생성 콘텐츠");
-      setCampaignName(state.campaignName || "");
-      setAdMedium(state.adMedium || "naver_talktalk");
-      setSmsTextContent(state.smsTextContent || "");
-      setCurrentGeneratedImage(state.currentGeneratedImage || null);
-      setTargetGender(state.targetGender || "all");
-      setTargetAge(state.targetAge || ["all"]);
-      setTargetCity(state.targetCity || "all");
-      setTargetDistrict(state.targetDistrict || "all");
-      setTargetTopLevelIndustry(state.targetTopLevelIndustry || "all");
-      setTargetIndustry(state.targetIndustry || "all");
-      setCardAmount(state.cardAmount || "10000");
-      setCustomAmount(state.customAmount || "50");
-      setCardAmountInput(state.cardAmountInput || "1");
-      setCardStartTime(state.cardStartTime || "08:00");
-      setCardEndTime(state.cardEndTime || "18:00");
-      setMaxRecipients(state.maxRecipients || "30");
-      setSendPolicy(state.sendPolicy || "realtime");
-      setValidityStartDate(state.validityStartDate || validityStartDate);
-      setValidityEndDate(state.validityEndDate || validityEndDate);
-      setDynamicButtons(state.dynamicButtons || []);
-      setFemaleRatio(state.femaleRatio || 70);
-      setMaleRatio(state.maleRatio || 30);
-      setDesiredRecipients(state.desiredRecipients || "");
+      setTemplateTitle((state.templateTitle as string) || "AI 생성 콘텐츠");
+      setCampaignName((state.campaignName as string) || "");
+      setAdMedium((state.adMedium as "naver_talktalk" | "sms") || "naver_talktalk");
+      setSmsTextContent((state.smsTextContent as string) || "");
+      setCurrentGeneratedImage((state.currentGeneratedImage as string) || null);
+      setTargetGender((state.targetGender as string) || "all");
+      setTargetAge((state.targetAge as string[]) || ["all"]);
+      setTargetCity((state.targetCity as string) || "all");
+      setTargetDistrict((state.targetDistrict as string) || "all");
+      setTargetTopLevelIndustry((state.targetTopLevelIndustry as string) || "all");
+      setTargetIndustry((state.targetIndustry as string) || "all");
+      setCardAmount((state.cardAmount as string) || "10000");
+      setCustomAmount((state.customAmount as string) || "50");
+      setCardAmountInput((state.cardAmountInput as string) || "1");
+      setCardStartTime((state.cardStartTime as string) || "08:00");
+      setCardEndTime((state.cardEndTime as string) || "18:00");
+      setMaxRecipients((state.maxRecipients as string) || "30");
+      setSendPolicy((state.sendPolicy as "realtime" | "batch") || "realtime");
+      setValidityStartDate((state.validityStartDate as string) || validityStartDate);
+      setValidityEndDate((state.validityEndDate as string) || validityEndDate);
+      setDynamicButtons((state.dynamicButtons as typeof dynamicButtons) || []);
+      setFemaleRatio((state.femaleRatio as number) || 70);
+      setMaleRatio((state.maleRatio as number) || 30);
+      setDesiredRecipients((state.desiredRecipients as string) || "");
 
       // 저장된 상태 제거
       storageUtils.clearTargetMarketingState();
@@ -765,7 +767,8 @@ function TargetMarketingDetailContent({
 
       if (initialMessage && initialMessage.trim()) {
         // 첨부 파일 정보 확인
-        const attachedFile = storageUtils.getAndClearInitialFile();
+        const attachedFileRaw = storageUtils.getAndClearInitialFile();
+        const attachedFile = attachedFileRaw ? attachedFileRaw as { name: string; size: number; type: string; previewUrl?: string | null | undefined; } : undefined;
 
         // 사용자의 초기 메시지를 첫 번째로 추가
         const userMessage: Message = {
