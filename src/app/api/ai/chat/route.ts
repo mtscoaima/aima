@@ -41,10 +41,16 @@ export async function POST(request: NextRequest) {
             text: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
             프롬프트와 관계 없이 항상 이미지는 하나만 생성해주세요.
             never contain text in image
+            quick_action_buttons 버튼 텍스트는 최대 4개까지 포함해주세요.
             응답은 다음 JSON 형식으로 포함해주세요:
             {
               "response": "마케팅 조언 및 설명",
               "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내)"
+              "quick_action_buttons": [
+                {
+                  "text": "버튼 텍스트",
+                }
+              ]
             }
             
             ${
@@ -84,7 +90,7 @@ export async function POST(request: NextRequest) {
                 size: "1024x1024",
               },
             ],
-            stream: true,
+            stream: false,
           });
 
           let fullText = "";
