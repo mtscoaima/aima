@@ -31,7 +31,6 @@ import {
   useCalculations
 } from "@/hooks/useTargetMarketing";
 import {
-  IMAGE_EDIT_KEYWORDS,
   FILE_CONSTRAINTS,
   CAMPAIGN_CONSTANTS,
   TEXT_LIMITS,
@@ -910,63 +909,12 @@ function TargetMarketingDetailContent({
     }
   }, [refreshTransactions, restoreState]);
 
-  // 이미지 편집 처리
-  const handleImageEdit = useCallback(async (prompt: string) => {
-    if (!currentGeneratedImage) {
-      alert("편집할 이미지가 없습니다. 먼저 이미지를 생성해주세요.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setShowTypingIndicator(true);
-
-      const data = await aiService.editImage({
-          baseImageUrl: currentGeneratedImage,
-          editPrompt: prompt,
-      });
-
-      setCurrentGeneratedImage(data.imageUrl);
-
-        const editedMessage: Message = {
-        id: idUtils.generateEditedImageId(),
-          role: "assistant",
-          content: `✨ 이미지가 수정되었습니다: ${prompt}`,
-          timestamp: new Date(),
-        imageUrl: data.imageUrl,
-        };
-        setMessages((prev) => [...prev, editedMessage]);
-    } catch (error) {
-      const errorMessage: Message = {
-        id: idUtils.generateErrorMessageId(),
-        role: "assistant",
-        content: `❌ 이미지 편집 중 오류가 발생했습니다: ${
-          error instanceof Error ? error.message : "알 수 없는 오류"
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      setShowTypingIndicator(false);
-    }
-  }, [currentGeneratedImage]);
 
   // 메시지 전송 처리
   const handleSendMessage = useCallback(async (messageOverride?: string) => {
     const messageToSend = messageOverride || inputMessage;
     if (!messageToSend.trim() || isLoading) return;
 
-    // 이미지 수정 키워드 감지
-    const hasImageEditKeyword = IMAGE_EDIT_KEYWORDS.some((keyword) =>
-      messageToSend.includes(keyword)
-    );
-
-    // 현재 이미지가 있고 이미지 수정 키워드가 포함된 경우
-    if (currentGeneratedImage && hasImageEditKeyword) {
-      await handleImageEdit(messageToSend);
-      return;
-    }
 
     const userMessage: Message = {
       id: idUtils.generateUserMessageId(),
@@ -1225,7 +1173,7 @@ function TargetMarketingDetailContent({
       setIsLoading(false);
       setShowTypingIndicator(false);
     }
-  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, handleImageEdit, smsTextContent, templateTitle]);
+  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, smsTextContent, templateTitle]);
 
   // 초기 메시지 처리
   useEffect(() => {

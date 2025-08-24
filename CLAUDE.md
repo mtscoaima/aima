@@ -22,6 +22,13 @@ When modifying database schema:
 2. Document migrations in `/migrations/` directory
 3. Test locally before applying to production
 
+### Testing Commands
+```bash
+# No automated test framework configured
+# Use manual testing scenarios in /docs/
+npm run lint         # Check code quality
+```
+
 ## Architecture
 
 ### Tech Stack
@@ -77,17 +84,23 @@ NAVER_ACCESS_KEY_ID             # SMS auth
 NAVER_SECRET_KEY                # SMS secret
 OPENAI_API_KEY                  # AI features
 ODCLOUD_SERVICE_KEY             # Business verification
+TEST_CALLING_NUMBER             # Test phone number for SMS
+NEXT_PUBLIC_BASE_URL            # Optional - auto-detected on Vercel
 ```
 
 ## Database Schema
 
 ### Core Tables
 - `users` - User accounts with JSONB fields for company/tax info
-- `message_templates` - SMS/MMS templates with categories
+- `message_templates` - SMS/MMS templates with categories (private/public)
 - `campaigns` - Marketing campaigns with approval workflow
 - `transactions` - Payment and credit transactions
 - `sender_numbers` - Verified phone numbers for sending
 - `notifications` - User notifications with read status
+- `referrals` - Referral system data
+- `rewards` - Reward tracking for referrals
+- `inquiries` - Customer support inquiries
+- `faqs` - Frequently asked questions
 
 ### JSONB Fields Pattern
 User data stored as JSONB for flexibility:
@@ -131,6 +144,30 @@ Manual testing via documented scenarios in `/docs/`:
 3. Update TypeScript types if needed
 4. Test with existing data
 
+## Key Features
+
+### Multi-Role System
+- **General Users**: Basic messaging and campaign management
+- **Salesperson**: Referral tracking and commission dashboard
+- **Admin**: Full system management and oversight
+
+### Authentication & Authorization
+- Custom JWT implementation (not Supabase Auth)
+- Role-based access control with `RoleGuard` component
+- Social login support (Google, Kakao, Naver)
+- Business verification via government API
+
+### AI Integration
+- OpenAI-powered content generation
+- AI chat for marketing assistance
+- Automated image editing capabilities
+- Target marketing recommendations
+
+### Payment System
+- KG이니시스 payment gateway integration
+- Credit-based messaging system
+- Transaction history and tax invoice generation
+
 ## Important Notes
 
 - This project uses Supabase for data storage but NOT for authentication
@@ -138,3 +175,5 @@ Manual testing via documented scenarios in `/docs/`:
 - Realtime features use polling, not Supabase Realtime
 - All file uploads go through Supabase Storage with policies
 - The admin section requires role-based access control
+- Social authentication supports multiple providers (Google, Kakao, Naver)
+- Business verification is mandatory for certain features

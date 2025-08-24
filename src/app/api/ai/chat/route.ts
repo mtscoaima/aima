@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       role: msg.role,
       content: [
         {
-          type: "input_text",
+          type: msg.role === "user" ? "input_text" : "output_text",
           text: msg.content,
         },
       ],
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
           userContent.push({
             type: "input_text",
             text: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
+            프롬프트와 관계 없이 항상 이미지는 하나만 생성해주세요.
             never contain text in image
             응답은 다음 JSON 형식으로 포함해주세요:
             {
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
 
           // OpenAI 스트리밍 응답 생성
           const response = await client.responses.create({
-            model: "gpt-4.1-mini",
+            model: "gpt-5",
             input: [
               ...conversationHistory,
               {
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
               {
                 type: "image_generation",
                 partial_images: 3,
-                quality: "low",
+                quality: "high",
                 size: "1024x1024",
               },
             ],
