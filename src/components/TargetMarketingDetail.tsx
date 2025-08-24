@@ -599,6 +599,8 @@ function TargetMarketingDetailContent({
                   }, 50);
                 } else if (data.type === "text_replace") {
                   setShowTypingIndicator(false);
+                  // 텍스트 교체 시 이미지 생성 로딩 상태도 해제
+                  setIsImageGenerating(false);
 
                   setMessages((prev) =>
                     prev.map((msg) =>
@@ -986,20 +988,21 @@ function TargetMarketingDetailContent({
             try {
               const jsonString = line.slice(6).trim();
 
-              // 더 강화된 JSON 검증 (일반 메시지)
+              // JSON 검증 (개선된 버전 - response_complete 이벤트 허용)
               if (
                 !jsonString ||
-                jsonString.length < 10 ||
+                jsonString.length < 5 ||
                 jsonString === "{" ||
-                jsonString.startsWith('{"response') ||
-                jsonString.startsWith('{ "response') ||
-                !jsonString.endsWith("}") ||
-                !jsonString.includes('"type"')
+                !jsonString.endsWith("}")
               ) {
                 continue;
               }
+              
+              // 모든 이벤트 로그 (디버그용)
+              console.log('Attempting to parse JSON:', jsonString.substring(0, 50) + '...');
 
               const data = JSON.parse(jsonString);
+              console.log('Successfully parsed event:', data.type, data);
 
               if (data.type === "text_delta") {
                 // 첫 번째 텍스트 응답이 오면 타이핑 인디케이터 숨기기
@@ -1023,6 +1026,8 @@ function TargetMarketingDetailContent({
               } else if (data.type === "text_replace") {
                 // JSON 파싱 완료 후 텍스트 교체
                 setShowTypingIndicator(false);
+                // 텍스트 교체 시 이미지 생성 로딩 상태도 해제
+                setIsImageGenerating(false);
 
                 // 기존 텍스트를 새로운 텍스트로 교체
                 setMessages((prev) =>
@@ -1052,8 +1057,20 @@ function TargetMarketingDetailContent({
               } else if (data.type === "partial_image") {
                 // 첫 번째 이미지 응답이 오면 타이핑 인디케이터 숨기기
                 setShowTypingIndicator(false);
-                // 이미지 생성 중 상태 활성화
+                // 좌측 채팅과 동일: 이미지 생성 중 상태 활성화
                 setIsImageGenerating(true);
+                
+                // 좌측 채팅창에서 isImageLoading을 true로 설정하는 것처럼 우측도 동일하게 처리
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? {
+                          ...msg,
+                          isImageLoading: true,
+                        }
+                      : msg
+                  )
+                );
 
                 // 부분 이미지 생성 중 (미리보기)
                 setMessages((prev) =>
@@ -1088,7 +1105,7 @@ function TargetMarketingDetailContent({
 
                 // 생성된 이미지를 우측 첨부 영역에 표시
                 setCurrentGeneratedImage(data.imageUrl);
-                // 이미지 생성 완료 시 로딩 상태 해제
+                // 좌측 채팅과 동일: 이미지 생성 완료 시 로딩 상태 해제
                 setIsImageGenerating(false);
 
                 // 최종 이미지 생성 완료 시 스크롤
@@ -1123,7 +1140,8 @@ function TargetMarketingDetailContent({
                   setCurrentGeneratedImage(data.imageUrl);
                 }
 
-                // 응답이 완료되면 이미지 생성 로딩 상태를 항상 해제
+                // 무조건 로딩 상태 해제 (디버그용 로그 추가)
+                console.log('Response complete - setting isImageGenerating to false');
                 setIsImageGenerating(false);
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
@@ -2003,6 +2021,7 @@ function TargetMarketingDetailContent({
                        height={192}
                        className="w-full h-full object-cover"
                      />
+                     {/* 가장 간단한 로직: currentGeneratedImage가 있고 isImageGenerating이 false일 때만 로딩 숨김 */}
                      {isImageGenerating && (
                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center flex-col text-white text-sm rounded-lg">
                          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

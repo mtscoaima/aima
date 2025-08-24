@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
                 size: "1024x1024",
               },
             ],
-            stream: false,
+            reasoning: { effort: "low" },
+            stream: true,
           });
 
           let fullText = "";
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
           let partialImages: string[] = [];
           let smsTextContent = "";
           let displayText = "";
+          let quickActionButtons: Array<{text: string}> = [];
           let isJsonParsed = false;
 
           // 스트림 이벤트 처리
@@ -122,6 +124,7 @@ export async function POST(request: NextRequest) {
                     // JSON이 완성되면 response 부분만 표시
                     displayText = jsonResponse.response;
                     smsTextContent = jsonResponse.sms_text_content || "";
+                    quickActionButtons = jsonResponse.quick_action_buttons || [];
                     isJsonParsed = true;
 
                     // 기존 텍스트를 지우고 새로운 텍스트로 교체
@@ -129,6 +132,7 @@ export async function POST(request: NextRequest) {
                       type: "text_replace",
                       content: displayText,
                       smsTextContent: smsTextContent,
+                      quickActionButtons: quickActionButtons,
                     });
                     controller.enqueue(
                       new TextEncoder().encode(`data: ${data}\n\n`)
@@ -181,37 +185,52 @@ export async function POST(request: NextRequest) {
               });
               controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
             } else if (
-              eventAny.type === "response.image_generation_call.result"
+              eventAny.type === "response.image_generation_call.result" ||
+              eventAny.type === "response.image_generation_call.completed"
             ) {
               // 최종 이미지 생성 완료
-              imageUrl = `data:image/png;base64,${eventAny.result}`;
+              const imageBase64 = eventAny.result || eventAny.image_b64;
+              if (imageBase64) {
+                imageUrl = `data:image/png;base64,${imageBase64}`;
 
-              // 최종 이미지 URL 전송
-              const data = JSON.stringify({
-                type: "image_generated",
-                imageUrl: imageUrl,
-              });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+                // 최종 이미지 URL 전송
+                const data = JSON.stringify({
+                  type: "image_generated",
+                  imageUrl: imageUrl,
+                });
+                controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+              }
             } else if (eventAny.type === "response.done") {
+              // 이미지가 생성된 경우 최종 전솤
+              if (imageUrl) {
+                const data = JSON.stringify({
+                  type: "image_generated",
+                  imageUrl: imageUrl,
+                });
+                controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+              }
               // 응답 완료 - 이미 파싱된 데이터 사용 또는 재파싱
               if (!isJsonParsed) {
                 try {
-                  // JSON 형식의 응답에서 sms_text_content 추출
+                  // JSON 형식의 응답에서 모든 필드 추출
                   const jsonMatch = fullText.match(
-                    /\{[\s\S]*"sms_text_content"[\s\S]*\}/
+                    /\{[\s\S]*"response"[\s\S]*\}/
                   );
                   if (jsonMatch) {
                     const jsonResponse = JSON.parse(jsonMatch[0]);
                     displayText = jsonResponse.response || fullText;
                     smsTextContent = jsonResponse.sms_text_content || "";
+                    quickActionButtons = jsonResponse.quick_action_buttons || [];
                   } else {
                     displayText = fullText;
                     smsTextContent = extractSMSContent(fullText);
+                    quickActionButtons = [];
                   }
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (error) {
                   displayText = fullText;
                   smsTextContent = extractSMSContent(fullText);
+                  quickActionButtons = [];
                 }
               }
 
@@ -230,6 +249,7 @@ export async function POST(request: NextRequest) {
                 imageUrl: imageUrl,
                 templateData: templateData,
                 smsTextContent: smsTextContent,
+                quickActionButtons: quickActionButtons,
               });
               controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
               break;
