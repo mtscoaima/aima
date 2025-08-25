@@ -69,7 +69,7 @@ const SupportPage = () => {
             }`}
             onClick={() => setActiveTab("contact")}
           >
-            문의하기
+            1:1 문의
           </button>
         </div>
 
