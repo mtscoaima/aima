@@ -75,6 +75,7 @@ function TargetMarketingDetailContent({
   const [isLoading, setIsLoading] = useState(false);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [smsTextContent, setSmsTextContent] = useState("");
+  const [quickActionButtons, setQuickActionButtons] = useState<Array<{text: string}>>([]);
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState<
     string | null
   >(null);
@@ -617,6 +618,10 @@ function TargetMarketingDetailContent({
                     setSmsTextContent(data.smsTextContent);
                   }
 
+                  if (data.quickActionButtons) {
+                    setQuickActionButtons(data.quickActionButtons);
+                  }
+
                   if (data.templateData && data.templateData.title) {
                     setTemplateTitle(data.templateData.title);
                   }
@@ -1068,6 +1073,11 @@ function TargetMarketingDetailContent({
                   setSmsTextContent(data.smsTextContent);
                 }
 
+                // 퀵 액션 버튼 업데이트
+                if (data.quickActionButtons) {
+                  setQuickActionButtons(data.quickActionButtons);
+                }
+
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - text_replace)
                 if (data.templateData && data.templateData.title) {
                   setTemplateTitle(data.templateData.title);
@@ -1132,7 +1142,10 @@ function TargetMarketingDetailContent({
                 // 최종 이미지 생성 완료 시 스크롤
                 setTimeout(() => scrollToBottom(), 100);
               } else if (data.type === "response_complete") {
-                // 응답 완료
+                // 응답 완료 - 로딩 상태 초기화
+                setIsLoading(false);
+                setShowTypingIndicator(false);
+                
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMessageId
@@ -1149,6 +1162,11 @@ function TargetMarketingDetailContent({
                 // SMS 텍스트 내용 업데이트
                 if (data.smsTextContent) {
                   setSmsTextContent(data.smsTextContent);
+                }
+
+                // 퀵 액션 버튼 업데이트
+                if (data.quickActionButtons) {
+                  setQuickActionButtons(data.quickActionButtons);
                 }
 
                 // 생성된 이미지가 있으면 currentGeneratedImage에도 설정
@@ -1849,34 +1867,51 @@ function TargetMarketingDetailContent({
                 {/* AI 답변에만 빠른 버튼 표시 (로딩 중이 아닐 때만) */}
                 {message.role === "assistant" && !showTypingIndicator && (
                   <div className="flex gap-2 mt-4 flex-wrap">
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("이미지를 다른 스타일로 수정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      이미지 수정
-                    </button>
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("텍스트 내용을 수정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      텍스트 수정
-                    </button>
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("타깃 고객층을 수정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      타깃 수정
-                    </button>
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("할인율을 조정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      할인율 수정
-                    </button>
+                    {/* Dynamic quick action buttons from AI response */}
+                    {quickActionButtons.length > 0 ? (
+                      quickActionButtons.map((button, index) => (
+                        <button
+                          key={index}
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick(button.text)}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          {button.text}
+                        </button>
+                      ))
+                    ) : (
+                      // Fallback to static buttons if no dynamic buttons are available
+                      <>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("이미지를 다른 스타일로 수정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          이미지 수정
+                        </button>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("텍스트 내용을 수정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          텍스트 수정
+                        </button>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("타깃 고객층을 수정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          타깃 수정
+                        </button>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("할인율을 조정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          할인율 수정
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
