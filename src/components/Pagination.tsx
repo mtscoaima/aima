@@ -11,7 +11,7 @@ interface PaginationProps {
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
-  totalItems,
+  totalItems: _totalItems, // eslint-disable-line @typescript-eslint/no-unused-vars
   onPageChange,
   className = "",
 }) => {

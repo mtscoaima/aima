@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
     const mappedCategory = categoryMap[categoryValue] || "OTHER";
 
     const body: CreateInquiryRequest = {
-      category: mappedCategory,
+      category: mappedCategory as InquiryCategory,
       title: formData.get("title") as string,
       content: formData.get("content") as string,
-      smsNotification: formData.get("smsNotification") === "true",
+      sms_notification: formData.get("smsNotification") === "true",
     };
     
     const file = formData.get("file") as File | null;
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
         title: body.title.trim(),
         content: body.content.trim(),
         contact_phone: user.phone_number.trim(),
-        sms_notification: body.smsNotification || false,
+        sms_notification: body.sms_notification || false,
         status: "PENDING",
       })
       .select()
