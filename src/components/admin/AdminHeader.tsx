@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotificationUtils } from "@/hooks/useNotificationUtils";
 import { Notification } from "@/contexts/NotificationContext";
-import ConfirmDialog from "./ConfirmDialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import "./AdminHeader.css";
 
 interface AdminHeaderProps {

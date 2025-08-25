@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import RejectionReasonModal from "./modals/RejectionReasonModal";
-import CampaignDetailModal from "./modals/CampaignDetailModal";
+import RejectionReasonModal from "@/components/modals/RejectionReasonModal";
+import CampaignDetailModal from "@/components/modals/CampaignDetailModal";
 
 // 캠페인 데이터 인터페이스
 interface RealCampaign {

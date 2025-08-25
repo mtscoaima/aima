@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import TermsModal, { TermsType } from "@/components/TermsModal";
 import { passwordValidation } from "@/lib/utils";
-import GeneralSignupForm from "@/components/GeneralSignupForm";
+import GeneralSignupForm from "@/components/signup/GeneralSignupForm";
 import styles from "./signup.module.css";
 
 export default function SignupPage() {

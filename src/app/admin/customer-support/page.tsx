@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AdminGuard } from "@/components/RoleGuard";
-import AdminHeader from "@/components/AdminHeader";
-import AdminSidebar from "@/components/AdminSidebar";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 import Pagination from "@/components/Pagination";
 import { tokenManager } from "@/lib/api";
 import "./styles.css";

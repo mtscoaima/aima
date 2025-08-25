@@ -30,15 +30,10 @@ interface PaginationInfo {
   limit: number;
 }
 
-interface ContactTabProps {
-  activeContactTab: string;
-  setActiveContactTab: (tab: string) => void;
-}
+export default function ContactTab() {
+  // State for contact tabs
+  const [activeContactTab, setActiveContactTab] = useState("register");
 
-export default function ContactTab({
-  activeContactTab,
-  setActiveContactTab,
-}: ContactTabProps) {
   // State for inquiry form
   const [inquiryForm, setInquiryForm] = useState<InquiryForm>({
     category: "",

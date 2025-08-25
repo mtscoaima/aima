@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useBalance } from "@/contexts/BalanceContext";
-import { CreditBalance } from "@/components/CreditBalance";
-import { CreditPackages } from "@/components/CreditPackages";
-import { PaymentModal } from "@/components/PaymentModal";
+import { CreditBalance } from "@/components/credit/CreditBalance";
+import { CreditPackages } from "@/components/credit/CreditPackages";
+import { PaymentModal } from "@/components/credit/PaymentModal";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 import "./styles.css";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Pagination from "@/components/Pagination";
 
 interface Announcement {
@@ -18,27 +18,57 @@ interface PaginationInfo {
   limit: number;
 }
 
-interface AnnouncementTabProps {
-  announcements: Announcement[];
-  loading: boolean;
-  error: string | null;
-  pagination: PaginationInfo | null;
-  expandedAnnouncement: number | null;
-  onAnnouncementClick: (announcement: Announcement) => void;
-  onPageChange: (page: number) => void;
-  onRetry: () => void;
-}
+export default function AnnouncementTab() {
+  // State
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedAnnouncement, setExpandedAnnouncement] = useState<number | null>(null);
 
-export default function AnnouncementTab({
-  announcements,
-  loading,
-  error,
-  pagination,
-  expandedAnnouncement,
-  onAnnouncementClick,
-  onPageChange,
-  onRetry,
-}: AnnouncementTabProps) {
+  // Fetch function
+  const fetchAnnouncements = useCallback(async (page: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/announcements?page=${page}&limit=10`);
+      if (!response.ok) {
+        throw new Error('공지사항을 불러오는데 실패했습니다.');
+      }
+      
+      const data = await response.json();
+      setAnnouncements(data.announcements || []);
+      setPagination(data.pagination || null);
+    } catch (error) {
+      console.error('공지사항 조회 실패:', error);
+      setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Event handlers
+  const handleAnnouncementClick = (announcement: Announcement) => {
+    setExpandedAnnouncement(
+      expandedAnnouncement === announcement.id ? null : announcement.id
+    );
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchAnnouncements(page);
+  };
+
+  const handleRetry = () => {
+    fetchAnnouncements(currentPage);
+  };
+
+  // Initialize data on component mount
+  useEffect(() => {
+    fetchAnnouncements(1);
+  }, [fetchAnnouncements]);
   return (
     <div className="bg-transparent p-0 rounded-none shadow-none border-none">
       <div className="w-full">
@@ -50,7 +80,7 @@ export default function AnnouncementTab({
           <div className="text-center py-8 my-8 rounded-lg text-base bg-red-50 text-red-800 border border-red-200">
             {error}
             <button
-              onClick={onRetry}
+              onClick={handleRetry}
               className="ml-4 px-3 py-1.5 bg-red-600 text-white border-none rounded cursor-pointer text-sm transition-colors hover:bg-red-700"
             >
               다시 시도
@@ -81,7 +111,7 @@ export default function AnnouncementTab({
                 >
                   <div
                     className="flex transition-colors cursor-pointer hover:bg-gray-50"
-                    onClick={() => onAnnouncementClick(announcement)}
+                    onClick={() => handleAnnouncementClick(announcement)}
                   >
                     <div className="flex-shrink-0 w-20 p-4 border-r border-gray-200 flex items-center justify-center text-center font-medium text-gray-600">
                       {(pagination?.totalItems || announcements.length) -
@@ -130,7 +160,7 @@ export default function AnnouncementTab({
           currentPage={pagination?.currentPage || 1}
           totalPages={pagination?.totalPages || 2}
           totalItems={pagination?.totalItems || 15}
-          onPageChange={onPageChange}
+          onPageChange={handlePageChange}
           className="mt-8 block"
         />
       </div>

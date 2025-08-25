@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Pagination from "@/components/Pagination";
 
 interface FAQ {
@@ -17,37 +17,80 @@ interface PaginationInfo {
   limit: number;
 }
 
-interface FaqTabProps {
-  faqs: FAQ[];
-  loading: boolean;
-  error: string | null;
-  pagination: PaginationInfo | null;
-  expandedFaq: number | null;
-  searchQuery: string;
-  selectedCategory: string;
-  onFaqClick: (faq: FAQ) => void;
-  onPageChange: (page: number) => void;
-  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSearchSubmit: (e: React.FormEvent) => void;
-  onCategoryChange: (category: string) => void;
-  onRetry: () => void;
-}
+export default function FaqTab() {
+  // State
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("전체");
 
-export default function FaqTab({
-  faqs,
-  loading,
-  error,
-  pagination,
-  expandedFaq,
-  searchQuery,
-  selectedCategory,
-  onFaqClick,
-  onPageChange,
-  onSearchChange,
-  onSearchSubmit,
-  onCategoryChange,
-  onRetry,
-}: FaqTabProps) {
+  // Fetch function
+  const fetchFaqs = useCallback(async (page: number, searchQuery = "", category = "전체") => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "10",
+        search: searchQuery,
+        category: category === "전체" ? "" : category
+      });
+      
+      const response = await fetch(`/api/faqs?${params}`);
+      if (!response.ok) {
+        throw new Error('FAQ를 불러오는데 실패했습니다.');
+      }
+      
+      const data = await response.json();
+      setFaqs(data.faqs || []);
+      setPagination(data.pagination || null);
+    } catch (error) {
+      console.error('FAQ 조회 실패:', error);
+      setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Event handlers
+  const handleFaqClick = (faq: FAQ) => {
+    setExpandedFaq(expandedFaq === faq.id ? null : faq.id);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchFaqs(page, searchQuery, selectedCategory);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchFaqs(1, searchQuery, selectedCategory);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setCurrentPage(1);
+    fetchFaqs(1, searchQuery, category);
+  };
+
+  const handleRetry = () => {
+    fetchFaqs(currentPage, searchQuery, selectedCategory);
+  };
+
+  // Initialize data on component mount
+  useEffect(() => {
+    fetchFaqs(1, "", "전체");
+  }, [fetchFaqs]);
   const categories = [
     "전체",
     "AI타깃마케팅",
@@ -64,12 +107,12 @@ export default function FaqTab({
     <div className="bg-transparent p-0 rounded-none shadow-none border-none">
       {/* 검색창 */}
       <div className="mb-8">
-        <form onSubmit={onSearchSubmit} className="flex max-w-2xl mx-0 relative">
+        <form onSubmit={handleSearchSubmit} className="flex max-w-2xl mx-0 relative">
           <input
             type="text"
             placeholder="궁금한 사항을 입력해주세요"
             value={searchQuery}
-            onChange={onSearchChange}
+            onChange={handleSearchChange}
             className="flex-1 py-4 pr-12 pl-4 border-2 border-gray-200 rounded-full text-base outline-none transition-colors focus:border-blue-600"
           />
           <button 
@@ -91,7 +134,7 @@ export default function FaqTab({
                 ? "bg-gray-50 border-blue-600 text-blue-600"
                 : "text-gray-600 hover:border-blue-600 hover:text-blue-600"
             }`}
-            onClick={() => onCategoryChange(category)}
+            onClick={() => handleCategoryChange(category)}
           >
             {category}
           </button>
@@ -108,7 +151,7 @@ export default function FaqTab({
           <div className="text-center py-8 my-8 rounded-lg text-base bg-red-50 text-red-800 border border-red-200">
             {error}
             <button
-              onClick={onRetry}
+              onClick={handleRetry}
               className="ml-4 px-3 py-1.5 bg-red-600 text-white border-none rounded cursor-pointer text-sm transition-colors hover:bg-red-700"
             >
               다시 시도
@@ -125,7 +168,7 @@ export default function FaqTab({
                 <div key={faq.id} className="border-b border-gray-200 last:border-b-0">
                   <div
                     className="flex transition-colors cursor-pointer hover:bg-gray-50"
-                    onClick={() => onFaqClick(faq)}
+                    onClick={() => handleFaqClick(faq)}
                   >
                     <div className="flex-shrink-0 w-20 p-4 border-r border-gray-200 flex justify-center items-center text-center">
                       <span className="text-blue-600 font-bold text-lg">Q.</span>
@@ -160,7 +203,7 @@ export default function FaqTab({
           currentPage={pagination?.currentPage || 1}
           totalPages={pagination?.totalPages || 1}
           totalItems={pagination?.totalItems || 10}
-          onPageChange={onPageChange}
+          onPageChange={handlePageChange}
           className="mt-8 block"
         />
       </div>
