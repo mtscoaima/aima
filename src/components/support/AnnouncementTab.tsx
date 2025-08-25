@@ -156,13 +156,15 @@ export default function AnnouncementTab() {
         )}
 
         {/* 페이지네이션은 항상 표시 */}
-        <Pagination
-          currentPage={pagination?.currentPage || 1}
-          totalPages={pagination?.totalPages || 2}
-          totalItems={pagination?.totalItems || 15}
-          onPageChange={handlePageChange}
-          className="mt-8 block"
-        />
+        <div className="flex justify-center mt-8">
+          <Pagination
+            currentPage={pagination?.currentPage || 1}
+            totalPages={pagination?.totalPages || 2}
+            totalItems={pagination?.totalItems || 15}
+            onPageChange={handlePageChange}
+            className=""
+          />
+        </div>
       </div>
     </div>
   );
