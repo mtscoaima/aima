@@ -276,15 +276,31 @@ export default function NaverTalkTalkTab({
 
     setSelectedFile(file);
 
-    // 이미지 파일인 경우 미리보기 생성
+    // 이미지 파일인 경우 미리보기 생성 및 sessionStorage에 저장
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setFilePreviewUrl(e.target?.result as string);
+        const dataUrl = e.target?.result as string;
+        setFilePreviewUrl(dataUrl);
+        
+        // sessionStorage에 파일 정보 저장
+        sessionStorage.setItem('selectedFile', JSON.stringify({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: dataUrl
+        }));
       };
       reader.readAsDataURL(file);
     } else {
       setFilePreviewUrl(null);
+      // 이미지가 아닌 파일도 sessionStorage에 저장
+      sessionStorage.setItem('selectedFile', JSON.stringify({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: null
+      }));
     }
 
     setShowImageDropdown(false);

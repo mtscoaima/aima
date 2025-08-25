@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const { message, previousMessages, initialImage } = await request.json();
 
+
     if (!message) {
       return NextResponse.json(
         { error: "메시지가 필요합니다." },
@@ -103,6 +104,33 @@ export async function POST(request: NextRequest) {
           let displayText = "";
           let quickActionButtons: Array<{text: string}> = [];
           let isJsonParsed = false;
+          let isControllerClosed = false;
+
+          // 컨트롤러 상태 확인 함수
+          const safeEnqueue = (data: string) => {
+            if (isControllerClosed) {
+              return; // 이미 닫혔으면 무시
+            }
+            try {
+              controller.enqueue(new TextEncoder().encode(data));
+            } catch (error) {
+              console.error("Stream controller error:", error);
+              isControllerClosed = true; // 오류 발생 시 닫힌 상태로 표시
+            }
+          };
+
+          // 컨트롤러 안전 닫기 함수
+          const safeClose = () => {
+            if (!isControllerClosed) {
+              try {
+                safeClose();
+                isControllerClosed = true;
+              } catch (error) {
+                console.error("Controller close error:", error);
+                isControllerClosed = true;
+              }
+            }
+          };
 
           // 스트림 이벤트 처리
           for await (const event of response) {
@@ -134,9 +162,7 @@ export async function POST(request: NextRequest) {
                       smsTextContent: smsTextContent,
                       quickActionButtons: quickActionButtons,
                     });
-                    controller.enqueue(
-                      new TextEncoder().encode(`data: ${data}\n\n`)
-                    );
+                    safeEnqueue(`data: ${data}\n\n`);
                   }
                 } else if (!isJsonParsed) {
                   // JSON이 아직 완성되지 않았으면 델타 전송하지 않음
@@ -150,9 +176,7 @@ export async function POST(request: NextRequest) {
                       type: "text_delta",
                       content: textDelta,
                     });
-                    controller.enqueue(
-                      new TextEncoder().encode(`data: ${data}\n\n`)
-                    );
+                    safeEnqueue(`data: ${data}\n\n`);
                   }
                 }
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -183,7 +207,7 @@ export async function POST(request: NextRequest) {
                 imageUrl: partialImageUrl,
                 index: partialImageIndex,
               });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+              safeEnqueue(`data: ${data}\n\n`);
             } else if (
               eventAny.type === "response.image_generation_call.result" ||
               eventAny.type === "response.image_generation_call.completed"
@@ -198,7 +222,7 @@ export async function POST(request: NextRequest) {
                   type: "image_generated",
                   imageUrl: imageUrl,
                 });
-                controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+                safeEnqueue(`data: ${data}\n\n`);
               }
             } else if (eventAny.type === "response.done") {
               // 이미지가 생성된 경우 최종 전솤
@@ -207,7 +231,7 @@ export async function POST(request: NextRequest) {
                   type: "image_generated",
                   imageUrl: imageUrl,
                 });
-                controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+                safeEnqueue(`data: ${data}\n\n`);
               }
               // 응답 완료 - 이미 파싱된 데이터 사용 또는 재파싱
               if (!isJsonParsed) {
@@ -251,12 +275,12 @@ export async function POST(request: NextRequest) {
                 smsTextContent: smsTextContent,
                 quickActionButtons: quickActionButtons,
               });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+              safeEnqueue(`data: ${data}\n\n`);
               break;
             }
           }
 
-          controller.close();
+          safeClose();
         } catch (error) {
           console.error("스트리밍 오류:", error);
           
@@ -276,10 +300,12 @@ export async function POST(request: NextRequest) {
             type: "error",
             error: errorMessage,
           });
-          controller.enqueue(
-            new TextEncoder().encode(`data: ${errorData}\n\n`)
-          );
-          controller.close();
+          try {
+            controller.enqueue(new TextEncoder().encode(`data: ${errorData}\n\n`));
+            controller.close();
+          } catch {
+            // 컨트롤러가 이미 닫혔으면 무시
+          }
         }
       },
     });

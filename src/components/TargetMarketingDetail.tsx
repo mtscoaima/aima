@@ -44,7 +44,6 @@ import TemplateModal from "@/components/modals/TemplateModal";
 import PreviewModal from "@/components/modals/PreviewModal";
 import SaveTemplateModal from "@/components/modals/SaveTemplateModal";
 // 분리된 API 서비스들
-import * as aiService from "@/services/aiService";
 import * as templateService from "@/services/templateService";
 import * as campaignService from "@/services/campaignService";
 import * as creditService from "@/services/creditService";
@@ -951,6 +950,32 @@ function TargetMarketingDetailContent({
     setMessages((prev) => [...prev, assistantMessage]);
 
     try {
+      // 선택된 파일이 있으면 base64로 변환, 없으면 sessionStorage에서 확인
+      let initialImageBase64: string | undefined;
+      if (selectedFile && selectedFile.type.startsWith("image/")) {
+        initialImageBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve(e.target?.result as string);
+          };
+          reader.readAsDataURL(selectedFile);
+        });
+      } else {
+        // selectedFile이 없으면 sessionStorage에서 확인
+        const savedFileData = sessionStorage.getItem('selectedFile');
+        if (savedFileData) {
+          try {
+            const fileInfo = JSON.parse(savedFileData);
+            if (fileInfo.dataUrl && fileInfo.type?.startsWith("image/")) {
+              initialImageBase64 = fileInfo.dataUrl;
+            }
+          } catch (error) {
+            console.error('Failed to parse sessionStorage file data:', error);
+          }
+        }
+      }
+
+
       // 스트리밍 API 호출
       const response = await fetch("/api/ai/chat", {
         method: "POST",
@@ -960,6 +985,7 @@ function TargetMarketingDetailContent({
         body: JSON.stringify({
           message: messageToSend,
           previousMessages: messages,
+          initialImage: initialImageBase64,
         }),
       });
 
@@ -997,12 +1023,7 @@ function TargetMarketingDetailContent({
               ) {
                 continue;
               }
-              
-              // 모든 이벤트 로그 (디버그용)
-              console.log('Attempting to parse JSON:', jsonString.substring(0, 50) + '...');
-
               const data = JSON.parse(jsonString);
-              console.log('Successfully parsed event:', data.type, data);
 
               if (data.type === "text_delta") {
                 // 첫 번째 텍스트 응답이 오면 타이핑 인디케이터 숨기기
@@ -1140,8 +1161,6 @@ function TargetMarketingDetailContent({
                   setCurrentGeneratedImage(data.imageUrl);
                 }
 
-                // 무조건 로딩 상태 해제 (디버그용 로그 추가)
-                console.log('Response complete - setting isImageGenerating to false');
                 setIsImageGenerating(false);
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
@@ -1190,8 +1209,19 @@ function TargetMarketingDetailContent({
     } finally {
       setIsLoading(false);
       setShowTypingIndicator(false);
+      
+      // 파일이 성공적으로 전송되었으면 선택된 파일 정리
+      if (selectedFile) {
+        setSelectedFile(null);
+        setFilePreviewUrl(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        // sessionStorage도 정리
+        sessionStorage.removeItem('selectedFile');
+      }
     }
-  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, smsTextContent, templateTitle]);
+  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, smsTextContent, templateTitle, selectedFile]);
 
   // 초기 메시지 처리
   useEffect(() => {
@@ -1209,6 +1239,39 @@ function TargetMarketingDetailContent({
       }
     }
   }, [isInitialized, handleSendMessage]);
+
+  // sessionStorage에서 선택된 파일 복원
+  useEffect(() => {
+    const savedFileData = sessionStorage.getItem('selectedFile');
+    if (savedFileData) {
+      try {
+        const fileInfo = JSON.parse(savedFileData);
+        if (fileInfo.dataUrl && fileInfo.type?.startsWith("image/")) {
+          // base64 데이터를 File 객체로 변환
+          fetch(fileInfo.dataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+              const file = new File([blob], fileInfo.name, { type: fileInfo.type });
+              setSelectedFile(file);
+              setFilePreviewUrl(fileInfo.dataUrl);
+            })
+            .catch(error => {
+              console.error('Failed to restore file:', error);
+              sessionStorage.removeItem('selectedFile');
+            });
+        } else if (fileInfo.dataUrl === null) {
+          // 이미지가 아닌 파일의 경우
+          const blob = new Blob([''], { type: fileInfo.type });
+          const file = new File([blob], fileInfo.name, { type: fileInfo.type });
+          setSelectedFile(file);
+          setFilePreviewUrl(null);
+        }
+      } catch (error) {
+        console.error('Failed to parse saved file data:', error);
+        sessionStorage.removeItem('selectedFile');
+      }
+    }
+  }, []);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1236,15 +1299,31 @@ function TargetMarketingDetailContent({
 
     setSelectedFile(file);
 
-    // 이미지 파일인 경우 미리보기 생성
+    // 이미지 파일인 경우 미리보기 생성 및 sessionStorage에 저장
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setFilePreviewUrl(e.target?.result as string);
+        const dataUrl = e.target?.result as string;
+        setFilePreviewUrl(dataUrl);
+        
+        // sessionStorage에 파일 정보 저장
+        sessionStorage.setItem('selectedFile', JSON.stringify({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: dataUrl
+        }));
       };
       reader.readAsDataURL(file);
     } else {
       setFilePreviewUrl(null);
+      // 이미지가 아닌 파일도 sessionStorage에 저장
+      sessionStorage.setItem('selectedFile', JSON.stringify({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: null
+      }));
     }
   };
 
@@ -1259,6 +1338,8 @@ function TargetMarketingDetailContent({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    // sessionStorage도 정리
+    sessionStorage.removeItem('selectedFile');
   };
 
   // 템플릿 이미지 업로드 핸들러들
