@@ -1,14 +1,61 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { DynamicButton } from "@/types/targetMarketing";
+
+// RealCampaign 인터페이스 (CampaignManagementTab.tsx와 동일)
+interface RealCampaign {
+  id: number;
+  name: string;
+  description?: string;
+  status: string;
+  approval_status?: string;
+  schedule_start_date?: string;
+  schedule_end_date?: string;
+  budget?: number;
+  actual_cost?: number;
+  total_recipients?: number;
+  sent_count: number;
+  success_count: number;
+  failed_count: number;
+  created_at: string;
+  updated_at?: string;
+  rejection_reason?: string; // 추가된 속성
+  buttons?: DynamicButton[]; // 추가된 속성
+  target_criteria: {
+    gender?: string | string[];
+    ageGroup?: string | string[];
+    location?: {
+      city?: string;
+      district?: string;
+    };
+    cardAmount?: string;
+    cardTime?: {
+      startTime?: string;
+      endTime?: string;
+      period?: string;
+    };
+    sendPolicy?: string;
+    cardUsageIndustry?: string;
+    costPerItem?: number;
+    dailyMaxCount?: number;
+    [key: string]: unknown;
+  };
+  message_templates?: {
+    name: string;
+    content: string;
+    image_url: string;
+    category?: string;
+  };
+}
 
 interface CampaignDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  campaign: any;
+  campaign: RealCampaign | null;
   onUpdateCampaignName?: (campaignId: number, newName: string) => Promise<void>;
-  campaigns?: any[];
+  campaigns?: RealCampaign[];
   currentIndex?: number;
   onNavigate?: (direction: 'prev' | 'next') => void;
 }
@@ -187,10 +234,13 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                     <div className="bg-white rounded-2xl p-4 w-64 min-h-[400px] relative">
                       {campaign.message_templates?.image_url ? (
                         <div className="relative mb-3">
-                          <img
+                          <Image
                             src={campaign.message_templates.image_url}
                             alt="캠페인 템플릿"
+                            width={256}
+                            height={200}
                             className="w-full rounded-lg"
+                            unoptimized
                           />
                         </div>
                       ) : (
@@ -310,10 +360,10 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       <span className="text-sm text-gray-900">{formatDate(campaign.created_at)}</span>
                     </div>
 
-                    {/* 광고매체 */}
+                    {/* 상태 */}
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">광고매체</span>
-                      <span className="text-sm text-gray-900">{campaign.ad_medium === 'naver_talktalk' ? '네이버 톡톡' : campaign.ad_medium}</span>
+                      <span className="text-sm font-medium text-gray-700">상태</span>
+                      <span className="text-sm text-gray-900">{campaign.status === 'ACTIVE' ? '활성' : campaign.status === 'PAUSED' ? '일시중지' : campaign.status}</span>
                     </div>
 
                     {/* 성별/연령 */}
@@ -348,10 +398,10 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       <span className="text-sm text-gray-900">{targetInfo.cardTime || '-'}</span>
                     </div>
 
-                    {/* 희망 수신자 */}
+                    {/* 전체 수신자 */}
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">희망 수신자</span>
-                      <span className="text-sm text-gray-900">{campaign.desired_recipients || '-'}</span>
+                      <span className="text-sm font-medium text-gray-700">전체 수신자</span>
+                      <span className="text-sm text-gray-900">{campaign.total_recipients?.toLocaleString() || '-'}명</span>
                     </div>
 
                     {/* 유효기간 */}
