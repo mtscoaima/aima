@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Pagination from "@/components/Pagination";
 
 interface FAQ {
@@ -27,6 +27,9 @@ export default function FaqTab() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("전체");
+  
+  // 디바운싱을 위한 ref
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch function
   const fetchFaqs = useCallback(async (page: number, searchQuery = "", category = "전체") => {
@@ -47,6 +50,7 @@ export default function FaqTab() {
       }
       
       const data = await response.json();
+      
       setFaqs(data.faqs || []);
       setPagination(data.pagination || null);
     } catch (error) {
@@ -68,7 +72,19 @@ export default function FaqTab() {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    const value = e.target.value;
+    setSearchQuery(value);
+    
+    // 이전 타이머 클리어
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // 500ms 후에 검색 실행 (디바운싱)
+    searchTimeoutRef.current = setTimeout(() => {
+      setCurrentPage(1);
+      fetchFaqs(1, value, selectedCategory);
+    }, 500);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -91,6 +107,15 @@ export default function FaqTab() {
   useEffect(() => {
     fetchFaqs(1, "", "전체");
   }, [fetchFaqs]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
   const categories = [
     "전체",
     "AI타깃마케팅",
@@ -113,7 +138,7 @@ export default function FaqTab() {
             placeholder="궁금한 사항을 입력해주세요"
             value={searchQuery}
             onChange={handleSearchChange}
-            className="flex-1 py-4 pr-12 pl-4 border-2 border-gray-200 rounded-full text-base outline-none transition-colors focus:border-blue-600"
+            className="flex-1 py-4 pr-12 pl-4 border-2 border-gray-200 rounded-lg text-base outline-none transition-colors focus:border-blue-600"
           />
           <button 
             type="submit" 
@@ -125,14 +150,14 @@ export default function FaqTab() {
       </div>
 
       {/* 카테고리 분류 버튼 */}
-      <div className="flex flex-wrap gap-2 mb-8 justify-start">
+      <div className="flex flex-wrap mb-8 justify-start">
         {categories.map((category) => (
           <button
             key={category}
-            className={`py-3 px-6 border border-gray-200 bg-white rounded text-sm font-medium cursor-pointer transition-all whitespace-nowrap ${
+            className={`py-3 px-6 border border-gray-200 text-sm font-medium cursor-pointer transition-all whitespace-nowrap ${
               selectedCategory === category
-                ? "bg-gray-50 border-blue-600 text-blue-600"
-                : "text-gray-600 hover:border-blue-600 hover:text-blue-600"
+                ? "bg-white  text-gray-900 border-gray-300"
+                : "text-gray-600 bg-gray-200  hover:text-black border-gray-300"
             }`}
             onClick={() => handleCategoryChange(category)}
           >
@@ -173,7 +198,9 @@ export default function FaqTab() {
                     <div className="flex-shrink-0 w-20 p-4 border-r border-gray-200 flex justify-center items-center text-center">
                       <span className="text-blue-600 font-bold text-lg">Q.</span>
                     </div>
-                    <div className="flex-1 p-4 flex items-center justify-between font-semibold text-gray-900 leading-relaxed">
+                    <div className={`flex-1 p-4 flex items-center justify-between text-gray-900 leading-relaxed ${
+                      expandedFaq === faq.id ? 'font-semibold' : ''
+                    }`}>
                       <span className="flex-1">{faq.question}</span>
                       <span className="text-gray-600 text-sm transition-transform flex-shrink-0 ml-4">
                         {expandedFaq === faq.id ? "▲" : "▼"}
@@ -181,7 +208,7 @@ export default function FaqTab() {
                     </div>
                   </div>
                   {expandedFaq === faq.id && (
-                    <div className="flex bg-gray-50 border-t border-gray-200 transition-all duration-300 ease-out">
+                    <div className="flex  border-t border-gray-200 transition-all duration-300 ease-out">
                       <div className="flex-shrink-0 w-20 flex justify-center items-start p-6">
                         <span className="text-red-600 font-bold text-lg mt-1">A.</span>
                       </div>
