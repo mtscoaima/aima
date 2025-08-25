@@ -607,7 +607,8 @@ export async function GET(
           name,
           content,
           image_url,
-          category
+          category,
+          template_code
         )
       `)
       .eq("id", campaignId)

@@ -37,7 +37,7 @@ export async function GET(
     const { data: template, error } = await supabase
       .from("message_templates")
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, user_id, buttons"
+        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, user_id, buttons, template_code"
       )
       .eq("id", parseInt(templateId))
       .eq("is_active", true)
@@ -161,7 +161,7 @@ export async function PUT(
       .update(updateData)
       .eq("id", parseInt(templateId))
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, buttons"
+        "id, name, content, image_url, category, usage_count, created_at, is_active, is_private, buttons, template_code"
       )
       .single();
 
@@ -171,6 +171,16 @@ export async function PUT(
         { error: "Failed to update template" },
         { status: 500 }
       );
+    }
+
+    // 템플릿 코드 업데이트 (마지막 사용 캠페인 기반)
+    try {
+      await supabase.rpc('update_template_code', {
+        p_template_id: parseInt(templateId)
+      });
+    } catch (codeUpdateError) {
+      console.error("Template code update error:", codeUpdateError);
+      // template_code 업데이트 실패해도 템플릿 수정은 성공으로 처리
     }
 
     // 응답 데이터 구성
@@ -222,7 +232,7 @@ export async function PATCH(
     // 기존 템플릿 확인 및 권한 검증
     const { data: existingTemplate, error: fetchError } = await supabase
       .from("message_templates")
-      .select("user_id, is_active, name, content, image_url, category, buttons")
+      .select("user_id, is_active, name, content, image_url, category, buttons, template_code")
       .eq("id", parseInt(templateId))
       .single();
 
@@ -247,7 +257,7 @@ export async function PATCH(
       })
       .eq("id", parseInt(templateId))
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, buttons"
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, buttons, template_code"
       )
       .single();
 
