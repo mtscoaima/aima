@@ -9,6 +9,7 @@ interface Template {
   id: number;
   name: string;
   code: string;
+  template_code: string; // 새로 추가: 실제 템플릿 코드
   created_at: string;
   updated_at: string;
   status?: string;
@@ -81,13 +82,15 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
           id: number;
           name: string;
           category?: string;
+          template_code?: string;
           created_at: string;
           updated_at: string;
           is_active?: boolean;
         }) => ({
           id: template.id,
           name: template.name,
-          code: template.category || "결합메시지-1",  // API에서 category를 code로 사용
+          code: template.category || "결합메시지-1",  // API에서 category를 code로 사용 (하위 호환성)
+          template_code: template.template_code || `결합메시지-${template.id}`, // 새로운 템플릿 코드
           created_at: template.created_at,
           updated_at: template.updated_at,
           status: template.is_active ? "활성" : "비활성"
@@ -136,6 +139,7 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
         const keyword = templateFilter.searchKeyword.toLowerCase().trim();
         
         return template.name.toLowerCase().includes(keyword) ||
+               template.template_code.toLowerCase().includes(keyword) ||
                template.id.toString().includes(keyword);
       }
       
@@ -544,13 +548,13 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
 
           {/* 검색창 */}
           <div className="flex flex-row gap-0 mr-auto items-center">
-            <input
-              type="text"
-              placeholder="템플릿 이름 또는 ID"
-              value={templateFilter.searchKeyword}
-              onChange={(e) => setTemplateFilter(prev => ({ ...prev, searchKeyword: e.target.value }))}
-              className="px-3 py-2 border border-gray-300 rounded-l-md border-r-0 text-sm min-w-[250px] h-[38px] box-border focus:outline-none focus:border-blue-500"
-            />
+                         <input
+               type="text"
+               placeholder="템플릿 이름 또는 코드"
+               value={templateFilter.searchKeyword}
+               onChange={(e) => setTemplateFilter(prev => ({ ...prev, searchKeyword: e.target.value }))}
+               className="px-3 py-2 border border-gray-300 rounded-l-md border-r-0 text-sm min-w-[250px] h-[38px] box-border focus:outline-none focus:border-blue-500"
+             />
             <button className="px-3 py-2 border border-gray-300 rounded-r-md bg-gray-100 cursor-pointer transition-colors h-[38px] box-border flex items-center justify-center hover:bg-gray-200">
               🔍
             </button>
@@ -592,7 +596,7 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
                   />
                 </th>
                 <th className="bg-gray-100 px-1 py-2 text-center font-semibold text-xs text-gray-700 border-b border-gray-300 whitespace-nowrap overflow-hidden text-ellipsis sticky top-0 z-10">템플릿 이름</th>
-                <th className="bg-gray-100 px-1 py-2 text-center font-semibold text-xs text-gray-700 border-b border-gray-300 whitespace-nowrap overflow-hidden text-ellipsis sticky top-0 z-10">템플릿 ID</th>
+                <th className="bg-gray-100 px-1 py-2 text-center font-semibold text-xs text-gray-700 border-b border-gray-300 whitespace-nowrap overflow-hidden text-ellipsis sticky top-0 z-10">템플릿 코드</th>
                 <th className="bg-gray-100 px-1 py-2 text-center font-semibold text-xs text-gray-700 border-b border-gray-300 whitespace-nowrap overflow-hidden text-ellipsis sticky top-0 z-10">생성일</th>
                 <th className="bg-gray-100 px-1 py-2 text-center font-semibold text-xs text-gray-700 border-b border-gray-300 whitespace-nowrap overflow-hidden text-ellipsis sticky top-0 z-10">수정일</th>
                 <th className="bg-gray-100 px-1 py-2 text-center font-semibold text-xs text-gray-700 border-b border-gray-300 whitespace-nowrap overflow-hidden text-ellipsis sticky top-0 z-10">관리</th>
@@ -664,7 +668,7 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="px-1 py-2 text-center text-xs text-gray-600 border-b border-gray-100">{template.id}</td>
+                    <td className="px-1 py-2 text-center text-xs text-gray-600 border-b border-gray-100">{template.template_code}</td>
                     <td className="px-1 py-2 text-center text-xs text-gray-600 border-b border-gray-100">{new Date(template.created_at).toLocaleDateString("ko-KR")}</td>
                     <td className="px-1 py-2 text-center text-xs text-gray-600 border-b border-gray-100">{new Date(template.updated_at).toLocaleDateString("ko-KR")}</td>
                     <td className="px-1 py-2 text-center text-xs text-gray-600 border-b border-gray-100">

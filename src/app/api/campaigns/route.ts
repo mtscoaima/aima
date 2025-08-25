@@ -235,6 +235,7 @@ export async function POST(request: NextRequest) {
         created_at: kstTime,
         updated_at: kstTime,
         is_private: false,
+        template_code: "임시-0", // 임시값, 생성 후 업데이트
       };
 
       const { data: newTemplate, error: templateError } = await supabase
@@ -244,13 +245,41 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (templateError) {
+        console.error("Template creation error:", templateError);
         return NextResponse.json(
-          { success: false, message: "템플릿 저장에 실패했습니다." },
+          { success: false, message: "템플릿 저장에 실패했습니다.", error: templateError.message },
           { status: 500 }
         );
       }
 
-      messageTemplate = newTemplate;
+      // 생성된 템플릿의 template_code 업데이트
+      // ad_medium을 기반으로 적절한 템플릿 코드 생성
+      const adMediumMapping: { [key: string]: string } = {
+        'naver_talktalk': '결합메시지',
+        'sms': '문자메시지',
+        'kakao': '카카오메시지',
+        'email': '이메일'
+      };
+      
+      const templateCodePrefix = adMediumMapping[campaignData.adMedium] || '결합메시지';
+      const templateCode = `${templateCodePrefix}-${newTemplate.id}`;
+
+      // template_code 업데이트
+      const { error: updateError } = await supabase
+        .from("message_templates")
+        .update({ template_code: templateCode })
+        .eq("id", newTemplate.id);
+
+      if (updateError) {
+        console.error("Template code update error:", updateError);
+        // template_code 업데이트 실패해도 템플릿 생성은 성공으로 처리
+      }
+
+      // 업데이트된 template_code를 포함한 템플릿 객체 생성
+      messageTemplate = {
+        ...newTemplate,
+        template_code: templateCode
+      };
     }
 
     // 타겟 조건 및 추가 설정을 포함한 JSON 데이터 준비
@@ -447,7 +476,8 @@ export async function GET(request: NextRequest) {
           name,
           content,
           image_url,
-          category
+          category,
+          template_code
         )
       `
       )

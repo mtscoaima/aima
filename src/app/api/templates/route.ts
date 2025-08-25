@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("message_templates")
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, user_id"
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, user_id, template_code"
       )
       .eq("is_active", true);
 
@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
         template.image_url ||
         "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NjY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==",
       category: template.category,
+      template_code: template.template_code, // 템플릿 코드 추가
       usage_count: template.usage_count,
       created_at: template.created_at,
       updated_at: template.updated_at,
@@ -142,6 +143,7 @@ export async function POST(request: NextRequest) {
       user_id: number;
       usage_count: number;
       is_active: boolean;
+      template_code: string; // template_code 필드 추가
       buttons?: Array<{
         id: string;
         text: string;
@@ -159,6 +161,7 @@ export async function POST(request: NextRequest) {
       user_id: parseInt(userId), // 모든 템플릿에 user_id 설정
       usage_count: 0,
       is_active: true,
+      template_code: "임시-0", // 임시값, 생성 후 업데이트
     };
 
     // buttons가 제공된 경우에만 추가
@@ -170,7 +173,7 @@ export async function POST(request: NextRequest) {
       .from("message_templates")
       .insert(insertData)
       .select(
-        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, buttons"
+        "id, name, content, image_url, category, usage_count, created_at, updated_at, is_active, is_private, buttons, template_code"
       )
       .single();
 
@@ -182,9 +185,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 응답 데이터 구성
+    // 새로 생성된 템플릿의 template_code 생성 (기본값: 결합메시지-{id})
+    const templateCode = `결합메시지-${newTemplate.id}`;
+    
+    // template_code 업데이트
+    const { error: updateError } = await supabase
+      .from("message_templates")
+      .update({ template_code: templateCode })
+      .eq("id", newTemplate.id);
+
+    if (updateError) {
+      console.error("Template code update error:", updateError);
+      // template_code 업데이트 실패해도 템플릿 생성은 성공으로 처리
+    }
+
+    // 응답 데이터 구성 (업데이트된 template_code 사용)
     const responseTemplate = {
       ...newTemplate,
+      template_code: templateCode, // 생성된 template_code 사용 (업데이트된 값)
       image_url:
         newTemplate.image_url ||
         "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NjY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==",
