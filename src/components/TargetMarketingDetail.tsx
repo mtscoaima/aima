@@ -677,6 +677,11 @@ function TargetMarketingDetailContent({
                     }
                   }, 100);
                 } else if (data.type === "response_complete") {
+                  // 초기 응답도 완료 시 로딩 상태 해제
+                  setIsLoading(false);
+                  setShowTypingIndicator(false);
+                  setIsImageGenerating(false);
+                  
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.id === assistantMessageId
@@ -697,9 +702,6 @@ function TargetMarketingDetailContent({
                   if (data.imageUrl) {
                     setCurrentGeneratedImage(data.imageUrl);
                   }
-
-                  // 응답이 완료되면 이미지 생성 로딩 상태를 항상 해제
-                  setIsImageGenerating(false);
 
                   if (data.templateData && data.templateData.title) {
                     setTemplateTitle(data.templateData.title);
@@ -748,11 +750,12 @@ function TargetMarketingDetailContent({
           )
         );
       } finally {
+        console.log('[handleInitialResponse] finally 블록 - isLoading:', isLoading);
         setShowTypingIndicator(false);
         setIsImageGenerating(false);
       }
     },
-    [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent]
+    [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent, isLoading]
   );
 
   // 클라이언트에서만 초기 데이터 설정
@@ -1054,6 +1057,8 @@ function TargetMarketingDetailContent({
                 setShowTypingIndicator(false);
                 // 텍스트 교체 시 이미지 생성 로딩 상태도 해제
                 setIsImageGenerating(false);
+                // text_replace를 받으면 응답이 완료된 것으로 간주하고 isLoading 해제
+                setIsLoading(false);
 
                 // 기존 텍스트를 새로운 텍스트로 교체
                 setMessages((prev) =>
@@ -1138,6 +1143,9 @@ function TargetMarketingDetailContent({
                 setCurrentGeneratedImage(data.imageUrl);
                 // 좌측 채팅과 동일: 이미지 생성 완료 시 로딩 상태 해제
                 setIsImageGenerating(false);
+                
+                // image_generated에서도 isLoading을 false로 설정 (임시 해결책)
+                setIsLoading(false);
 
                 // 최종 이미지 생성 완료 시 스크롤
                 setTimeout(() => scrollToBottom(), 100);
@@ -1205,13 +1213,17 @@ function TargetMarketingDetailContent({
                 throw new Error(data.error);
               }
             } catch (parseError) {
-              console.error("JSON 파싱 오류:", parseError, "원본 라인:", line);
-              // JSON 파싱 오류가 발생한 경우 해당 라인을 무시하고 계속 진행
+              console.error("JSON 파싱 오류:", parseError, "원본 라인:", line.slice(0, 100));
+              // JSON 파싱 오류가 발생한 경우 해당 라인을 무시하고 곈4속 진행
               continue;
             }
           }
         }
       }
+      // 스트림이 종료되었는데 response_complete가 없는 경우 강제로 isLoading 해제
+      setIsLoading(false);
+      setShowTypingIndicator(false);
+      setIsImageGenerating(false);
     } catch (error) {
       console.error("AI 채팅 오류:", error);
       setMessages((prev) =>
