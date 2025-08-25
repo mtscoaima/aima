@@ -22,7 +22,32 @@ const supabase = createClient(
 // POST - 문의 등록
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateInquiryRequest = await request.json();
+    // FormData 처리
+    const formData = await request.formData();
+    
+    // 카테고리 매핑
+    const categoryMap: { [key: string]: string } = {
+      "AI 타깃마케팅": "AI_TARGET_MARKETING",
+      "요금제": "PRICING", 
+      "충전": "CHARGING",
+      "로그인": "LOGIN",
+      "회원정보": "USER_INFO",
+      "문자": "MESSAGE",
+      "발송결과": "SEND_RESULT",
+      "기타": "OTHER"
+    };
+
+    const categoryValue = formData.get("category") as string;
+    const mappedCategory = categoryMap[categoryValue] || "OTHER";
+
+    const body: CreateInquiryRequest = {
+      category: mappedCategory as InquiryCategory,
+      title: formData.get("title") as string,
+      content: formData.get("content") as string,
+      sms_notification: formData.get("smsNotification") === "true",
+    };
+    
+    const file = formData.get("file") as File | null;
 
     // 요청 데이터 유효성 검사
     const validation = validateCreateInquiryRequest(body);
@@ -122,6 +147,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 파일 처리
+    let attachedFileName = null;
+    let attachedFilePath = null;
+    
+    if (file && file.size > 0) {
+      // 파일 크기 제한 (10MB)
+      const maxFileSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxFileSize) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "FILE_TOO_LARGE",
+              message: "파일 크기는 10MB를 초과할 수 없습니다.",
+            },
+          } as ApiResponse,
+          { status: 400 }
+        );
+      }
+      
+      // 파일 이름과 경로 설정
+      attachedFileName = file.name;
+      attachedFilePath = `inquiries/${Date.now()}_${file.name}`;
+      
+      // Supabase Storage에 파일 업로드
+      const { error: uploadError } = await supabase.storage
+        .from("inquiry-files")
+        .upload(attachedFilePath, file);
+        
+      if (uploadError) {
+        console.error("파일 업로드 오류:", uploadError);
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "FILE_UPLOAD_ERROR",
+              message: "파일 업로드 중 오류가 발생했습니다.",
+            },
+          } as ApiResponse,
+          { status: 500 }
+        );
+      }
+    }
+
     // 문의 데이터 삽입
     const { data: inquiry, error: inquiryError } = await supabase
       .from("inquiries")
@@ -151,8 +220,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 첨부파일이 있는 경우 처리 (파일 업로드는 별도 엔드포인트에서 처리)
-    // 여기서는 inquiry_id를 반환하여 클라이언트에서 파일 업로드 API를 호출하도록 함
+    // 파일이 있는 경우 첨부파일 테이블에 저장
+    if (file && file.size > 0 && attachedFileName && attachedFilePath) {
+      const { error: attachmentError } = await supabase
+        .from("inquiry_attachments")
+        .insert({
+          inquiry_id: inquiry.id,
+          file_name: attachedFileName,
+          file_path: attachedFilePath,
+          file_size: file.size,
+          content_type: file.type || "application/octet-stream",
+        });
+
+      if (attachmentError) {
+        console.error("첨부파일 저장 오류:", attachmentError);
+        // 파일 저장 실패해도 문의는 등록된 상태로 유지
+      }
+    }
 
     return NextResponse.json({
       success: true,

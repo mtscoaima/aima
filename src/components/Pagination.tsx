@@ -11,7 +11,7 @@ interface PaginationProps {
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
-  totalItems,
+  totalItems: _totalItems, // eslint-disable-line @typescript-eslint/no-unused-vars
   onPageChange,
   className = "",
 }) => {
@@ -40,10 +40,6 @@ const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <div className={`pagination-container ${className}`}>
-      <div className="pagination-info">
-        총 {totalItems}개 항목 - {Math.max(1, totalPages)} 페이지 중{" "}
-        {currentPage} 페이지
-      </div>
       <div className="pagination-controls">
         <button
           className="pagination-button pagination-prev"

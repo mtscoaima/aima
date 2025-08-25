@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
-import ApprovalRequestComplete from "./ApprovalRequestComplete";
-import { PaymentModal } from "@/components/PaymentModal";
+import ApprovalRequestComplete from "@/components/approval/ApprovalRequestComplete";
+import { PaymentModal } from "@/components/credit/PaymentModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import {
   targetOptions,

@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import TargetMarketingDetail from "@/components/TargetMarketingDetail";
-import NaverTalkTalkTab from "@/components/NaverTalkTalkTab";
-import CampaignManagementTab from "@/components/CampaignManagementTab";
-import TemplateManagementTab from "@/components/TemplateManagementTab";
+import TargetMarketingDetail from "@/components/target-marketing/TargetMarketingDetail";
+import NaverTalkTalkTab from "@/components/messages/NaverTalkTalkTab";
+import CampaignManagementTab from "@/components/campaigns/CampaignManagementTab";
+import TemplateManagementTab from "@/components/messages/TemplateManagementTab";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 
 interface DetailProps {

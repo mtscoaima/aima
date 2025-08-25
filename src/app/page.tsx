@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
-import SalespersonDashboard from "../components/SalespersonDashboard";
+import SalespersonDashboard from "@/components/salesperson/SalespersonDashboard";
 
 export default function Home() {
   const { isAuthenticated, user } = useAuth();
