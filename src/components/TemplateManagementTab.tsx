@@ -868,7 +868,7 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
                               )}
                             </div>
 
-                            <div className="flex flex-col lg:flex-row gap-2 min-w-[80px]">
+                            <div className="flex flex-col lg:flex-row gap-2 min-w-[80px] items-center">
                               <button
                                 className="bg-gray-500 text-white border-none rounded px-3 py-1 text-xs cursor-pointer whitespace-nowrap hover:bg-gray-600"
                                 title="링크 확인"
@@ -879,9 +879,9 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
                               {index === dynamicButtons.length - 1 && (
                                 <button
                                   onClick={() => removeDynamicButton(button.id)}
-                                  className="bg-red-500 text-white border-none rounded px-3 py-1 text-xs cursor-pointer whitespace-nowrap hover:bg-red-600"
+                                  className="bg-transparent text-red-500 border-none px-3 py-1 text-xs cursor-pointer whitespace-nowrap hover:text-red-600"
                                 >
-                                  🗑️ 삭제
+                                    삭제
                                 </button>
                               )}
                             </div>
