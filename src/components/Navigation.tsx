@@ -186,10 +186,10 @@ export default function Navigation() {
                     AI 타깃마케팅
                   </button>
                   <button
-                    onClick={() => handleNavClick("/messages/history")}
+                    onClick={() => handleNavClick("/credit-management")}
                     className="landing-nav-menu-item landing-nav-menu-btn"
                   >
-                    발송현황
+                    충전하기
                   </button>
                   <button
                     onClick={() => handleNavClick("/messages/send")}
@@ -198,16 +198,16 @@ export default function Navigation() {
                     문자
                   </button>
                   <button
+                    onClick={() => handleNavClick("/messages/history")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
+                  >
+                    발송결과
+                  </button>
+                  <button
                     onClick={() => handleNavClick("/support")}
                     className="landing-nav-menu-item landing-nav-menu-btn"
                   >
                     고객센터
-                  </button>
-                  <button
-                    onClick={() => handleNavClick("/credit-management")}
-                    className="landing-nav-menu-item landing-nav-menu-btn"
-                  >
-                    크레딧 관리
                   </button>
                 </>
               )}
@@ -269,10 +269,10 @@ export default function Navigation() {
                     AI 타깃마케팅
                   </button>
                   <button
-                    onClick={() => handleNavClick("/messages/history")}
+                    onClick={() => handleNavClick("/credit-management")}
                     className="mobile-menu-item mobile-menu-btn"
                   >
-                    발송현황
+                    충전하기
                   </button>
                   <button
                     onClick={() => handleNavClick("/messages/send")}
@@ -281,16 +281,16 @@ export default function Navigation() {
                     문자
                   </button>
                   <button
+                    onClick={() => handleNavClick("/messages/history")}
+                    className="mobile-menu-item mobile-menu-btn"
+                  >
+                    발송결과
+                  </button>
+                  <button
                     onClick={() => handleNavClick("/support")}
                     className="mobile-menu-item mobile-menu-btn"
                   >
                     고객센터
-                  </button>
-                  <button
-                    onClick={() => handleNavClick("/credit-management")}
-                    className="mobile-menu-item mobile-menu-btn"
-                  >
-                    크레딧 관리
                   </button>
                 </>
               )}
