@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const { message, previousMessages, initialImage } = await request.json();
 
+
     if (!message) {
       return NextResponse.json(
         { error: "메시지가 필요합니다." },
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       role: msg.role,
       content: [
         {
-          type: "input_text",
+          type: msg.role === "user" ? "input_text" : "output_text",
           text: msg.content,
         },
       ],
@@ -39,11 +40,18 @@ export async function POST(request: NextRequest) {
           userContent.push({
             type: "input_text",
             text: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
+            프롬프트와 관계 없이 항상 이미지는 하나만 생성해주세요.
             never contain text in image
+            quick_action_buttons 버튼 텍스트는 최대 4개까지 포함해주세요.
             응답은 다음 JSON 형식으로 포함해주세요:
             {
               "response": "마케팅 조언 및 설명",
               "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내)"
+              "quick_action_buttons": [
+                {
+                  "text": "버튼 텍스트",
+                }
+              ]
             }
             
             ${
@@ -67,7 +75,7 @@ export async function POST(request: NextRequest) {
 
           // OpenAI 스트리밍 응답 생성
           const response = await client.responses.create({
-            model: "gpt-4.1-mini",
+            model: "gpt-5",
             input: [
               ...conversationHistory,
               {
@@ -79,10 +87,11 @@ export async function POST(request: NextRequest) {
               {
                 type: "image_generation",
                 partial_images: 3,
-                quality: "low",
+                quality: "high",
                 size: "1024x1024",
               },
             ],
+            reasoning: { effort: "low" },
             stream: true,
           });
 
@@ -93,7 +102,35 @@ export async function POST(request: NextRequest) {
           let partialImages: string[] = [];
           let smsTextContent = "";
           let displayText = "";
+          let quickActionButtons: Array<{text: string}> = [];
           let isJsonParsed = false;
+          let isControllerClosed = false;
+
+          // 컨트롤러 상태 확인 함수
+          const safeEnqueue = (data: string) => {
+            if (isControllerClosed) {
+              return; // 이미 닫혔으면 무시
+            }
+            try {
+              controller.enqueue(new TextEncoder().encode(data));
+            } catch (error) {
+              console.error("Stream controller error:", error);
+              isControllerClosed = true; // 오류 발생 시 닫힌 상태로 표시
+            }
+          };
+
+          // 컨트롤러 안전 닫기 함수
+          const safeClose = () => {
+            if (!isControllerClosed) {
+              try {
+                safeClose();
+                isControllerClosed = true;
+              } catch (error) {
+                console.error("Controller close error:", error);
+                isControllerClosed = true;
+              }
+            }
+          };
 
           // 스트림 이벤트 처리
           for await (const event of response) {
@@ -115,6 +152,7 @@ export async function POST(request: NextRequest) {
                     // JSON이 완성되면 response 부분만 표시
                     displayText = jsonResponse.response;
                     smsTextContent = jsonResponse.sms_text_content || "";
+                    quickActionButtons = jsonResponse.quick_action_buttons || [];
                     isJsonParsed = true;
 
                     // 기존 텍스트를 지우고 새로운 텍스트로 교체
@@ -122,10 +160,9 @@ export async function POST(request: NextRequest) {
                       type: "text_replace",
                       content: displayText,
                       smsTextContent: smsTextContent,
+                      quickActionButtons: quickActionButtons,
                     });
-                    controller.enqueue(
-                      new TextEncoder().encode(`data: ${data}\n\n`)
-                    );
+                    safeEnqueue(`data: ${data}\n\n`);
                   }
                 } else if (!isJsonParsed) {
                   // JSON이 아직 완성되지 않았으면 델타 전송하지 않음
@@ -139,9 +176,7 @@ export async function POST(request: NextRequest) {
                       type: "text_delta",
                       content: textDelta,
                     });
-                    controller.enqueue(
-                      new TextEncoder().encode(`data: ${data}\n\n`)
-                    );
+                    safeEnqueue(`data: ${data}\n\n`);
                   }
                 }
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -172,39 +207,54 @@ export async function POST(request: NextRequest) {
                 imageUrl: partialImageUrl,
                 index: partialImageIndex,
               });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+              safeEnqueue(`data: ${data}\n\n`);
             } else if (
-              eventAny.type === "response.image_generation_call.result"
+              eventAny.type === "response.image_generation_call.result" ||
+              eventAny.type === "response.image_generation_call.completed"
             ) {
               // 최종 이미지 생성 완료
-              imageUrl = `data:image/png;base64,${eventAny.result}`;
+              const imageBase64 = eventAny.result || eventAny.image_b64;
+              if (imageBase64) {
+                imageUrl = `data:image/png;base64,${imageBase64}`;
 
-              // 최종 이미지 URL 전송
-              const data = JSON.stringify({
-                type: "image_generated",
-                imageUrl: imageUrl,
-              });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+                // 최종 이미지 URL 전송
+                const data = JSON.stringify({
+                  type: "image_generated",
+                  imageUrl: imageUrl,
+                });
+                safeEnqueue(`data: ${data}\n\n`);
+              }
             } else if (eventAny.type === "response.done") {
+              // 이미지가 생성된 경우 최종 전솤
+              if (imageUrl) {
+                const data = JSON.stringify({
+                  type: "image_generated",
+                  imageUrl: imageUrl,
+                });
+                safeEnqueue(`data: ${data}\n\n`);
+              }
               // 응답 완료 - 이미 파싱된 데이터 사용 또는 재파싱
               if (!isJsonParsed) {
                 try {
-                  // JSON 형식의 응답에서 sms_text_content 추출
+                  // JSON 형식의 응답에서 모든 필드 추출
                   const jsonMatch = fullText.match(
-                    /\{[\s\S]*"sms_text_content"[\s\S]*\}/
+                    /\{[\s\S]*"response"[\s\S]*\}/
                   );
                   if (jsonMatch) {
                     const jsonResponse = JSON.parse(jsonMatch[0]);
                     displayText = jsonResponse.response || fullText;
                     smsTextContent = jsonResponse.sms_text_content || "";
+                    quickActionButtons = jsonResponse.quick_action_buttons || [];
                   } else {
                     displayText = fullText;
                     smsTextContent = extractSMSContent(fullText);
+                    quickActionButtons = [];
                   }
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (error) {
                   displayText = fullText;
                   smsTextContent = extractSMSContent(fullText);
+                  quickActionButtons = [];
                 }
               }
 
@@ -223,13 +273,14 @@ export async function POST(request: NextRequest) {
                 imageUrl: imageUrl,
                 templateData: templateData,
                 smsTextContent: smsTextContent,
+                quickActionButtons: quickActionButtons,
               });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+              safeEnqueue(`data: ${data}\n\n`);
               break;
             }
           }
 
-          controller.close();
+          safeClose();
         } catch (error) {
           console.error("스트리밍 오류:", error);
           
@@ -249,10 +300,12 @@ export async function POST(request: NextRequest) {
             type: "error",
             error: errorMessage,
           });
-          controller.enqueue(
-            new TextEncoder().encode(`data: ${errorData}\n\n`)
-          );
-          controller.close();
+          try {
+            controller.enqueue(new TextEncoder().encode(`data: ${errorData}\n\n`));
+            controller.close();
+          } catch {
+            // 컨트롤러가 이미 닫혔으면 무시
+          }
         }
       },
     });

@@ -11,14 +11,6 @@ export interface ChatResponse {
   imageUrl?: string;
 }
 
-export interface EditImageRequest {
-  baseImageUrl: string;
-  editPrompt: string;
-}
-
-export interface EditImageResponse {
-  imageUrl: string;
-}
 
 /**
  * AI 채팅 API 호출 (일반)
@@ -107,28 +99,6 @@ export const sendChatMessageStreaming = async (
   }
 };
 
-/**
- * 이미지 편집 API 호출
- */
-export const editImage = async (request: EditImageRequest): Promise<EditImageResponse> => {
-  const response = await fetch("/api/ai/edit-image", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "이미지 편집에 실패했습니다.");
-  }
-
-  const data = await response.json();
-  return {
-    imageUrl: data.imageUrl,
-  };
-};
 
 /**
  * MMS 발송 API 호출 (AI를 통한 직접 발송)

@@ -31,7 +31,6 @@ import {
   useCalculations
 } from "@/hooks/useTargetMarketing";
 import {
-  IMAGE_EDIT_KEYWORDS,
   FILE_CONSTRAINTS,
   CAMPAIGN_CONSTANTS,
   TEXT_LIMITS,
@@ -45,7 +44,6 @@ import TemplateModal from "@/components/modals/TemplateModal";
 import PreviewModal from "@/components/modals/PreviewModal";
 import SaveTemplateModal from "@/components/modals/SaveTemplateModal";
 // 분리된 API 서비스들
-import * as aiService from "@/services/aiService";
 import * as templateService from "@/services/templateService";
 import * as campaignService from "@/services/campaignService";
 import * as creditService from "@/services/creditService";
@@ -77,6 +75,7 @@ function TargetMarketingDetailContent({
   const [isLoading, setIsLoading] = useState(false);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [smsTextContent, setSmsTextContent] = useState("");
+  const [quickActionButtons, setQuickActionButtons] = useState<Array<{text: string}>>([]);
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState<
     string | null
   >(null);
@@ -600,6 +599,8 @@ function TargetMarketingDetailContent({
                   }, 50);
                 } else if (data.type === "text_replace") {
                   setShowTypingIndicator(false);
+                  // 텍스트 교체 시 이미지 생성 로딩 상태도 해제
+                  setIsImageGenerating(false);
 
                   setMessages((prev) =>
                     prev.map((msg) =>
@@ -615,6 +616,10 @@ function TargetMarketingDetailContent({
 
                   if (data.smsTextContent) {
                     setSmsTextContent(data.smsTextContent);
+                  }
+
+                  if (data.quickActionButtons) {
+                    setQuickActionButtons(data.quickActionButtons);
                   }
 
                   if (data.templateData && data.templateData.title) {
@@ -672,6 +677,11 @@ function TargetMarketingDetailContent({
                     }
                   }, 100);
                 } else if (data.type === "response_complete") {
+                  // 초기 응답도 완료 시 로딩 상태 해제
+                  setIsLoading(false);
+                  setShowTypingIndicator(false);
+                  setIsImageGenerating(false);
+                  
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.id === assistantMessageId
@@ -692,9 +702,6 @@ function TargetMarketingDetailContent({
                   if (data.imageUrl) {
                     setCurrentGeneratedImage(data.imageUrl);
                   }
-
-                  // 응답이 완료되면 이미지 생성 로딩 상태를 항상 해제
-                  setIsImageGenerating(false);
 
                   if (data.templateData && data.templateData.title) {
                     setTemplateTitle(data.templateData.title);
@@ -743,11 +750,12 @@ function TargetMarketingDetailContent({
           )
         );
       } finally {
+        console.log('[handleInitialResponse] finally 블록 - isLoading:', isLoading);
         setShowTypingIndicator(false);
         setIsImageGenerating(false);
       }
     },
-    [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent]
+    [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent, isLoading]
   );
 
   // 클라이언트에서만 초기 데이터 설정
@@ -910,63 +918,12 @@ function TargetMarketingDetailContent({
     }
   }, [refreshTransactions, restoreState]);
 
-  // 이미지 편집 처리
-  const handleImageEdit = useCallback(async (prompt: string) => {
-    if (!currentGeneratedImage) {
-      alert("편집할 이미지가 없습니다. 먼저 이미지를 생성해주세요.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setShowTypingIndicator(true);
-
-      const data = await aiService.editImage({
-          baseImageUrl: currentGeneratedImage,
-          editPrompt: prompt,
-      });
-
-      setCurrentGeneratedImage(data.imageUrl);
-
-        const editedMessage: Message = {
-        id: idUtils.generateEditedImageId(),
-          role: "assistant",
-          content: `✨ 이미지가 수정되었습니다: ${prompt}`,
-          timestamp: new Date(),
-        imageUrl: data.imageUrl,
-        };
-        setMessages((prev) => [...prev, editedMessage]);
-    } catch (error) {
-      const errorMessage: Message = {
-        id: idUtils.generateErrorMessageId(),
-        role: "assistant",
-        content: `❌ 이미지 편집 중 오류가 발생했습니다: ${
-          error instanceof Error ? error.message : "알 수 없는 오류"
-        }`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      setShowTypingIndicator(false);
-    }
-  }, [currentGeneratedImage]);
 
   // 메시지 전송 처리
   const handleSendMessage = useCallback(async (messageOverride?: string) => {
     const messageToSend = messageOverride || inputMessage;
     if (!messageToSend.trim() || isLoading) return;
 
-    // 이미지 수정 키워드 감지
-    const hasImageEditKeyword = IMAGE_EDIT_KEYWORDS.some((keyword) =>
-      messageToSend.includes(keyword)
-    );
-
-    // 현재 이미지가 있고 이미지 수정 키워드가 포함된 경우
-    if (currentGeneratedImage && hasImageEditKeyword) {
-      await handleImageEdit(messageToSend);
-      return;
-    }
 
     const userMessage: Message = {
       id: idUtils.generateUserMessageId(),
@@ -1001,6 +958,32 @@ function TargetMarketingDetailContent({
     setMessages((prev) => [...prev, assistantMessage]);
 
     try {
+      // 선택된 파일이 있으면 base64로 변환, 없으면 sessionStorage에서 확인
+      let initialImageBase64: string | undefined;
+      if (selectedFile && selectedFile.type.startsWith("image/")) {
+        initialImageBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve(e.target?.result as string);
+          };
+          reader.readAsDataURL(selectedFile);
+        });
+      } else {
+        // selectedFile이 없으면 sessionStorage에서 확인
+        const savedFileData = sessionStorage.getItem('selectedFile');
+        if (savedFileData) {
+          try {
+            const fileInfo = JSON.parse(savedFileData);
+            if (fileInfo.dataUrl && fileInfo.type?.startsWith("image/")) {
+              initialImageBase64 = fileInfo.dataUrl;
+            }
+          } catch (error) {
+            console.error('Failed to parse sessionStorage file data:', error);
+          }
+        }
+      }
+
+
       // 스트리밍 API 호출
       const response = await fetch("/api/ai/chat", {
         method: "POST",
@@ -1010,6 +993,7 @@ function TargetMarketingDetailContent({
         body: JSON.stringify({
           message: messageToSend,
           previousMessages: messages,
+          initialImage: initialImageBase64,
         }),
       });
 
@@ -1038,19 +1022,15 @@ function TargetMarketingDetailContent({
             try {
               const jsonString = line.slice(6).trim();
 
-              // 더 강화된 JSON 검증 (일반 메시지)
+              // JSON 검증 (개선된 버전 - response_complete 이벤트 허용)
               if (
                 !jsonString ||
-                jsonString.length < 10 ||
+                jsonString.length < 5 ||
                 jsonString === "{" ||
-                jsonString.startsWith('{"response') ||
-                jsonString.startsWith('{ "response') ||
-                !jsonString.endsWith("}") ||
-                !jsonString.includes('"type"')
+                !jsonString.endsWith("}")
               ) {
                 continue;
               }
-
               const data = JSON.parse(jsonString);
 
               if (data.type === "text_delta") {
@@ -1075,6 +1055,10 @@ function TargetMarketingDetailContent({
               } else if (data.type === "text_replace") {
                 // JSON 파싱 완료 후 텍스트 교체
                 setShowTypingIndicator(false);
+                // 텍스트 교체 시 이미지 생성 로딩 상태도 해제
+                setIsImageGenerating(false);
+                // text_replace를 받으면 응답이 완료된 것으로 간주하고 isLoading 해제
+                setIsLoading(false);
 
                 // 기존 텍스트를 새로운 텍스트로 교체
                 setMessages((prev) =>
@@ -1094,6 +1078,11 @@ function TargetMarketingDetailContent({
                   setSmsTextContent(data.smsTextContent);
                 }
 
+                // 퀵 액션 버튼 업데이트
+                if (data.quickActionButtons) {
+                  setQuickActionButtons(data.quickActionButtons);
+                }
+
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - text_replace)
                 if (data.templateData && data.templateData.title) {
                   setTemplateTitle(data.templateData.title);
@@ -1104,8 +1093,20 @@ function TargetMarketingDetailContent({
               } else if (data.type === "partial_image") {
                 // 첫 번째 이미지 응답이 오면 타이핑 인디케이터 숨기기
                 setShowTypingIndicator(false);
-                // 이미지 생성 중 상태 활성화
+                // 좌측 채팅과 동일: 이미지 생성 중 상태 활성화
                 setIsImageGenerating(true);
+                
+                // 좌측 채팅창에서 isImageLoading을 true로 설정하는 것처럼 우측도 동일하게 처리
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? {
+                          ...msg,
+                          isImageLoading: true,
+                        }
+                      : msg
+                  )
+                );
 
                 // 부분 이미지 생성 중 (미리보기)
                 setMessages((prev) =>
@@ -1140,13 +1141,19 @@ function TargetMarketingDetailContent({
 
                 // 생성된 이미지를 우측 첨부 영역에 표시
                 setCurrentGeneratedImage(data.imageUrl);
-                // 이미지 생성 완료 시 로딩 상태 해제
+                // 좌측 채팅과 동일: 이미지 생성 완료 시 로딩 상태 해제
                 setIsImageGenerating(false);
+                
+                // image_generated에서도 isLoading을 false로 설정 (임시 해결책)
+                setIsLoading(false);
 
                 // 최종 이미지 생성 완료 시 스크롤
                 setTimeout(() => scrollToBottom(), 100);
               } else if (data.type === "response_complete") {
-                // 응답 완료
+                // 응답 완료 - 로딩 상태 초기화
+                setIsLoading(false);
+                setShowTypingIndicator(false);
+                
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMessageId
@@ -1165,6 +1172,11 @@ function TargetMarketingDetailContent({
                   setSmsTextContent(data.smsTextContent);
                 }
 
+                // 퀵 액션 버튼 업데이트
+                if (data.quickActionButtons) {
+                  setQuickActionButtons(data.quickActionButtons);
+                }
+
                 // 생성된 이미지가 있으면 currentGeneratedImage에도 설정
                 if (data.imageUrl && !currentGeneratedImage) {
                   setCurrentGeneratedImage(data.imageUrl);
@@ -1175,7 +1187,6 @@ function TargetMarketingDetailContent({
                   setCurrentGeneratedImage(data.imageUrl);
                 }
 
-                // 응답이 완료되면 이미지 생성 로딩 상태를 항상 해제
                 setIsImageGenerating(false);
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
@@ -1202,13 +1213,17 @@ function TargetMarketingDetailContent({
                 throw new Error(data.error);
               }
             } catch (parseError) {
-              console.error("JSON 파싱 오류:", parseError, "원본 라인:", line);
-              // JSON 파싱 오류가 발생한 경우 해당 라인을 무시하고 계속 진행
+              console.error("JSON 파싱 오류:", parseError, "원본 라인:", line.slice(0, 100));
+              // JSON 파싱 오류가 발생한 경우 해당 라인을 무시하고 곈4속 진행
               continue;
             }
           }
         }
       }
+      // 스트림이 종료되었는데 response_complete가 없는 경우 강제로 isLoading 해제
+      setIsLoading(false);
+      setShowTypingIndicator(false);
+      setIsImageGenerating(false);
     } catch (error) {
       console.error("AI 채팅 오류:", error);
       setMessages((prev) =>
@@ -1224,8 +1239,19 @@ function TargetMarketingDetailContent({
     } finally {
       setIsLoading(false);
       setShowTypingIndicator(false);
+      
+      // 파일이 성공적으로 전송되었으면 선택된 파일 정리
+      if (selectedFile) {
+        setSelectedFile(null);
+        setFilePreviewUrl(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        // sessionStorage도 정리
+        sessionStorage.removeItem('selectedFile');
+      }
     }
-  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, handleImageEdit, smsTextContent, templateTitle]);
+  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, smsTextContent, templateTitle, selectedFile]);
 
   // 초기 메시지 처리
   useEffect(() => {
@@ -1243,6 +1269,39 @@ function TargetMarketingDetailContent({
       }
     }
   }, [isInitialized, handleSendMessage]);
+
+  // sessionStorage에서 선택된 파일 복원
+  useEffect(() => {
+    const savedFileData = sessionStorage.getItem('selectedFile');
+    if (savedFileData) {
+      try {
+        const fileInfo = JSON.parse(savedFileData);
+        if (fileInfo.dataUrl && fileInfo.type?.startsWith("image/")) {
+          // base64 데이터를 File 객체로 변환
+          fetch(fileInfo.dataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+              const file = new File([blob], fileInfo.name, { type: fileInfo.type });
+              setSelectedFile(file);
+              setFilePreviewUrl(fileInfo.dataUrl);
+            })
+            .catch(error => {
+              console.error('Failed to restore file:', error);
+              sessionStorage.removeItem('selectedFile');
+            });
+        } else if (fileInfo.dataUrl === null) {
+          // 이미지가 아닌 파일의 경우
+          const blob = new Blob([''], { type: fileInfo.type });
+          const file = new File([blob], fileInfo.name, { type: fileInfo.type });
+          setSelectedFile(file);
+          setFilePreviewUrl(null);
+        }
+      } catch (error) {
+        console.error('Failed to parse saved file data:', error);
+        sessionStorage.removeItem('selectedFile');
+      }
+    }
+  }, []);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1270,15 +1329,31 @@ function TargetMarketingDetailContent({
 
     setSelectedFile(file);
 
-    // 이미지 파일인 경우 미리보기 생성
+    // 이미지 파일인 경우 미리보기 생성 및 sessionStorage에 저장
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setFilePreviewUrl(e.target?.result as string);
+        const dataUrl = e.target?.result as string;
+        setFilePreviewUrl(dataUrl);
+        
+        // sessionStorage에 파일 정보 저장
+        sessionStorage.setItem('selectedFile', JSON.stringify({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: dataUrl
+        }));
       };
       reader.readAsDataURL(file);
     } else {
       setFilePreviewUrl(null);
+      // 이미지가 아닌 파일도 sessionStorage에 저장
+      sessionStorage.setItem('selectedFile', JSON.stringify({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: null
+      }));
     }
   };
 
@@ -1293,6 +1368,8 @@ function TargetMarketingDetailContent({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    // sessionStorage도 정리
+    sessionStorage.removeItem('selectedFile');
   };
 
   // 템플릿 이미지 업로드 핸들러들
@@ -1802,34 +1879,51 @@ function TargetMarketingDetailContent({
                 {/* AI 답변에만 빠른 버튼 표시 (로딩 중이 아닐 때만) */}
                 {message.role === "assistant" && !showTypingIndicator && (
                   <div className="flex gap-2 mt-4 flex-wrap">
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("이미지를 다른 스타일로 수정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      이미지 수정
-                    </button>
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("텍스트 내용을 수정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      텍스트 수정
-                    </button>
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("타깃 고객층을 수정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      타깃 수정
-                    </button>
-                    <button
-                      className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleQuickBadgeClick("할인율을 조정해주세요")}
-                      disabled={isLoading || showTypingIndicator}
-                    >
-                      할인율 수정
-                    </button>
+                    {/* Dynamic quick action buttons from AI response */}
+                    {quickActionButtons.length > 0 ? (
+                      quickActionButtons.map((button, index) => (
+                        <button
+                          key={index}
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick(button.text)}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          {button.text}
+                        </button>
+                      ))
+                    ) : (
+                      // Fallback to static buttons if no dynamic buttons are available
+                      <>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("이미지를 다른 스타일로 수정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          이미지 수정
+                        </button>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("텍스트 내용을 수정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          텍스트 수정
+                        </button>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("타깃 고객층을 수정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          타깃 수정
+                        </button>
+                        <button
+                          className="bg-gray-100 text-gray-700 border-none rounded-2xl px-4 py-2 text-sm font-medium cursor-pointer whitespace-nowrap transition-all flex-shrink-0 hover:bg-gray-400 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleQuickBadgeClick("할인율을 조정해주세요")}
+                          disabled={isLoading || showTypingIndicator}
+                        >
+                          할인율 수정
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -2055,6 +2149,7 @@ function TargetMarketingDetailContent({
                        height={192}
                        className="w-full h-full object-cover"
                      />
+                     {/* 가장 간단한 로직: currentGeneratedImage가 있고 isImageGenerating이 false일 때만 로딩 숨김 */}
                      {isImageGenerating && (
                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center flex-col text-white text-sm rounded-lg">
                          <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
