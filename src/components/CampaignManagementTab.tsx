@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import RejectionReasonModal from "./modals/RejectionReasonModal";
+import CampaignDetailModal from "./modals/CampaignDetailModal";
 
 // 캠페인 데이터 인터페이스
 interface RealCampaign {
@@ -69,6 +71,25 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
   
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // 차트 드롭다운 상태 - 두 개의 독립적인 지표 선택
+  const [firstMetric, setFirstMetric] = useState("impressions"); // 첫 번째 선
+  const [secondMetric, setSecondMetric] = useState("clicks"); // 두 번째 선
+  const [isFirstDropdownOpen, setIsFirstDropdownOpen] = useState(false);
+  const [isSecondDropdownOpen, setIsSecondDropdownOpen] = useState(false);
+  const firstDropdownRef = useRef<HTMLDivElement>(null);
+  const secondDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 차트 지표 옵션들 (추후 확장 가능)
+  const chartMetricOptions = [
+    { value: "impressions", label: "노출 수", color: "#3b82f6" },
+    { value: "clicks", label: "클릭 수", color: "#10b981" },
+    // 추후 확장 예시:
+    // { value: "conversions", label: "전환 수", color: "#f59e0b" },
+    // { value: "cost", label: "비용", color: "#ef4444" },
+    // { value: "ctr", label: "클릭률", color: "#8b5cf6" },
+    // { value: "cpm", label: "CPM", color: "#ec4899" }
+  ];
   
   // 더미 차트 데이터
   const getChartData = () => {
@@ -95,12 +116,95 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
   // 캠페인 선택 관련
   const [selectedCampaigns, setSelectedCampaigns] = useState<number[]>([]);
 
-  // 캠페인 이름 수정 관련
-  const [editingCampaignId, setEditingCampaignId] = useState<number | null>(null);
-  const [editingCampaignName, setEditingCampaignName] = useState("");
+
 
   // 모달 상태들
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState<boolean>(false);
+  const [selectedRejectionReason, setSelectedRejectionReason] = useState<string | null>(null);
+  const [selectedCampaignName, setSelectedCampaignName] = useState<string>("");
+  
+  // 상세보기 모달
+  const [isCampaignDetailModalOpen, setIsCampaignDetailModalOpen] = useState<boolean>(false);
+  const [selectedCampaignDetail, setSelectedCampaignDetail] = useState<RealCampaign | null>(null);
 
+
+  // 상세보기 모달 열기
+  const handleViewCampaignDetail = async (campaignId: number) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('캠페인 정보를 불러올 수 없습니다.');
+      }
+
+      const data = await response.json();
+      setSelectedCampaignDetail(data.campaign);
+      setIsCampaignDetailModalOpen(true);
+    } catch (error) {
+      console.error('캠페인 상세 정보 조회 실패:', error);
+      alert('캠페인 상세 정보를 불러올 수 없습니다.');
+    }
+  };
+
+  // 캠페인 네비게이션
+  const handleCampaignNavigate = (direction: 'prev' | 'next') => {
+    const filteredCampaigns = getFilteredCampaigns();
+    if (!selectedCampaignDetail) return;
+    
+    const currentIndex = filteredCampaigns.findIndex(c => c.id === selectedCampaignDetail.id);
+    let newIndex: number;
+    
+    if (direction === 'prev') {
+      newIndex = currentIndex - 1;
+    } else {
+      newIndex = currentIndex + 1;
+    }
+    
+    if (newIndex >= 0 && newIndex < filteredCampaigns.length) {
+      const nextCampaign = filteredCampaigns[newIndex];
+      handleViewCampaignDetail(nextCampaign.id);
+    }
+  };
+
+  // 현재 캠페인 인덱스 계산
+  const getCurrentCampaignIndex = () => {
+    if (!selectedCampaignDetail) return 0;
+    const filteredCampaigns = getFilteredCampaigns();
+    return filteredCampaigns.findIndex(c => c.id === selectedCampaignDetail.id);
+  };
+
+  // 반려사유 조회
+  const handleViewRejectionReason = async (campaignId: number, campaignName: string) => {
+    if (!user) return;
+    
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('캠페인 정보를 불러올 수 없습니다.');
+      }
+
+      const data = await response.json();
+      setSelectedRejectionReason(data.campaign.rejection_reason);
+      setSelectedCampaignName(campaignName);
+      setIsRejectionModalOpen(true);
+    } catch (error) {
+      console.error('반려사유 조회 실패:', error);
+      alert('반려사유를 불러올 수 없습니다.');
+    }
+  };
 
   // 캠페인 데이터 로드
   const loadRealCampaigns = useCallback(async () => {
@@ -144,22 +248,28 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     }
   }, [user, loadRealCampaigns]);
 
-  // 날짜 피커 외부 클릭 시 닫기
+  // 날짜 피커와 차트 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
         setIsDatePickerOpen(false);
       }
+      if (firstDropdownRef.current && !firstDropdownRef.current.contains(event.target as Node)) {
+        setIsFirstDropdownOpen(false);
+      }
+      if (secondDropdownRef.current && !secondDropdownRef.current.contains(event.target as Node)) {
+        setIsSecondDropdownOpen(false);
+      }
     };
 
-    if (isDatePickerOpen) {
+    if (isDatePickerOpen || isFirstDropdownOpen || isSecondDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isDatePickerOpen]);
+  }, [isDatePickerOpen, isFirstDropdownOpen, isSecondDropdownOpen]);
 
   // 날짜 관련 함수들
   const formatDateRange = () => {
@@ -190,10 +300,15 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     }));
   };
 
-  // 차트 렌더링 함수
+  // 차트 렌더링 함수 (두 개의 선을 동시에 표시)
   const renderChart = () => {
     const { dates, impressions, clicks } = getChartData();
-    const maxValue = Math.max(...impressions, ...clicks);
+    const allData = { impressions, clicks };
+    
+    const firstData = allData[firstMetric as keyof typeof allData];
+    const secondData = allData[secondMetric as keyof typeof allData];
+    const maxValue = Math.max(...firstData, ...secondData);
+    
     const chartWidth = 800;
     const chartHeight = 200;
     const padding = 40;
@@ -201,16 +316,22 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     const xStep = (chartWidth - padding * 2) / (dates.length - 1);
     const yScale = (chartHeight - padding * 2) / maxValue;
     
-    const impressionPoints = impressions.map((value, index) => 
+    const firstPoints = firstData.map((value, index) => 
       `${padding + index * xStep},${chartHeight - padding - value * yScale}`
     ).join(' ');
     
-    const clickPoints = clicks.map((value, index) =>
+    const secondPoints = secondData.map((value, index) =>
       `${padding + index * xStep},${chartHeight - padding - value * yScale}`
     ).join(' ');
+    
+    const firstOption = chartMetricOptions.find(option => option.value === firstMetric);
+    const secondOption = chartMetricOptions.find(option => option.value === secondMetric);
+    
+    // 동일한 지표가 선택된 경우 체크
+    const isSameMetric = firstMetric === secondMetric;
     
     return (
-      <div className="bg-white rounded-lg border p-4 mb-4">
+      <div className="bg-white rounded-lg border p-4 mb-4 relative">
         <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
           {/* 격자선 */}
           <defs>
@@ -221,7 +342,7 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
           <rect width="100%" height="100%" fill="url(#grid)" />
           
           {/* Y축 라벨 */}
-          {[0, 200, 400, 600].map(value => (
+          {[0, Math.floor(maxValue * 0.25), Math.floor(maxValue * 0.5), Math.floor(maxValue * 0.75), maxValue].map(value => (
             <g key={value}>
               <text 
                 x={padding - 10} 
@@ -255,41 +376,137 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
             </text>
           ))}
           
-          {/* 노출수 선 (파란색) */}
+          {/* 첫 번째 지표 선 */}
           <polyline
-            points={impressionPoints}
+            points={firstPoints}
             fill="none"
-            stroke="#3b82f6"
+            stroke={firstOption?.color || "#3b82f6"}
             strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
           
-          {/* 클릭수 선 (초록색) */}
-          <polyline
-            points={clickPoints}
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          
-          {/* 범례 */}
-          <g transform={`translate(${chartWidth - 120}, 30)`}>
-            <rect x="0" y="0" width="12" height="2" fill="#3b82f6" />
-            <text x="18" y="8" className="text-xs fill-gray-700">노출수</text>
-            <rect x="0" y="20" width="12" height="2" fill="#10b981" />
-            <text x="18" y="28" className="text-xs fill-gray-700">클릭수</text>
-          </g>
+          {/* 두 번째 지표 선 (동일한 지표가 아닐 때만 표시) */}
+          {!isSameMetric && (
+            <polyline
+              points={secondPoints}
+              fill="none"
+              stroke={secondOption?.color || "#10b981"}
+              strokeWidth="2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          )}
         </svg>
+        
+        {/* 차트 내부 드롭다운 (범례 위치) */}
+        <div className="absolute top-4 right-8 flex space-x-2">
+          {/* 첫 번째 지표 드롭다운 */}
+          <div className="relative" ref={firstDropdownRef}>
+            <button
+              onClick={() => setIsFirstDropdownOpen(!isFirstDropdownOpen)}
+              className="flex items-center space-x-2 px-3 py-1 bg-white/90 border border-gray-300 rounded-md hover:bg-white transition-colors duration-200 text-xs shadow-sm backdrop-blur-sm"
+            >
+              <div 
+                className="w-3 h-0.5 rounded-full"
+                style={{ backgroundColor: firstOption?.color }}
+              />
+              <span className="text-gray-700">
+                {firstOption?.label}
+              </span>
+              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {/* 첫 번째 드롭다운 메뉴 */}
+            {isFirstDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-40 min-w-[120px]">
+                <div className="py-1">
+                  {chartMetricOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setFirstMetric(option.value);
+                        setIsFirstDropdownOpen(false);
+                      }}
+                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors duration-200 ${
+                        firstMetric === option.value ? "bg-blue-50 text-blue-700" : "text-gray-700"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-3 h-0.5 rounded-full"
+                          style={{ backgroundColor: option.color }}
+                        />
+                        <span>{option.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 두 번째 지표 드롭다운 (항상 표시) */}
+          <div className="relative" ref={secondDropdownRef}>
+            <button
+              onClick={() => setIsSecondDropdownOpen(!isSecondDropdownOpen)}
+              className={`flex items-center space-x-2 px-3 py-1 border rounded-md transition-colors duration-200 text-xs shadow-sm backdrop-blur-sm ${
+                isSameMetric 
+                  ? 'bg-gray-100/90 border-gray-200 text-gray-400' 
+                  : 'bg-white/90 border-gray-300 hover:bg-white text-gray-700'
+              }`}
+            >
+              <div 
+                className="w-3 h-0.5 rounded-full"
+                style={{ backgroundColor: secondOption?.color, opacity: isSameMetric ? 0.4 : 1 }}
+              />
+              <span>
+                {secondOption?.label}
+              </span>
+              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {/* 두 번째 드롭다운 메뉴 */}
+            {isSecondDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-40 min-w-[120px]">
+                <div className="py-1">
+                  {chartMetricOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setSecondMetric(option.value);
+                        setIsSecondDropdownOpen(false);
+                      }}
+                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors duration-200 ${
+                        secondMetric === option.value ? "bg-blue-50 text-blue-700" : "text-gray-700"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-3 h-0.5 rounded-full"
+                          style={{ backgroundColor: option.color }}
+                        />
+                        <span>{option.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
 
-  // 헬퍼 함수들
+  // 헬퍼 함수들 (새로운 4개 상태 기준)
   const isCampaignActive = (status: string) => {
-    return status === "active" || status === "approved" || status === "running";
+    // 승인완료 상태만 활성으로 처리
+    return status === "APPROVED";
   };
 
 
@@ -299,19 +516,18 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
 
 
   const getApprovalStatusText = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "registered":
-        return "등록";
-      case "reviewing":
-        return "승인중";
-      case "pending":
+    // 새로운 4개 상태에 맞게 수정
+    switch (status?.toUpperCase()) {
+      case "PENDING_APPROVAL":
         return "승인대기";
-      case "approved":
+      case "REVIEWING":
+        return "승인 중";
+      case "APPROVED":
         return "승인완료";
-      case "rejected":
+      case "REJECTED":
         return "반려";
       default:
-        return "등록";
+        return "승인대기";
     }
   };
 
@@ -418,19 +634,52 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     }
   };
 
-  // 캠페인 이름 수정 관련 함수들
-  const startEditingCampaignName = (campaignId: number, currentName: string) => {
-    setEditingCampaignId(campaignId);
-    setEditingCampaignName(currentName);
+  // 캠페인 상태 토글 함수
+  const toggleCampaignStatus = async (campaignId: number) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      // 새로운 4개 상태 체계에서는 APPROVED 상태에서만 토글 가능 (실제로는 상태 변경 없이 UI만 토글)
+      // 실제 비즈니스 로직에서는 APPROVED 상태를 유지하면서 별도 필드로 활성/비활성 관리할 수 있음
+      const newStatus = "APPROVED"; // 상태는 그대로 유지
+
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus
+        }),
+      });
+
+      if (response.ok) {
+        // 로컬 상태 업데이트
+        setCampaigns(prev =>
+          prev.map(campaign =>
+            campaign.id === campaignId
+              ? { ...campaign, status: newStatus }
+              : campaign
+          )
+        );
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || "캠페인 상태 변경에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("캠페인 상태 변경 오류:", error);
+      alert("캠페인 상태 변경 중 오류가 발생했습니다.");
+    }
   };
 
-  const cancelEditingCampaignName = () => {
-    setEditingCampaignId(null);
-    setEditingCampaignName("");
-  };
-
-  const saveEditingCampaignName = async (campaignId: number) => {
-    if (!editingCampaignName.trim()) {
+  // 캠페인 이름 수정 (모달에서 사용)
+  const updateCampaignName = async (campaignId: number, newName: string) => {
+    if (!newName.trim()) {
       alert("캠페인 이름을 입력해주세요.");
       return;
     }
@@ -449,7 +698,7 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: editingCampaignName.trim()
+          name: newName.trim()
         }),
       });
 
@@ -458,12 +707,16 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
         setCampaigns(prev =>
           prev.map(campaign =>
             campaign.id === campaignId
-              ? { ...campaign, name: editingCampaignName.trim() }
+              ? { ...campaign, name: newName.trim() }
               : campaign
           )
         );
-        setEditingCampaignId(null);
-        setEditingCampaignName("");
+        
+        // 선택된 캠페인 상세 정보도 업데이트
+        setSelectedCampaignDetail(prev =>
+          prev ? { ...prev, name: newName.trim() } : prev
+        );
+        
         alert("캠페인 이름이 수정되었습니다.");
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -489,7 +742,7 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
       {/* 날짜 필터와 차트 섹션 */}
       <div className="mb-6">
         {/* 날짜 범위 선택기 */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-start mb-4">
           <div className="relative" ref={datePickerRef}>
             <button
               onClick={toggleDatePicker}
@@ -500,46 +753,46 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            
-            {/* 날짜 선택 드롭다운 */}
-            {isDatePickerOpen && (
-              <div className="absolute top-full left-0 mt-1 p-4 bg-white border border-gray-300 rounded-lg shadow-lg z-30 min-w-[300px]">
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">시작일</label>
-                    <input
-                      type="date"
-                      value={dateFilter.startDate}
-                      onChange={(e) => handleDateChange('start', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">종료일</label>
-                    <input
-                      type="date"
-                      value={dateFilter.endDate}
-                      onChange={(e) => handleDateChange('end', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2 pt-2">
-                    <button
-                      onClick={() => setIsDatePickerOpen(false)}
-                      className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200"
-                    >
-                      취소
-                    </button>
-                    <button
-                      onClick={() => setIsDatePickerOpen(false)}
-                      className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
-                    >
-                      적용
-                    </button>
-                  </div>
+          
+          {/* 날짜 선택 드롭다운 */}
+          {isDatePickerOpen && (
+            <div className="absolute top-full left-0 mt-1 p-4 bg-white border border-gray-300 rounded-lg shadow-lg z-30 min-w-[300px]">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">시작일</label>
+                  <input
+                    type="date"
+                    value={dateFilter.startDate}
+                    onChange={(e) => handleDateChange('start', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">종료일</label>
+                  <input
+                    type="date"
+                    value={dateFilter.endDate}
+                    onChange={(e) => handleDateChange('end', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2 pt-2">
+                  <button
+                    onClick={() => setIsDatePickerOpen(false)}
+                    className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={() => setIsDatePickerOpen(false)}
+                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+                  >
+                    적용
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+          )}
           </div>
         </div>
         
@@ -620,9 +873,7 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
             {!isLoadingCampaigns && filteredCampaigns.length > 0 && (
               <tr className="bg-gray-100 font-semibold sticky top-20 z-10 border-b border-gray-300">
                 <td className="px-4 py-3"></td>
-                <td className="px-4 py-3 text-center text-sm">전체 캠페인 합계:</td>
-                <td className="px-4 py-3 text-center text-sm">-</td>
-                <td className="px-4 py-3 text-center text-sm">-</td>
+                <td colSpan={3} className="px-4 py-3 text-right text-sm">전체 캠페인 합계:</td>
                 <td className="px-4 py-3 text-center text-sm text-blue-600">
                   {filteredCampaigns.reduce((sum, c) => sum + (c.sent_count || 0), 0).toLocaleString()}
                 </td>
@@ -677,13 +928,19 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
                     
                     {/* 사용여부 */}
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
-                        isActive 
-                          ? "bg-green-100 text-green-800" 
-                          : "bg-gray-100 text-gray-800"
-                      }`}>
-                        {isActive ? 'ON' : 'OFF'}
-                      </span>
+                      <button
+                        onClick={() => toggleCampaignStatus(campaign.id)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          isActive ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                        title={isActive ? '클릭하여 비활성화' : '클릭하여 활성화'}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out ${
+                            isActive ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
                     </td>
                     
                     {/* 생성일 */}
@@ -697,46 +954,13 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
                     
                     {/* 캠페인 이름 */}
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      {editingCampaignId === campaign.id ? (
-                        <div className="flex items-center justify-center space-x-1">
-                          <input
-                            type="text"
-                            value={editingCampaignName}
-                            onChange={(e) => setEditingCampaignName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                saveEditingCampaignName(campaign.id);
-                              } else if (e.key === "Escape") {
-                                cancelEditingCampaignName();
-                              }
-                            }}
-                            className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => saveEditingCampaignName(campaign.id)}
-                            className="px-1 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                            title="저장"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            onClick={cancelEditingCampaignName}
-                            className="px-1 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
-                            title="취소"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => startEditingCampaignName(campaign.id, campaign.name)}
-                          className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                          title="클릭하여 수정"
-                        >
-                          {campaign.name}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleViewCampaignDetail(campaign.id)}
+                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                        title="클릭하여 상세보기"
+                      >
+                        {campaign.name}
+                      </button>
                     </td>
                     
                     {/* 발송 수 */}
@@ -781,16 +1005,26 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
                     
                     {/* 승인상태 */}
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        approvalStatus === "등록" ? "bg-gray-100 text-gray-800" :
-                        approvalStatus === "승인중" ? "bg-yellow-100 text-yellow-800" :
-                        approvalStatus === "승인대기" ? "bg-blue-100 text-blue-800" :
-                        approvalStatus === "승인완료" ? "bg-green-100 text-green-800" :
-                        approvalStatus === "반려" ? "bg-red-100 text-red-800" :
-                        "bg-gray-100 text-gray-800"
-                      }`}>
-                        {approvalStatus}
-                      </span>
+                      <div className="flex items-center justify-center space-x-2">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          approvalStatus === "승인대기" ? "bg-blue-100 text-blue-800" :
+                          approvalStatus === "승인 중" ? "bg-yellow-100 text-yellow-800" :
+                          approvalStatus === "승인완료" ? "bg-green-100 text-green-800" :
+                          approvalStatus === "반려" ? "bg-red-100 text-red-800" :
+                          "bg-gray-100 text-gray-800"
+                        }`}>
+                          {approvalStatus}
+                        </span>
+                        {approvalStatus === "반려" && (
+                          <button
+                            onClick={() => handleViewRejectionReason(campaign.id, campaign.name)}
+                            className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 border border-red-300 hover:border-red-500 rounded-md transition-colors duration-200"
+                            title="반려사유 확인"
+                          >
+                            사유
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -807,6 +1041,27 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
         </table>
       </div>
 
+      {/* 반려사유 모달 */}
+      <RejectionReasonModal
+        isOpen={isRejectionModalOpen}
+        onClose={() => setIsRejectionModalOpen(false)}
+        rejectionReason={selectedRejectionReason}
+        campaignName={selectedCampaignName}
+      />
+
+      {/* 캠페인 상세보기 모달 */}
+      <CampaignDetailModal
+        isOpen={isCampaignDetailModalOpen}
+        onClose={() => {
+          setIsCampaignDetailModalOpen(false);
+          setSelectedCampaignDetail(null);
+        }}
+        campaign={selectedCampaignDetail}
+        onUpdateCampaignName={updateCampaignName}
+        campaigns={getFilteredCampaigns()}
+        currentIndex={getCurrentCampaignIndex()}
+        onNavigate={handleCampaignNavigate}
+      />
 
     </div>
   );
