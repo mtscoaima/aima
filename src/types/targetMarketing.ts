@@ -5,6 +5,7 @@ export interface Message {
   timestamp: Date;
   imageUrl?: string;
   isImageLoading?: boolean;
+  isQuestion?: boolean;
   attachedFile?: {
     name: string;
     size: number;

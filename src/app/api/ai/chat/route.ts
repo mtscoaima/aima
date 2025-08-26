@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
       ],
     }));
 
+    // 첫 대화인지 확인 (AI 응답이 없는 경우)
+    const isFirstInteraction = !previousMessages.some((msg: { role: string }) => msg.role === "assistant");
+
     // 스트리밍 응답 생성
     const stream = new ReadableStream({
       async start(controller) {
@@ -36,27 +39,63 @@ export async function POST(request: NextRequest) {
           // 사용자 입력 컨텐츠 구성
           const userContent = [];
 
-          // 텍스트 추가
-          userContent.push({
-            type: "input_text",
-            text: `마케팅 전문가로서 답변해주세요. 필요하다면 적절한 마케팅 이미지를 생성해주세요. 
+          // 첫 대화와 이후 대화에 따라 다른 프롬프트 사용
+          let promptText = "";
+          
+          if (isFirstInteraction) {
+            // 첫 대화 - 3개의 질문 생성
+            promptText = `마케팅 전문가로서, 사용자에게 효과적인 마케팅 캠페인을 만들기 위한 정보를 수집해야 합니다.
+            
+            사용자의 업종을 고려하여 간단명료한 질문 3개를 만들어주세요:
+            1. 캠페인의 목적 (신규 고객 유치, 기존 고객 유지, 재구매 유도 등)
+            2. 제공하려는 혜택이나 프로모션
+            3. 타겟 고객층
+            
+            각 질문은 한 문장으로 간결하게 작성하고, 선택지는 제공하지 마세요.
+            이미지는 생성하지 마세요.
+            
+            응답은 다음 JSON 형식으로 작성해주세요:
+            {
+              "response": "효과적인 캠페인을 위해 3가지만 여쭤볼게요!\\n 1. [간단한 첫 번째 질문]\\n 2. [간단한 두 번째 질문]\\n 3. [간단한 세 번째 질문]",
+              "is_question": true,
+              "skip_image_generation": true
+            }
+            
+            사용자 입력: ${message}`;
+          } else {
+            // 이후 대화 - 기존 방식으로 콘텐츠 생성
+            promptText = `마케팅 전문가로서 답변해주세요. 사용자가 이전에 제공한 정보를 바탕으로 맞춤형 마케팅 콘텐츠를 생성해주세요.
+            
+            마케팅 이미지를 생성해주세요. 이미지는 텍스트를 포함하지 마세요.
             프롬프트와 관계 없이 항상 이미지는 하나만 생성해주세요.
-            never contain text in image
+            
+            SMS/MMS 메시지 작성 시 다음 원칙을 따라주세요:
+            - 혜택과 목적을 명확히 전달
+            - 중요한 문구를 앞에 배치
+            - 최대 2줄로 제한된 간결한 메시지
+            - 90자 이내로 작성
+            
             quick_action_buttons 버튼 텍스트는 최대 4개까지 포함해주세요.
+            
             응답은 다음 JSON 형식으로 포함해주세요:
             {
               "response": "마케팅 조언 및 설명",
-              "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내)"
+              "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내, 2줄 제한)",
               "quick_action_buttons": [
                 {
-                  "text": "버튼 텍스트",
+                  "text": "버튼 텍스트"
                 }
               ]
             }
             
             ${
               initialImage ? "첨부된 이미지를 참고하여 " : ""
-            }사용자 요청: ${message}`,
+            }사용자 요청: ${message}`;
+          }
+          
+          userContent.push({
+            type: "input_text",
+            text: promptText,
           });
 
           // 초기 이미지가 있으면 추가 - 올바른 형식으로 수정
@@ -74,8 +113,8 @@ export async function POST(request: NextRequest) {
           }
 
           // OpenAI 스트리밍 응답 생성
-          const response = await client.responses.create({
-            model: "gpt-5",
+          const responseConfig = {
+            model: "gpt-5" as const,
             input: [
               ...conversationHistory,
               {
@@ -83,17 +122,25 @@ export async function POST(request: NextRequest) {
                 content: userContent,
               },
             ],
-            tools: [
+            reasoning: { effort: "low" as const },
+            stream: true as const,
+            tools: [] as Array<{ type: "image_generation"; partial_images: number; quality: string; size: string }>,
+          };
+          
+          // 첫 대화가 아닐 때만 이미지 생성 도구 추가
+          if (!isFirstInteraction) {
+            responseConfig.tools = [
               {
                 type: "image_generation",
                 partial_images: 3,
                 quality: "high",
                 size: "1024x1024",
               },
-            ],
-            reasoning: { effort: "low" },
-            stream: true,
-          });
+            ];
+          }
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const response = await client.responses.create(responseConfig as any);
 
           let fullText = "";
           let imageUrl = null;
@@ -105,6 +152,7 @@ export async function POST(request: NextRequest) {
           let quickActionButtons: Array<{text: string}> = [];
           let isJsonParsed = false;
           let isControllerClosed = false;
+          let isQuestion = false;
 
           // 컨트롤러 상태 확인 함수
           const safeEnqueue = (data: string) => {
@@ -133,7 +181,8 @@ export async function POST(request: NextRequest) {
           };
 
           // 스트림 이벤트 처리
-          for await (const event of response) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for await (const event of response as any) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const eventAny = event as any;
 
@@ -153,6 +202,7 @@ export async function POST(request: NextRequest) {
                     displayText = jsonResponse.response;
                     smsTextContent = jsonResponse.sms_text_content || "";
                     quickActionButtons = jsonResponse.quick_action_buttons || [];
+                    isQuestion = jsonResponse.is_question || false;
                     isJsonParsed = true;
 
                     // 기존 텍스트를 지우고 새로운 텍스트로 교체
@@ -161,6 +211,7 @@ export async function POST(request: NextRequest) {
                       content: displayText,
                       smsTextContent: smsTextContent,
                       quickActionButtons: quickActionButtons,
+                      isQuestion: isQuestion,
                     });
                     safeEnqueue(`data: ${data}\n\n`);
                   }
@@ -245,6 +296,7 @@ export async function POST(request: NextRequest) {
                     displayText = jsonResponse.response || fullText;
                     smsTextContent = jsonResponse.sms_text_content || "";
                     quickActionButtons = jsonResponse.quick_action_buttons || [];
+                    isQuestion = jsonResponse.is_question || false;
                   } else {
                     displayText = fullText;
                     smsTextContent = extractSMSContent(fullText);
@@ -274,6 +326,7 @@ export async function POST(request: NextRequest) {
                 templateData: templateData,
                 smsTextContent: smsTextContent,
                 quickActionButtons: quickActionButtons,
+                isQuestion: isQuestion,
               });
               safeEnqueue(`data: ${data}\n\n`);
               break;

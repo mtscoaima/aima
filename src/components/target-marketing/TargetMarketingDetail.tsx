@@ -1082,6 +1082,21 @@ function TargetMarketingDetailContent({
                 if (data.quickActionButtons) {
                   setQuickActionButtons(data.quickActionButtons);
                 }
+                
+                // 질문인 경우 처리
+                if (data.isQuestion) {
+                  // 질문인 경우 메시지에 표시
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            isQuestion: true,
+                          }
+                        : msg
+                    )
+                  );
+                }
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - text_replace)
                 if (data.templateData && data.templateData.title) {
@@ -1175,6 +1190,21 @@ function TargetMarketingDetailContent({
                 // 퀵 액션 버튼 업데이트
                 if (data.quickActionButtons) {
                   setQuickActionButtons(data.quickActionButtons);
+                }
+                
+                // 질문인 경우 처리
+                if (data.isQuestion) {
+                  // 질문인 경우 메시지에 표시
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            isQuestion: true,
+                          }
+                        : msg
+                    )
+                  );
                 }
 
                 // 생성된 이미지가 있으면 currentGeneratedImage에도 설정
@@ -1874,10 +1904,10 @@ function TargetMarketingDetailContent({
                       )}
                     </div>
                   )}
-                  <p>{message.content}</p>
+                  <div className="whitespace-pre-wrap">{message.content}</div>
                 </div>
-                {/* AI 답변에만 빠른 버튼 표시 (로딩 중이 아닐 때만) */}
-                {message.role === "assistant" && !showTypingIndicator && (
+                {/* AI 답변에만 빠른 버튼 표시 (로딩 중이 아니고 질문이 아닐 때만) */}
+                {message.role === "assistant" && !showTypingIndicator && !message.isQuestion && (
                   <div className="flex gap-2 mt-4 flex-wrap">
                     {/* Dynamic quick action buttons from AI response */}
                     {quickActionButtons.length > 0 ? (
