@@ -374,6 +374,23 @@ export default function GeneralSignupForm() {
                   <p className={styles.error}>{errors.phone}</p>
                 )}
               </div>
+
+              <div className={styles.formRow}>
+                <label className={styles.label}>
+                  이메일 <span className={styles.asterisk}>*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="이메일을 입력해 주세요"
+                  className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
+                />
+                {errors.email && (
+                  <p className={styles.error}>{errors.email}</p>
+                )}
+              </div>
             </div>
 
             {/* 아이디·비밀번호 설정 */}
@@ -397,23 +414,6 @@ export default function GeneralSignupForm() {
                 </p>
                 {errors.username && (
                   <p className={styles.error}>{errors.username}</p>
-                )}
-              </div>
-
-              <div className={styles.formRow}>
-                <label className={styles.label}>
-                  이메일 <span className={styles.asterisk}>*</span>
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="이메일을 입력해 주세요"
-                  className={`${styles.input} ${errors.email ? styles.inputError : ""}`}
-                />
-                {errors.email && (
-                  <p className={styles.error}>{errors.email}</p>
                 )}
               </div>
 

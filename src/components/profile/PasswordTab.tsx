@@ -104,6 +104,11 @@ export default function PasswordTab({
               "연속된 문자가 4개 이상 사용될 수 없습니다.";
           }
         }
+
+        // 현재 비밀번호와 새 비밀번호가 같은지 검증
+        if (value === passwordData.currentPassword && passwordData.currentPassword.length > 0) {
+          newErrors.newPassword = "새 비밀번호는 현재 비밀번호와 달라야 합니다.";
+        }
       }
     }
 
@@ -122,6 +127,15 @@ export default function PasswordTab({
       value !== passwordData.confirmPassword
     ) {
       newErrors.confirmPassword = "새 비밀번호가 일치하지 않습니다.";
+    }
+
+    // 현재 비밀번호가 변경되면 새 비밀번호와 다시 비교
+    if (
+      field === "currentPassword" &&
+      passwordData.newPassword.length > 0 &&
+      value === passwordData.newPassword
+    ) {
+      newErrors.newPassword = "새 비밀번호는 현재 비밀번호와 달라야 합니다.";
     }
 
     setPasswordErrors(newErrors);
@@ -195,6 +209,12 @@ export default function PasswordTab({
             break;
           }
         }
+      }
+
+      // 현재 비밀번호와 새 비밀번호가 같은지 검증
+      if (passwordData.newPassword === passwordData.currentPassword) {
+        newErrors.newPassword = "새 비밀번호는 현재 비밀번호와 달라야 합니다.";
+        hasError = true;
       }
     }
     if (!passwordData.confirmPassword.trim()) {

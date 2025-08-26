@@ -88,14 +88,103 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '200px' }}>{campaign.name || '이름 없음'}</td>
                             <td className="py-3 px-4 truncate" style={{ width: '180px' }}>
-                              {targetCriteria ? 
-                                `${targetCriteria.gender || '전체'}/${targetCriteria.age?.join(',') || '전체'}/${targetCriteria.city || '전체'}/${targetCriteria.district || '전체'}` 
-                                : '전체/전체/전체/전체'
-                              }
+                              {targetCriteria ? (() => {
+                                // 성별 변환
+                                const getGenderText = (gender: string | undefined) => {
+                                  if (!gender || gender === 'all') return '전체';
+                                  if (gender === 'male' || gender === '남성') return '남성';
+                                  if (gender === 'female' || gender === '여성') return '여성';
+                                  return gender;
+                                };
+                                
+                                // 연령 변환
+                                const getAgeText = (age: string | string[] | undefined) => {
+                                  if (!age) return '전체';
+                                  
+                                  const convertAgeGroup = (ageGroup: string) => {
+                                    if (ageGroup === 'all' || ageGroup === '전체') return '전체';
+                                    if (ageGroup === 'teens') return '10대';
+                                    if (ageGroup === 'twenties') return '20대';
+                                    if (ageGroup === 'thirties') return '30대';
+                                    if (ageGroup === 'forties') return '40대';
+                                    if (ageGroup === 'fifties') return '50대';
+                                    if (ageGroup === 'sixties') return '60대';
+                                    return ageGroup;
+                                  };
+                                  
+                                  if (Array.isArray(age)) {
+                                    return age.map(a => convertAgeGroup(a)).join(',');
+                                  }
+                                  return convertAgeGroup(age);
+                                };
+                                
+                                // 지역 변환
+                                const getLocationText = (location: string | undefined) => {
+                                  if (!location || location === 'all') return '전체';
+                                  
+                                  // 영어 도시명을 한글로 변환
+                                  const cityMap: { [key: string]: string } = {
+                                    'seoul': '서울',
+                                    'busan': '부산',
+                                    'daegu': '대구',
+                                    'incheon': '인천',
+                                    'gwangju': '광주',
+                                    'daejeon': '대전',
+                                    'ulsan': '울산',
+                                    'sejong': '세종',
+                                    'gyeonggi': '경기',
+                                    'gangwon': '강원',
+                                    'chungbuk': '충북',
+                                    'chungnam': '충남',
+                                    'jeonbuk': '전북',
+                                    'jeonnam': '전남',
+                                    'gyeongbuk': '경북',
+                                    'gyeongnam': '경남',
+                                    'jeju': '제주'
+                                  };
+                                  
+                                  return cityMap[location.toLowerCase()] || location;
+                                };
+                                
+                                return `${getGenderText(targetCriteria.gender)}/${getAgeText(targetCriteria.age)}/${getLocationText(targetCriteria.city)}/${getLocationText(targetCriteria.district)}`;
+                              })() : '전체/전체/전체/전체'}
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '120px' }}>
                               {/* 카드 사용 업종 정보 */}
-                              {targetCriteria?.industry?.topLevel || '전체'}
+                              {(() => {
+                                const industryValue = targetCriteria?.industry?.topLevel || (targetCriteria as Record<string, unknown>)?.cardUsageIndustry;
+                                if (!industryValue || industryValue === 'all') {
+                                  return '전체';
+                                }
+                                
+                                // industryValue를 string으로 변환
+                                const industryString = String(industryValue);
+                                
+                                // 영어 업종명을 한글로 변환
+                                const industryMap: { [key: string]: string } = {
+                                  'retail': '소매업',
+                                  'restaurant': '음식점',
+                                  'cafe': '카페',
+                                  'beauty': '미용업',
+                                  'fashion': '패션',
+                                  'healthcare': '의료',
+                                  'education': '교육',
+                                  'entertainment': '엔터테인먼트',
+                                  'automotive': '자동차',
+                                  'finance': '금융',
+                                  'technology': '기술',
+                                  'manufacturing': '제조업',
+                                  'construction': '건설업',
+                                  'agriculture': '농업',
+                                  'transportation': '운송업',
+                                  'hotel': '호텔',
+                                  'travel': '여행',
+                                  'sports': '스포츠',
+                                  'fitness': '피트니스'
+                                };
+                                
+                                return industryMap[industryString.toLowerCase()] || industryString;
+                              })()}
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '120px' }}>
                               {/* 카드 승인 금액 - NaN 방지 강화 처리 */}
@@ -137,7 +226,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                                 }
                                 
                                 // 정상적인 금액 표시
-                                return `₩${(numericValue / 10000).toLocaleString()}만원`;
+                                return `₩${numericValue.toLocaleString()}`;
                               })()}
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '140px' }}>

@@ -565,72 +565,90 @@ export default function TaxInvoiceTab({
       {/* 세금계산서 이메일 변경 모달 */}
       {isTaxInvoiceEmailModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="border-b px-6 py-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
               <h3 className="text-lg font-semibold text-gray-900">
-                세금계산서 담당자 정보 변경
+                세금계산서 담당자 정보 수정
               </h3>
-            </div>
-
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  담당자 이름 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={taxInvoiceEmailData.name}
-                  onChange={(e) =>
-                    handleTaxInvoiceEmailDataChange("name", e.target.value)
-                  }
-                  placeholder="담당자 이름을 입력해주세요"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  담당자 휴대폰 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={taxInvoiceEmailData.phone}
-                  onChange={(e) =>
-                    handleTaxInvoiceEmailDataChange("phone", e.target.value)
-                  }
-                  placeholder="010-0000-0000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  계산서 수신 이메일 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={taxInvoiceEmailData.email}
-                  onChange={(e) =>
-                    handleTaxInvoiceEmailDataChange("email", e.target.value)
-                  }
-                  placeholder="example@company.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="border-t px-6 py-4 flex gap-3">
               <button
                 onClick={() => setIsTaxInvoiceEmailModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <tbody>
+                    <tr className="border-b border-gray-200">
+                      <td className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 w-1/3 border-r border-gray-200">
+                        담당자 이름
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={taxInvoiceEmailData.name}
+                          onChange={(e) =>
+                            handleTaxInvoiceEmailDataChange("name", e.target.value)
+                          }
+                          placeholder="담당자 이름을 입력해주세요"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </td>
+                    </tr>
+                    <tr className="border-b border-gray-200">
+                      <td className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 w-1/3 border-r border-gray-200">
+                        담당자 휴대폰
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="tel"
+                          value={taxInvoiceEmailData.phone}
+                          onChange={(e) =>
+                            handleTaxInvoiceEmailDataChange("phone", e.target.value)
+                          }
+                          placeholder="010-0000-0000"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 w-1/3 border-r border-gray-200">
+                        계산서 수신 이메일
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="email"
+                          value={taxInvoiceEmailData.email}
+                          onChange={(e) =>
+                            handleTaxInvoiceEmailDataChange("email", e.target.value)
+                          }
+                          placeholder="example@company.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 pb-4">
+              <button
+                onClick={() => setIsTaxInvoiceEmailModalOpen(false)}
+                className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleSaveTaxInvoiceEmail}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
               >
-                저장
+                수정
               </button>
             </div>
           </div>
