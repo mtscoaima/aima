@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     // 최근 7일 광고비 합계 조회
     const { data: recentCampaigns, error: recentError } = await supabase
       .from("campaigns")
-      .select("budget, actual_cost")
+      .select("budget")
       .eq("user_id", userId)
       .gte("created_at", recent7DaysStartStr)
       .lte("created_at", recent7DaysEndStr);
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     // 이전 7일 광고비 합계 조회
     const { data: previousCampaigns, error: previousError } = await supabase
       .from("campaigns")
-      .select("budget, actual_cost")
+      .select("budget")
       .eq("user_id", userId)
       .gte("created_at", previous7DaysStartStr)
       .lte("created_at", previous7DaysEndStr);
@@ -99,14 +99,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 광고비 합계 계산 (actual_cost가 있으면 사용, 없으면 budget 사용)
+    // 광고비 합계 계산 (budget 사용)
     const recentTotal = recentCampaigns?.reduce((sum, campaign) => {
-      const cost = campaign.actual_cost ?? campaign.budget ?? 0;
+      const cost = campaign.budget ?? 0;
       return sum + cost;
     }, 0) ?? 0;
 
     const previousTotal = previousCampaigns?.reduce((sum, campaign) => {
-      const cost = campaign.actual_cost ?? campaign.budget ?? 0;
+      const cost = campaign.budget ?? 0;
       return sum + cost;
     }, 0) ?? 0;
 
