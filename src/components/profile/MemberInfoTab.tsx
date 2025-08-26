@@ -38,6 +38,12 @@ export default function MemberInfoTab({
   // 휴대폰 변경 관련 상태 - 부모에서 이동
   const [isPhoneChangeVerificationLoading, setIsPhoneChangeVerificationLoading] = useState(false);
 
+  // 이메일 수정 관련 상태
+  const [isEmailEditing, setIsEmailEditing] = useState(false);
+  const [editingEmail, setEditingEmail] = useState("");
+  const [isEmailSaving, setIsEmailSaving] = useState(false);
+  const [showEmailButtons, setShowEmailButtons] = useState(false);
+
   // 회원탈퇴 관련 상태 - 부모에서 이동
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   const [isWithdrawalCompleteModalOpen, setIsWithdrawalCompleteModalOpen] = useState(false);
@@ -564,6 +570,67 @@ export default function MemberInfoTab({
     }
   };
 
+  // 컴포넌트 마운트 시 이메일 값 초기화
+  useEffect(() => {
+    setEditingEmail(userData.email || "");
+  }, [userData.email]);
+
+  // 이메일 input 포커스/변경 핸들러
+  const handleEmailFocus = () => {
+    setIsEmailEditing(true);
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEditingEmail(value);
+    // 원래 값과 다르면 버튼 표시
+    if (value !== userData.email) {
+      setShowEmailButtons(true);
+    } else {
+      setShowEmailButtons(false);
+    }
+  };
+
+  const handleEmailCancel = () => {
+    setEditingEmail(userData.email || "");
+    setIsEmailEditing(false);
+    setShowEmailButtons(false);
+  };
+
+  const handleEmailSave = async () => {
+    // 이메일 유효성 검사
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!editingEmail.trim()) {
+      alert("이메일 주소를 입력해주세요.");
+      return;
+    }
+    if (!emailRegex.test(editingEmail.trim())) {
+      alert("올바른 이메일 형식을 입력해주세요.");
+      return;
+    }
+
+    setIsEmailSaving(true);
+    try {
+      // API 호출로 이메일 업데이트
+      await updateUserInfo({
+        email: editingEmail.trim(),
+      });
+
+      // 로컬 상태 업데이트
+      onUserDataUpdate({
+        email: editingEmail.trim(),
+      });
+
+      setIsEmailEditing(false);
+      setShowEmailButtons(false);
+      alert("이메일 주소가 성공적으로 변경되었습니다.");
+    } catch (error) {
+      console.error("이메일 변경 실패:", error);
+      alert("이메일 주소 변경에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsEmailSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 탭 설명 */}
@@ -620,6 +687,42 @@ export default function MemberInfoTab({
                         ? "처리 중..."
                         : "휴대폰 변경"}
                     </button>
+                  </div>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-4 px-4 bg-gray-50 text-sm font-medium text-gray-700 w-32 border-r border-gray-200">
+                  이메일 주소
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-900">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="email"
+                      value={editingEmail}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onFocus={handleEmailFocus}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      placeholder="이메일 주소를 입력해주세요"
+                      disabled={isEmailSaving}
+                    />
+                    {showEmailButtons && (
+                      <>
+                        <button
+                          onClick={handleEmailSave}
+                          disabled={isEmailSaving}
+                          className="px-3 py-1 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                          {isEmailSaving ? "저장 중..." : "저장"}
+                        </button>
+                        <button
+                          onClick={handleEmailCancel}
+                          disabled={isEmailSaving}
+                          className="px-3 py-1 bg-gray-500 text-white text-xs rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                          취소
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
