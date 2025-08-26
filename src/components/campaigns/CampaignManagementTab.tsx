@@ -22,6 +22,8 @@ interface RealCampaign {
   failed_count: number;
   created_at: string;
   updated_at?: string;
+  ad_medium?: "naver_talktalk" | "sms"; // 광고매체
+  desired_recipients?: string | null; // 희망 수신자
   target_criteria: {
     gender?: string | string[];
     ageGroup?: string | string[];

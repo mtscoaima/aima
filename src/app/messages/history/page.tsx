@@ -57,6 +57,8 @@ interface RealCampaign {
   actual_cost?: number;
   created_at: string;
   updated_at: string;
+  ad_medium?: "naver_talktalk" | "sms"; // 광고매체
+  desired_recipients?: string | null; // 희망 수신자
   target_criteria: Record<string, unknown>;
   message_template: string;
   schedule_start_date?: string;
