@@ -39,7 +39,6 @@ export default function MemberInfoTab({
   const [isPhoneChangeVerificationLoading, setIsPhoneChangeVerificationLoading] = useState(false);
 
   // 이메일 수정 관련 상태
-  const [isEmailEditing, setIsEmailEditing] = useState(false);
   const [editingEmail, setEditingEmail] = useState("");
   const [isEmailSaving, setIsEmailSaving] = useState(false);
   const [showEmailButtons, setShowEmailButtons] = useState(false);
@@ -577,7 +576,7 @@ export default function MemberInfoTab({
 
   // 이메일 input 포커스/변경 핸들러
   const handleEmailFocus = () => {
-    setIsEmailEditing(true);
+    // 포커스 시 특별한 처리가 필요하다면 여기에 추가
   };
 
   const handleEmailChange = (value: string) => {
@@ -592,7 +591,6 @@ export default function MemberInfoTab({
 
   const handleEmailCancel = () => {
     setEditingEmail(userData.email || "");
-    setIsEmailEditing(false);
     setShowEmailButtons(false);
   };
 
@@ -620,7 +618,6 @@ export default function MemberInfoTab({
         email: editingEmail.trim(),
       });
 
-      setIsEmailEditing(false);
       setShowEmailButtons(false);
       alert("이메일 주소가 성공적으로 변경되었습니다.");
     } catch (error) {

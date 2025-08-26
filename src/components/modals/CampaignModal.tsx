@@ -90,7 +90,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                             <td className="py-3 px-4 truncate" style={{ width: '180px' }}>
                               {targetCriteria ? (() => {
                                 // 성별 변환
-                                const getGenderText = (gender: string) => {
+                                const getGenderText = (gender: string | undefined) => {
                                   if (!gender || gender === 'all') return '전체';
                                   if (gender === 'male' || gender === '남성') return '남성';
                                   if (gender === 'female' || gender === '여성') return '여성';
@@ -98,7 +98,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                                 };
                                 
                                 // 연령 변환
-                                const getAgeText = (age: any) => {
+                                const getAgeText = (age: string | string[] | undefined) => {
                                   if (!age) return '전체';
                                   
                                   const convertAgeGroup = (ageGroup: string) => {
@@ -119,7 +119,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                                 };
                                 
                                 // 지역 변환
-                                const getLocationText = (location: string) => {
+                                const getLocationText = (location: string | undefined) => {
                                   if (!location || location === 'all') return '전체';
                                   
                                   // 영어 도시명을 한글로 변환
@@ -152,10 +152,13 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                             <td className="py-3 px-4 truncate" style={{ width: '120px' }}>
                               {/* 카드 사용 업종 정보 */}
                               {(() => {
-                                const industryValue = targetCriteria?.industry?.topLevel || targetCriteria?.cardUsageIndustry;
+                                const industryValue = targetCriteria?.industry?.topLevel || (targetCriteria as Record<string, unknown>)?.cardUsageIndustry;
                                 if (!industryValue || industryValue === 'all') {
                                   return '전체';
                                 }
+                                
+                                // industryValue를 string으로 변환
+                                const industryString = String(industryValue);
                                 
                                 // 영어 업종명을 한글로 변환
                                 const industryMap: { [key: string]: string } = {
@@ -180,7 +183,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                                   'fitness': '피트니스'
                                 };
                                 
-                                return industryMap[industryValue.toLowerCase()] || industryValue;
+                                return industryMap[industryString.toLowerCase()] || industryString;
                               })()}
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '120px' }}>
