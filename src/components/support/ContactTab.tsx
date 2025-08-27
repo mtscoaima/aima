@@ -70,7 +70,7 @@ export default function ContactTab() {
   };
 
   const statusDisplayMap: { [key: string]: string } = {
-    "PENDING": "답변대기",
+    "PENDING": "접수완료",
     "ANSWERED": "답변완료",
     "CLOSED": "종료"
   };
@@ -365,7 +365,7 @@ export default function ContactTab() {
           : process.env.NEXT_PUBLIC_SUPABASE_URL
         : process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    return `${supabaseUrl}/storage/v1/object/public/inquiry-files/${filePath}`;
+    return `${supabaseUrl}/storage/v1/object/public/inquiry-attachments/${filePath}`;
   };
 
   // 파일 다운로드 함수
@@ -647,10 +647,10 @@ export default function ContactTab() {
                       value={inquiryForm.title}
                       onChange={(e) => handleInquiryFormChange("title", e.target.value)}
                       placeholder="문의제목을 입력해 주세요"
-                      maxLength={100}
+                      maxLength={25}
                     />
                     <span className="absolute top-1/2 right-4 transform -translate-y-1/2 text-sm text-gray-600 bg-white px-1 pointer-events-none z-10">
-                      {inquiryForm.title.length}/100
+                      {inquiryForm.title.length}/25
                     </span>
                   </div>
                 </div>
@@ -903,7 +903,7 @@ export default function ContactTab() {
                           <div className="flex items-center gap-2 mt-4 text-md text-gray-900">
                             <span className="font-semibold">답변날짜:</span>
                             <span>
-                              {new Date(reply.created_at).toLocaleDateString('ko-KR')} {new Date(reply.created_at).toLocaleTimeString('ko-KR')}
+                              {new Date(reply.created_at).toLocaleDateString('ko-KR')}
                             </span>
                           </div>
                            
@@ -914,12 +914,18 @@ export default function ContactTab() {
                   
                   {/* 하단 버튼 영역 */}
                   <div className="flex justify-between items-center pt-6 mt-6 border-t border-gray-200">
-                    <button
-                      onClick={handleBackToList}
-                      className="px-6 py-2 bg-gray-500 text-white hover:bg-gray-600 transition-colors"
-                    >
-                      목록
-                    </button>
+                    {selectedInquiry.status === "PENDING" && (
+                      <button
+                        onClick={handleBackToList}
+                        className="px-6 py-2 bg-gray-500 text-white hover:bg-gray-600 transition-colors"
+                      >
+                        목록
+                      </button>
+                    )}
+                    
+                    {selectedInquiry.status === "ANSWERED" && (
+                      <div></div>
+                    )}
                     
                     {selectedInquiry.status === "PENDING" && (
                       <div className="flex gap-3">
@@ -939,12 +945,20 @@ export default function ContactTab() {
                     )}
                     
                     {selectedInquiry.status === "ANSWERED" && (
-                      <button
-                        onClick={() => handleDeleteInquiry(selectedInquiry.id)}
-                        className="px-6 py-2 border border-gray-300 hover:bg-gray-100 transition-colors"
-                      >
-                        삭제
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleBackToList}
+                          className="px-6 py-2 bg-gray-500 text-white hover:bg-gray-600 transition-colors"
+                        >
+                          목록
+                        </button>
+                        <button
+                          onClick={() => handleDeleteInquiry(selectedInquiry.id)}
+                          className="px-6 py-2 border border-gray-300 hover:bg-gray-100 transition-colors"
+                        >
+                          삭제
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

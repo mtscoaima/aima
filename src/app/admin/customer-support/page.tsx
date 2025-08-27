@@ -658,7 +658,7 @@ export default function CustomerSupportPage() {
 
   const getStatusLabel = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      PENDING: "대기중",
+      PENDING: "접수완료",
       ANSWERED: "답변완료",
       CLOSED: "종료",
     };
