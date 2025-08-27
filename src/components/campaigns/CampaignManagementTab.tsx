@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import RejectionReasonModal from "@/components/modals/RejectionReasonModal";
 import CampaignDetailModal from "@/components/modals/CampaignDetailModal";
+import DateRangeModal from "@/components/modals/DateRangeModal";
 
 // 캠페인 데이터 인터페이스
 interface RealCampaign {
@@ -71,8 +72,7 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     endDate: "2025-08-13"
   });
   
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const datePickerRef = useRef<HTMLDivElement>(null);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
   // 차트 드롭다운 상태 - 두 개의 독립적인 지표 선택
   const [firstMetric, setFirstMetric] = useState("impressions"); // 첫 번째 선
@@ -253,9 +253,6 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
   // 날짜 피커와 차트 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-        setIsDatePickerOpen(false);
-      }
       if (firstDropdownRef.current && !firstDropdownRef.current.contains(event.target as Node)) {
         setIsFirstDropdownOpen(false);
       }
@@ -264,14 +261,14 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
       }
     };
 
-    if (isDatePickerOpen || isFirstDropdownOpen || isSecondDropdownOpen) {
+    if (isFirstDropdownOpen || isSecondDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isDatePickerOpen, isFirstDropdownOpen, isSecondDropdownOpen]);
+  }, [isFirstDropdownOpen, isSecondDropdownOpen]);
 
   // 날짜 관련 함수들
   const formatDateRange = () => {
@@ -291,15 +288,37 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     }).replace(/\//g, '.')}`;
   };
 
-  const toggleDatePicker = () => {
-    setIsDatePickerOpen(!isDatePickerOpen);
+
+  const handleDateChange = (startDate: string, endDate: string) => {
+    setDateFilter({ startDate, endDate });
   };
 
-  const handleDateChange = (type: 'start' | 'end', value: string) => {
-    setDateFilter(prev => ({
-      ...prev,
-      [type === 'start' ? 'startDate' : 'endDate']: value
-    }));
+  // 화살표 네비게이션 로직
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    const start = new Date(dateFilter.startDate);
+    const end = new Date(dateFilter.endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let newStart: Date;
+    let newEnd: Date;
+
+    if (direction === 'prev') {
+      newStart = new Date(start);
+      newStart.setDate(start.getDate() - diffDays - 1);
+      newEnd = new Date(end);
+      newEnd.setDate(end.getDate() - diffDays - 1);
+    } else {
+      newStart = new Date(start);
+      newStart.setDate(start.getDate() + diffDays + 1);
+      newEnd = new Date(end);
+      newEnd.setDate(end.getDate() + diffDays + 1);
+    }
+
+    setDateFilter({
+      startDate: newStart.toISOString().split('T')[0],
+      endDate: newEnd.toISOString().split('T')[0]
+    });
   };
 
   // 차트 렌더링 함수 (두 개의 선을 동시에 표시)
@@ -311,7 +330,7 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     const secondData = allData[secondMetric as keyof typeof allData];
     const maxValue = Math.max(...firstData, ...secondData);
     
-    const chartWidth = 800;
+    const chartWidth = 1200;
     const chartHeight = 200;
     const padding = 40;
     
@@ -743,58 +762,36 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
 
       {/* 날짜 필터와 차트 섹션 */}
       <div className="mb-6">
-        {/* 날짜 범위 선택기 */}
+        {/* 날짜 범위 선택기 - 화살표 버튼 형태 */}
         <div className="flex items-center justify-start mb-4">
-          <div className="relative" ref={datePickerRef}>
+          <div className="flex items-center bg-gray-100 rounded-lg">
+            {/* 이전 버튼 */}
             <button
-              onClick={toggleDatePicker}
-              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200"
+              onClick={() => navigatePeriod('prev')}
+              className="p-2 border border-gray-200 hover:bg-gray-200 transition-colors"
             >
-              <span className="text-sm text-gray-700">{formatDateRange()}</span>
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-          
-          {/* 날짜 선택 드롭다운 */}
-          {isDatePickerOpen && (
-            <div className="absolute top-full left-0 mt-1 p-4 bg-white border border-gray-300 rounded-lg shadow-lg z-30 min-w-[300px]">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">시작일</label>
-                  <input
-                    type="date"
-                    value={dateFilter.startDate}
-                    onChange={(e) => handleDateChange('start', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">종료일</label>
-                  <input
-                    type="date"
-                    value={dateFilter.endDate}
-                    onChange={(e) => handleDateChange('end', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="flex justify-end space-x-2 pt-2">
-                  <button
-                    onClick={() => setIsDatePickerOpen(false)}
-                    className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={() => setIsDatePickerOpen(false)}
-                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
-                  >
-                    적용
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+            
+            {/* 날짜 범위 표시 - 클릭 시 모달 열기 */}
+            <button
+              onClick={() => setIsDateModalOpen(true)}
+              className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-200 hover:bg-gray-200 transition-colors min-w-[240px]"
+            >
+              {formatDateRange()}
+            </button>
+            
+            {/* 다음 버튼 */}
+            <button
+              onClick={() => navigatePeriod('next')}
+              className="p-2 border border-gray-200 hover:bg-gray-200 transition-colors"
+            >
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
         
@@ -1063,6 +1060,15 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
         campaigns={getFilteredCampaigns()}
         currentIndex={getCurrentCampaignIndex()}
         onNavigate={handleCampaignNavigate}
+      />
+
+      {/* 날짜 선택 모달 */}
+      <DateRangeModal
+        isOpen={isDateModalOpen}
+        onClose={() => setIsDateModalOpen(false)}
+        startDate={dateFilter.startDate}
+        endDate={dateFilter.endDate}
+        onDateChange={handleDateChange}
       />
 
     </div>
