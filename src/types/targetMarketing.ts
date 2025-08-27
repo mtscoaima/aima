@@ -53,6 +53,7 @@ export interface Campaign {
   name: string;
   status?: string;
   approval_status?: string;
+  buttons?: DynamicButton[];
   message_templates?: {
     name?: string;
     content?: string;

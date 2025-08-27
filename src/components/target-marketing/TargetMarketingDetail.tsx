@@ -1699,6 +1699,13 @@ function TargetMarketingDetailContent({
         setCardEndTime(targetData.cardTime?.endTime || "18:00");
       }
 
+      // 버튼 정보 적용 (캠페인에서 buttons 가져오기)
+      if (campaignData.buttons && Array.isArray(campaignData.buttons)) {
+        setDynamicButtons(campaignData.buttons);
+      } else {
+        setDynamicButtons([]);
+      }
+
       // 모달 닫기
       setIsCampaignModalOpen(false);
       setSelectedCampaignId(null);
