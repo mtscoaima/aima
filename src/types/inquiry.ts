@@ -26,7 +26,7 @@ export const INQUIRY_CATEGORY_LABELS: Record<InquiryCategory, string> = {
 
 // 문의 상태 한글 매핑
 export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
-  PENDING: "대기중",
+  PENDING: "접수완료",
   ANSWERED: "답변완료",
   CLOSED: "종료",
 };
