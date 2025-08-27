@@ -100,6 +100,7 @@ export interface Template {
   image_url?: string;
   content?: string;
   category?: string;
+  template_code?: string;
   usage_count?: number;
   created_at: string;
   updated_at?: string;

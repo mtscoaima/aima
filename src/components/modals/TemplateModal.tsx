@@ -55,7 +55,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '60px' }}></th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '100px' }}>이미지</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '250px' }}>템플릿 이름</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '150px' }}>카테고리</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '150px' }}>템플릿 코드</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>생성일</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700" style={{ width: '120px' }}>수정일</th>
                   </tr>
@@ -75,12 +75,16 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         <tr key={template.id}>
                           <td className="py-3 px-4" style={{ width: '60px' }}>
                             <input
-                              type="radio"
+                              type="checkbox"
                               name="template"
                               value={template.id}
                               checked={selectedTemplateId === template.id || selectedTemplateId?.toString() === template.id?.toString()}
                               onChange={(e) => {
-                                setSelectedTemplateId(e.target.value);
+                                if (e.target.checked) {
+                                  setSelectedTemplateId(e.target.value);
+                                } else {
+                                  setSelectedTemplateId(null);
+                                }
                               }}
                             />
                           </td>
@@ -100,7 +104,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             )}
                           </td>
                           <td className="py-3 px-4 truncate" style={{ width: '250px' }}>{template.name || '이름 없음'}</td>
-                          <td className="py-3 px-4 truncate" style={{ width: '150px' }}>{template.category || '-'}</td>
+                          <td className="py-3 px-4 truncate" style={{ width: '150px' }}>{template.template_code || '-'}</td>
                           <td className="py-3 px-4 whitespace-nowrap" style={{ width: '120px' }}>
                             {template.created_at ? 
                               new Date(template.created_at).toLocaleDateString('ko-KR') 

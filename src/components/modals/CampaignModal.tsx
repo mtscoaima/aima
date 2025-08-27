@@ -77,12 +77,16 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                           <tr key={campaign.id}>
                             <td className="py-3 px-4" style={{ width: '60px' }}>
                               <input
-                                type="radio"
+                                type="checkbox"
                                 name="campaign"
                                 value={campaign.id}
                                 checked={selectedCampaignId === campaign.id || selectedCampaignId?.toString() === campaign.id?.toString()}
                                 onChange={(e) => {
-                                  setSelectedCampaignId(e.target.value);
+                                  if (e.target.checked) {
+                                    setSelectedCampaignId(e.target.value);
+                                  } else {
+                                    setSelectedCampaignId(null);
+                                  }
                                 }}
                               />
                             </td>
