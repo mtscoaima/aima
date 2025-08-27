@@ -647,10 +647,10 @@ export default function ContactTab() {
                       value={inquiryForm.title}
                       onChange={(e) => handleInquiryFormChange("title", e.target.value)}
                       placeholder="문의제목을 입력해 주세요"
-                      maxLength={100}
+                      maxLength={25}
                     />
                     <span className="absolute top-1/2 right-4 transform -translate-y-1/2 text-sm text-gray-600 bg-white px-1 pointer-events-none z-10">
-                      {inquiryForm.title.length}/100
+                      {inquiryForm.title.length}/25
                     </span>
                   </div>
                 </div>
