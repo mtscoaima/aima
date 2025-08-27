@@ -71,8 +71,14 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   currentIndex = 0,
   onNavigate
 }) => {
-  const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
+
+  // campaign이 변경될 때마다 editedName 업데이트
+  React.useEffect(() => {
+    if (campaign?.name) {
+      setEditedName(campaign.name);
+    }
+  }, [campaign?.name]);
 
   if (!isOpen || !campaign) return null;
 
@@ -117,24 +123,11 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
     }
   };
 
-  // 캠페인 이름 수정 시작
-  const handleStartEditName = () => {
-    setEditedName(campaign.name);
-    setIsEditingName(true);
-  };
-
   // 캠페인 이름 수정 저장
   const handleSaveName = async () => {
-    if (editedName.trim() && onUpdateCampaignName) {
+    if (editedName.trim() && onUpdateCampaignName && editedName.trim() !== campaign.name) {
       await onUpdateCampaignName(campaign.id, editedName.trim());
-      setIsEditingName(false);
     }
-  };
-
-  // 캠페인 이름 수정 취소
-  const handleCancelEditName = () => {
-    setIsEditingName(false);
-    setEditedName("");
   };
 
   // 날짜 포맷팅
@@ -414,43 +407,21 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">캠페인 이름</span>
                         <div className="flex items-center space-x-2">
-                          {isEditingName ? (
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="text"
-                                value={editedName}
-                                onChange={(e) => setEditedName(e.target.value)}
-                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                onKeyPress={(e) => {
-                                  if (e.key === 'Enter') handleSaveName();
-                                  if (e.key === 'Escape') handleCancelEditName();
-                                }}
-                                autoFocus
-                              />
-                              <button
-                                onClick={handleSaveName}
-                                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                              >
-                                저장
-                              </button>
-                              <button
-                                onClick={handleCancelEditName}
-                                className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
-                              >
-                                취소
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-gray-900">{campaign.name}</span>
-                              <button
-                                onClick={handleStartEditName}
-                                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors duration-200"
-                              >
-                                수정
-                              </button>
-                            </div>
-                          )}
+                          <input
+                            type="text"
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') handleSaveName();
+                            }}
+                          />
+                          <button
+                            onClick={handleSaveName}
+                            className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors duration-200"
+                          >
+                            수정
+                          </button>
                         </div>
                       </div>
 
