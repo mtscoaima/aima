@@ -365,7 +365,7 @@ export default function ContactTab() {
           : process.env.NEXT_PUBLIC_SUPABASE_URL
         : process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    return `${supabaseUrl}/storage/v1/object/public/inquiry-files/${filePath}`;
+    return `${supabaseUrl}/storage/v1/object/public/inquiry-attachments/${filePath}`;
   };
 
   // 파일 다운로드 함수
