@@ -87,11 +87,13 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                   
                   {/* 동적 버튼들 - 버튼이 있는 경우에만 표시 */}
                   {dynamicButtons.length > 0 && (
-                    <div className="space-y-2">
+                    <div className={dynamicButtons.length === 2 ? "flex gap-2" : "space-y-2"}>
                       {dynamicButtons.map((button, index) => (
                         <button
                           key={index}
-                          className="w-full py-2 px-4 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                          className={`py-2 px-4 bg-gray-100 text-blue-600 border border-gray-600 text-sm hover:bg-gray-200 transition-colors ${
+                            dynamicButtons.length === 2 ? "flex-1" : "w-full"
+                          }`}
                           onClick={() => handleButtonClick(button)}
                         >
                           {button.text || `버튼${index + 1}`}
