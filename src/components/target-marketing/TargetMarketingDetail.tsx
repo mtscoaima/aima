@@ -200,7 +200,7 @@ function TargetMarketingDetailContent({
   // 커스텀 훅들 사용
   const { generateTemplateTitle } = useTemplateGeneration();
   const { analyzeTargetContent } = useTargetAnalysis();
-  const { addDynamicButton, removeDynamicButton, updateDynamicButton, handleLinkCheck } = useDynamicButtons();
+  const { addDynamicButton, removeDynamicButton, updateDynamicButton, handleLinkCheck, validateAllButtonUrls } = useDynamicButtons();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { getAllTimeOptions, getSelectedAgeDisplay } = useTargetOptions();
   const { calculateTotalCost, calculateRequiredCredits } = useCalculations();
@@ -1484,6 +1484,15 @@ function TargetMarketingDetailContent({
       return;
     }
 
+    // 동적 버튼 URL 유효성 검사
+    if (dynamicButtons.length > 0) {
+      const validation = validateAllButtonUrls(dynamicButtons);
+      if (!validation.isValid) {
+        alert(`버튼 URL 오류:\n${validation.errorMessage}`);
+        return;
+      }
+    }
+
     setIsSavingTemplate(true);
 
     try {
@@ -1706,6 +1715,15 @@ function TargetMarketingDetailContent({
     if (!smsTextContent.trim() || !currentGeneratedImage) {
       alert(ERROR_MESSAGES.CAMPAIGN_CONTENT_REQUIRED);
       return;
+    }
+
+    // 동적 버튼 URL 유효성 검사
+    if (dynamicButtons.length > 0) {
+      const validation = validateAllButtonUrls(dynamicButtons);
+      if (!validation.isValid) {
+        alert(`버튼 URL 오류:\n${validation.errorMessage}`);
+        return;
+      }
     }
 
     // 크레딧 잔액 확인

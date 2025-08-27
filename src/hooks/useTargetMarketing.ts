@@ -323,6 +323,124 @@ export const useTargetAnalysis = () => {
 };
 
 // 동적 버튼 관리 훅
+// URL 유효성 검사 함수
+const validateUrl = (url: string, type: 'web' | 'ios' | 'android'): { isValid: boolean; errorMessage?: string } => {
+  if (!url || !url.trim()) {
+    return { isValid: false, errorMessage: `${type} URL을 입력해주세요.` };
+  }
+
+  const trimmedUrl = url.trim();
+
+  if (type === 'web') {
+    // 웹 URL 검증
+    try {
+      let validUrl = trimmedUrl;
+      if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
+        validUrl = 'https://' + validUrl;
+      }
+      
+      const urlObj = new URL(validUrl);
+      
+      // 도메인이 www.만 있거나 빈 경우 체크
+      if (!urlObj.hostname || urlObj.hostname === 'www' || urlObj.hostname === 'www.') {
+        return { isValid: false, errorMessage: '올바른 도메인을 입력해주세요. (예: https://example.com)' };
+      }
+      
+      // 도메인에 적어도 하나의 점(.)이 있어야 함
+      if (!urlObj.hostname.includes('.') || urlObj.hostname.split('.').filter(part => part.length > 0).length < 2) {
+        return { isValid: false, errorMessage: '올바른 도메인 형식이 아닙니다. (예: https://example.com)' };
+      }
+      
+      return { isValid: true };
+    } catch {
+      return { isValid: false, errorMessage: '올바른 웹 URL 형식이 아닙니다. (예: https://example.com)' };
+    }
+  } else if (type === 'ios') {
+    // iOS 앱스토어/딥링크 URL 검증
+    const iosPatterns = [
+      /^https:\/\/apps\.apple\.com\/.*$/i,  // 앱스토어 링크
+      /^https:\/\/itunes\.apple\.com\/.*$/i, // iTunes 링크
+      /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.*$/,  // 커스텀 스킴 (딥링크)
+    ];
+    
+    const isValidIos = iosPatterns.some(pattern => pattern.test(trimmedUrl));
+    if (!isValidIos) {
+      return { 
+        isValid: false, 
+        errorMessage: 'iOS URL은 앱스토어 링크 또는 앱 딥링크여야 합니다.\n(예: https://apps.apple.com/... 또는 myapp://...)' 
+      };
+    }
+    return { isValid: true };
+  } else if (type === 'android') {
+    // Android 플레이스토어/딥링크 URL 검증
+    const androidPatterns = [
+      /^https:\/\/play\.google\.com\/store\/apps\/.*$/i, // 플레이스토어 링크
+      /^market:\/\/details\?id=.*$/i,  // Market 링크
+      /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.*$/, // 커스텀 스킴 (딥링크)
+    ];
+    
+    const isValidAndroid = androidPatterns.some(pattern => pattern.test(trimmedUrl));
+    if (!isValidAndroid) {
+      return { 
+        isValid: false, 
+        errorMessage: 'Android URL은 플레이스토어 링크 또는 앱 딥링크여야 합니다.\n(예: https://play.google.com/store/apps/... 또는 myapp://...)' 
+      };
+    }
+    return { isValid: true };
+  }
+
+  return { isValid: false, errorMessage: '알 수 없는 URL 타입입니다.' };
+};
+
+// 모든 버튼 URL 유효성 검사
+const validateAllButtonUrls = (dynamicButtons: DynamicButton[]): { isValid: boolean; errorMessage?: string } => {
+  for (let i = 0; i < dynamicButtons.length; i++) {
+    const button = dynamicButtons[i];
+    const buttonIndex = i + 1;
+
+    if (button.linkType === 'web') {
+      const validation = validateUrl(button.url || '', 'web');
+      if (!validation.isValid) {
+        return { 
+          isValid: false, 
+          errorMessage: `버튼 ${buttonIndex}: ${validation.errorMessage}` 
+        };
+      }
+    } else if (button.linkType === 'app') {
+      // iOS URL 검증
+      if (button.iosUrl && button.iosUrl.trim()) {
+        const iosValidation = validateUrl(button.iosUrl, 'ios');
+        if (!iosValidation.isValid) {
+          return { 
+            isValid: false, 
+            errorMessage: `버튼 ${buttonIndex} (iOS): ${iosValidation.errorMessage}` 
+          };
+        }
+      }
+
+      // Android URL 검증
+      if (button.androidUrl && button.androidUrl.trim()) {
+        const androidValidation = validateUrl(button.androidUrl, 'android');
+        if (!androidValidation.isValid) {
+          return { 
+            isValid: false, 
+            errorMessage: `버튼 ${buttonIndex} (Android): ${androidValidation.errorMessage}` 
+          };
+        }
+      }
+
+      // 앱 링크는 iOS 또는 Android 중 하나는 반드시 있어야 함
+      if (!button.iosUrl?.trim() && !button.androidUrl?.trim()) {
+        return { 
+          isValid: false, 
+          errorMessage: `버튼 ${buttonIndex}: iOS 또는 Android URL 중 하나는 반드시 입력해야 합니다.` 
+        };
+      }
+    }
+  }
+  return { isValid: true };
+};
+
 export const useDynamicButtons = () => {
   const addDynamicButton = useCallback((dynamicButtons: DynamicButton[], setDynamicButtons: (buttons: DynamicButton[]) => void) => {
     if (dynamicButtons.length < BUTTON_CONSTRAINTS.MAX_BUTTONS) {
@@ -399,7 +517,7 @@ export const useDynamicButtons = () => {
     }
   }, []);
 
-  return { addDynamicButton, removeDynamicButton, updateDynamicButton, handleLinkCheck };
+  return { addDynamicButton, removeDynamicButton, updateDynamicButton, handleLinkCheck, validateAllButtonUrls };
 };
 
 // 시간 옵션 및 연령대 표시 훅
