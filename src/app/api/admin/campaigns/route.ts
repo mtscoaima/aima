@@ -58,11 +58,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 모든 캠페인 조회 (DRAFT 상태 제외)
+    // 모든 캠페인 조회
     const { data: campaigns, error: campaignsError } = await supabase
       .from("campaigns")
       .select("*")
-      .neq("status", "DRAFT")
       .order("created_at", { ascending: false });
 
     if (campaignsError) {

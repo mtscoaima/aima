@@ -11,15 +11,7 @@ interface Campaign {
   user_id: number;
   name: string;
   description?: string;
-  status:
-    | "DRAFT"
-    | "PENDING_APPROVAL"
-    | "APPROVED"
-    | "REJECTED"
-    | "ACTIVE"
-    | "PAUSED"
-    | "COMPLETED"
-    | "CANCELLED";
+  status: "PENDING_APPROVAL" | "REVIEWING" | "APPROVED" | "REJECTED";
   scheduled_at?: string;
   started_at?: string;
   completed_at?: string;
@@ -128,10 +120,14 @@ export default function CampaignsPage() {
     switch (status) {
       case "PENDING_APPROVAL":
         return "status-badge scheduled";
+      case "REVIEWING":
+        return "status-badge scheduled";
       case "REJECTED":
         return "status-badge rejected";
+      case "APPROVED":
+        return "status-badge approved";
       default:
-        return "status-badge approved"; // 다른 모든 상태는 승인됨 스타일
+        return "status-badge approved";
     }
   };
 
@@ -139,10 +135,14 @@ export default function CampaignsPage() {
     switch (status) {
       case "PENDING_APPROVAL":
         return "승인 대기";
+      case "REVIEWING":
+        return "검토 중";
       case "REJECTED":
         return "거부됨";
+      case "APPROVED":
+        return "승인됨";
       default:
-        return "승인됨"; // 다른 모든 상태는 승인됨으로 표시
+        return "승인됨";
     }
   };
 
@@ -151,27 +151,6 @@ export default function CampaignsPage() {
     return new Date(dateString).toLocaleDateString("ko-KR");
   };
 
-  const calculateOpenRate = (campaign: Campaign) => {
-    if (campaign.sent_count === 0) return "N/A";
-    // 실제 열람률 계산 로직은 메시지 로그 테이블을 참조해야 함
-    // 임시로 성공률을 기준으로 계산
-    const rate = ((campaign.success_count / campaign.sent_count) * 100).toFixed(
-      1
-    );
-    return `${rate}%`;
-  };
-
-  const calculateClickRate = (campaign: Campaign) => {
-    if (campaign.sent_count === 0) return "N/A";
-    // 실제 클릭률 계산은 별도 추적 시스템이 필요
-    // 임시로 성공률의 일정 비율로 계산
-    const rate = (
-      (campaign.success_count / campaign.sent_count) *
-      0.2 *
-      100
-    ).toFixed(1);
-    return `${rate}%`;
-  };
 
   const handleApprove = async (campaignId: number) => {
     if (!confirm("이 캠페인을 승인하시겠습니까?")) return;
@@ -370,29 +349,23 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="campaigns-table-container">
-                  <table className="campaigns-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>캠페인명</th>
-                        <th>상태</th>
-                        <th>생성일</th>
-                        <th>예산</th>
-                        <th>대상/발송/성공</th>
-                        <th>열람률</th>
-                        <th>클릭률</th>
-                        <th>액션</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {campaigns.length === 0 ? (
+                  {campaigns.length === 0 ? (
+                    <div className="no-data">
+                      등록된 캠페인이 없습니다.
+                    </div>
+                  ) : (
+                    <table className="campaigns-table">
+                      <thead>
                         <tr>
-                          <td colSpan={8} className="no-data">
-                            등록된 캠페인이 없습니다.
-                          </td>
+                          <th>ID</th>
+                          <th>캠페인명</th>
+                          <th>상태</th>
+                          <th>생성일</th>
+                          <th>액션</th>
                         </tr>
-                      ) : (
-                        campaigns.map((campaign) => (
+                      </thead>
+                      <tbody>
+                        {campaigns.map((campaign) => (
                           <tr key={campaign.id}>
                             <td className="campaign-id">{campaign.id}</td>
                             <td className="campaign-name">
@@ -405,7 +378,7 @@ export default function CampaignsPage() {
                                 )}
                               </div>
                             </td>
-                            <td>
+                            <td className="campaign-status">
                               <span
                                 className={getStatusBadgeClass(campaign.status)}
                               >
@@ -415,24 +388,9 @@ export default function CampaignsPage() {
                             <td className="campaign-date">
                               {formatDate(campaign.created_at)}
                             </td>
-                            <td className="campaign-budget">
-                              {campaign.budget
-                                ? `₩${Number(campaign.budget).toLocaleString()}`
-                                : "N/A"}
-                            </td>
-                            <td className="campaign-stats">
-                              {campaign.total_recipients.toLocaleString()} /{" "}
-                              {campaign.sent_count.toLocaleString()} /{" "}
-                              {campaign.success_count.toLocaleString()}
-                            </td>
-                            <td className="campaign-rate">
-                              {calculateOpenRate(campaign)}
-                            </td>
-                            <td className="campaign-rate">
-                              {calculateClickRate(campaign)}
-                            </td>
                             <td className="campaign-actions">
-                              {campaign.status === "PENDING_APPROVAL" && (
+                              {(campaign.status === "PENDING_APPROVAL" || 
+                                campaign.status === "REVIEWING") && (
                                 <>
                                   <button
                                     className="action-btn approve-btn"
@@ -458,13 +416,12 @@ export default function CampaignsPage() {
                                   </button>
                                 </>
                               )}
-                              {/* 승인됨이나 거부됨 상태에서는 액션 버튼 없음 */}
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
 
                 <div className="table-footer">
