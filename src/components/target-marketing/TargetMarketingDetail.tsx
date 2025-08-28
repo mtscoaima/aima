@@ -80,6 +80,19 @@ function TargetMarketingDetailContent({
     string | null
   >(null);
 
+  // 첫 채팅 질문 관련 상태
+  const [isFirstChat, setIsFirstChat] = useState(true);
+  const [hasShownFirstQuestion, setHasShownFirstQuestion] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<{[key: number]: string}>({});
+  
+  // 질문 목록 정의
+  const initialQuestions = [
+    "광고의 목적은 무엇인가요? (답변예시 : 신규고객 유입, 단골고객 확보, 리뷰 및 SNS, 안내)",
+    "제공할 혜택이 있다면, 혜택 내용과 제공하는 기간을 알려주세요.(없다면 없다고 말씀해주세요.)",
+    "이번 광고메시지를 어떤 고객에게 전달하고 싶으신가요?"
+  ];
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
   const [sendPolicy, setSendPolicy] = useState<"realtime" | "batch">(
@@ -843,12 +856,18 @@ function TargetMarketingDetailContent({
 
           // localStorage에서 템플릿 데이터 제거
           localStorage.removeItem("selectedTemplate");
+          
+          // 템플릿을 사용하는 경우 첫 채팅 모드 비활성화
+          setIsFirstChat(false);
+          setHasShownFirstQuestion(false);
         } catch (error) {
           console.error("템플릿 데이터 파싱 오류:", error);
         }
       }
     }
   }, [useTemplate, templateId, isInitialized]);
+
+  // 첫 채팅 시 첫 번째 질문 표시 - 제거 (사용자가 첫 메시지를 보낸 후에 질문 표시)
 
   const scrollToBottom = () => {
     if (chatMessagesRef.current) {
@@ -958,44 +977,117 @@ function TargetMarketingDetailContent({
     setMessages((prev) => [...prev, assistantMessage]);
 
     try {
-      // 선택된 파일이 있으면 base64로 변환, 없으면 sessionStorage에서 확인
-      let initialImageBase64: string | undefined;
-      if (selectedFile && selectedFile.type.startsWith("image/")) {
-        initialImageBase64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            resolve(e.target?.result as string);
-          };
-          reader.readAsDataURL(selectedFile);
-        });
-      } else {
-        // selectedFile이 없으면 sessionStorage에서 확인
-        const savedFileData = sessionStorage.getItem('selectedFile');
-        if (savedFileData) {
-          try {
-            const fileInfo = JSON.parse(savedFileData);
-            if (fileInfo.dataUrl && fileInfo.type?.startsWith("image/")) {
-              initialImageBase64 = fileInfo.dataUrl;
-            }
-          } catch (error) {
-            console.error('Failed to parse sessionStorage file data:', error);
-          }
+      // 첫 채팅 중인 경우 처리
+      if (isFirstChat) {
+        // 아직 첫 번째 질문을 보여주지 않은 경우 (사용자의 첫 메시지)
+        if (!hasShownFirstQuestion) {
+          // 첫 번째 질문 표시
+          setTimeout(() => {
+            const firstQuestionMessage = `효과적인 마케팅 캠페인을 만들기 위해 몇 가지 질문을 드리겠습니다.\n\n${initialQuestions[0]}`;
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? {
+                      ...msg,
+                      content: firstQuestionMessage,
+                      isQuestion: true,
+                    }
+                  : msg
+              )
+            );
+            setHasShownFirstQuestion(true);
+            setShowTypingIndicator(false);
+            setIsLoading(false);
+            scrollToBottom();
+          }, 500);
+          return;
         }
-      }
+        
+        // 질문에 대한 답변인 경우
+        if (hasShownFirstQuestion && currentQuestionIndex < initialQuestions.length) {
+          // 현재 질문에 대한 답변 저장
+          setUserAnswers(prev => ({...prev, [currentQuestionIndex]: messageToSend}));
+          
+          // 다음 질문이 있는 경우
+          if (currentQuestionIndex < initialQuestions.length - 1) {
+            // 다음 질문 표시
+            setTimeout(() => {
+              const nextQuestionMessage = `${initialQuestions[currentQuestionIndex + 1]}`;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMessageId
+                    ? {
+                        ...msg,
+                        content: nextQuestionMessage,
+                        isQuestion: true,
+                      }
+                    : msg
+                )
+              );
+              setCurrentQuestionIndex(currentQuestionIndex + 1);
+              setShowTypingIndicator(false);
+              setIsLoading(false);
+              scrollToBottom();
+            }, 500);
+            return;
+          } else {
+          // 마지막 질문에 대한 답변인 경우 - AI 호출 준비
+          const allAnswers = {...userAnswers, [currentQuestionIndex]: messageToSend};
+          
+          // 업종 정보 가져오기
+          const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+          const industryInfo = userInfo.industry || '일반';
+          
+          // 첫 채팅 모드 종료
+          setIsFirstChat(false);
+          setHasShownFirstQuestion(false);
+          
+          // AI 메시지 생성
+          const aiPrompt = `사용자 정보:
+- 업종: ${industryInfo}
+- 광고 목적: ${allAnswers[0]}
+- 제공 혜택: ${allAnswers[1]}
+- 타겟 고객: ${allAnswers[2]}
 
+위 정보를 바탕으로 효과적인 마케팅 콘텐츠를 생성해주세요.`;
+          
+          // 이미지 처리 및 AI 호출 진행
+          let initialImageBase64: string | undefined;
+          if (selectedFile && selectedFile.type.startsWith("image/")) {
+            initialImageBase64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                resolve(e.target?.result as string);
+              };
+              reader.readAsDataURL(selectedFile);
+            });
+          } else {
+            // selectedFile이 없으면 sessionStorage에서 확인
+            const savedFileData = sessionStorage.getItem('selectedFile');
+            if (savedFileData) {
+              try {
+                const fileInfo = JSON.parse(savedFileData);
+                if (fileInfo.dataUrl && fileInfo.type?.startsWith("image/")) {
+                  initialImageBase64 = fileInfo.dataUrl;
+                }
+              } catch (error) {
+                console.error('Failed to parse sessionStorage file data:', error);
+              }
+            }
+          }
 
-      // 스트리밍 API 호출
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: messageToSend,
-          previousMessages: messages,
-          initialImage: initialImageBase64,
-        }),
-      });
+          // 스트리밍 API 호출 - AI 프롬프트 사용
+          const response = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: aiPrompt,
+              previousMessages: [],
+              initialImage: initialImageBase64,
+            }),
+          });
 
       if (!response.ok) {
         throw new Error("API 요청에 실패했습니다.");
@@ -1254,6 +1346,250 @@ function TargetMarketingDetailContent({
       setIsLoading(false);
       setShowTypingIndicator(false);
       setIsImageGenerating(false);
+        }
+      }
+      } else {
+        // 첫 채팅이 아닌 경우 - 기존 로직 그대로 실행
+        let initialImageBase64: string | undefined;
+        if (selectedFile && selectedFile.type.startsWith("image/")) {
+          initialImageBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              resolve(e.target?.result as string);
+            };
+            reader.readAsDataURL(selectedFile);
+          });
+        } else {
+          // selectedFile이 없으면 sessionStorage에서 확인
+          const savedFileData = sessionStorage.getItem('selectedFile');
+          if (savedFileData) {
+            try {
+              const fileInfo = JSON.parse(savedFileData);
+              if (fileInfo.dataUrl && fileInfo.type?.startsWith("image/")) {
+                initialImageBase64 = fileInfo.dataUrl;
+              }
+            } catch (error) {
+              console.error('Failed to parse sessionStorage file data:', error);
+            }
+          }
+        }
+
+        // 스트리밍 API 호출
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: messageToSend,
+            previousMessages: messages,
+            initialImage: initialImageBase64,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("API 요청에 실패했습니다.");
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("스트림을 읽을 수 없습니다.");
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const jsonString = line.slice(6).trim();
+
+                // JSON 검증 (개선된 버전 - response_complete 이벤트 허용)
+                if (
+                  !jsonString ||
+                  jsonString.length < 5 ||
+                  jsonString === "{" ||
+                  !jsonString.endsWith("}")
+                ) {
+                  continue;
+                }
+                const data = JSON.parse(jsonString);
+
+                if (data.type === "text_delta") {
+                  // 첫 번째 텍스트 응답이 오면 타이핑 인디케이터 숨기기
+                  setShowTypingIndicator(false);
+
+                  // 텍스트 스트리밍 업데이트
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            content: msg.content + data.content,
+                            // 텍스트가 들어오면 이미지 로딩 상태 해제
+                            isImageLoading: false,
+                          }
+                        : msg
+                    )
+                  );
+                  // 텍스트 스트리밍 중 스크롤
+                  setTimeout(() => scrollToBottom(), 50);
+                } else if (data.type === "text_replace") {
+                  // JSON 파싱 완료 후 텍스트 교체
+                  setShowTypingIndicator(false);
+                  // 텍스트 교체 시 이미지 생성 로딩 상태도 해제
+                  setIsImageGenerating(false);
+                  // text_replace를 받으면 응답이 완료된 것으로 간주하고 isLoading 해제
+                  setIsLoading(false);
+
+                  // 기존 텍스트를 새로운 텍스트로 교체
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            content: data.content,
+                            isImageLoading: false,
+                          }
+                        : msg
+                    )
+                  );
+
+                  // SMS 텍스트 내용 업데이트
+                  if (data.smsTextContent) {
+                    setSmsTextContent(data.smsTextContent);
+                  }
+
+                  // 퀵 액션 버튼 업데이트
+                  if (data.quickActionButtons) {
+                    setQuickActionButtons(data.quickActionButtons);
+                  }
+                  
+                  // 질문인 경우 처리
+                  if (data.isQuestion) {
+                    // 질문인 경우 메시지에 표시
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantMessageId
+                          ? {
+                              ...msg,
+                              isQuestion: true,
+                            }
+                          : msg
+                      )
+                    );
+                  }
+
+                  // 템플릿 제목 업데이트 (API 응답에서 온 경우 - text_replace)
+                  if (data.templateData && data.templateData.title) {
+                    setTemplateTitle(data.templateData.title);
+                  }
+
+                  // 텍스트 교체 후 스크롤
+                  setTimeout(() => scrollToBottom(), 50);
+                } else if (data.type === "partial_image") {
+                  // 첫 번째 이미지 응답이 오면 타이핑 인디케이터 숨기기
+                  setShowTypingIndicator(false);
+                  // 좌측 채팅과 동일: 이미지 생성 중 상태 활성화
+                  setIsImageGenerating(true);
+                  
+                  // 좌측 채팅창에서 isImageLoading을 true로 설정하는 것처럼 우측도 동일하게 처리
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            isImageLoading: true,
+                          }
+                        : msg
+                    )
+                  );
+
+                  // 부분 이미지 생성 중 (미리보기)
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            imageUrl: data.imageUrl,
+                            isImageLoading: true,
+                          }
+                        : msg
+                    )
+                  );
+
+                  setCurrentGeneratedImage(data.imageUrl);
+
+                  // 이미지 생성 중 스크롤
+                  setTimeout(() => scrollToBottom(), 100);
+                } else if (data.type === "image_generated") {
+                  // 최종 이미지 생성 완료
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            imageUrl: data.imageUrl,
+                            isImageLoading: false,
+                          }
+                        : msg
+                    )
+                  );
+
+                  // 생성된 이미지를 우측 첨부 영역에 표시
+                  setCurrentGeneratedImage(data.imageUrl);
+                  // 좌측 채팅과 동일: 이미지 생성 완료 시 로딩 상태 해제
+                  setIsImageGenerating(false);
+                  
+                  // 이미지 생성 완료 후 스크롤
+                  setTimeout(() => scrollToBottom(), 150);
+                } else if (data.type === "response_complete") {
+                  setIsLoading(false);
+                  setShowTypingIndicator(false);
+                  setIsImageGenerating(false);
+
+                  // 최종 업데이트 확인
+                  if (data.smsTextContent) {
+                    setSmsTextContent(data.smsTextContent);
+                  }
+                  if (data.quickActionButtons) {
+                    setQuickActionButtons(data.quickActionButtons);
+                  }
+                  if (data.imageUrl) {
+                    setCurrentGeneratedImage(data.imageUrl);
+                  }
+
+                  // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
+                  if (data.templateData && data.templateData.title) {
+                    setTemplateTitle(data.templateData.title);
+                  }
+
+                  // 최종 스크롤
+                  setTimeout(() => scrollToBottom(), 200);
+                } else if (data.type === "error") {
+                  throw new Error(data.error);
+                }
+              } catch (parseError) {
+                console.error("JSON 파싱 오류:", parseError, "원본 라인:", line.slice(0, 100));
+                // JSON 파싱 오류가 발생한 경우 해당 라인을 무시하고 계속 진행
+                continue;
+              }
+            }
+          }
+        }
+        // 스트림이 종료되었는데 response_complete가 없는 경우 강제로 isLoading 해제
+        setIsLoading(false);
+        setShowTypingIndicator(false);
+        setIsImageGenerating(false);
+      }
     } catch (error) {
       console.error("AI 채팅 오류:", error);
       setMessages((prev) =>
@@ -1281,7 +1617,7 @@ function TargetMarketingDetailContent({
         sessionStorage.removeItem('selectedFile');
       }
     }
-  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, smsTextContent, templateTitle, selectedFile]);
+  }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, smsTextContent, templateTitle, selectedFile, currentQuestionIndex, hasShownFirstQuestion, initialQuestions, isFirstChat, userAnswers]);
 
   // 초기 메시지 처리
   useEffect(() => {

@@ -29,8 +29,7 @@ export async function POST(request: NextRequest) {
       ],
     }));
 
-    // 첫 대화인지 확인 (AI 응답이 없는 경우)
-    const isFirstInteraction = !previousMessages.some((msg: { role: string }) => msg.role === "assistant");
+    // 첫 대화 확인 로직 제거됨 - 프론트엔드에서 처리
 
     // 스트리밍 응답 생성
     const stream = new ReadableStream({
@@ -39,32 +38,8 @@ export async function POST(request: NextRequest) {
           // 사용자 입력 컨텐츠 구성
           const userContent = [];
 
-          // 첫 대화와 이후 대화에 따라 다른 프롬프트 사용
-          let promptText = "";
-          
-          if (isFirstInteraction) {
-            // 첫 대화 - 3개의 질문 생성
-            promptText = `마케팅 전문가로서, 사용자에게 효과적인 마케팅 캠페인을 만들기 위한 정보를 수집해야 합니다.
-            
-            사용자의 업종을 고려하여 간단명료한 질문 3개를 만들어주세요:
-            1. 캠페인의 목적 (신규 고객 유치, 기존 고객 유지, 재구매 유도 등)
-            2. 제공하려는 혜택이나 프로모션
-            3. 타겟 고객층
-            
-            각 질문은 한 문장으로 간결하게 작성하고, 선택지는 제공하지 마세요.
-            이미지는 생성하지 마세요.
-            
-            응답은 다음 JSON 형식으로 작성해주세요:
-            {
-              "response": "효과적인 캠페인을 위해 3가지만 여쭤볼게요!\\n 1. [간단한 첫 번째 질문]\\n 2. [간단한 두 번째 질문]\\n 3. [간단한 세 번째 질문]",
-              "is_question": true,
-              "skip_image_generation": true
-            }
-            
-            사용자 입력: ${message}`;
-          } else {
-            // 이후 대화 - 기존 방식으로 콘텐츠 생성
-            promptText = `마케팅 전문가로서 답변해주세요. 사용자가 이전에 제공한 정보를 바탕으로 맞춤형 마케팅 콘텐츠를 생성해주세요.
+          // 기존 방식으로 콘텐츠 생성
+          const promptText = `마케팅 전문가로서 답변해주세요. 사용자가 이전에 제공한 정보를 바탕으로 맞춤형 마케팅 콘텐츠를 생성해주세요.
             
             마케팅 이미지를 생성해주세요. 이미지는 텍스트를 포함하지 마세요.
             프롬프트와 관계 없이 항상 이미지는 하나만 생성해주세요.
@@ -91,7 +66,6 @@ export async function POST(request: NextRequest) {
             ${
               initialImage ? "첨부된 이미지를 참고하여 " : ""
             }사용자 요청: ${message}`;
-          }
           
           userContent.push({
             type: "input_text",
@@ -127,17 +101,15 @@ export async function POST(request: NextRequest) {
             tools: [] as Array<{ type: "image_generation"; partial_images: number; quality: string; size: string }>,
           };
           
-          // 첫 대화가 아닐 때만 이미지 생성 도구 추가
-          if (!isFirstInteraction) {
-            responseConfig.tools = [
-              {
-                type: "image_generation",
-                partial_images: 3,
-                quality: "high",
-                size: "1024x1024",
-              },
-            ];
-          }
+          // 이미지 생성 도구 추가
+          responseConfig.tools = [
+            {
+              type: "image_generation",
+              partial_images: 3,
+              quality: "high",
+              size: "1024x1024",
+            },
+          ];
           
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const response = await client.responses.create(responseConfig as any);
