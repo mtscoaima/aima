@@ -45,3 +45,5 @@ next-env.d.ts
 .cursor
 bg_progress
 .mcp.json
+
+CLAUDE.md

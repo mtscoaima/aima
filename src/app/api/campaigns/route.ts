@@ -337,7 +337,7 @@ export async function POST(request: NextRequest) {
       name: campaignData.title || messageTemplate.name, // 템플릿의 제목 사용
       // description 필드 제거됨 - 템플릿에서 자동 생성 가능
       template_id: messageTemplate.id, // 템플릿 ID 추가
-      status: "DRAFT", // 임시 저장 상태
+      status: "PENDING_APPROVAL", // 승인 대기 상태
       total_recipients: parseInt(campaignData.maxRecipients) || 30,
       sent_count: 0, // 기본값
       success_count: 0, // 기본값

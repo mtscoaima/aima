@@ -106,9 +106,7 @@ export const getCampaigns = async (token: string): Promise<GetCampaignsResponse>
   // 승인 완료된 캠페인만 필터링
   const approvedCampaigns = (data.campaigns || []).filter(
     (campaign: Campaign) => 
-      campaign.status === "approved" || 
       campaign.status === "APPROVED" ||
-      campaign.approval_status === "approved" ||
       campaign.approval_status === "APPROVED"
   );
 
@@ -151,7 +149,7 @@ export const getCampaign = async (
  */
 export const updateCampaignStatus = async (
   campaignId: string,
-  status: "draft" | "pending" | "approved" | "rejected" | "active" | "completed" | "paused",
+  status: "PENDING_APPROVAL" | "REVIEWING" | "APPROVED" | "REJECTED" | "ACTIVE" | "COMPLETED" | "PAUSED",
   token: string
 ): Promise<void> => {
   const response = await fetch(`/api/campaigns/${campaignId}/status`, {

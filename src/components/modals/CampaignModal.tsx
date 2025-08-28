@@ -77,12 +77,16 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                           <tr key={campaign.id}>
                             <td className="py-3 px-4" style={{ width: '60px' }}>
                               <input
-                                type="radio"
+                                type="checkbox"
                                 name="campaign"
                                 value={campaign.id}
                                 checked={selectedCampaignId === campaign.id || selectedCampaignId?.toString() === campaign.id?.toString()}
                                 onChange={(e) => {
-                                  setSelectedCampaignId(e.target.value);
+                                  if (e.target.checked) {
+                                    setSelectedCampaignId(e.target.value);
+                                  } else {
+                                    setSelectedCampaignId(null);
+                                  }
                                 }}
                               />
                             </td>
@@ -237,10 +241,16 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                             </td>
                             <td className="py-3 px-4 whitespace-nowrap" style={{ width: '100px' }}>
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 whitespace-nowrap">
-                                {(campaign.status === 'approved' || campaign.status === 'APPROVED' || 
-                                  campaign.approval_status === 'approved' || campaign.approval_status === 'APPROVED') 
+                                {(campaign.status === 'APPROVED' || 
+                                  campaign.approval_status === 'APPROVED') 
                                   ? '승인완료' 
-                                  : campaign.status || campaign.approval_status || '대기중'}
+                                  : campaign.status === 'PENDING_APPROVAL' 
+                                    ? '승인대기'
+                                    : campaign.status === 'REVIEWING' 
+                                      ? '검토중'
+                                      : campaign.status === 'REJECTED'
+                                        ? '거부됨'
+                                        : campaign.status || campaign.approval_status || '대기중'}
                               </span>
                             </td>
                           </tr>
