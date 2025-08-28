@@ -33,17 +33,49 @@ interface User {
   phone_number: string;
   company_info: {
     companyName: string;
+    ceoName?: string;
+    companyAddress?: string;
+    businessType?: string;
+    businessNumber?: string;
+    businessCategory?: string;
+    businessType2?: string;
+    homepage?: string;
+  };
+  tax_invoice_info?: {
+    manager?: string;
+    contact?: string;
+    email?: string;
   };
   created_at: string;
   documents: UserDocuments;
   approval_status: string;
+  approval_log?: {
+    changed_at?: string;
+    changed_by?: string;
+    rejection_reason?: string;
+  };
+  representativeName?: string;
+  companyAddress?: string;
+  approvalDate?: string;
+  approver?: string;
+  rejectionReason?: string;
 }
 
 export default function MemberApprovalPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  
+  // 검색/필터 상태
+  const [selectedCompany, setSelectedCompany] = useState<string>("전체");
+  const [selectedStatus, setSelectedStatus] = useState<string>("전체");
+  const [availableCompanies, setAvailableCompanies] = useState<string[]>([]);
+  
+  // 상세보기 모달 상태
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState<string>("");
 
   // Supabase에서 USER 역할을 가진 회원 정보 가져오기
   useEffect(() => {
@@ -85,28 +117,37 @@ export default function MemberApprovalPage() {
 
         // 데이터 타입 변환 및 처리
         const processedUsers: User[] = (result.users || []).map(
-          (user: {
-            id: number;
-            name: string;
-            email: string;
-            phone_number: string;
-            company_info: { companyName: string };
-            created_at: string;
-            documents: UserDocuments;
-            approval_status: string;
-          }) => ({
-            id: user.id.toString(),
-            name: user.name || "",
-            email: user.email || "",
-            phone_number: user.phone_number || "",
-            company_info: user.company_info || { companyName: "" },
-            created_at: user.created_at || new Date().toISOString(),
-            documents: user.documents || {},
-            approval_status: user.approval_status || "PENDING",
+          (user: Record<string, unknown>) => ({
+            id: (user.id as number).toString(),
+            name: (user.name as string) || "",
+            email: (user.email as string) || "",
+            phone_number: (user.phone_number as string) || "",
+            company_info: (user.company_info as User['company_info']) || { companyName: "" },
+            tax_invoice_info: (user.tax_invoice_info as User['tax_invoice_info']) || {},
+            created_at: (user.created_at as string) || new Date().toISOString(),
+            documents: (user.documents as UserDocuments) || {},
+            approval_status: (user.approval_status as string) || "PENDING",
+            approval_log: (user.approval_log as User['approval_log']) || {},
+            representativeName: (user.representativeName as string) || "",
+            companyAddress: (user.companyAddress as string) || "",
+            approvalDate: (user.approvalDate as string) || "",
+            approver: (user.approver as string) || "",
+            rejectionReason: (user.rejectionReason as string) || "",
           })
         );
 
         setUsers(processedUsers);
+        setFilteredUsers(processedUsers);
+        
+        // 회사명 목록 추출 (중복 제거)
+        const companies = Array.from(
+          new Set(
+            processedUsers
+              .map(user => user.company_info?.companyName)
+              .filter(name => name && name.trim() !== "")
+          )
+        );
+        setAvailableCompanies(companies);
       } catch (error) {
         console.error("Error fetching users:", error);
         setUsers([]);
@@ -123,6 +164,31 @@ export default function MemberApprovalPage() {
     fetchUsers();
   }, []);
 
+  // 필터링 로직
+  useEffect(() => {
+    let filtered = [...users];
+
+    // 회사명 필터링
+    if (selectedCompany !== "전체") {
+      filtered = filtered.filter(
+        user => user.company_info?.companyName === selectedCompany
+      );
+    }
+
+    // 검수상태 필터링
+    if (selectedStatus !== "전체") {
+      if (selectedStatus === "등록") {
+        filtered = filtered.filter(user => user.approval_status === "PENDING");
+      } else if (selectedStatus === "승인") {
+        filtered = filtered.filter(user => user.approval_status === "APPROVED");
+      } else if (selectedStatus === "반려") {
+        filtered = filtered.filter(user => user.approval_status === "REJECTED");
+      }
+    }
+
+    setFilteredUsers(filtered);
+  }, [users, selectedCompany, selectedStatus]);
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -131,11 +197,34 @@ export default function MemberApprovalPage() {
     setIsSidebarOpen(false);
   };
 
-  const handleEditClick = (userId: string) => {
-    setEditingUserId(editingUserId === userId ? null : userId);
+
+  const handleDetailClick = (user: User) => {
+    setSelectedUser(user);
+    setRejectionReason(user.rejectionReason || "");
+    setShowDetailModal(true);
   };
 
-  const handleStatusChange = async (userId: string, newStatus: string) => {
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedUser(null);
+    setRejectionReason("");
+  };
+
+  const handleStatusChangeWithReason = async (userId: string, newStatus: string) => {
+    const requestData: Record<string, unknown> = {
+      userId,
+      approval_status: newStatus,
+    };
+
+    // 반려 시 반려사유 추가
+    if (newStatus === "REJECTED" && rejectionReason.trim()) {
+      requestData.rejection_reason = rejectionReason.trim();
+    }
+
+    return handleStatusChange(userId, newStatus, requestData);
+  };
+
+  const handleStatusChange = async (userId: string, newStatus: string, customData?: Record<string, unknown>) => {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -154,7 +243,7 @@ export default function MemberApprovalPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: JSON.stringify(customData || {
           userId,
           approval_status: newStatus,
         }),
@@ -218,8 +307,6 @@ export default function MemberApprovalPage() {
         }
       }
 
-      // 드롭다운 닫기
-      setEditingUserId(null);
 
       // 성공 메시지 표시
       const statusText =
@@ -532,6 +619,57 @@ export default function MemberApprovalPage() {
             </div>
           </div>
 
+          {/* 검색/필터 섹션 */}
+          <div className="search-filter-section" style={{ marginBottom: "20px", padding: "20px", backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+            <div className="filter-row" style={{ display: "flex", gap: "15px", alignItems: "center", flexWrap: "wrap" }}>
+              <div className="filter-group">
+                <label style={{ fontSize: "14px", fontWeight: "500", marginRight: "8px" }}>기업명:</label>
+                <select
+                  value={selectedCompany}
+                  onChange={(e) => setSelectedCompany(e.target.value)}
+                  style={{
+                    padding: "6px 12px",
+                    border: "1px solid #ced4da",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                    backgroundColor: "white"
+                  }}
+                >
+                  <option value="전체">전체</option>
+                  {availableCompanies.map((company) => (
+                    <option key={company} value={company}>
+                      {company}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="filter-group">
+                <label style={{ fontSize: "14px", fontWeight: "500", marginRight: "8px" }}>검수상태:</label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  style={{
+                    padding: "6px 12px",
+                    border: "1px solid #ced4da",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                    backgroundColor: "white"
+                  }}
+                >
+                  <option value="전체">전체</option>
+                  <option value="등록">등록 (대기)</option>
+                  <option value="승인">승인</option>
+                  <option value="반려">반려</option>
+                </select>
+              </div>
+              
+              <div className="filter-results" style={{ marginLeft: "auto", fontSize: "14px", color: "#6c757d" }}>
+                {filteredUsers.length}건 / 전체 {users.length}건
+              </div>
+            </div>
+          </div>
+
           {/* Member Approval Section */}
           <div className="user-management-section">
             <div className="section-header">
@@ -543,46 +681,42 @@ export default function MemberApprovalPage() {
               <table className="user-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
                     <th>이름</th>
                     <th>이메일</th>
-                    <th>연락처</th>
                     <th>회사명</th>
-                    <th>가입일</th>
-                    <th>문서</th>
+                    <th>승인일자</th>
+                    <th>승인자</th>
                     <th>상태</th>
-                    <th>상태 변경</th>
+                    <th>관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={7}
                         style={{ textAlign: "center", padding: "20px" }}
                       >
                         로딩 중...
                       </td>
                     </tr>
-                  ) : users.length === 0 ? (
+                  ) : filteredUsers.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={7}
                         style={{ textAlign: "center", padding: "20px" }}
                       >
-                        등록된 회원이 없습니다.
+                        조건에 맞는 회원이 없습니다.
                       </td>
                     </tr>
                   ) : (
-                    users.map((user) => (
+                    filteredUsers.map((user) => (
                       <tr key={user.id}>
-                        <td>{user.id}</td>
                         <td>{user.name}</td>
                         <td>{user.email}</td>
-                        <td>{formatPhoneNumber(user.phone_number)}</td>
                         <td>{user.company_info?.companyName || "-"}</td>
-                        <td>{formatDate(user.created_at)}</td>
-                        <td>{renderDocuments(user.documents)}</td>
+                        <td>{user.approvalDate || "-"}</td>
+                        <td>{user.approver || "-"}</td>
                         <td>
                           <span
                             className={`status-badge ${getStatusBadge(
@@ -593,28 +727,13 @@ export default function MemberApprovalPage() {
                           </span>
                         </td>
                         <td>
-                          {editingUserId === user.id ? (
-                            <select
-                              className="status-dropdown"
-                              value={user.approval_status}
-                              onChange={(e) =>
-                                handleStatusChange(user.id, e.target.value)
-                              }
-                              onBlur={() => setEditingUserId(null)}
-                              autoFocus
-                            >
-                              <option value="PENDING">대기중</option>
-                              <option value="APPROVED">승인됨</option>
-                              <option value="REJECTED">거부됨</option>
-                            </select>
-                          ) : (
-                            <button
-                              className="btn-edit"
-                              onClick={() => handleEditClick(user.id)}
-                            >
-                              수정
-                            </button>
-                          )}
+                          <button
+                            className="btn-edit"
+                            onClick={() => handleDetailClick(user)}
+                            style={{ fontSize: "12px", padding: "4px 8px" }}
+                          >
+                            상세
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -632,6 +751,205 @@ export default function MemberApprovalPage() {
           </div>
         </div>
       </div>
+
+      {/* 상세보기 모달 */}
+      {showDetailModal && selectedUser && (
+        <div className="modal-overlay" onClick={closeDetailModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            {/* 모달 헤더 */}
+            <div className="modal-header">
+              <h2>사업자 정보 상세</h2>
+              <button
+                onClick={closeDetailModal}
+                className="modal-close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* 모달 내용 */}
+            <div className="modal-body">
+              {/* 신청자 정보 */}
+              <div className="modal-section applicant-info">
+                <h3>신청자 정보</h3>
+                <div className="modal-grid">
+                  <div className="modal-field">
+                    <label>이름</label>
+                    <div className="value">{selectedUser.name}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>이메일</label>
+                    <div className="value">{selectedUser.email}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>연락처</label>
+                    <div className="value">{formatPhoneNumber(selectedUser.phone_number)}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>가입일</label>
+                    <div className="value">{formatDate(selectedUser.created_at)}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 사업자 정보 */}
+              <div className="modal-section business-info">
+                <h3>사업자 정보</h3>
+                <div className="modal-grid">
+                  <div className="modal-field">
+                    <label>기업유형</label>
+                    <div className="value">
+                      {selectedUser.company_info?.businessType === "individual" ? "개인사업자" : "법인사업자"}
+                    </div>
+                  </div>
+                  <div className="modal-field">
+                    <label>사업자명</label>
+                    <div className="value">{selectedUser.company_info?.companyName || "-"}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>대표자명</label>
+                    <div className="value">{selectedUser.company_info?.ceoName || "-"}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>사업자등록번호</label>
+                    <div className="value">{selectedUser.company_info?.businessNumber || "-"}</div>
+                  </div>
+                  <div className="modal-field full-width">
+                    <label>주소</label>
+                    <div className="value">{selectedUser.company_info?.companyAddress || "-"}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>업태</label>
+                    <div className="value">{selectedUser.company_info?.businessCategory || "-"}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>업종</label>
+                    <div className="value">{selectedUser.company_info?.businessType2 || "-"}</div>
+                  </div>
+                  <div className="modal-field full-width">
+                    <label>홈페이지</label>
+                    <div className="value">{selectedUser.company_info?.homepage || "-"}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 세금계산서 담당자 정보 */}
+              <div className="modal-section tax-info">
+                <h3>세금계산서 담당자 정보</h3>
+                <div className="modal-grid">
+                  <div className="modal-field">
+                    <label>담당자명</label>
+                    <div className="value">{selectedUser.tax_invoice_info?.manager || "-"}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>연락처</label>
+                    <div className="value">{selectedUser.tax_invoice_info?.contact || "-"}</div>
+                  </div>
+                  <div className="modal-field">
+                    <label>이메일</label>
+                    <div className="value">{selectedUser.tax_invoice_info?.email || "-"}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 첨부 문서 */}
+              <div className="modal-section documents-info">
+                <h3>첨부 문서</h3>
+                <div className="modal-grid">
+                  <div className="modal-field full-width">
+                    {selectedUser.documents && renderDocuments(selectedUser.documents)}
+                  </div>
+                </div>
+              </div>
+
+              {/* 반려사유 (반려 상태인 경우에만 표시) */}
+              {selectedUser.approval_status === "REJECTED" && (
+                <div className="modal-section rejection-info">
+                  <h3>반려사유</h3>
+                  <div className="modal-field full-width">
+                    <div className="value">
+                      {selectedUser.rejectionReason || "반려사유가 기록되지 않았습니다."}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 승인/반려 액션 */}
+              <div className="modal-section admin-actions">
+                <h3>관리자 액션</h3>
+                <div className="admin-action-container">
+                  {/* 현재 상태 표시 */}
+                  <div className="modal-field">
+                    <label>현재 상태</label>
+                    <div className="value">
+                      <span className={`status-badge ${getStatusBadge(selectedUser.approval_status)}`}>
+                        {getStatusText(selectedUser.approval_status)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 반려사유 입력 */}
+                  <div className="admin-field-group">
+                    <label className="admin-field-label" htmlFor="rejection-reason">반려사유 <span className="required">*</span></label>
+                    <textarea
+                      id="rejection-reason"
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      className="modal-textarea"
+                      rows={4}
+                      placeholder="반려 시 반드시 사유를 입력해주세요..."
+                    />
+                    <small className="help-text">승인 처리 시에는 반려사유가 필요하지 않습니다.</small>
+                  </div>
+
+                  {/* 액션 버튼들 */}
+                  <div className="admin-field-group">
+                    <label className="admin-field-label">액션</label>
+                    <div className="action-buttons-container">
+                      <div className="primary-actions">
+                        <button
+                          onClick={() => {
+                            handleStatusChangeWithReason(selectedUser.id, "APPROVED");
+                            closeDetailModal();
+                          }}
+                          disabled={selectedUser.approval_status === "APPROVED"}
+                          className={`action-btn approve-btn ${selectedUser.approval_status === "APPROVED" ? "disabled" : ""}`}
+                        >
+                          <span className="btn-icon">✓</span>
+                          승인
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!rejectionReason.trim()) {
+                              alert("반려사유를 입력해주세요.");
+                              return;
+                            }
+                            handleStatusChangeWithReason(selectedUser.id, "REJECTED");
+                            closeDetailModal();
+                          }}
+                          disabled={selectedUser.approval_status === "REJECTED"}
+                          className={`action-btn reject-btn ${selectedUser.approval_status === "REJECTED" ? "disabled" : ""}`}
+                        >
+                          <span className="btn-icon">✕</span>
+                          반려
+                        </button>
+                      </div>
+                      <div className="secondary-actions">
+                        <button
+                          onClick={closeDetailModal}
+                          className="action-btn close-btn"
+                        >
+                          닫기
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminGuard>
   );
 }

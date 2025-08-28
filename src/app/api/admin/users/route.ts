@@ -101,8 +101,9 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("users")
       .select(
-        `id, username, name, email, phone_number, company_info, created_at, updated_at, 
-         last_login_at, approval_status, is_active, role, grade`,
+        `id, username, name, email, phone_number, company_info, tax_invoice_info, 
+         documents, approval_log, created_at, updated_at, last_login_at, 
+         approval_status, is_active, role, grade`,
         { count: "exact" }
       );
 
@@ -166,6 +167,8 @@ export async function GET(request: NextRequest) {
     // 데이터 변환
     const usersWithProcessedData = (data || []).map((user) => {
       const company_info = user.company_info as Record<string, unknown> | null;
+      const tax_invoice_info = user.tax_invoice_info as Record<string, unknown> | null;
+      const approval_log = user.approval_log as Record<string, unknown> | null;
       
       return {
         id: user.id,
@@ -186,6 +189,17 @@ export async function GET(request: NextRequest) {
         lastLogin: user.last_login_at ? 
           new Date(user.last_login_at).toLocaleString('ko-KR') : "-",
         approval_status: user.approval_status || "PENDING",
+        // 추가된 필드들
+        company_info: company_info,
+        tax_invoice_info: tax_invoice_info,
+        documents: user.documents,
+        approval_log: approval_log,
+        // 상세 정보를 위한 추가 필드들
+        representativeName: company_info?.ceoName || "",
+        companyAddress: company_info?.companyAddress || "",
+        approvalDate: approval_log?.changed_at ? new Date(approval_log.changed_at as string).toLocaleString('ko-KR') : "",
+        approver: approval_log?.changed_by || "",
+        rejectionReason: approval_log?.rejection_reason || "",
       };
     });
 
@@ -324,7 +338,7 @@ export async function PUT(request: NextRequest) {
         .eq("id", adminId)
         .single();
 
-      updateFields.approval_log = {
+      const approvalLogData: Record<string, unknown> = {
         changed_by: adminUser?.name || adminUser?.email,
         changed_by_email: adminUser?.email,
         changed_at: new Date().toISOString(),
@@ -332,6 +346,13 @@ export async function PUT(request: NextRequest) {
         new_status: updateFields.approval_status,
         admin_id: adminId,
       };
+
+      // 반려사유가 있는 경우 추가
+      if (updateData.rejection_reason && updateFields.approval_status === "REJECTED") {
+        approvalLogData.rejection_reason = updateData.rejection_reason;
+      }
+
+      updateFields.approval_log = approvalLogData;
     }
 
 
