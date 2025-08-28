@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
@@ -63,10 +63,28 @@ export default function CampaignsPage() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
   useEffect(() => {
     fetchCampaigns();
   }, []);
+
+  // 필터링된 캠페인 목록
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(campaign => {
+      // 검색어 필터링
+      const matchesSearch = 
+        campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.users?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.users?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // 상태 필터링
+      const matchesStatus = statusFilter === "ALL" || campaign.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [campaigns, searchTerm, statusFilter]);
 
   const fetchCampaigns = async () => {
     try {
@@ -289,7 +307,7 @@ export default function CampaignsPage() {
   };
 
   const handleViewDetail = (campaign: Campaign) => {
-    const index = campaigns.findIndex(c => c.id === campaign.id);
+    const index = filteredCampaigns.findIndex(c => c.id === campaign.id);
     setCurrentIndex(index);
     setSelectedCampaign(campaign);
     setIsModalOpen(true);
@@ -304,12 +322,17 @@ export default function CampaignsPage() {
     let newIndex = currentIndex;
     if (direction === 'prev' && currentIndex > 0) {
       newIndex = currentIndex - 1;
-    } else if (direction === 'next' && currentIndex < campaigns.length - 1) {
+    } else if (direction === 'next' && currentIndex < filteredCampaigns.length - 1) {
       newIndex = currentIndex + 1;
     }
     
     setCurrentIndex(newIndex);
-    setSelectedCampaign(campaigns[newIndex]);
+    setSelectedCampaign(filteredCampaigns[newIndex]);
+  };
+
+  const handleResetSearch = () => {
+    setSearchTerm("");
+    setStatusFilter("ALL");
   };
 
   const convertCampaignToModalFormat = (campaign: Campaign) => {
@@ -409,6 +432,45 @@ export default function CampaignsPage() {
                 새 캠페인 만들기
               </button>
             </div>
+            
+            {/* 검색 및 필터 영역 */}
+            <div className="search-container">
+              <div className="search-input-wrapper">
+                <input
+                  type="text"
+                  placeholder="캠페인명, 생성자 이름, 이메일로 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+                <svg className="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="status-filter"
+              >
+                <option value="ALL">모든 상태</option>
+                <option value="PENDING_APPROVAL">승인 대기</option>
+                <option value="REVIEWING">검토 중</option>
+                <option value="APPROVED">승인됨</option>
+                <option value="REJECTED">거부됨</option>
+              </select>
+              
+              <button
+                onClick={handleResetSearch}
+                className="btn-reset"
+              >
+                초기화
+              </button>
+              
+              <div className="search-results-info">
+                전체 {campaigns.length}개 중 {filteredCampaigns.length}개 캠페인
+              </div>
+            </div>
             <div className="campaigns-content-wrapper">
               <div className="campaigns-section">
                 <div className="section-header">
@@ -417,9 +479,11 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="campaigns-table-container">
-                  {campaigns.length === 0 ? (
+                  {filteredCampaigns.length === 0 ? (
                     <div className="no-data">
-                      등록된 캠페인이 없습니다.
+                      {campaigns.length === 0 
+                        ? "등록된 캠페인이 없습니다." 
+                        : "검색 조건에 맞는 캠페인이 없습니다."}
                     </div>
                   ) : (
                     <table className="campaigns-table">
@@ -433,7 +497,7 @@ export default function CampaignsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {campaigns.map((campaign) => (
+                        {filteredCampaigns.map((campaign) => (
                           <tr key={campaign.id}>
                             <td className="campaign-id">{campaign.id}</td>
                             <td className="campaign-name">
@@ -512,7 +576,7 @@ export default function CampaignsPage() {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           campaign={convertCampaignToModalFormat(selectedCampaign)}
-          campaigns={campaigns.map(convertCampaignToModalFormat)}
+          campaigns={filteredCampaigns.map(convertCampaignToModalFormat)}
           currentIndex={currentIndex}
           onNavigate={handleNavigate}
         />
