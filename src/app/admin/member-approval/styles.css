@@ -136,40 +136,32 @@
 /* Column widths */
 .user-table th:nth-child(1),
 .user-table td:nth-child(1) {
-  width: 6%;
-} /* ID */
+  width: 15%;
+} /* 이름 */
 .user-table th:nth-child(2),
 .user-table td:nth-child(2) {
-  width: 10%;
-} /* 이름 */
+  width: 25%;
+} /* 이메일 */
 .user-table th:nth-child(3),
 .user-table td:nth-child(3) {
-  width: 18%;
-} /* 이메일 */
+  width: 20%;
+} /* 회사명 */
 .user-table th:nth-child(4),
 .user-table td:nth-child(4) {
-  width: 12%;
-} /* 연락처 */
+  width: 15%;
+} /* 승인일자 */
 .user-table th:nth-child(5),
 .user-table td:nth-child(5) {
-  width: 16%;
-} /* 회사명 */
+  width: 10%;
+} /* 승인자 */
 .user-table th:nth-child(6),
 .user-table td:nth-child(6) {
-  width: 12%;
-} /* 가입일 */
-.user-table th:nth-child(7),
-.user-table td:nth-child(7) {
-  width: 18%;
-} /* 문서 */
-.user-table th:nth-child(8),
-.user-table td:nth-child(8) {
   width: 8%;
 } /* 상태 */
-.user-table th:nth-child(9),
-.user-table td:nth-child(9) {
-  width: 10%;
-} /* 상태 변경 */
+.user-table th:nth-child(7),
+.user-table td:nth-child(7) {
+  width: 12%;
+} /* 관리 */
 
 .user-table tbody tr:hover {
   background-color: #f8f9fa;
@@ -374,10 +366,10 @@
     min-width: 60px;
   }
 
-  /* 모바일에서 문서 컬럼 더 넓게 */
+  /* 모바일에서 관리 컬럼 최적화 */
   .user-table th:nth-child(7),
   .user-table td:nth-child(7) {
-    min-width: 120px !important;
+    min-width: 100px !important;
   }
 
   /* 문서 컨테이너 모바일 최적화 */
@@ -428,4 +420,378 @@
 .btn-edit:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.2);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  max-width: 1000px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 24px;
+  border-bottom: 1px solid #e5e8ec;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f9fa;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  font-weight: bold;
+  color: #666666;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  color: #333333;
+  background-color: #e5e8ec;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e8ec;
+}
+
+.modal-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.modal-section.applicant-info {
+  background-color: #f8f9fa;
+}
+
+.modal-section.business-info {
+  background-color: #f0f9ff;
+}
+
+.modal-section.tax-info {
+  background-color: #f0fdf4;
+}
+
+.modal-section.documents-info {
+  background-color: #fffbeb;
+}
+
+.modal-section.rejection-info {
+  background-color: #fef2f2;
+}
+
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.modal-field {
+  margin-bottom: 12px;
+}
+
+.modal-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  margin-bottom: 4px;
+}
+
+.modal-field .value {
+  font-size: 14px;
+  color: #333333;
+  background-color: white;
+  padding: 8px 12px;
+  border: 1px solid #e5e8ec;
+  border-radius: 4px;
+  min-height: 20px;
+}
+
+.modal-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.modal-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e8ec;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.modal-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.modal-btn.approve {
+  background-color: #22c55e;
+  color: white;
+}
+
+.modal-btn.approve:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.modal-btn.reject {
+  background-color: #ef4444;
+  color: white;
+}
+
+.modal-btn.reject:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.modal-btn.cancel {
+  background-color: #6b7280;
+  color: white;
+}
+
+.modal-btn.cancel:hover {
+  background-color: #4b5563;
+}
+
+.modal-btn:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* 관리자 액션 섹션 개선된 스타일 */
+.modal-section.admin-actions {
+  background-color: #f8fafc;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-action-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.admin-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.admin-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  margin-bottom: 4px;
+}
+
+.status-display {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+}
+
+.required {
+  color: #ef4444;
+  font-size: 12px;
+}
+
+.help-text {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.primary-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.secondary-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  position: relative;
+}
+
+.btn-icon {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.approve-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.approve-btn:hover:not(.disabled) {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.reject-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.reject-btn:hover:not(.disabled) {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.close-btn {
+  background-color: #6b7280;
+  color: white;
+  border: 1px solid #6b7280;
+}
+
+.close-btn:hover {
+  background-color: #4b5563;
+  border-color: #4b5563;
+  transform: translateY(-1px);
+}
+
+.action-btn.disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.action-btn.disabled .btn-icon {
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .primary-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .action-btn {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .modal-header,
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .modal-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .modal-btn {
+    width: 100%;
+  }
 }
