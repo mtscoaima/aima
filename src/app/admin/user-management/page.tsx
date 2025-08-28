@@ -138,6 +138,8 @@ export default function UserManagementPage() {
     limit: 50,
     totalPages: 0
   });
+  
+  const pageSizeOptions = [10, 20, 50, 100];
 
   // 검색 필터 상태
   const [searchFilters, setSearchFilters] = useState({
@@ -198,6 +200,34 @@ export default function UserManagementPage() {
       setLoading(false);
     }
   }, [searchFilters, pagination.page, pagination.limit]);
+
+  // 페이지네이션 함수들
+  const handlePageSizeChange = (newSize: number) => {
+    setPagination(prev => ({ 
+      ...prev, 
+      limit: newSize, 
+      page: 1 
+    }));
+  };
+
+  const handlePageChange = (pageNumber: number) => {
+    setPagination(prev => ({ ...prev, page: pageNumber }));
+    // 테이블 상단으로 스크롤
+    document.querySelector('.user-management-content')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleFirstPage = () => handlePageChange(1);
+  const handleLastPage = () => handlePageChange(pagination.totalPages);
+  const handlePrevPage = () => {
+    if (pagination.page > 1) {
+      handlePageChange(pagination.page - 1);
+    }
+  };
+  const handleNextPage = () => {
+    if (pagination.page < pagination.totalPages) {
+      handlePageChange(pagination.page + 1);
+    }
+  };
 
   // 기업 목록 가져오기
   const fetchCompanies = useCallback(async () => {
@@ -927,28 +957,88 @@ export default function UserManagementPage() {
       {/* 페이지네이션 */}
       {!loading && users.length > 0 && (
         <div className="pagination-container">
-          <div className="pagination-info">
-            전체 {pagination.total.toLocaleString()}명 중 {pagination.page}페이지 ({pagination.totalPages}페이지)
+          <div className="pagination-left">
+            <div className="pagination-info">
+              {((pagination.page - 1) * pagination.limit + 1)}-{Math.min(pagination.page * pagination.limit, pagination.total)} 
+              / 전체 {pagination.total.toLocaleString()}명
+            </div>
+            
+            <div className="page-size-selector">
+              <span className="page-size-label">페이지당</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="page-size-select"
+              >
+                {pageSizeOptions.map(size => (
+                  <option key={size} value={size}>
+                    {size}개
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="pagination-controls">
-            <button 
-              onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-              disabled={pagination.page <= 1}
-              className="btn-secondary"
-            >
-              이전
-            </button>
-            <span className="page-indicator">
-              {pagination.page} / {pagination.totalPages}
-            </span>
-            <button 
-              onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
-              disabled={pagination.page >= pagination.totalPages}
-              className="btn-secondary"
-            >
-              다음
-            </button>
-          </div>
+          
+          {pagination.totalPages > 1 && (
+            <div className="pagination-buttons">
+              <button
+                onClick={handleFirstPage}
+                disabled={pagination.page === 1}
+                className="pagination-button nav-button"
+                title="첫 페이지"
+              >
+                ««
+              </button>
+              
+              <button
+                onClick={handlePrevPage}
+                disabled={pagination.page === 1}
+                className="pagination-button nav-button"
+                title="이전 페이지"
+              >
+                ‹
+              </button>
+              
+              {/* 페이지 번호 버튼들 */}
+              {(() => {
+                const startPage = Math.max(1, pagination.page - 2);
+                const endPage = Math.min(pagination.totalPages, pagination.page + 2);
+                const pages = [];
+                
+                for (let i = startPage; i <= endPage; i++) {
+                  pages.push(
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(i)}
+                      className={`pagination-button ${pagination.page === i ? 'active' : ''}`}
+                    >
+                      {i}
+                    </button>
+                  );
+                }
+                
+                return pages;
+              })()}
+              
+              <button
+                onClick={handleNextPage}
+                disabled={pagination.page === pagination.totalPages}
+                className="pagination-button nav-button"
+                title="다음 페이지"
+              >
+                ›
+              </button>
+              
+              <button
+                onClick={handleLastPage}
+                disabled={pagination.page === pagination.totalPages}
+                className="pagination-button nav-button"
+                title="마지막 페이지"
+              >
+                »»
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
