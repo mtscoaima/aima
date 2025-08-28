@@ -5,6 +5,7 @@ import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import CampaignDetailModal from "@/components/modals/CampaignDetailModal";
+import { DynamicButton } from "@/types/targetMarketing";
 import "./styles.css";
 
 interface Campaign {
@@ -36,7 +37,7 @@ interface Campaign {
   schedule_timezone: string;
   schedule_days_of_week: number[];
   template_id?: number;
-  buttons?: any[];
+  buttons?: DynamicButton[];
   ad_medium?: string;
   desired_recipients?: string;
   users?: {
