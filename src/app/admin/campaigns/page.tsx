@@ -65,10 +65,19 @@ export default function CampaignsPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  const pageSizeOptions = [5, 10, 20, 50, 100];
 
   useEffect(() => {
     fetchCampaigns();
   }, []);
+
+  // 검색어나 필터 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   // 필터링된 캠페인 목록
   const filteredCampaigns = useMemo(() => {
@@ -85,6 +94,12 @@ export default function CampaignsPage() {
       return matchesSearch && matchesStatus;
     });
   }, [campaigns, searchTerm, statusFilter]);
+
+  // 페이지네이션 계산
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCampaigns = filteredCampaigns.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
 
   const fetchCampaigns = async () => {
     try {
@@ -333,6 +348,30 @@ export default function CampaignsPage() {
   const handleResetSearch = () => {
     setSearchTerm("");
     setStatusFilter("ALL");
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    // 테이블 상단으로 스크롤
+    document.querySelector('.campaigns-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setItemsPerPage(newSize);
+    setCurrentPage(1); // 페이지 크기 변경 시 첫 페이지로 이동
   };
 
   const convertCampaignToModalFormat = (campaign: Campaign) => {
@@ -497,7 +536,7 @@ export default function CampaignsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredCampaigns.map((campaign) => (
+                        {currentCampaigns.map((campaign) => (
                           <tr key={campaign.id}>
                             <td className="campaign-id">{campaign.id}</td>
                             <td className="campaign-name">
@@ -560,6 +599,94 @@ export default function CampaignsPage() {
                     </table>
                   )}
                 </div>
+
+                {/* 페이지네이션 */}
+                {filteredCampaigns.length > 0 && (
+                  <div className="pagination-container">
+                    <div className="pagination-left">
+                      <div className="pagination-info">
+                        {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCampaigns.length)} 
+                        / 전체 {filteredCampaigns.length}개
+                      </div>
+                      
+                      <div className="page-size-selector">
+                        <span className="page-size-label">페이지당</span>
+                        <select
+                          value={itemsPerPage}
+                          onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                          className="page-size-select"
+                        >
+                          {pageSizeOptions.map(size => (
+                            <option key={size} value={size}>
+                              {size}개
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {totalPages > 1 && (
+                      <div className="pagination-buttons">
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                        className="pagination-button nav-button"
+                        title="첫 페이지"
+                      >
+                        ««
+                      </button>
+                      
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className="pagination-button nav-button"
+                        title="이전 페이지"
+                      >
+                        ‹
+                      </button>
+                      
+                      {/* 페이지 번호 버튼들 */}
+                      {(() => {
+                        const startPage = Math.max(1, currentPage - 2);
+                        const endPage = Math.min(totalPages, currentPage + 2);
+                        const pages = [];
+                        
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => handlePageChange(i)}
+                              className={`pagination-button ${currentPage === i ? 'active' : ''}`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                      
+                      <button
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                        className="pagination-button nav-button"
+                        title="다음 페이지"
+                      >
+                        ›
+                      </button>
+                      
+                      <button
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="pagination-button nav-button"
+                        title="마지막 페이지"
+                      >
+                        »»
+                      </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="table-footer">
                   <p>* 관리자는 모든 사용자의 캠페인을 관리할 수 있습니다.</p>
