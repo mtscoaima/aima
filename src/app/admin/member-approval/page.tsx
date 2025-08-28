@@ -66,7 +66,6 @@ export default function MemberApprovalPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   
   // 검색/필터 상태
   const [selectedCompany, setSelectedCompany] = useState<string>("전체");
@@ -198,9 +197,6 @@ export default function MemberApprovalPage() {
     setIsSidebarOpen(false);
   };
 
-  const handleQuickStatusChange = (userId: string) => {
-    setEditingUserId(editingUserId === userId ? null : userId);
-  };
 
   const handleDetailClick = (user: User) => {
     setSelectedUser(user);
@@ -311,8 +307,6 @@ export default function MemberApprovalPage() {
         }
       }
 
-      // 드롭다운 닫기
-      setEditingUserId(null);
 
       // 성공 메시지 표시
       const statusText =
