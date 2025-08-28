@@ -109,10 +109,9 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("users")
       .select(`
-        id, name, email, phone_number, company_info, created_at, updated_at, 
-        last_login_at, approval_status, is_active, role
-      `)
-      .eq("role", "USER");
+        id, username, name, email, phone_number, company_info, created_at, updated_at, 
+        last_login_at, approval_status, is_active, role, grade
+      `);
 
     // 상태 필터링
     if (status !== "전체") {
@@ -144,10 +143,10 @@ export async function GET(request: NextRequest) {
     // 검색어 필터링
     if (searchTerm) {
       if (searchType === "사용자ID") {
-        query = query.ilike("email", `%${searchTerm}%`);
+        query = query.ilike("username", `%${searchTerm}%`);
       } else if (searchType === "사용자이름") {
         query = query.ilike("name", `%${searchTerm}%`);
-      } else if (searchType === "등록일") {
+      } else if (searchType === "가입일") {
         query = query.gte("created_at", `${searchTerm}T00:00:00`)
                      .lte("created_at", `${searchTerm}T23:59:59`);
       }
@@ -170,6 +169,7 @@ export async function GET(request: NextRequest) {
     const headers = [
       "사용자ID",
       "사용자명",
+      "권한",
       "기업명",
       "회원유형",
       "이메일",
@@ -178,8 +178,7 @@ export async function GET(request: NextRequest) {
       "등급",
       "가입일",
       "수정일",
-      "최종로그인",
-      "승인상태"
+      "최종로그인"
     ];
 
     // CSV 데이터 생성
@@ -189,8 +188,10 @@ export async function GET(request: NextRequest) {
       const company_info = user.company_info as Record<string, unknown> | null;
       
       const row = [
-        escapeCSV(user.email), // 사용자ID
+        escapeCSV(user.username || user.id.toString()), // 사용자ID
         escapeCSV(user.name), // 사용자명
+        escapeCSV(user.role === "ADMIN" ? "관리자" : 
+                  user.role === "SALESPERSON" ? "영업자" : "사용자"), // 권한
         escapeCSV((company_info?.companyName as string) || ""), // 기업명
         escapeCSV(company_info ? "기업" : "개인"), // 회원유형
         escapeCSV(user.email), // 이메일
@@ -201,14 +202,13 @@ export async function GET(request: NextRequest) {
                user.approval_status === "REJECTED" ? "거부" : "대기")
             : "정지"
         ), // 상태
-        escapeCSV("일반"), // 등급 (추후 구현)
+        escapeCSV(user.grade || "일반"), // 등급
         escapeCSV(user.created_at?.split('T')[0] || ""), // 가입일
         escapeCSV(user.updated_at?.split('T')[0] || ""), // 수정일
         escapeCSV(
           user.last_login_at ? 
             new Date(user.last_login_at).toLocaleString('ko-KR') : "-"
         ), // 최종로그인
-        escapeCSV(user.approval_status || "PENDING"), // 승인상태
       ];
       
       csvRows.push(row.join(","));

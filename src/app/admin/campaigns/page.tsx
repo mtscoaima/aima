@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import CampaignDetailModal from "@/components/modals/CampaignDetailModal";
+import { DynamicButton } from "@/types/targetMarketing";
 import "./styles.css";
 
 interface Campaign {
@@ -11,15 +13,7 @@ interface Campaign {
   user_id: number;
   name: string;
   description?: string;
-  status:
-    | "DRAFT"
-    | "PENDING_APPROVAL"
-    | "APPROVED"
-    | "REJECTED"
-    | "ACTIVE"
-    | "PAUSED"
-    | "COMPLETED"
-    | "CANCELLED";
+  status: "PENDING_APPROVAL" | "REVIEWING" | "APPROVED" | "REJECTED";
   scheduled_at?: string;
   started_at?: string;
   completed_at?: string;
@@ -42,6 +36,20 @@ interface Campaign {
   schedule_send_time_end?: string;
   schedule_timezone: string;
   schedule_days_of_week: number[];
+  template_id?: number;
+  buttons?: DynamicButton[];
+  ad_medium?: "naver_talktalk" | "sms";
+  desired_recipients?: string;
+  users?: {
+    name: string;
+    email: string;
+    phone_number: string;
+  };
+  message_templates?: {
+    name: string;
+    content: string;
+    image_url: string;
+  };
 }
 
 export default function CampaignsPage() {
@@ -52,10 +60,46 @@ export default function CampaignsPage() {
   const [processingCampaignId, setProcessingCampaignId] = useState<
     number | null
   >(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  const pageSizeOptions = [5, 10, 20, 50, 100];
 
   useEffect(() => {
     fetchCampaigns();
   }, []);
+
+  // 검색어나 필터 변경 시 첫 페이지로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  // 필터링된 캠페인 목록
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(campaign => {
+      // 검색어 필터링
+      const matchesSearch = 
+        campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.users?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.users?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // 상태 필터링
+      const matchesStatus = statusFilter === "ALL" || campaign.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [campaigns, searchTerm, statusFilter]);
+
+  // 페이지네이션 계산
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCampaigns = filteredCampaigns.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
 
   const fetchCampaigns = async () => {
     try {
@@ -128,10 +172,14 @@ export default function CampaignsPage() {
     switch (status) {
       case "PENDING_APPROVAL":
         return "status-badge scheduled";
+      case "REVIEWING":
+        return "status-badge scheduled";
       case "REJECTED":
         return "status-badge rejected";
+      case "APPROVED":
+        return "status-badge approved";
       default:
-        return "status-badge approved"; // 다른 모든 상태는 승인됨 스타일
+        return "status-badge approved";
     }
   };
 
@@ -139,10 +187,14 @@ export default function CampaignsPage() {
     switch (status) {
       case "PENDING_APPROVAL":
         return "승인 대기";
+      case "REVIEWING":
+        return "검토 중";
       case "REJECTED":
         return "거부됨";
+      case "APPROVED":
+        return "승인됨";
       default:
-        return "승인됨"; // 다른 모든 상태는 승인됨으로 표시
+        return "승인됨";
     }
   };
 
@@ -151,27 +203,6 @@ export default function CampaignsPage() {
     return new Date(dateString).toLocaleDateString("ko-KR");
   };
 
-  const calculateOpenRate = (campaign: Campaign) => {
-    if (campaign.sent_count === 0) return "N/A";
-    // 실제 열람률 계산 로직은 메시지 로그 테이블을 참조해야 함
-    // 임시로 성공률을 기준으로 계산
-    const rate = ((campaign.success_count / campaign.sent_count) * 100).toFixed(
-      1
-    );
-    return `${rate}%`;
-  };
-
-  const calculateClickRate = (campaign: Campaign) => {
-    if (campaign.sent_count === 0) return "N/A";
-    // 실제 클릭률 계산은 별도 추적 시스템이 필요
-    // 임시로 성공률의 일정 비율로 계산
-    const rate = (
-      (campaign.success_count / campaign.sent_count) *
-      0.2 *
-      100
-    ).toFixed(1);
-    return `${rate}%`;
-  };
 
   const handleApprove = async (campaignId: number) => {
     if (!confirm("이 캠페인을 승인하시겠습니까?")) return;
@@ -290,6 +321,84 @@ export default function CampaignsPage() {
     // TODO: 캠페인 생성 페이지로 이동
   };
 
+  const handleViewDetail = (campaign: Campaign) => {
+    const index = filteredCampaigns.findIndex(c => c.id === campaign.id);
+    setCurrentIndex(index);
+    setSelectedCampaign(campaign);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedCampaign(null);
+  };
+
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    let newIndex = currentIndex;
+    if (direction === 'prev' && currentIndex > 0) {
+      newIndex = currentIndex - 1;
+    } else if (direction === 'next' && currentIndex < filteredCampaigns.length - 1) {
+      newIndex = currentIndex + 1;
+    }
+    
+    setCurrentIndex(newIndex);
+    setSelectedCampaign(filteredCampaigns[newIndex]);
+  };
+
+  const handleResetSearch = () => {
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    // 테이블 상단으로 스크롤
+    document.querySelector('.campaigns-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setItemsPerPage(newSize);
+    setCurrentPage(1); // 페이지 크기 변경 시 첫 페이지로 이동
+  };
+
+  const convertCampaignToModalFormat = (campaign: Campaign) => {
+    return {
+      id: campaign.id,
+      name: campaign.name,
+      description: campaign.description,
+      status: campaign.status,
+      schedule_start_date: campaign.schedule_start_date,
+      schedule_end_date: campaign.schedule_end_date,
+      budget: campaign.budget,
+      actual_cost: campaign.actual_cost,
+      total_recipients: campaign.total_recipients,
+      sent_count: campaign.sent_count,
+      success_count: campaign.success_count,
+      failed_count: campaign.failed_count,
+      created_at: campaign.created_at,
+      updated_at: campaign.updated_at,
+      rejection_reason: campaign.rejection_reason,
+      buttons: campaign.buttons,
+      ad_medium: campaign.ad_medium,
+      desired_recipients: campaign.desired_recipients,
+      target_criteria: campaign.target_criteria,
+      message_templates: campaign.message_templates
+    };
+  };
+
   if (loading) {
     return (
       <div className="admin-layout">
@@ -362,6 +471,45 @@ export default function CampaignsPage() {
                 새 캠페인 만들기
               </button>
             </div>
+            
+            {/* 검색 및 필터 영역 */}
+            <div className="search-container">
+              <div className="search-input-wrapper">
+                <input
+                  type="text"
+                  placeholder="캠페인명, 생성자 이름, 이메일로 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+                <svg className="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="status-filter"
+              >
+                <option value="ALL">모든 상태</option>
+                <option value="PENDING_APPROVAL">승인 대기</option>
+                <option value="REVIEWING">검토 중</option>
+                <option value="APPROVED">승인됨</option>
+                <option value="REJECTED">거부됨</option>
+              </select>
+              
+              <button
+                onClick={handleResetSearch}
+                className="btn-reset"
+              >
+                초기화
+              </button>
+              
+              <div className="search-results-info">
+                전체 {campaigns.length}개 중 {filteredCampaigns.length}개 캠페인
+              </div>
+            </div>
             <div className="campaigns-content-wrapper">
               <div className="campaigns-section">
                 <div className="section-header">
@@ -370,29 +518,25 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="campaigns-table-container">
-                  <table className="campaigns-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>캠페인명</th>
-                        <th>상태</th>
-                        <th>생성일</th>
-                        <th>예산</th>
-                        <th>대상/발송/성공</th>
-                        <th>열람률</th>
-                        <th>클릭률</th>
-                        <th>액션</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {campaigns.length === 0 ? (
+                  {filteredCampaigns.length === 0 ? (
+                    <div className="no-data">
+                      {campaigns.length === 0 
+                        ? "등록된 캠페인이 없습니다." 
+                        : "검색 조건에 맞는 캠페인이 없습니다."}
+                    </div>
+                  ) : (
+                    <table className="campaigns-table">
+                      <thead>
                         <tr>
-                          <td colSpan={8} className="no-data">
-                            등록된 캠페인이 없습니다.
-                          </td>
+                          <th>ID</th>
+                          <th>캠페인명</th>
+                          <th>상태</th>
+                          <th>생성일</th>
+                          <th>액션</th>
                         </tr>
-                      ) : (
-                        campaigns.map((campaign) => (
+                      </thead>
+                      <tbody>
+                        {currentCampaigns.map((campaign) => (
                           <tr key={campaign.id}>
                             <td className="campaign-id">{campaign.id}</td>
                             <td className="campaign-name">
@@ -405,7 +549,7 @@ export default function CampaignsPage() {
                                 )}
                               </div>
                             </td>
-                            <td>
+                            <td className="campaign-status">
                               <span
                                 className={getStatusBadgeClass(campaign.status)}
                               >
@@ -415,57 +559,134 @@ export default function CampaignsPage() {
                             <td className="campaign-date">
                               {formatDate(campaign.created_at)}
                             </td>
-                            <td className="campaign-budget">
-                              {campaign.budget
-                                ? `₩${Number(campaign.budget).toLocaleString()}`
-                                : "N/A"}
-                            </td>
-                            <td className="campaign-stats">
-                              {campaign.total_recipients.toLocaleString()} /{" "}
-                              {campaign.sent_count.toLocaleString()} /{" "}
-                              {campaign.success_count.toLocaleString()}
-                            </td>
-                            <td className="campaign-rate">
-                              {calculateOpenRate(campaign)}
-                            </td>
-                            <td className="campaign-rate">
-                              {calculateClickRate(campaign)}
-                            </td>
                             <td className="campaign-actions">
-                              {campaign.status === "PENDING_APPROVAL" && (
-                                <>
-                                  <button
-                                    className="action-btn approve-btn"
-                                    onClick={() => handleApprove(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "처리중..."
-                                      : "승인"}
-                                  </button>
-                                  <button
-                                    className="action-btn reject-btn"
-                                    onClick={() => handleReject(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "처리중..."
-                                      : "거부"}
-                                  </button>
-                                </>
-                              )}
-                              {/* 승인됨이나 거부됨 상태에서는 액션 버튼 없음 */}
+                              <button
+                                className="action-btn view-btn"
+                                onClick={() => handleViewDetail(campaign)}
+                              >
+                                상세보기
+                              </button>
+                              <button
+                                className="action-btn approve-btn"
+                                onClick={() => handleApprove(campaign.id)}
+                                disabled={
+                                  processingCampaignId === campaign.id ||
+                                  campaign.status === "APPROVED" ||
+                                  campaign.status === "REJECTED"
+                                }
+                              >
+                                {processingCampaignId === campaign.id
+                                  ? "처리중..."
+                                  : "승인"}
+                              </button>
+                              <button
+                                className="action-btn reject-btn"
+                                onClick={() => handleReject(campaign.id)}
+                                disabled={
+                                  processingCampaignId === campaign.id ||
+                                  campaign.status === "APPROVED" ||
+                                  campaign.status === "REJECTED"
+                                }
+                              >
+                                {processingCampaignId === campaign.id
+                                  ? "처리중..."
+                                  : "거부"}
+                              </button>
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
+
+                {/* 페이지네이션 */}
+                {filteredCampaigns.length > 0 && (
+                  <div className="pagination-container">
+                    <div className="pagination-left">
+                      <div className="pagination-info">
+                        {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCampaigns.length)} 
+                        / 전체 {filteredCampaigns.length}개
+                      </div>
+                      
+                      <div className="page-size-selector">
+                        <span className="page-size-label">페이지당</span>
+                        <select
+                          value={itemsPerPage}
+                          onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                          className="page-size-select"
+                        >
+                          {pageSizeOptions.map(size => (
+                            <option key={size} value={size}>
+                              {size}개
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {totalPages > 1 && (
+                      <div className="pagination-buttons">
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                        className="pagination-button nav-button"
+                        title="첫 페이지"
+                      >
+                        ««
+                      </button>
+                      
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className="pagination-button nav-button"
+                        title="이전 페이지"
+                      >
+                        ‹
+                      </button>
+                      
+                      {/* 페이지 번호 버튼들 */}
+                      {(() => {
+                        const startPage = Math.max(1, currentPage - 2);
+                        const endPage = Math.min(totalPages, currentPage + 2);
+                        const pages = [];
+                        
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => handlePageChange(i)}
+                              className={`pagination-button ${currentPage === i ? 'active' : ''}`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                      
+                      <button
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                        className="pagination-button nav-button"
+                        title="다음 페이지"
+                      >
+                        ›
+                      </button>
+                      
+                      <button
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="pagination-button nav-button"
+                        title="마지막 페이지"
+                      >
+                        »»
+                      </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="table-footer">
                   <p>* 관리자는 모든 사용자의 캠페인을 관리할 수 있습니다.</p>
@@ -475,6 +696,18 @@ export default function CampaignsPage() {
           </AdminGuard>
         </div>
       </div>
+
+      {/* 캠페인 상세보기 모달 */}
+      {selectedCampaign && (
+        <CampaignDetailModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          campaign={convertCampaignToModalFormat(selectedCampaign)}
+          campaigns={filteredCampaigns.map(convertCampaignToModalFormat)}
+          currentIndex={currentIndex}
+          onNavigate={handleNavigate}
+        />
+      )}
     </div>
   );
 }

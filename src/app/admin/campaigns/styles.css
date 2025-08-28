@@ -9,6 +9,204 @@
   overflow-y: auto; /* 세로 스크롤 허용 */
 }
 
+/* 검색 및 필터 영역 */
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e8ec;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 250px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 40px 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #0066ff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #6b7280;
+}
+
+.status-filter {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  min-width: 120px;
+}
+
+.status-filter:focus {
+  border-color: #0066ff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.btn-reset {
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #6c757d;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-reset:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.search-results-info {
+  font-size: 14px;
+  color: #6c757d;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* 페이지네이션 스타일 */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e5e8ec;
+  gap: 1rem;
+}
+
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pagination-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #495057;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.pagination-button.active {
+  background-color: #0066ff;
+  border-color: #0066ff;
+  color: white;
+}
+
+.pagination-button.active:hover {
+  background-color: #0052cc;
+  border-color: #0052cc;
+}
+
+.pagination-button:disabled {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination-button.nav-button {
+  min-width: 32px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* 페이지 크기 선택기 */
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-size-label {
+  font-size: 14px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.page-size-select {
+  padding: 6px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  color: #495057;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+  min-width: 60px;
+}
+
+.page-size-select:focus {
+  border-color: #0066ff;
+  box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.1);
+}
+
+.page-size-select:hover {
+  border-color: #adb5bd;
+}
+
 .campaigns-main-container {
   padding: 2rem;
   color: #333333;
@@ -256,10 +454,10 @@
 
 .campaigns-table {
   width: 100%;
-  min-width: 1200px; /* 최소 너비 설정으로 가로 스크롤 보장 */
+  min-width: 800px; /* 5개 컬럼에 맞게 축소 */
   border-collapse: collapse;
   background-color: white;
-  table-layout: auto; /* 고정 너비 대신 자동 조정 */
+  table-layout: auto;
 }
 
 .campaigns-table thead {
@@ -277,51 +475,35 @@
   min-width: 80px; /* 최소 너비 보장 */
 }
 
-/* 컬럼별 최소 너비 지정 */
+/* 컬럼별 최소 너비 지정 - 5개 컬럼에 맞게 조정 */
 .campaigns-table th:nth-child(1) {
-  min-width: 60px;
+  min-width: 80px;
   text-align: center;
 } /* ID */
 .campaigns-table th:nth-child(2) {
-  min-width: 200px;
+  min-width: 300px;
   text-align: left;
 } /* 캠페인명 */
 .campaigns-table th:nth-child(3) {
-  min-width: 100px;
-  text-align: left;
+  min-width: 120px;
+  text-align: center;
 } /* 상태 */
 .campaigns-table th:nth-child(4) {
-  min-width: 100px;
+  min-width: 120px;
   text-align: center;
 } /* 생성일 */
 .campaigns-table th:nth-child(5) {
-  min-width: 120px;
-  text-align: right;
-} /* 예산 */
-.campaigns-table th:nth-child(6) {
-  min-width: 140px;
+  min-width: 220px;
   text-align: center;
-} /* 대상/발송/성공 */
-.campaigns-table th:nth-child(7) {
-  min-width: 80px;
-  text-align: center;
-} /* 열람률 */
-.campaigns-table th:nth-child(8) {
-  min-width: 80px;
-  text-align: center;
-} /* 클릭률 */
-.campaigns-table th:nth-child(9) {
-  min-width: 250px;
-  text-align: left;
 } /* 액션 */
 
 .campaigns-table td {
-  padding: 16px 12px;
+  padding: 12px;
   font-size: 14px;
   color: #333333;
   border-bottom: 1px solid #f1f3f5;
-  vertical-align: middle;
-  white-space: nowrap; /* 텍스트가 줄바꿈되지 않도록 */
+  vertical-align: top;
+  height: 70px;
 }
 
 .campaigns-table tbody tr:hover {
@@ -337,7 +519,10 @@
   text-align: center;
   color: #666666;
   font-style: italic;
-  padding: 2rem !important;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e8ec;
 }
 
 /* 테이블 셀 특정 스타일 */
@@ -346,30 +531,38 @@
   font-weight: 600;
   color: #0066ff;
   text-align: center;
+  padding-top: 20px;
 }
 
 .campaign-name {
   font-weight: 500;
-  max-width: 200px;
+  max-width: 300px;
+  padding-top: 8px;
 }
 
 .campaign-name strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 180px;
+  max-width: 280px;
+  line-height: 1.3;
 }
 
 .campaign-description {
-  font-size: 12px;
+  font-size: 11px;
   color: #666666;
-  line-height: 1.3;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 180px;
+  max-width: 280px;
+}
+
+.campaign-status {
+  text-align: center;
+  padding-top: 16px;
 }
 
 .campaign-date {
@@ -377,29 +570,9 @@
   color: #666666;
   white-space: nowrap;
   text-align: center;
+  padding-top: 20px;
 }
 
-.campaign-budget {
-  font-family: "Monaco", "Menlo", monospace;
-  font-size: 13px;
-  font-weight: 500;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.campaign-stats {
-  font-family: "Monaco", "Menlo", monospace;
-  font-size: 13px;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.campaign-rate {
-  font-weight: 600;
-  text-align: center;
-  font-family: "Monaco", "Menlo", monospace;
-  white-space: nowrap;
-}
 
 /* 상태 배지 */
 .status-badge {
@@ -464,10 +637,12 @@
 /* 액션 버튼들 */
 .campaign-actions {
   display: flex;
-  gap: 8px;
-  justify-content: flex-start;
-  flex-wrap: nowrap; /* 버튼들이 줄바꿈되지 않도록 */
-  min-width: 250px;
+  gap: 6px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  min-width: 220px;
+  padding-top: 8px;
 }
 
 .action-btn {
@@ -494,17 +669,19 @@
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
-  background: #ccc !important;
-  border-color: #ccc !important;
-  color: #666 !important;
+  background: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+  color: #6c757d !important;
+  filter: grayscale(100%);
 }
 
 .action-btn:disabled:hover {
   transform: none;
-  opacity: 0.5;
+  opacity: 1;
+  filter: grayscale(100%);
 }
 
 .approve-btn {
@@ -584,6 +761,17 @@
   border-color: #bd2130;
 }
 
+.view-btn {
+  color: #0066ff;
+  border-color: #0066ff;
+}
+
+.view-btn:hover {
+  background-color: rgba(0, 102, 255, 0.1);
+  color: #0052cc;
+  border-color: #0052cc;
+}
+
 .table-footer {
   padding: 1rem 1.5rem;
   background-color: #f8f9fa;
@@ -629,44 +817,14 @@
   scrollbar-color: #6c757d #f8f9fa;
 }
 
-/* 반응형 스타일 개선 */
-@media (max-width: 1400px) {
-  .campaigns-table {
-    min-width: 1100px;
-  }
-
-  .campaigns-table th:nth-child(2) {
-    min-width: 180px;
-  }
-
-  .campaigns-table th:nth-child(9) {
-    min-width: 220px;
-  }
-
-  .campaign-actions {
-    min-width: 220px;
-  }
-}
-
+/* 반응형 스타일 개선 - 5개 컬럼 기준 */
 @media (max-width: 1200px) {
   .campaigns-table {
-    min-width: 1000px;
+    min-width: 700px;
   }
 
   .campaigns-table th:nth-child(2) {
-    min-width: 160px;
-  }
-
-  .campaigns-table th:nth-child(5) {
-    min-width: 100px;
-  }
-
-  .campaigns-table th:nth-child(6) {
-    min-width: 120px;
-  }
-
-  .campaigns-table th:nth-child(9) {
-    min-width: 200px;
+    min-width: 250px;
   }
 
   .campaign-actions {
@@ -680,23 +838,19 @@
   }
 
   .campaigns-table {
-    min-width: 900px;
+    min-width: 650px;
   }
 
   .campaigns-table th:nth-child(2) {
-    min-width: 150px;
+    min-width: 200px;
   }
 
-  .campaigns-table th:nth-child(5) {
-    min-width: 90px;
+  .campaigns-table th:nth-child(3) {
+    min-width: 100px;
   }
 
-  .campaigns-table th:nth-child(6) {
-    min-width: 110px;
-  }
-
-  .campaigns-table th:nth-child(9) {
-    min-width: 180px;
+  .campaigns-table th:nth-child(4) {
+    min-width: 100px;
   }
 
   .campaign-actions {
@@ -753,6 +907,74 @@
 
 .admin-layout *::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* 검색 영역 반응형 */
+@media (max-width: 768px) {
+  .search-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .search-input-wrapper {
+    min-width: 100%;
+  }
+
+  .search-results-info {
+    margin-left: 0;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .status-filter {
+    min-width: 100%;
+  }
+
+  /* 페이지네이션 모바일 반응형 */
+  .pagination-container {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .pagination-left {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .pagination-info {
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .page-size-selector {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .page-size-label {
+    font-size: 13px;
+  }
+
+  .pagination-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .pagination-button {
+    min-width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .pagination-button.nav-button {
+    min-width: 28px;
+    font-size: 14px;
+  }
 }
 
 /* 반응형 디자인 */
@@ -814,35 +1036,23 @@
   }
 
   .campaigns-table {
-    min-width: 800px;
+    min-width: 500px;
   }
 
   .campaigns-table th:nth-child(1) {
-    min-width: 50px;
+    min-width: 60px;
   } /* ID */
   .campaigns-table th:nth-child(2) {
-    min-width: 150px;
+    min-width: 180px;
   } /* 캠페인명 */
   .campaigns-table th:nth-child(3) {
-    min-width: 80px;
+    min-width: 90px;
   } /* 상태 */
   .campaigns-table th:nth-child(4) {
     min-width: 80px;
   } /* 생성일 */
   .campaigns-table th:nth-child(5) {
-    min-width: 80px;
-  } /* 예산 */
-  .campaigns-table th:nth-child(6) {
-    min-width: 100px;
-  } /* 대상/발송/성공 */
-  .campaigns-table th:nth-child(7) {
-    min-width: 60px;
-  } /* 열람률 */
-  .campaigns-table th:nth-child(8) {
-    min-width: 60px;
-  } /* 클릭률 */
-  .campaigns-table th:nth-child(9) {
-    min-width: 160px;
+    min-width: 140px;
   } /* 액션 */
 
   .campaigns-table th,
@@ -861,7 +1071,7 @@
   }
 
   .campaign-actions {
-    min-width: 150px;
+    min-width: 140px;
     gap: 4px;
   }
 
@@ -907,35 +1117,23 @@
 
   .campaigns-table {
     font-size: 11px;
-    min-width: 700px;
+    min-width: 450px;
   }
 
   .campaigns-table th:nth-child(1) {
-    min-width: 40px;
+    min-width: 50px;
   } /* ID */
   .campaigns-table th:nth-child(2) {
-    min-width: 130px;
+    min-width: 160px;
   } /* 캠페인명 */
   .campaigns-table th:nth-child(3) {
-    min-width: 70px;
+    min-width: 80px;
   } /* 상태 */
   .campaigns-table th:nth-child(4) {
     min-width: 70px;
   } /* 생성일 */
   .campaigns-table th:nth-child(5) {
-    min-width: 70px;
-  } /* 예산 */
-  .campaigns-table th:nth-child(6) {
-    min-width: 90px;
-  } /* 대상/발송/성공 */
-  .campaigns-table th:nth-child(7) {
-    min-width: 50px;
-  } /* 열람률 */
-  .campaigns-table th:nth-child(8) {
-    min-width: 50px;
-  } /* 클릭률 */
-  .campaigns-table th:nth-child(9) {
-    min-width: 130px;
+    min-width: 120px;
   } /* 액션 */
 
   .campaigns-table th,

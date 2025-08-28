@@ -58,11 +58,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 모든 캠페인 조회 (DRAFT 상태 제외)
+    // 모든 캠페인 조회
     const { data: campaigns, error: campaignsError } = await supabase
       .from("campaigns")
       .select("*")
-      .neq("status", "DRAFT")
       .order("created_at", { ascending: false });
 
     if (campaignsError) {
@@ -73,9 +72,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 각 캠페인에 대해 사용자 정보와 템플릿 정보를 추가로 조회
+    const enrichedCampaigns = await Promise.all(
+      (campaigns || []).map(async (campaign) => {
+        // 사용자 정보 조회
+        const { data: user } = await supabase
+          .from("users")
+          .select("name, email, phone_number")
+          .eq("id", campaign.user_id)
+          .single();
+
+        // 메시지 템플릿 정보 조회
+        const { data: template } = campaign.template_id
+          ? await supabase
+              .from("message_templates")
+              .select("name, content, image_url")
+              .eq("id", campaign.template_id)
+              .single()
+          : { data: null };
+
+        return {
+          ...campaign,
+          users: user,
+          message_templates: template,
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      campaigns: campaigns || [],
+      campaigns: enrichedCampaigns,
     });
   } catch (error) {
     console.error("관리자 캠페인 조회 오류:", error);

@@ -150,9 +150,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (params.search) {
-      query = query.or(
-        `title.ilike.%${params.search}%,content.ilike.%${params.search}%,users.name.ilike.%${params.search}%`
-      );
+      // 개별 검색 조건들을 OR로 연결
+      query = query.or(`title.ilike.%${params.search}%,content.ilike.%${params.search}%`);
     }
 
     if (params.startDate) {
