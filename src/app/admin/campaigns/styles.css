@@ -295,7 +295,7 @@
   text-align: center;
 } /* 생성일 */
 .campaigns-table th:nth-child(5) {
-  min-width: 180px;
+  min-width: 220px;
   text-align: center;
 } /* 액션 */
 
@@ -439,11 +439,11 @@
 /* 액션 버튼들 */
 .campaign-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
   align-items: flex-start;
   flex-wrap: nowrap;
-  min-width: 180px;
+  min-width: 220px;
   padding-top: 8px;
 }
 
@@ -471,17 +471,19 @@
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
-  background: #ccc !important;
-  border-color: #ccc !important;
-  color: #666 !important;
+  background: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+  color: #6c757d !important;
+  filter: grayscale(100%);
 }
 
 .action-btn:disabled:hover {
   transform: none;
-  opacity: 0.5;
+  opacity: 1;
+  filter: grayscale(100%);
 }
 
 .approve-btn {
@@ -561,6 +563,17 @@
   border-color: #bd2130;
 }
 
+.view-btn {
+  color: #0066ff;
+  border-color: #0066ff;
+}
+
+.view-btn:hover {
+  background-color: rgba(0, 102, 255, 0.1);
+  color: #0052cc;
+  border-color: #0052cc;
+}
+
 .table-footer {
   padding: 1rem 1.5rem;
   background-color: #f8f9fa;
@@ -617,7 +630,7 @@
   }
 
   .campaign-actions {
-    min-width: 160px;
+    min-width: 200px;
   }
 }
 
@@ -643,7 +656,7 @@
   }
 
   .campaign-actions {
-    min-width: 140px;
+    min-width: 180px;
   }
 
   .campaigns-header {
@@ -773,7 +786,7 @@
     min-width: 80px;
   } /* 생성일 */
   .campaigns-table th:nth-child(5) {
-    min-width: 120px;
+    min-width: 140px;
   } /* 액션 */
 
   .campaigns-table th,
@@ -792,7 +805,7 @@
   }
 
   .campaign-actions {
-    min-width: 120px;
+    min-width: 140px;
     gap: 4px;
   }
 
@@ -854,7 +867,7 @@
     min-width: 70px;
   } /* 생성일 */
   .campaigns-table th:nth-child(5) {
-    min-width: 100px;
+    min-width: 120px;
   } /* 액션 */
 
   .campaigns-table th,
@@ -872,7 +885,7 @@
   }
 
   .campaign-actions {
-    min-width: 100px;
+    min-width: 120px;
     gap: 3px;
   }
 

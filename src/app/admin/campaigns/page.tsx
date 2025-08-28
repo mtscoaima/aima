@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import CampaignDetailModal from "@/components/modals/CampaignDetailModal";
 import "./styles.css";
 
 interface Campaign {
@@ -34,6 +35,20 @@ interface Campaign {
   schedule_send_time_end?: string;
   schedule_timezone: string;
   schedule_days_of_week: number[];
+  template_id?: number;
+  buttons?: any[];
+  ad_medium?: string;
+  desired_recipients?: string;
+  users?: {
+    name: string;
+    email: string;
+    phone_number: string;
+  };
+  message_templates?: {
+    name: string;
+    content: string;
+    image_url: string;
+  };
 }
 
 export default function CampaignsPage() {
@@ -44,6 +59,9 @@ export default function CampaignsPage() {
   const [processingCampaignId, setProcessingCampaignId] = useState<
     number | null
   >(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     fetchCampaigns();
@@ -269,6 +287,55 @@ export default function CampaignsPage() {
     // TODO: 캠페인 생성 페이지로 이동
   };
 
+  const handleViewDetail = (campaign: Campaign) => {
+    const index = campaigns.findIndex(c => c.id === campaign.id);
+    setCurrentIndex(index);
+    setSelectedCampaign(campaign);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedCampaign(null);
+  };
+
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    let newIndex = currentIndex;
+    if (direction === 'prev' && currentIndex > 0) {
+      newIndex = currentIndex - 1;
+    } else if (direction === 'next' && currentIndex < campaigns.length - 1) {
+      newIndex = currentIndex + 1;
+    }
+    
+    setCurrentIndex(newIndex);
+    setSelectedCampaign(campaigns[newIndex]);
+  };
+
+  const convertCampaignToModalFormat = (campaign: Campaign) => {
+    return {
+      id: campaign.id,
+      name: campaign.name,
+      description: campaign.description,
+      status: campaign.status,
+      schedule_start_date: campaign.schedule_start_date,
+      schedule_end_date: campaign.schedule_end_date,
+      budget: campaign.budget,
+      actual_cost: campaign.actual_cost,
+      total_recipients: campaign.total_recipients,
+      sent_count: campaign.sent_count,
+      success_count: campaign.success_count,
+      failed_count: campaign.failed_count,
+      created_at: campaign.created_at,
+      updated_at: campaign.updated_at,
+      rejection_reason: campaign.rejection_reason,
+      buttons: campaign.buttons,
+      ad_medium: campaign.ad_medium,
+      desired_recipients: campaign.desired_recipients,
+      target_criteria: campaign.target_criteria,
+      message_templates: campaign.message_templates
+    };
+  };
+
   if (loading) {
     return (
       <div className="admin-layout">
@@ -389,33 +456,38 @@ export default function CampaignsPage() {
                               {formatDate(campaign.created_at)}
                             </td>
                             <td className="campaign-actions">
-                              {(campaign.status === "PENDING_APPROVAL" || 
-                                campaign.status === "REVIEWING") && (
-                                <>
-                                  <button
-                                    className="action-btn approve-btn"
-                                    onClick={() => handleApprove(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "처리중..."
-                                      : "승인"}
-                                  </button>
-                                  <button
-                                    className="action-btn reject-btn"
-                                    onClick={() => handleReject(campaign.id)}
-                                    disabled={
-                                      processingCampaignId === campaign.id
-                                    }
-                                  >
-                                    {processingCampaignId === campaign.id
-                                      ? "처리중..."
-                                      : "거부"}
-                                  </button>
-                                </>
-                              )}
+                              <button
+                                className="action-btn view-btn"
+                                onClick={() => handleViewDetail(campaign)}
+                              >
+                                상세보기
+                              </button>
+                              <button
+                                className="action-btn approve-btn"
+                                onClick={() => handleApprove(campaign.id)}
+                                disabled={
+                                  processingCampaignId === campaign.id ||
+                                  campaign.status === "APPROVED" ||
+                                  campaign.status === "REJECTED"
+                                }
+                              >
+                                {processingCampaignId === campaign.id
+                                  ? "처리중..."
+                                  : "승인"}
+                              </button>
+                              <button
+                                className="action-btn reject-btn"
+                                onClick={() => handleReject(campaign.id)}
+                                disabled={
+                                  processingCampaignId === campaign.id ||
+                                  campaign.status === "APPROVED" ||
+                                  campaign.status === "REJECTED"
+                                }
+                              >
+                                {processingCampaignId === campaign.id
+                                  ? "처리중..."
+                                  : "거부"}
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -432,6 +504,18 @@ export default function CampaignsPage() {
           </AdminGuard>
         </div>
       </div>
+
+      {/* 캠페인 상세보기 모달 */}
+      {selectedCampaign && (
+        <CampaignDetailModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          campaign={convertCampaignToModalFormat(selectedCampaign)}
+          campaigns={campaigns.map(convertCampaignToModalFormat)}
+          currentIndex={currentIndex}
+          onNavigate={handleNavigate}
+        />
+      )}
     </div>
   );
 }
