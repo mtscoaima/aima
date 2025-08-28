@@ -38,7 +38,7 @@ interface Campaign {
   schedule_days_of_week: number[];
   template_id?: number;
   buttons?: DynamicButton[];
-  ad_medium?: string;
+  ad_medium?: "naver_talktalk" | "sms";
   desired_recipients?: string;
   users?: {
     name: string;
