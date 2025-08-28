@@ -591,6 +591,45 @@ export default function UserManagementPage() {
     }
   };
 
+  const handlePasswordReset = async (userId: string) => {
+    if (!confirm("정말로 이 회원의 비밀번호를 초기화하시겠습니까?\n새로운 임시 비밀번호가 사용자 이메일로 전송됩니다.")) {
+      return;
+    }
+
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      const response = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(data.message);
+      } else {
+        if (data.tempPassword) {
+          // 이메일 전송은 실패했지만 비밀번호 초기화는 성공한 경우
+          alert(`${data.message}\n\n임시 비밀번호: ${data.tempPassword}\n\n위 정보를 사용자에게 전달해 주세요.`);
+        } else {
+          alert(data.message || "비밀번호 초기화에 실패했습니다.");
+        }
+      }
+    } catch (error) {
+      console.error('비밀번호 초기화 실패:', error);
+      alert("비밀번호 초기화 중 오류가 발생했습니다.");
+    }
+  };
+
   const handleModalClose = () => {
     setShowUserModal(false);
     setSelectedUser(null);
@@ -1195,6 +1234,34 @@ export default function UserManagementPage() {
                             사유: {formData.statusReason}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {modalType === 'edit' && selectedUser && (
+                      <div className="form-group">
+                        <label>비밀번호 관리</label>
+                        <div style={{ marginTop: '8px' }}>
+                          <div style={{ color: '#666', fontSize: '14px', marginBottom: '8px' }}>
+                            사용자 비밀번호를 초기화하고 새로운 임시 비밀번호를 이메일로 전송합니다.
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handlePasswordReset(selectedUser.id)}
+                            className="btn-xs"
+                            style={{
+                              backgroundColor: '#f97316',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '6px 12px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            비밀번호 초기화
+                          </button>
+                        </div>
                       </div>
                     )}
                     
