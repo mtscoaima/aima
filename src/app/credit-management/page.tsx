@@ -3,17 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { useBalance } from "@/contexts/BalanceContext";
 import { CreditBalance } from "@/components/credit/CreditBalance";
-import { CreditPackages } from "@/components/credit/CreditPackages";
+import { ChargeInput } from "@/components/credit/ChargeInput";
 import { PaymentModal } from "@/components/credit/PaymentModal";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 
-interface Package {
+interface ChargeInfo {
   id: string;
   name: string;
-  credits: number;
+  amount: number;
   price: number;
-  bonus: number;
-  isPopular?: boolean;
 }
 
 const CreditManagementPage = () => {
@@ -24,7 +22,7 @@ const CreditManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [selectedCharge, setSelectedCharge] = useState<ChargeInfo | null>(null);
 
   // 필터링 상태
   const [dateFilter, setDateFilter] = useState("all");
@@ -103,14 +101,14 @@ const CreditManagementPage = () => {
     };
   }, [refreshTransactions]);
 
-  const handleCharge = (packageInfo: Package) => {
-    setSelectedPackage(packageInfo);
+  const handleCharge = (chargeInfo: ChargeInfo) => {
+    setSelectedCharge(chargeInfo);
     setIsPaymentModalOpen(true);
   };
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
-    setSelectedPackage(null);
+    setSelectedCharge(null);
   };
 
   const allTransactions = getTransactionHistory();
@@ -438,8 +436,14 @@ const CreditManagementPage = () => {
       case "charge":
         return (
           <div className="space-y-6" key={`charge-${refreshKey}`}>
-            <CreditBalance refreshKey={refreshKey} />
-            <CreditPackages onCharge={handleCharge} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <ChargeInput onCharge={handleCharge} />
+              </div>
+              <div className="lg:col-span-1">
+                <CreditBalance refreshKey={refreshKey} />
+              </div>
+            </div>
 
             <div className="bg-white rounded-lg shadow">
               <div className="p-4 border-b border-gray-200">
@@ -787,7 +791,7 @@ const CreditManagementPage = () => {
         <PaymentModal
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
-          packageInfo={selectedPackage}
+          chargeInfo={selectedCharge}
         />
       </div>
     </AdvertiserGuardWithDisabled>

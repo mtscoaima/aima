@@ -59,19 +59,17 @@ interface UserInfo {
   phone?: string;
 }
 
-interface PackageInfo {
+interface ChargeInfo {
   id: string;
   name: string;
-  credits: number;
+  amount: number;
   price: number;
-  isPopular?: boolean;
-  bonus?: number;
 }
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  packageInfo: PackageInfo | null;
+  chargeInfo: ChargeInfo | null;
   redirectUrl?: string;
 }
 
@@ -94,7 +92,7 @@ interface InicisPaymentData {
 export function PaymentModal({
   isOpen,
   onClose,
-  packageInfo,
+  chargeInfo,
   redirectUrl,
 }: PaymentModalProps) {
   const [step, setStep] = useState(1);
@@ -164,7 +162,7 @@ export function PaymentModal({
     return `credit_${timestamp}_${userId}_${randomString}`;
   };
 
-  if (!isOpen || !packageInfo) return null;
+  if (!isOpen || !chargeInfo) return null;
 
   const paymentMethods = [
     {
@@ -191,7 +189,7 @@ export function PaymentModal({
       setStep(4);
 
       const orderId = generateOrderId();
-      const orderName = `크레딧 ${packageInfo.credits.toLocaleString()}개 충전`;
+      const orderName = chargeInfo.name;
 
       // 전화번호 형식 검증 및 정리
       const formatPhoneNumber = (phone?: string) => {
@@ -223,7 +221,7 @@ export function PaymentModal({
 
       // KG이니시스 결제 요청 데이터 생성
       const paymentData = {
-        price: packageInfo.price.toString(),
+        price: chargeInfo.price.toString(),
         goodname: orderName,
         buyername: userInfo?.name || "고객",
         buyertel: formattedPhone,
@@ -359,29 +357,20 @@ export function PaymentModal({
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                충전할 크레딧 확인
+                충전 금액 확인
               </h3>
-              <p className="text-gray-600">선택하신 패키지를 확인해주세요.</p>
+              <p className="text-gray-600">입력하신 충전 금액을 확인해주세요.</p>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-900 mb-2">
-                  {packageInfo.name}
-                </div>
-                <div className="text-lg text-blue-800 mb-1">
-                  <strong>충전 크레딧:</strong>{" "}
-                  {packageInfo.credits.toLocaleString()}개
+                  {chargeInfo.name}
                 </div>
                 <div className="text-lg text-blue-800">
-                  <strong>결제 금액:</strong> ₩
-                  {packageInfo.price.toLocaleString()}
+                  <strong>충전 금액:</strong> ₩
+                  {chargeInfo.amount.toLocaleString()}
                 </div>
-                {/* {packageInfo.bonus && packageInfo.bonus > 0 && (
-                  <div className="text-sm text-green-600 mt-2">
-                    + 보너스 {packageInfo.bonus.toLocaleString()}개 크레딧
-                  </div>
-                )} */}
               </div>
             </div>
 
@@ -447,11 +436,8 @@ export function PaymentModal({
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-sm text-blue-800">
-                <strong>결제 금액:</strong> ₩
-                {packageInfo.price.toLocaleString()}
-                <br />
-                <strong>충전 크레딧:</strong>{" "}
-                {packageInfo.credits.toLocaleString()}개
+                <strong>충전 금액:</strong> ₩
+                {chargeInfo.amount.toLocaleString()}
               </div>
             </div>
 
@@ -495,11 +481,8 @@ export function PaymentModal({
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-sm text-blue-800">
-                <strong>결제 금액:</strong> ₩
-                {packageInfo.price.toLocaleString()}
-                <br />
-                <strong>충전 크레딧:</strong>{" "}
-                {packageInfo.credits.toLocaleString()}개
+                <strong>충전 금액:</strong> ₩
+                {chargeInfo.amount.toLocaleString()}
                 <br />
                 <strong>결제 방법:</strong> KG이니시스
               </div>
@@ -510,7 +493,7 @@ export function PaymentModal({
                 <strong>결제 준비 완료!</strong>
                 <br />
                 아래 버튼을 클릭하면 KG이니시스 결제창이 새 창에서 열립니다.
-                결제 완료 후 자동으로 크레딧이 충전됩니다.
+                결제 완료 후 자동으로 광고머니가 충전됩니다.
               </div>
             </div>
 
@@ -559,7 +542,7 @@ export function PaymentModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">크레딧 충전</h2>
+          <h2 className="text-2xl font-bold text-gray-900">광고머니 충전</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
