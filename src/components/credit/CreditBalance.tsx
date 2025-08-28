@@ -8,7 +8,6 @@ interface CreditBalanceProps {
 export function CreditBalance({ refreshKey }: CreditBalanceProps) {
   const {
     calculateBalance,
-    getTransactionHistory,
     isLoading,
     refreshTransactions,
   } = useBalance();
@@ -22,63 +21,53 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
     }
   }, [refreshKey, refreshTransactions]);
 
-  // 이번 달 사용량 계산
-  const calculateMonthlyUsage = () => {
-    const transactions = getTransactionHistory();
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    return transactions
-      .filter((transaction) => {
-        const transactionDate = new Date(transaction.created_at);
-        return (
-          transaction.type === "usage" &&
-          transactionDate.getMonth() === currentMonth &&
-          transactionDate.getFullYear() === currentYear
-        );
-      })
-      .reduce((total, transaction) => total + Math.abs(transaction.amount), 0);
+  const currentBalance = calculateBalance();
+  
+  // 적립금 계산 (대시보드와 동일한 로직: balance / 20)
+  const calculatePoints = () => {
+    return Math.floor(currentBalance / 20);
   };
 
-  const currentBalance = calculateBalance();
-  const monthlyUsage = calculateMonthlyUsage();
+  const points = calculatePoints();
 
   if (isLoading) {
     return (
-      <section className="cm-balance-section">
-        <h3 className="cm-balance-title">크레딧 잔액 정보</h3>
-        <div className="cm-balance-content">
-          <div className="cm-balance-main">
-            <span className="cm-balance-amount">로딩 중...</span>
-            <span className="cm-balance-unit">크레딧</span>
-          </div>
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-6">
+          잔액 정보
+        </h3>
+        <div className="text-center py-4">
+          <div className="text-gray-500">로딩 중...</div>
         </div>
-      </section>
+      </div>
     );
   }
 
   return (
-    <section className="cm-balance-section">
-      <h3 className="cm-balance-title">크레딧 잔액 정보</h3>
-      <div className="cm-balance-content">
-        {/* 전체 크레딧 잔액 */}
-        <div className="cm-balance-main">
-          <span className="cm-balance-amount">
-            {currentBalance.toLocaleString()}
-          </span>
-          <span className="cm-balance-unit">크레딧</span>
-          <span className="cm-balance-label">전체 잔액</span>
-        </div>
-
-        {/* 이번 달 사용량 */}
-        <div className="cm-balance-usage">
-          <span className="cm-balance-usage-label">이번 달 사용량</span>
-          <span className="cm-balance-usage-amount">
-            {monthlyUsage.toLocaleString()} 크레딧
-          </span>
+    <div className="bg-white border border-gray-200 rounded-lg p-6 h-full">
+      <h3 className="text-lg font-medium text-gray-900 mb-6">
+        잔액 정보
+      </h3>
+      
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-6">
+          {/* 충전금 */}
+          <div className="text-center">
+            <div className="text-sm text-gray-600 mb-2">충전금</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {currentBalance.toLocaleString()}원
+            </div>
+          </div>
+          
+          {/* 적립금 */}
+          <div className="text-center">
+            <div className="text-sm text-gray-600 mb-2">적립금</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {points.toLocaleString()} 원
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
