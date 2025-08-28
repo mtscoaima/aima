@@ -95,6 +95,9 @@ export default function CustomerSupportPage() {
     useState<Announcement | null>(null);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
+  // 검색 상태
+  const [searchQuery, setSearchQuery] = useState("");
+
   // 페이지네이션 상태
   const [faqPagination, setFaqPagination] = useState<PaginationInfo>({
     currentPage: 1,
@@ -217,7 +220,7 @@ export default function CustomerSupportPage() {
   );
 
   const fetchInquiries = useCallback(
-    async (page: number = 1) => {
+    async (page: number = 1, search?: string) => {
       setLoading(true);
       try {
         const token = tokenManager.getAccessToken();
@@ -226,8 +229,18 @@ export default function CustomerSupportPage() {
           return;
         }
 
+        // URL 파라미터 구성
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: inquiryPagination.limit.toString(),
+        });
+
+        if (search && search.trim()) {
+          params.set("search", search.trim());
+        }
+
         const response = await fetch(
-          `/api/admin/inquiries?page=${page}&limit=${inquiryPagination.limit}`,
+          `/api/admin/inquiries?${params.toString()}`,
           {
             method: "GET",
             headers: {
@@ -272,13 +285,14 @@ export default function CustomerSupportPage() {
     } else if (activeTab === "faqs") {
       fetchFaqs(faqPagination.currentPage);
     } else if (activeTab === "inquiries") {
-      fetchInquiries(inquiryPagination.currentPage);
+      fetchInquiries(inquiryPagination.currentPage, searchQuery);
     }
   }, [
     activeTab,
     faqPagination.currentPage,
     announcementPagination.currentPage,
     inquiryPagination.currentPage,
+    searchQuery,
     fetchFaqs,
     fetchAnnouncements,
     fetchInquiries,
@@ -293,7 +307,27 @@ export default function CustomerSupportPage() {
   };
 
   const handleInquiryPageChange = (page: number) => {
-    fetchInquiries(page);
+    fetchInquiries(page, searchQuery);
+  };
+
+  // 검색 처리 함수
+  const handleSearch = () => {
+    setInquiryPagination(prev => ({ ...prev, currentPage: 1 }));
+    fetchInquiries(1, searchQuery);
+  };
+
+  // 검색 초기화 함수
+  const handleSearchClear = () => {
+    setSearchQuery("");
+    setInquiryPagination(prev => ({ ...prev, currentPage: 1 }));
+    fetchInquiries(1, "");
+  };
+
+  // 엔터 키 처리
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
   };
 
   const fetchInquiryDetail = async (inquiryId: string) => {
@@ -415,7 +449,7 @@ export default function CustomerSupportPage() {
           setShowReplyModal(false);
           setReplyForm({ content: "" });
           // 문의 목록과 상세 정보 새로고침
-          await fetchInquiries(inquiryPagination.currentPage);
+          await fetchInquiries(inquiryPagination.currentPage, searchQuery);
           if (selectedInquiry) {
             const updatedInquiry = await fetchInquiryDetail(selectedInquiry.id);
             if (updatedInquiry) {
@@ -885,6 +919,35 @@ export default function CustomerSupportPage() {
             <div className="tab-content">
               <div className="content-header">
                 <h2>문의사항 관리</h2>
+                
+                {/* 검색 영역 */}
+                <div className="search-section">
+                  <div className="search-box">
+                    <input
+                      type="text"
+                      placeholder="제목, 내용, 문의자명으로 검색..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={handleSearchKeyPress}
+                      className="search-input"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={handleSearchClear}
+                        className="search-clear-button"
+                        title="검색어 지우기"
+                      >
+                        ×
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSearch}
+                      className="search-button"
+                    >
+                      검색
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {loading ? (
