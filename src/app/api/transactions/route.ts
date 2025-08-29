@@ -226,8 +226,8 @@ async function processReferralRewards(
   }
 }
 
-// JWT 토큰에서 사용자 ID 추출
-function getUserIdFromToken(request: NextRequest): number | null {
+// JWT 토큰에서 사용자 정보 추출
+function getUserInfoFromToken(request: NextRequest): { userId: number; role: string } | null {
   try {
     const authHeader = request.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -235,8 +235,8 @@ function getUserIdFromToken(request: NextRequest): number | null {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    return decoded.userId;
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
+    return { userId: decoded.userId, role: decoded.role };
   } catch (error) {
     console.error("JWT 토큰 검증 실패:", error);
     return null;
@@ -322,9 +322,9 @@ async function getAvailableBalance(userId: number): Promise<{
 // 트랜잭션 목록 조회 (GET)
 export async function GET(request: NextRequest) {
   try {
-    // JWT 토큰에서 사용자 ID 추출
-    const userId = getUserIdFromToken(request);
-    if (!userId) {
+    // JWT 토큰에서 사용자 정보 추출
+    const userInfo = getUserInfoFromToken(request);
+    if (!userInfo) {
       return NextResponse.json(
         { error: "인증 토큰이 필요합니다." },
         { status: 401 }
@@ -335,12 +335,21 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const targetUserId = searchParams.get("userId");
+
+    // 조회할 사용자 ID 결정
+    let queryUserId = userInfo.userId;
+    
+    // 관리자가 다른 사용자의 트랜잭션을 조회하는 경우
+    if (targetUserId && userInfo.role === "ADMIN") {
+      queryUserId = parseInt(targetUserId);
+    }
 
     // Supabase에서 트랜잭션 조회
     const { data: transactions, error: transactionError } = await supabase
       .from("transactions")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", queryUserId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -356,16 +365,17 @@ export async function GET(request: NextRequest) {
     const { count, error: countError } = await supabase
       .from("transactions")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", queryUserId);
 
     if (countError) {
       console.error("트랜잭션 개수 조회 오류:", countError);
     }
 
     // 사용 가능한 크레딧 정보 조회
-    const balanceInfo = await getAvailableBalance(userId);
+    const balanceInfo = await getAvailableBalance(queryUserId);
 
     return NextResponse.json({
+      success: true,
       transactions: transactions || [],
       currentBalance: balanceInfo.totalBalance,
       reservedAmount: balanceInfo.reservedAmount,
@@ -384,15 +394,17 @@ export async function GET(request: NextRequest) {
 // 새 트랜잭션 생성 (POST)
 export async function POST(request: NextRequest) {
   try {
-    // JWT 토큰에서 사용자 ID 추출
-    const userId = getUserIdFromToken(request);
+    // JWT 토큰에서 사용자 정보 추출
+    const userInfo = getUserInfoFromToken(request);
 
-    if (!userId) {
+    if (!userInfo) {
       return NextResponse.json(
         { error: "인증 토큰이 필요합니다." },
         { status: 401 }
       );
     }
+
+    const userId = userInfo.userId;
 
     // 요청 본문 파싱
     const body = await request.json();

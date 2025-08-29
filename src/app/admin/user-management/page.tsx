@@ -118,6 +118,14 @@ export default function UserManagementPage() {
   const [statusChangeReason, setStatusChangeReason] = useState("");
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
   
+  // 충전 관리 상태
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [selectedChargeUser, setSelectedChargeUser] = useState<User | null>(null);
+  const [userBalance, setUserBalance] = useState<number | null>(null);
+  const [chargeAmount, setChargeAmount] = useState("");
+  const [chargeError, setChargeError] = useState("");
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -228,6 +236,46 @@ export default function UserManagementPage() {
       handlePageChange(pagination.page + 1);
     }
   };
+
+  // 사용자 잔액 조회
+  const fetchUserBalance = useCallback(async (userId: string) => {
+    setLoadingBalance(true);
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        console.error("토큰이 없습니다.");
+        return;
+      }
+
+      const response = await fetch(`/api/transactions?userId=${userId}&limit=1`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('사용자 잔액을 가져오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setUserBalance(data.currentBalance || 0);
+      } else if (data.currentBalance !== undefined) {
+        // success 필드가 없어도 currentBalance가 있으면 사용
+        setUserBalance(data.currentBalance || 0);
+      } else {
+        console.error('잔액 조회 API 오류:', data.error || data.message);
+        setUserBalance(0);
+      }
+    } catch (error) {
+      console.error('사용자 잔액 조회 실패:', error);
+      setUserBalance(0);
+    } finally {
+      setLoadingBalance(false);
+    }
+  }, []);
 
   // 기업 목록 가져오기
   const fetchCompanies = useCallback(async () => {
@@ -682,6 +730,93 @@ export default function UserManagementPage() {
     }));
   };
 
+  // 충전 관리 핸들러들
+  const handleChargeUser = async (user: User) => {
+    setSelectedChargeUser(user);
+    setChargeAmount("");
+    setChargeError("");
+    setUserBalance(null);
+    setShowChargeModal(true);
+    
+    // 사용자 잔액 조회
+    await fetchUserBalance(user.id);
+  };
+
+  const handleChargeAmountChange = (value: string) => {
+    // 숫자만 입력 가능하도록 필터링
+    const numericValue = value.replace(/[^0-9]/g, '');
+    // 천단위 콤마 추가
+    const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    setChargeAmount(formattedValue);
+    setChargeError("");
+  };
+
+  const handleChargeSubmit = () => {
+    const numericAmount = parseInt(chargeAmount.replace(/,/g, '')) || 0;
+    
+    // 금액 검증
+    if (numericAmount < 10000) {
+      setChargeError("최소 충전 금액은 10,000원 이상입니다.");
+      return;
+    }
+    
+    if (numericAmount > 1000000) {
+      setChargeError("최대 충전 금액은 1,000,000원입니다.");
+      return;
+    }
+
+    // 확인 다이얼로그
+    if (confirm(`${selectedChargeUser?.name}의 광고머니를 ${numericAmount.toLocaleString()}원 충전하시겠습니까?`)) {
+      handleChargeConfirm(numericAmount);
+    }
+  };
+
+  const handleChargeConfirm = async (amount: number) => {
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      const response = await fetch('/api/admin/users/charge', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId: selectedChargeUser?.id,
+          amount: amount
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`${selectedChargeUser?.name}님의 광고머니가 ${amount.toLocaleString()}원 충전되었습니다.`);
+        setShowChargeModal(false);
+        setSelectedChargeUser(null);
+        setChargeAmount("");
+        setUserBalance(null);
+        await fetchUsers(); // 목록 새로고침
+      } else {
+        alert(data.message || "충전에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error('충전 실패:', error);
+      alert("충전 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleChargeModalClose = () => {
+    setShowChargeModal(false);
+    setSelectedChargeUser(null);
+    setChargeAmount("");
+    setChargeError("");
+    setUserBalance(null);
+  };
+
   // handleGradeAdjust는 추후 등급 관리 기능에서 구현 예정
 
   // 접속 관리 핸들러들
@@ -938,6 +1073,12 @@ export default function UserManagementPage() {
                                className="btn-xs btn-primary"
                              >
                                수정
+                             </button>
+                             <button 
+                               onClick={() => handleChargeUser(user)}
+                               className="btn-xs btn-success"
+                             >
+                               충전
                              </button>
                              <button 
                                onClick={() => handleDeleteUser(user.id)}
@@ -1476,6 +1617,81 @@ export default function UserManagementPage() {
                     disabled={!statusChangeReason.trim()}
                   >
                     확인
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 충전 모달 */}
+          {showChargeModal && selectedChargeUser && (
+            <div className="modal-overlay" onClick={handleChargeModalClose}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>광고머니 충전 - {selectedChargeUser.name}</h3>
+                  <button 
+                    className="modal-close"
+                    onClick={handleChargeModalClose}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="form-grid">
+                    <div className="form-group full-width">
+                      <label>충전 대상 정보</label>
+                      <div className="charge-user-info">
+                        <div className="user-info-row">
+                          <span className="info-label">사용자ID:</span>
+                          <span className="info-value">{selectedChargeUser.userId}</span>
+                        </div>
+                        <div className="user-info-row">
+                          <span className="info-label">사용자명:</span>
+                          <span className="info-value">{selectedChargeUser.name}</span>
+                        </div>
+                        <div className="user-info-row">
+                          <span className="info-label">현재 잔액:</span>
+                          <span className="info-value balance-amount">
+                            {loadingBalance ? "조회 중..." : `${(userBalance || 0).toLocaleString()}원`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="form-group full-width">
+                      <label>충전 금액 *</label>
+                      <input 
+                        type="text"
+                        value={chargeAmount}
+                        onChange={(e) => handleChargeAmountChange(e.target.value)}
+                        placeholder="충전할 금액을 입력하세요 (최소 10,000원)"
+                        className="form-input"
+                      />
+                      {chargeError && (
+                        <div className="charge-error">
+                          {chargeError}
+                        </div>
+                      )}
+                      <div className="charge-info">
+                        • 최소 충전 금액: 10,000원<br/>
+                        • 최대 충전 금액: 1,000,000원
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    className="btn-secondary"
+                    onClick={handleChargeModalClose}
+                  >
+                    취소
+                  </button>
+                  <button 
+                    className="btn-primary"
+                    onClick={handleChargeSubmit}
+                    disabled={!chargeAmount || !!chargeError}
+                  >
+                    충전하기
                   </button>
                 </div>
               </div>
