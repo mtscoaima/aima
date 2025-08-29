@@ -131,6 +131,9 @@ function TargetMarketingDetailContent({
 
   // 승인 신청 처리 상태
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+  
+  // 전문가 검토 요청 상태
+  const [expertReviewRequested, setExpertReviewRequested] = useState(false);
 
   // 드롭다운 상태
   const [isAgeDropdownOpen, setIsAgeDropdownOpen] = useState(false);
@@ -2243,6 +2246,7 @@ function TargetMarketingDetailContent({
           male: maleRatio,
         }, // 성별 비율 데이터 추가
         desiredRecipients: desiredRecipients.trim() || null, // 희망 수신자 입력 추가
+        expertReviewRequested: expertReviewRequested, // 전문가 검토 요청 여부
         targetFilters: {
           gender: targetGender,
           ageGroup: targetAge,
@@ -2866,10 +2870,6 @@ function TargetMarketingDetailContent({
             <div className="bg-gray-100 p-4 mb-1">
               <div className="flex justify-between items-center mb-4">
                 <div className="text-base font-semibold text-gray-800">광고 수신자 설정</div>
-                <div className="flex items-center gap-1">
-                  <input type="checkbox" className="w-4 h-4" />
-                  <span className="text-xs text-gray-800">전문가 검토 요청하기</span>
-                </div>
               </div>
               
               {/* 예상 수신자 수 */}
@@ -3444,6 +3444,30 @@ function TargetMarketingDetailContent({
                   "승인 신청"
                 )}
               </button>
+              
+              {/* 전문가 검토 요청하기 체크박스 */}
+              <div className="flex items-center gap-1 mt-3 ml-2">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4" 
+                  checked={expertReviewRequested}
+                  onChange={(e) => setExpertReviewRequested(e.target.checked)}
+                />
+                <span className="text-sm text-gray-800">전문가 검토 요청하기</span>
+                <div className="relative group">
+                  <div className="w-4 h-4 ml-1 cursor-help flex items-center justify-center rounded-full border border-gray-400 text-gray-500">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                      <circle cx="12" cy="17" r="1"/>
+                    </svg>
+                  </div>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                    생성하신 캠페인을 실제 전문가가 보고 의견을 드립니다.<br />
+                    단, 검토가 밀렸을 때는 승인이 지연될 수 있는 점 양해바랍니다.
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

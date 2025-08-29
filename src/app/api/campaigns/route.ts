@@ -35,6 +35,7 @@ interface CreateCampaignRequest {
     male: number;
   }; // 성별 비율 데이터
   desiredRecipients?: string | null; // 희망 수신자 직접 입력
+  expertReviewRequested?: boolean; // 전문가 검토 요청 여부
   targetFilters: {
     gender: string;
     ageGroup: string;
@@ -362,6 +363,7 @@ export async function POST(request: NextRequest) {
       buttons: campaignData.buttons || [],
       gender_ratio: campaignData.genderRatio || null,
       desired_recipients: campaignData.desiredRecipients || null,
+      expert_review_requested: campaignData.expertReviewRequested || false,
       created_at: kstTime,
       updated_at: kstTime,
     };
