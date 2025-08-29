@@ -5,6 +5,7 @@ import { useBalance } from "@/contexts/BalanceContext";
 import { CreditBalance } from "@/components/credit/CreditBalance";
 import { ChargeInput } from "@/components/credit/ChargeInput";
 import { PaymentModal } from "@/components/credit/PaymentModal";
+import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 
 interface ChargeInfo {
@@ -23,6 +24,7 @@ const CreditManagementPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedCharge, setSelectedCharge] = useState<ChargeInfo | null>(null);
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
   // 필터링 상태
   const [dateFilter, setDateFilter] = useState("all");
@@ -101,14 +103,24 @@ const CreditManagementPage = () => {
     };
   }, [refreshTransactions]);
 
-  const handleCharge = (chargeInfo: ChargeInfo) => {
-    setSelectedCharge(chargeInfo);
-    setIsPaymentModalOpen(true);
+  const handleCharge = (
+    // chargeInfo: ChargeInfo
+  ) => {
+    // 임시로 결제 모달 대신 안내 모달 표시
+    setIsNoticeModalOpen(true);
+    
+    // 기존 결제 로직은 유지 (주석 처리)
+    // setSelectedCharge(chargeInfo);
+    // setIsPaymentModalOpen(true);
   };
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
     setSelectedCharge(null);
+  };
+
+  const handleCloseNoticeModal = () => {
+    setIsNoticeModalOpen(false);
   };
 
   const allTransactions = getTransactionHistory();
@@ -803,6 +815,11 @@ const CreditManagementPage = () => {
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
           chargeInfo={selectedCharge}
+        />
+        
+        <PaymentNoticeModal
+          isOpen={isNoticeModalOpen}
+          onClose={handleCloseNoticeModal}
         />
       </div>
     </AdvertiserGuardWithDisabled>

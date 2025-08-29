@@ -177,7 +177,8 @@
 .table-container {
   border: 1px solid #e5e8ec;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .data-table {
@@ -371,6 +372,12 @@
   background: #fd7e14;
   color: white;
   border: 1px solid #fd7e14;
+}
+
+.btn-success {
+  background: #198754;
+  color: white;
+  border: 1px solid #198754;
 }
 
 .btn-xs:hover {
@@ -638,6 +645,54 @@
   }
 }
 
+/* 충전 모달 스타일 */
+.charge-user-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.user-info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.user-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #666666;
+  min-width: 80px;
+}
+
+.info-value {
+  font-weight: 600;
+  color: #333333;
+}
+
+.balance-amount {
+  color: #0066ff;
+  font-size: 16px;
+}
+
+.charge-error {
+  margin-top: 8px;
+  color: #dc3545;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.charge-info {
+  margin-top: 8px;
+  color: #666666;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* 헤더 업데이트 */
 .total-count {
   font-size: 16px;
@@ -781,6 +836,8 @@
   padding: 24px;
   background-color: #f5f7fa;
   transition: margin-left 0.3s ease;
+  overflow-x: auto;
+  min-width: 0;
 }
 
 .admin-header {
