@@ -7,7 +7,10 @@ import { Sparkles } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
 import ApprovalRequestComplete from "@/components/approval/ApprovalRequestComplete";
 import { PaymentModal } from "@/components/credit/PaymentModal";
+import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
 import { useBalance } from "@/contexts/BalanceContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveCampaignDraft, loadCampaignDraft, clearCampaignDraft, formatDraftAge, fileToBase64, base64ToFile, type CampaignDraft } from "@/lib/campaignDraft";
 import {
   targetOptions,
   getDistrictsByCity,
@@ -63,6 +66,7 @@ function TargetMarketingDetailContent({
   initialImage,
 }: TargetMarketingDetailProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     balanceData,
     isLoading: isLoadingCredits,
@@ -94,6 +98,7 @@ function TargetMarketingDetailContent({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
+  const [images, setImages] = useState<(File | string | null)[]>([]);
   const [sendPolicy, setSendPolicy] = useState<"realtime" | "batch">(
     "realtime"
   );
@@ -185,7 +190,9 @@ function TargetMarketingDetailContent({
 
   // 크레딧 관련 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [requiredAmount, setRequiredAmount] = useState<number>(0);
 
   // BalanceContext에서 크레딧 정보 가져오기
@@ -353,32 +360,28 @@ function TargetMarketingDetailContent({
   const prevMessagesLengthRef = useRef(0);
 
 
-  // 직접 입력 충전 모달 열기
-  const handleAutoSelectPackage = () => {
-    try {
-      console.log("충전 버튼 클릭됨");
+  // // 직접 입력 충전 모달 열기 (기존 로직 보존)
+  // const handleAutoSelectPackage = () => {
+  //   try {
       
-      // 결제 전 현재 상태 저장
-      saveCurrentState();
+  //     // 결제 전 현재 상태 저장
+  //     saveCurrentState();
       
-      // 필요한 크레딧 계산
-      const totalCostForPackage = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount);
-      console.log("총 비용:", totalCostForPackage);
+  //     // 필요한 크레딧 계산
+  //     const totalCostForPackage = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount);
       
-      const requiredCredits = calculateRequiredCredits(totalCostForPackage, userCredits);
-      console.log("필요한 크레딧:", requiredCredits);
+  //     const requiredCredits = calculateRequiredCredits(totalCostForPackage, userCredits);
 
-      // PaymentModal을 직접 입력 모드로 열기
-      setSelectedPackage(null);
-      setRequiredAmount(requiredCredits);
-      setIsPaymentModalOpen(true);
+  //     // PaymentModal을 직접 입력 모드로 열기
+  //     setSelectedPackage(null);
+  //     setRequiredAmount(requiredCredits);
+  //     setIsPaymentModalOpen(true);
       
-      console.log("모달 상태 설정 완료");
-    } catch (error) {
-      console.error("충전 모달 열기 오류:", error);
-      alert(`충전 준비 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
+  //   } catch (error) {
+  //     console.error("충전 모달 열기 오류:", error);
+  //     alert(`충전 준비 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
+  //   }
+  // };
 
   // 결제 모달 닫기
   const handleClosePaymentModal = () => {
@@ -387,6 +390,7 @@ function TargetMarketingDetailContent({
   };
 
   // 현재 상태 저장 (결제 전)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const saveCurrentState = () => {
     const currentState = {
       templateTitle,
@@ -464,8 +468,137 @@ function TargetMarketingDetailContent({
 
   // 크레딧 충전 모달 열기 (권장 패키지 자동 선택)
   const openCreditModal = () => {
-    handleAutoSelectPackage();
+    // 임시로 안내 모달 표시
+    setIsNoticeModalOpen(true);
+    
+    // 기존 결제 로직은 유지 (주석 처리)
+    // handleAutoSelectPackage();
   };
+
+  const handleCloseNoticeModal = () => {
+    setIsNoticeModalOpen(false);
+  };
+
+  // 캠페인 임시저장 로직
+  const saveCampaignDraftData = useCallback(async () => {
+    if (!user?.id) return false;
+
+    try {
+      // 이미지들을 base64로 변환
+      const imagePromises = images.map(async (image) => {
+        if (image instanceof File) {
+          return await fileToBase64(image);
+        }
+        return image; // 이미 URL이거나 null인 경우
+      });
+      
+      const convertedImages = await Promise.all(imagePromises);
+
+      const draftData: CampaignDraft = {
+        messages: messages.map(msg => typeof msg === 'string' ? msg : msg.content),
+        images: convertedImages,
+        sendPolicy: {
+          firstSendTime: sendPolicy === "realtime" ? "즉시 발송" : validityStartDate,
+          sendCount: 1,
+          sendInterval: 0,
+          smsFailover: true,
+          duplicateCheck: true,
+          skipWeekend: false,
+        },
+        maxRecipients: parseInt(maxRecipients) || 30,
+        adRecipientCount: parseInt(desiredRecipients) || 0,
+        selectedTemplate: templateId ? {
+          id: templateId,
+          title: templateTitle,
+          content: typeof messages[0] === 'string' ? messages[0] : messages[0]?.content || "",
+          image_url: typeof images[0] === 'string' ? images[0] : undefined,
+        } : undefined,
+        templateTitle,
+        templateContent: typeof messages[0] === 'string' ? messages[0] : messages[0]?.content || "",
+        templateImageUrl: typeof images[0] === 'string' ? images[0] : undefined,
+        timestamp: Date.now(),
+        userId: Number(user.id),
+      };
+
+      return saveCampaignDraft(draftData);
+    } catch (error) {
+      console.error("캠페인 임시저장 실패:", error);
+      return false;
+    }
+  }, [user?.id, messages, images, sendPolicy, validityStartDate, maxRecipients, desiredRecipients, templateId, templateTitle]);
+
+  // 자동 저장 (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (messages.length > 0 || images.some(img => img)) {
+        saveCampaignDraftData();
+      }
+    }, 2000); // 2초 후 자동 저장
+
+    return () => clearTimeout(timer);
+  }, [messages, images, saveCampaignDraftData]);
+
+  // 페이지 이탈 전 자동 저장
+  React.useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveCampaignDraftData();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveCampaignDraftData]);
+
+  // 컴포넌트 마운트 시 임시저장 데이터 복원
+  React.useEffect(() => {
+    if (!user?.id) return;
+
+    const savedDraft = loadCampaignDraft(Number(user.id));
+    if (savedDraft) {
+      const shouldRestore = confirm(
+        `이전에 작성하던 캠페인이 있습니다. (${formatDraftAge(savedDraft.timestamp)})\n\n복원하시겠습니까?`
+      );
+
+      if (shouldRestore) {
+        // 상태 복원
+        setMessages(savedDraft.messages.map((msg, index) => ({
+          id: `restored-${index}`,
+          role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
+          content: msg,
+          timestamp: new Date()
+        })));
+        setTemplateTitle(savedDraft.templateTitle);
+        setSmsTextContent(savedDraft.templateContent);
+        setMaxRecipients(savedDraft.maxRecipients.toString());
+        setDesiredRecipients(savedDraft.adRecipientCount.toString());
+
+        // 이미지 복원 (base64를 File로 변환)
+        const restoredImages = savedDraft.images.map((imageData, index) => {
+          if (typeof imageData === 'string' && imageData.startsWith('data:')) {
+            try {
+              return base64ToFile(imageData, `restored_image_${index}.jpg`);
+            } catch (error) {
+              console.error('이미지 복원 실패:', error);
+              return null;
+            }
+          }
+          return imageData;
+        });
+        setImages(restoredImages);
+
+        // 선택된 템플릿 복원
+        if (savedDraft.selectedTemplate) {
+          setSelectedTemplateId(savedDraft.selectedTemplate.id.toString());
+        }
+
+        // 임시저장 데이터 삭제
+        clearCampaignDraft(Number(user.id));
+        
+      } else {
+        // 사용자가 거부한 경우 임시저장 데이터 삭제
+        clearCampaignDraft(Number(user.id));
+      }
+    }
+  }, [user?.id]);
 
   // 초기 메시지에 대한 AI 응답 처리 (실제 AI API 호출)
   const handleInitialResponse = React.useCallback(
@@ -743,12 +876,11 @@ function TargetMarketingDetailContent({
           )
         );
       } finally {
-        console.log('[handleInitialResponse] finally 블록 - isLoading:', isLoading);
         setShowTypingIndicator(false);
         setIsImageGenerating(false);
       }
     },
-    [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent, isLoading]
+    [analyzeTargetContent, generateTemplateTitle, templateTitle, smsTextContent]
   );
 
   // 클라이언트에서만 초기 데이터 설정
@@ -3350,6 +3482,12 @@ function TargetMarketingDetailContent({
           allowEdit={!selectedPackage}
         />
       </div>
+
+      {/* 충전 안내 모달 */}
+      <PaymentNoticeModal
+        isOpen={isNoticeModalOpen}
+        onClose={handleCloseNoticeModal}
+      />
 
       {/* 캠페인 불러오기 모달 */}
       <CampaignModal

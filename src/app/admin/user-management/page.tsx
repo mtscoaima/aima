@@ -515,7 +515,6 @@ export default function UserManagementPage() {
 
   // 회원 관리 핸들러들
   const handleAddUser = () => {
-    console.log("회원 등록 버튼 클릭");
     setModalType("add");
     setSelectedUser(null);
     setFormData({
@@ -532,7 +531,6 @@ export default function UserManagementPage() {
   };
 
   const handleEditUser = (user: User) => {
-    console.log("회원 수정:", user);
     setModalType("edit");
     setSelectedUser(user);
     setFormData({
@@ -550,7 +548,6 @@ export default function UserManagementPage() {
   };
 
   const handleViewUser = (user: User) => {
-    console.log("회원 상세 보기:", user);
     setModalType("detail");
     setSelectedUser(user);
     setFormData({
@@ -568,7 +565,6 @@ export default function UserManagementPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    console.log("회원 삭제:", userId);
     if (confirm("정말로 이 회원을 삭제하시겠습니까?")) {
       try {
         await deleteUser(userId);
@@ -636,14 +632,12 @@ export default function UserManagementPage() {
   };
 
   const handleSearch = () => {
-    console.log("검색 실행:", searchFilters);
     fetchUsers(); // 실제 검색 실행
   };
 
   const handleExcelDownload = async () => {
     try {
       await downloadExcel();
-      console.log("Excel 다운로드 완료");
     } catch (error) {
       alert("Excel 다운로드에 실패했습니다: " + (error as Error).message);
     }
