@@ -46,7 +46,6 @@ import SaveTemplateModal from "@/components/modals/SaveTemplateModal";
 // 분리된 API 서비스들
 import * as templateService from "@/services/templateService";
 import * as campaignService from "@/services/campaignService";
-import * as creditService from "@/services/creditService";
 // import * as uploadService from "@/services/uploadService"; // 현재 미사용
 // 분리된 유틸리티 함수들
 import * as dateUtils from "@/utils/dateUtils";
@@ -187,6 +186,7 @@ function TargetMarketingDetailContent({
   // 크레딧 관련 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [requiredAmount, setRequiredAmount] = useState<number>(0);
 
   // BalanceContext에서 크레딧 정보 가져오기
   const userCredits = balanceData.balance;
@@ -365,38 +365,27 @@ function TargetMarketingDetailContent({
     }
   };
 
-  // 권장 패키지 자동 선택 처리
-  const handleAutoSelectPackage = async () => {
+  // 직접 입력 충전 모달 열기
+  const handleAutoSelectPackage = () => {
     try {
+      console.log("충전 버튼 클릭됨");
+      
       // 필요한 크레딧 계산
       const totalCostForPackage = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount);
+      console.log("총 비용:", totalCostForPackage);
+      
       const requiredCredits = calculateRequiredCredits(totalCostForPackage, userCredits);
+      console.log("필요한 크레딧:", requiredCredits);
 
-      // 권장 패키지 조회
-      const recommendedPackage = await creditService.getRecommendedPackage(requiredCredits);
-
-      if (!recommendedPackage) {
-        // 패키지 목록이 없거나 가장 큰 패키지로도 부족한 경우
-        const { packages } = await creditService.getCreditPackages();
-
-      if (packages.length === 0) {
-          alert(ERROR_MESSAGES.NO_PACKAGES_AVAILABLE);
-        return;
-      }
-
-        const largestPackage = packages.sort((a, b) => b.credits - a.credits)[0];
-        alert(
-          `최대 패키지(${largestPackage.credits.toLocaleString()}크레딧)로도 부족합니다. 더 작은 캠페인으로 진행해주세요.`
-        );
-        return;
-      }
-
-      // Package 타입으로 변환
-      const packageInfo = creditService.convertToPackageType(recommendedPackage);
-      await handleCharge(packageInfo);
+      // PaymentModal을 직접 입력 모드로 열기
+      setSelectedPackage(null);
+      setRequiredAmount(requiredCredits);
+      setIsPaymentModalOpen(true);
+      
+      console.log("모달 상태 설정 완료");
     } catch (error) {
-      console.error("자동 패키지 선택 오류:", error);
-      alert("패키지 정보를 가져오는 중 오류가 발생했습니다.");
+      console.error("충전 모달 열기 오류:", error);
+      alert(`충전 준비 중 오류가 발생했습니다: ${error.message || error}`);
     }
   };
 
@@ -3359,8 +3348,15 @@ function TargetMarketingDetailContent({
         <PaymentModal
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
-          packageInfo={selectedPackage}
+          chargeInfo={selectedPackage ? {
+            id: selectedPackage.id,
+            name: selectedPackage.name,
+            amount: selectedPackage.credits,
+            price: selectedPackage.price
+          } : null}
           redirectUrl={window.location.pathname}
+          requiredAmount={requiredAmount}
+          allowEdit={!selectedPackage}
         />
       </div>
 
