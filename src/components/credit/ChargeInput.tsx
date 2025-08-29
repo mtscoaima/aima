@@ -72,7 +72,7 @@ export function ChargeInput({ onCharge }: ChargeInputProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <h3 className="text-lg font-medium text-gray-900 mb-6">
-        광고머니 충전
+        충전수단 선택
       </h3>
       
       <div className="space-y-4">

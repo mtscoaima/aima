@@ -92,7 +92,7 @@ export function ChargeHistoryPage() {
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <div className="text-sm text-gray-600 mb-1">총 결제 금액</div>
           <div className="text-2xl font-bold text-gray-900">
-            ₩{totalAmount.toLocaleString()}
+            {totalAmount.toLocaleString()}
           </div>
           <div className="text-sm text-gray-500">원</div>
         </div>

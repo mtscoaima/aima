@@ -436,6 +436,18 @@ const CreditManagementPage = () => {
       case "charge":
         return (
           <div className="space-y-6" key={`charge-${refreshKey}`}>
+            {/* 설명 섹션 */}
+            <div >
+              <div className="space-y-2">
+                <p className="text-sm text-gray-700">
+                  • 광고머니는 1만 원 이상부터 충전 가능합니다.
+                </p>
+                <p className="text-sm text-gray-700">
+                  • 결제 진행 전, 브라우저의 팝업 차단을 해제해 주시기 바랍니다.
+                </p>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <ChargeInput onCharge={handleCharge} />
@@ -503,7 +515,7 @@ const CreditManagementPage = () => {
                   총 결제 금액
                 </div>
                 <div className="text-2xl font-bold text-blue-500">
-                  ₩{totalChargeAmount.toLocaleString()}
+                  {totalChargeAmount.toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-500">원</div>
               </div>
@@ -749,7 +761,6 @@ const CreditManagementPage = () => {
         <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto">
           <header className="mb-8">
             <h1 className="text-black text-2xl font-semibold leading-tight tracking-tight m-0">충전하기</h1>
-            <p className="text-sm text-gray-500 mt-2">광고머니 충전 및 사용 내역을 관리할 수 있습니다.</p>
           </header>
 
           <div className="flex gap-2 mb-6 border-b border-gray-300">
