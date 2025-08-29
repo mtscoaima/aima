@@ -177,7 +177,8 @@
 .table-container {
   border: 1px solid #e5e8ec;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .data-table {
@@ -781,6 +782,8 @@
   padding: 24px;
   background-color: #f5f7fa;
   transition: margin-left 0.3s ease;
+  overflow-x: auto;
+  min-width: 0;
 }
 
 .admin-header {
