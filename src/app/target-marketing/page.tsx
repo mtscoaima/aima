@@ -18,7 +18,7 @@ interface DetailProps {
 // 실제 캠페인 데이터 인터페이스
 
 const tabs = [
-  { id: "naver-talktalk", label: "네이버 톡톡" },
+  { id: "naver-talktalk", label: "캠페인 만들기" },
   { id: "campaign-management", label: "캠페인 관리" },
   { id: "template-management", label: "템플릿 관리" },
 ];

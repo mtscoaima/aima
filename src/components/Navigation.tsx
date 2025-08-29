@@ -195,13 +195,7 @@ export default function Navigation() {
                     onClick={() => handleNavClick("/messages/send")}
                     className="landing-nav-menu-item landing-nav-menu-btn"
                   >
-                    문자
-                  </button>
-                  <button
-                    onClick={() => handleNavClick("/messages/history")}
-                    className="landing-nav-menu-item landing-nav-menu-btn"
-                  >
-                    발송결과
+                    문자발송
                   </button>
                   <button
                     onClick={() => handleNavClick("/support")}
@@ -278,13 +272,7 @@ export default function Navigation() {
                     onClick={() => handleNavClick("/messages/send")}
                     className="mobile-menu-item mobile-menu-btn"
                   >
-                    문자
-                  </button>
-                  <button
-                    onClick={() => handleNavClick("/messages/history")}
-                    className="mobile-menu-item mobile-menu-btn"
-                  >
-                    발송결과
+                    문자발송
                   </button>
                   <button
                     onClick={() => handleNavClick("/support")}
