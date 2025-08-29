@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, Suspense, useCallback } from "react";
+import React, { useState, useRef, useEffect, Suspense, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
@@ -85,12 +85,12 @@ function TargetMarketingDetailContent({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<{[key: number]: string}>({});
   
-  // 질문 목록 정의
-  const initialQuestions = [
+  // 질문 목록 정의 (useMemo로 최적화)
+  const initialQuestions = useMemo(() => [
     "광고의 목적은 무엇인가요? (답변예시 : 신규고객 유입, 단골고객 확보, 리뷰 및 SNS, 안내)",
     "제공할 혜택이 있다면, 혜택 내용과 제공하는 기간을 알려주세요.(없다면 없다고 말씀해주세요.)",
     "이번 광고메시지를 어떤 고객에게 전달하고 싶으신가요?"
-  ];
+  ], []);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
@@ -352,23 +352,14 @@ function TargetMarketingDetailContent({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevMessagesLengthRef = useRef(0);
 
-  // 크레딧 패키지 선택 처리
-  const handleCharge = async (packageInfo: Package) => {
-    try {
-      // 결제 전 현재 상태 저장
-      saveCurrentState();
-      setSelectedPackage(packageInfo);
-      setIsPaymentModalOpen(true);
-    } catch (error) {
-      console.error("패키지 선택 오류:", error);
-      alert("패키지 선택 중 오류가 발생했습니다.");
-    }
-  };
 
   // 직접 입력 충전 모달 열기
   const handleAutoSelectPackage = () => {
     try {
       console.log("충전 버튼 클릭됨");
+      
+      // 결제 전 현재 상태 저장
+      saveCurrentState();
       
       // 필요한 크레딧 계산
       const totalCostForPackage = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount);
@@ -385,7 +376,7 @@ function TargetMarketingDetailContent({
       console.log("모달 상태 설정 완료");
     } catch (error) {
       console.error("충전 모달 열기 오류:", error);
-      alert(`충전 준비 중 오류가 발생했습니다: ${error.message || error}`);
+      alert(`충전 준비 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
