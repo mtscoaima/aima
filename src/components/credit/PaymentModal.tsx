@@ -59,20 +59,20 @@ interface UserInfo {
   phone?: string;
 }
 
-interface PackageInfo {
+interface ChargeInfo {
   id: string;
   name: string;
-  credits: number;
+  amount: number;
   price: number;
-  isPopular?: boolean;
-  bonus?: number;
 }
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  packageInfo: PackageInfo | null;
+  chargeInfo: ChargeInfo | null;
   redirectUrl?: string;
+  requiredAmount?: number;
+  allowEdit?: boolean;
 }
 
 interface InicisPaymentData {
@@ -94,8 +94,10 @@ interface InicisPaymentData {
 export function PaymentModal({
   isOpen,
   onClose,
-  packageInfo,
+  chargeInfo,
   redirectUrl,
+  requiredAmount,
+  allowEdit = false,
 }: PaymentModalProps) {
   const [step, setStep] = useState(1);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
@@ -105,6 +107,13 @@ export function PaymentModal({
   const [paymentForm, setPaymentForm] = useState<InicisPaymentData | null>(
     null
   );
+  
+  // 직접 입력 관련 상태
+  const [inputAmount, setInputAmount] = useState<string>("");
+  const [amountError, setAmountError] = useState<string>("");
+  
+  const MIN_AMOUNT = 10000;
+  const MAX_AMOUNT = 1000000;
 
   // 사용자 정보 가져오기
   useEffect(() => {
@@ -148,14 +157,24 @@ export function PaymentModal({
     }
   }, [isOpen]);
 
-  // 결제 단계 리셋
+  // 결제 단계 리셋 및 기본값 설정
   useEffect(() => {
     if (isOpen) {
       setStep(1);
       setIsProcessingPayment(false);
       setPaymentForm(null);
+      
+      // 직접 입력 모드일 때 기본값 설정
+      if (allowEdit && requiredAmount) {
+        const defaultAmount = Math.ceil(requiredAmount / 10000) * 10000;
+        setInputAmount(defaultAmount.toLocaleString());
+        setAmountError("");
+      } else if (chargeInfo) {
+        setInputAmount(chargeInfo.amount.toLocaleString());
+        setAmountError("");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, allowEdit, requiredAmount, chargeInfo]);
 
   const generateOrderId = () => {
     const timestamp = Date.now();
@@ -163,8 +182,62 @@ export function PaymentModal({
     const userId = userInfo?.id || "unknown";
     return `credit_${timestamp}_${userId}_${randomString}`;
   };
+  
+  // 숫자 포맷팅 (ChargeInput과 동일)
+  const formatNumber = (value: string) => {
+    const number = value.replace(/[^\d]/g, "");
+    return number.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+  
+  // 금액 입력 처리
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const numericValue = value.replace(/[^\d]/g, "");
+    const numberValue = parseInt(numericValue) || 0;
 
-  if (!isOpen || !packageInfo) return null;
+    setInputAmount(formatNumber(numericValue));
+
+    // 실시간 검증
+    if (numericValue === "") {
+      setAmountError("");
+    } else if (numberValue < MIN_AMOUNT) {
+      setAmountError("");
+    } else if (numberValue > MAX_AMOUNT) {
+      setAmountError(`최대 충전 금액은 ${MAX_AMOUNT.toLocaleString()}원입니다.`);
+    } else {
+      setAmountError("");
+    }
+  };
+  
+  // 빠른 금액 선택
+  const handleQuickAmount = (quickAmount: number) => {
+    setInputAmount(quickAmount.toLocaleString());
+    setAmountError("");
+  };
+  
+  // 현재 입력된 금액 가져오기
+  const getCurrentAmount = () => {
+    if (allowEdit) {
+      return parseInt(inputAmount.replace(/,/g, "")) || 0;
+    }
+    return chargeInfo?.amount || 0;
+  };
+  
+  // 현재 충전 정보 가져오기
+  const getCurrentChargeInfo = () => {
+    if (allowEdit) {
+      const amount = getCurrentAmount();
+      return {
+        id: `charge_${Date.now()}`,
+        name: `광고머니 ${amount.toLocaleString()}원 충전`,
+        amount: amount,
+        price: amount,
+      };
+    }
+    return chargeInfo;
+  };
+
+  if (!isOpen || (!chargeInfo && !allowEdit)) return null;
 
   const paymentMethods = [
     {
@@ -191,7 +264,8 @@ export function PaymentModal({
       setStep(4);
 
       const orderId = generateOrderId();
-      const orderName = `크레딧 ${packageInfo.credits.toLocaleString()}개 충전`;
+      const chargeInfoForPayment = getCurrentChargeInfo();
+      const orderName = chargeInfoForPayment?.name || "광고머니 충전";
 
       // 전화번호 형식 검증 및 정리
       const formatPhoneNumber = (phone?: string) => {
@@ -223,8 +297,8 @@ export function PaymentModal({
 
       // KG이니시스 결제 요청 데이터 생성
       const paymentData = {
-        price: packageInfo.price.toString(),
-        goodname: orderName,
+        price: chargeInfoForPayment?.price.toString() || "0",
+        goodname: chargeInfoForPayment?.name || orderName,
         buyername: userInfo?.name || "고객",
         buyertel: formattedPhone,
         buyeremail: formattedEmail,
@@ -355,35 +429,89 @@ export function PaymentModal({
   const renderStep = () => {
     switch (step) {
       case 1:
+        const currentChargeInfo = getCurrentChargeInfo();
+        const currentAmount = getCurrentAmount();
+        const isValidAmount = currentAmount >= MIN_AMOUNT && currentAmount <= MAX_AMOUNT;
+        
         return (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                충전할 크레딧 확인
+                {allowEdit ? "충전 금액 입력" : "충전 금액 확인"}
               </h3>
-              <p className="text-gray-600">선택하신 패키지를 확인해주세요.</p>
+              <p className="text-gray-600">
+                {allowEdit ? "충전하실 금액을 입력해주세요." : "입력하신 충전 금액을 확인해주세요."}
+              </p>
+              {requiredAmount && allowEdit && (
+                <p className="text-sm text-blue-600 mt-1">
+                  권장 충전 금액: {Math.ceil(requiredAmount / 10000) * 10000}원 (부족 금액 기준)
+                </p>
+              )}
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-900 mb-2">
-                  {packageInfo.name}
-                </div>
-                <div className="text-lg text-blue-800 mb-1">
-                  <strong>충전 크레딧:</strong>{" "}
-                  {packageInfo.credits.toLocaleString()}개
-                </div>
-                <div className="text-lg text-blue-800">
-                  <strong>결제 금액:</strong> ₩
-                  {packageInfo.price.toLocaleString()}
-                </div>
-                {/* {packageInfo.bonus && packageInfo.bonus > 0 && (
-                  <div className="text-sm text-green-600 mt-2">
-                    + 보너스 {packageInfo.bonus.toLocaleString()}개 크레딧
+            {allowEdit ? (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="modal-charge-amount" className="block text-sm font-medium text-gray-700 mb-3">
+                    충전 금액 입력
+                  </label>
+                  
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="modal-charge-amount"
+                      value={inputAmount}
+                      onChange={handleAmountChange}
+                      className="w-full px-4 py-4 text-2xl font-bold text-right border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
                   </div>
-                )} */}
+                  
+                  <div className={`mt-2 px-3 py-2 text-sm rounded ${
+                    currentAmount < MIN_AMOUNT 
+                      ? "bg-yellow-100 text-yellow-800" 
+                      : amountError 
+                        ? "bg-red-100 text-red-800"
+                        : "bg-transparent"
+                  }`}>
+                    {currentAmount < MIN_AMOUNT 
+                      ? `결제 금액은 최소 ${MIN_AMOUNT.toLocaleString()}원 이상 부터 가능합니다`
+                      : amountError
+                        ? amountError
+                        : ""
+                    }
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: "1만", amount: 10000 },
+                    { label: "5만", amount: 50000 },
+                    { label: "10만", amount: 100000 },
+                    { label: "50만", amount: 500000 }
+                  ].map((option) => (
+                    <button
+                      key={option.amount}
+                      onClick={() => handleQuickAmount(option.amount)}
+                      className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-900 mb-2">
+                    {currentChargeInfo?.name}
+                  </div>
+                  <div className="text-lg text-blue-800">
+                    <strong>충전 금액:</strong> ₩
+                    {currentChargeInfo?.amount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button
@@ -394,7 +522,12 @@ export function PaymentModal({
               </button>
               <button
                 onClick={() => setStep(2)}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={allowEdit && !isValidAmount}
+                className={`flex-1 px-4 py-2 rounded-md ${
+                  allowEdit && !isValidAmount
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
               >
                 다음
               </button>
@@ -447,11 +580,8 @@ export function PaymentModal({
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-sm text-blue-800">
-                <strong>결제 금액:</strong> ₩
-                {packageInfo.price.toLocaleString()}
-                <br />
-                <strong>충전 크레딧:</strong>{" "}
-                {packageInfo.credits.toLocaleString()}개
+                <strong>충전 금액:</strong> ₩
+                {getCurrentAmount().toLocaleString()}
               </div>
             </div>
 
@@ -495,11 +625,8 @@ export function PaymentModal({
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="text-sm text-blue-800">
-                <strong>결제 금액:</strong> ₩
-                {packageInfo.price.toLocaleString()}
-                <br />
-                <strong>충전 크레딧:</strong>{" "}
-                {packageInfo.credits.toLocaleString()}개
+                <strong>충전 금액:</strong> ₩
+                {getCurrentAmount().toLocaleString()}
                 <br />
                 <strong>결제 방법:</strong> KG이니시스
               </div>
@@ -510,7 +637,7 @@ export function PaymentModal({
                 <strong>결제 준비 완료!</strong>
                 <br />
                 아래 버튼을 클릭하면 KG이니시스 결제창이 새 창에서 열립니다.
-                결제 완료 후 자동으로 크레딧이 충전됩니다.
+                결제 완료 후 자동으로 광고머니가 충전됩니다.
               </div>
             </div>
 
@@ -559,7 +686,7 @@ export function PaymentModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">크레딧 충전</h2>
+          <h2 className="text-2xl font-bold text-gray-900">광고머니 충전</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, Suspense, useCallback } from "react";
+import React, { useState, useRef, useEffect, Suspense, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
@@ -46,7 +46,6 @@ import SaveTemplateModal from "@/components/modals/SaveTemplateModal";
 // 분리된 API 서비스들
 import * as templateService from "@/services/templateService";
 import * as campaignService from "@/services/campaignService";
-import * as creditService from "@/services/creditService";
 // import * as uploadService from "@/services/uploadService"; // 현재 미사용
 // 분리된 유틸리티 함수들
 import * as dateUtils from "@/utils/dateUtils";
@@ -86,12 +85,12 @@ function TargetMarketingDetailContent({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<{[key: number]: string}>({});
   
-  // 질문 목록 정의
-  const initialQuestions = [
+  // 질문 목록 정의 (useMemo로 최적화)
+  const initialQuestions = useMemo(() => [
     "광고의 목적은 무엇인가요? (답변예시 : 신규고객 유입, 단골고객 확보, 리뷰 및 SNS, 안내)",
     "제공할 혜택이 있다면, 혜택 내용과 제공하는 기간을 알려주세요.(없다면 없다고 말씀해주세요.)",
     "이번 광고메시지를 어떤 고객에게 전달하고 싶으신가요?"
-  ];
+  ], []);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
@@ -187,6 +186,7 @@ function TargetMarketingDetailContent({
   // 크레딧 관련 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [requiredAmount, setRequiredAmount] = useState<number>(0);
 
   // BalanceContext에서 크레딧 정보 가져오기
   const userCredits = balanceData.balance;
@@ -352,51 +352,31 @@ function TargetMarketingDetailContent({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const prevMessagesLengthRef = useRef(0);
 
-  // 크레딧 패키지 선택 처리
-  const handleCharge = async (packageInfo: Package) => {
+
+  // 직접 입력 충전 모달 열기
+  const handleAutoSelectPackage = () => {
     try {
+      console.log("충전 버튼 클릭됨");
+      
       // 결제 전 현재 상태 저장
       saveCurrentState();
-      setSelectedPackage(packageInfo);
-      setIsPaymentModalOpen(true);
-    } catch (error) {
-      console.error("패키지 선택 오류:", error);
-      alert("패키지 선택 중 오류가 발생했습니다.");
-    }
-  };
-
-  // 권장 패키지 자동 선택 처리
-  const handleAutoSelectPackage = async () => {
-    try {
+      
       // 필요한 크레딧 계산
       const totalCostForPackage = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount);
+      console.log("총 비용:", totalCostForPackage);
+      
       const requiredCredits = calculateRequiredCredits(totalCostForPackage, userCredits);
+      console.log("필요한 크레딧:", requiredCredits);
 
-      // 권장 패키지 조회
-      const recommendedPackage = await creditService.getRecommendedPackage(requiredCredits);
-
-      if (!recommendedPackage) {
-        // 패키지 목록이 없거나 가장 큰 패키지로도 부족한 경우
-        const { packages } = await creditService.getCreditPackages();
-
-      if (packages.length === 0) {
-          alert(ERROR_MESSAGES.NO_PACKAGES_AVAILABLE);
-        return;
-      }
-
-        const largestPackage = packages.sort((a, b) => b.credits - a.credits)[0];
-        alert(
-          `최대 패키지(${largestPackage.credits.toLocaleString()}크레딧)로도 부족합니다. 더 작은 캠페인으로 진행해주세요.`
-        );
-        return;
-      }
-
-      // Package 타입으로 변환
-      const packageInfo = creditService.convertToPackageType(recommendedPackage);
-      await handleCharge(packageInfo);
+      // PaymentModal을 직접 입력 모드로 열기
+      setSelectedPackage(null);
+      setRequiredAmount(requiredCredits);
+      setIsPaymentModalOpen(true);
+      
+      console.log("모달 상태 설정 완료");
     } catch (error) {
-      console.error("자동 패키지 선택 오류:", error);
-      alert("패키지 정보를 가져오는 중 오류가 발생했습니다.");
+      console.error("충전 모달 열기 오류:", error);
+      alert(`충전 준비 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -3359,8 +3339,15 @@ function TargetMarketingDetailContent({
         <PaymentModal
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
-          packageInfo={selectedPackage}
+          chargeInfo={selectedPackage ? {
+            id: selectedPackage.id,
+            name: selectedPackage.name,
+            amount: selectedPackage.credits,
+            price: selectedPackage.price
+          } : null}
           redirectUrl={window.location.pathname}
+          requiredAmount={requiredAmount}
+          allowEdit={!selectedPackage}
         />
       </div>
 

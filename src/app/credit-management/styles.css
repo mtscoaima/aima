@@ -49,15 +49,12 @@ body .main-content {
 }
 
 .cm-header h1 {
-  color: #1681ff;
-  font-feature-settings: "liga" off, "clig" off;
-  font-family: "Noto Sans KR";
+  color: black;
   font-size: 24px;
-  font-style: normal;
   font-weight: 600;
-  line-height: 120%; /* 28.8px */
-  letter-spacing: -0.48px;
-  margin: 0 0 0.5rem 0;
+  line-height: tight;
+  letter-spacing: tight;
+  margin: 0;
 }
 
 .cm-header p {

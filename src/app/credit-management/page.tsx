@@ -3,18 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { useBalance } from "@/contexts/BalanceContext";
 import { CreditBalance } from "@/components/credit/CreditBalance";
-import { CreditPackages } from "@/components/credit/CreditPackages";
+import { ChargeInput } from "@/components/credit/ChargeInput";
 import { PaymentModal } from "@/components/credit/PaymentModal";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
-import "./styles.css";
 
-interface Package {
+interface ChargeInfo {
   id: string;
   name: string;
-  credits: number;
+  amount: number;
   price: number;
-  bonus: number;
-  isPopular?: boolean;
 }
 
 const CreditManagementPage = () => {
@@ -25,7 +22,7 @@ const CreditManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [selectedCharge, setSelectedCharge] = useState<ChargeInfo | null>(null);
 
   // 필터링 상태
   const [dateFilter, setDateFilter] = useState("all");
@@ -104,14 +101,14 @@ const CreditManagementPage = () => {
     };
   }, [refreshTransactions]);
 
-  const handleCharge = (packageInfo: Package) => {
-    setSelectedPackage(packageInfo);
+  const handleCharge = (chargeInfo: ChargeInfo) => {
+    setSelectedCharge(chargeInfo);
     setIsPaymentModalOpen(true);
   };
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
-    setSelectedPackage(null);
+    setSelectedCharge(null);
   };
 
   const allTransactions = getTransactionHistory();
@@ -199,7 +196,7 @@ const CreditManagementPage = () => {
                         패키지명
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        크레딧
+                        광고머니
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         결제금액
@@ -226,7 +223,7 @@ const CreditManagementPage = () => {
                           : "card";
                       const packageName =
                         metadata.packageName ||
-                        `크레딧 ${transaction.amount.toLocaleString()}개 패키지`;
+                        `광고머니 ${transaction.amount.toLocaleString()}개 패키지`;
 
                       return (
                         <tr key={transaction.id}>
@@ -298,7 +295,7 @@ const CreditManagementPage = () => {
                   const metadata = transaction.metadata || {};
                   const packageName =
                     metadata.packageName ||
-                    `크레딧 ${transaction.amount.toLocaleString()}개 패키지`;
+                    `광고머니 ${transaction.amount.toLocaleString()}개 패키지`;
                   const templateName = metadata.templateName || null;
                   const isCharge = transaction.type === "charge";
                   const isRefund = transaction.type === "refund";
@@ -345,7 +342,7 @@ const CreditManagementPage = () => {
                               </span>
                             ) : null}
                             {isCharge || isRefund || isUnreserve ? "+" : "-"}
-                            {transaction.amount.toLocaleString()} 크레딧
+                            {transaction.amount.toLocaleString()} 원
                           </div>
                         </div>
                       </div>
@@ -385,7 +382,7 @@ const CreditManagementPage = () => {
                     <div>
                       <div className="font-medium text-gray-900">
                         {transaction.type === "charge"
-                          ? "크레딧 충전"
+                          ? "광고머니 충전"
                           : transaction.description}
                       </div>
                       <div className="text-sm text-gray-500">
@@ -414,7 +411,7 @@ const CreditManagementPage = () => {
                         transaction.type === "unreserve"
                           ? "+"
                           : "-"}
-                        {transaction.amount.toLocaleString()} 크레딧
+                        {transaction.amount.toLocaleString()} 원
                       </div>
                     </div>
                   </div>
@@ -439,18 +436,36 @@ const CreditManagementPage = () => {
       case "charge":
         return (
           <div className="space-y-6" key={`charge-${refreshKey}`}>
-            <CreditBalance refreshKey={refreshKey} />
-            <CreditPackages onCharge={handleCharge} />
+            {/* 설명 섹션 */}
+            <div >
+              <div className="space-y-2">
+                <p className="text-sm text-gray-700">
+                  • 광고머니는 1만 원 이상부터 충전 가능합니다.
+                </p>
+                <p className="text-sm text-gray-700">
+                  • 결제 진행 전, 브라우저의 팝업 차단을 해제해 주시기 바랍니다.
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <ChargeInput onCharge={handleCharge} />
+              </div>
+              <div className="lg:col-span-1">
+                <CreditBalance refreshKey={refreshKey} />
+              </div>
+            </div>
 
             <div className="bg-white rounded-lg shadow">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    크레딧 사용 내역
+                    광고머니 사용 내역
                   </h3>
                   <button
                     onClick={() => setActiveTab("all")}
-                    className="text-primary hover:text-primary text-sm font-medium cursor-pointer"
+                    className="text-blue-500 hover:text-blue-600 text-sm font-medium cursor-pointer"
                   >
                     전체보기
                   </button>
@@ -488,19 +503,19 @@ const CreditManagementPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-lg border border-gray-200">
                 <div className="text-sm font-medium text-gray-600 mb-1">
-                  총 충전 크레딧
+                  총 충전 광고머니
                 </div>
                 <div className="text-2xl font-bold text-green-600">
                   {totalChargedCredits.toLocaleString()}
                 </div>
-                <div className="text-sm text-gray-500">크레딧</div>
+                <div className="text-sm text-gray-500">원</div>
               </div>
               <div className="bg-white p-6 rounded-lg border border-gray-200">
                 <div className="text-sm font-medium text-gray-600 mb-1">
                   총 결제 금액
                 </div>
-                <div className="text-2xl font-bold text-primary">
-                  ₩{totalChargeAmount.toLocaleString()}
+                <div className="text-2xl font-bold text-blue-500">
+                  {totalChargeAmount.toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-500">원</div>
               </div>
@@ -518,7 +533,7 @@ const CreditManagementPage = () => {
                     <select
                       value={dateFilter}
                       onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="all">전체</option>
                       <option value="today">오늘</option>
@@ -535,7 +550,7 @@ const CreditManagementPage = () => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="패키지명으로 검색..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div className="flex items-end">
@@ -575,7 +590,7 @@ const CreditManagementPage = () => {
               <h2 className="text-xl font-semibold text-gray-900">사용 내역</h2>
               <button
                 onClick={() => setActiveTab("charge")}
-                className="flex items-center gap-2 text-gray-600 hover:text-primary cursor-pointer"
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-500 cursor-pointer"
               >
                 <svg
                   className="w-4 h-4"
@@ -606,7 +621,7 @@ const CreditManagementPage = () => {
                     <select
                       value={dateFilter}
                       onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="all">전체</option>
                       <option value="today">오늘</option>
@@ -623,7 +638,7 @@ const CreditManagementPage = () => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="내용으로 검색..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div className="flex items-end">
@@ -641,7 +656,7 @@ const CreditManagementPage = () => {
               </div>
 
               {/* 테이블 섹션 */}
-              <div className="p-6 cm-transaction-list">
+              <div className="p-6">
                 <TransactionTable transactions={usageCurrentTransactions} />
               </div>
             </div>
@@ -663,7 +678,7 @@ const CreditManagementPage = () => {
               <h2 className="text-xl font-semibold text-gray-900">전체 내역</h2>
               <button
                 onClick={() => setActiveTab("charge")}
-                className="flex items-center gap-2 text-gray-600 hover:text-primary cursor-pointer"
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-500 cursor-pointer"
               >
                 <svg
                   className="w-4 h-4"
@@ -694,7 +709,7 @@ const CreditManagementPage = () => {
                     <select
                       value={dateFilter}
                       onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="all">전체</option>
                       <option value="today">오늘</option>
@@ -711,7 +726,7 @@ const CreditManagementPage = () => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="패키지명/템플릿명으로 검색..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ring-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div className="flex items-end">
@@ -729,7 +744,7 @@ const CreditManagementPage = () => {
               </div>
 
               {/* 테이블 섹션 */}
-              <div className="p-6 cm-transaction-list">
+              <div className="p-6">
                 <TransactionTable transactions={allCurrentTransactions} />
               </div>
             </div>
@@ -742,31 +757,38 @@ const CreditManagementPage = () => {
 
   return (
     <AdvertiserGuardWithDisabled>
-      <div className="credit-management-container">
-        <div className="cm-container">
-          <header className="cm-header">
-            <h1>크레딧 충전 관리</h1>
-            <p>크레딧 충전 및 사용 내역을 관리할 수 있습니다.</p>
+      <div className="min-h-[calc(100vh-140px)] flex flex-col p-5 relative">
+        <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto">
+          <header className="mb-8">
+            <h1 className="text-black text-2xl font-semibold leading-tight tracking-tight m-0">충전하기</h1>
           </header>
 
-          <div className="cm-tabs">
+          <div className="flex gap-2 mb-6 border-b border-gray-300">
             <button
-              className={`cm-tab-btn ${
-                activeTab === "charge" || activeTab === "all" ? "active" : ""
+              className={`px-6 py-3 bg-transparent border-none border-b-2 text-center font-medium text-base leading-tight tracking-tight cursor-pointer whitespace-nowrap transition-all duration-200 relative -mb-px ${
+                activeTab === "charge" || activeTab === "all" 
+                  ? "text-blue-500 border-blue-500 font-semibold" 
+                  : "text-gray-500 border-transparent hover:text-blue-600 hover:bg-blue-50"
               }`}
               onClick={() => setActiveTab("charge")}
             >
-              크레딧 충전
+              광고머니 충전
             </button>
             <button
-              className={`cm-tab-btn ${activeTab === "usage" ? "active" : ""}`}
+              className={`px-6 py-3 bg-transparent border-none border-b-2 text-center font-medium text-base leading-tight tracking-tight cursor-pointer whitespace-nowrap transition-all duration-200 relative -mb-px ${
+                activeTab === "usage" 
+                  ? "text-blue-500 border-blue-500 font-semibold" 
+                  : "text-gray-500 border-transparent hover:text-blue-600 hover:bg-blue-50"
+              }`}
               onClick={() => setActiveTab("usage")}
             >
               사용 내역
             </button>
             <button
-              className={`cm-tab-btn ${
-                activeTab === "history" ? "active" : ""
+              className={`px-6 py-3 bg-transparent border-none border-b-2 text-center font-medium text-base leading-tight tracking-tight cursor-pointer whitespace-nowrap transition-all duration-200 relative -mb-px ${
+                activeTab === "history" 
+                  ? "text-blue-500 border-blue-500 font-semibold" 
+                  : "text-gray-500 border-transparent hover:text-blue-600 hover:bg-blue-50"
               }`}
               onClick={() => setActiveTab("history")}
             >
@@ -774,13 +796,13 @@ const CreditManagementPage = () => {
             </button>
           </div>
 
-          <div className="cm-content">{renderTabContent()}</div>
+          <div className="flex-1 flex flex-col">{renderTabContent()}</div>
         </div>
 
         <PaymentModal
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
-          packageInfo={selectedPackage}
+          chargeInfo={selectedCharge}
         />
       </div>
     </AdvertiserGuardWithDisabled>

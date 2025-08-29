@@ -382,7 +382,7 @@ export default function AdvertiserDashboard() {
                        </div>
                        <div className="text-center border-l pl-4">
                          <div className="text-sm text-gray-900 font-semibold mb-1">적립금</div>
-                         <div className="text-xl text-gray-900">{Math.floor(balanceData.balance / 20).toLocaleString()} P</div>
+                         <div className="text-xl text-gray-900">{Math.floor(balanceData.balance / 20).toLocaleString()} 원</div>
                        </div>
                      </div>
                      <div className="flex justify-center pt-2">
