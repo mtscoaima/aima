@@ -291,7 +291,7 @@ export function AdvertiserGuardWithDisabled({
   ) {
     const title = isRejected ? "계정 승인 거부" : "계정 승인 필요";
     const message = isRejected
-      ? "승인이 거부되었습니다. 고객센터(02-111-1111)로 문의해주세요"
+      ? "승인이 거부되었습니다. 고객센터(070-8824-1139)로 문의해주세요"
       : "승인 대기 중입니다. 관리자에게 문의해주세요";
 
     return (

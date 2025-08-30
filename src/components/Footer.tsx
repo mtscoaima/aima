@@ -29,7 +29,7 @@ export default function Footer() {
             (주)엠티에스컴퍼니 | 주소: 서울특별시 강남구 삼성로 434, 8층(대치동,
             크레타나인대치)
             <br />
-            대표이사: 정희원 | 사업자등록번호: 513-88-00391 | help@mtsco.co.kr
+            대표이사: 정희원 | 사업자등록번호: 513-88-00391 | aima@mtsco.co.kr
           </div>
           <div className="footer-landing-copyright">
             Copyright © MTS Company CO., LTD. All rights reserved.
@@ -39,8 +39,8 @@ export default function Footer() {
           <div className="footer-landing-customer">
             <div className="footer-landing-customer-title">고객센터</div>
             <div className="footer-landing-customer-contact">
-              <div>대표번호: 02-111-1111</div>
-              <div>이메일: aaaa@aima.com</div>
+              <div>대표번호: 070-8824-1139</div>
+              <div>이메일: aima@mtsco.co.kr</div>
             </div>
             <div>평일 10:00 ~ 17:00 (점심 12:00~13:00) 주말, 공휴일 제외</div>
           </div>
