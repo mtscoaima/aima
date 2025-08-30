@@ -84,6 +84,19 @@ export const CAMPAIGN_CONSTANTS = {
   DEFAULT_END_TIME: "18:00",
 };
 
+// 차등 단가 설정
+export const PRICING_STEPS = {
+  base: 100, // 기본단가
+  increments: {
+    location: 50, // 가맹점/카드 사용 위치
+    gender: 50,   // 고객 성별
+    age: 50,      // 고객 나이대
+    amount: 50,   // 승인금액 필터
+    industry: 50, // 카드 사용 업종
+    carouselFirst: 100, // RCS 캐러셀 첫번째 노출 (옵션)
+  },
+} as const;
+
 // 시간 관련 상수들
 export const TIME_CONSTANTS = {
   HOURS_IN_DAY: 24,

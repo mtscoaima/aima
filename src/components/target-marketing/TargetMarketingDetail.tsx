@@ -234,7 +234,7 @@ function TargetMarketingDetailContent({
   const { addDynamicButton, removeDynamicButton, updateDynamicButton, handleLinkCheck, validateAllButtonUrls } = useDynamicButtons();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { getAllTimeOptions, getSelectedAgeDisplay } = useTargetOptions();
-  const { calculateTotalCost, calculateRequiredCredits } = useCalculations();
+  const { calculateUnitCost, calculateTotalCost, calculateRequiredCredits } = useCalculations();
 
   // 드롭다운 외부 클릭 감지
   useEffect(() => {
@@ -2295,7 +2295,7 @@ function TargetMarketingDetailContent({
     }
 
     // 크레딧 잔액 확인
-    const totalCost = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount);
+    const totalCost = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount, unitCost);
     const requiredCredits = calculateRequiredCredits(totalCost, userCredits);
 
     if (requiredCredits > 0) {
@@ -2313,7 +2313,7 @@ function TargetMarketingDetailContent({
       }
 
       // 실제 계산된 비용 사용
-      const totalCost = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount);
+      const totalCost = calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount, unitCost);
       const actualMaxRecipients =
         sendPolicy === "batch" ? adRecipientCount : parseInt(maxRecipients);
 
@@ -2387,6 +2387,7 @@ function TargetMarketingDetailContent({
           city: primaryLocation.city,
           district: primaryLocation.district,
           locations: selectedLocations,
+          costPerItem: unitCost,
           industry: {
             topLevel: targetTopLevelIndustry,
             specific: targetIndustry,
@@ -2430,6 +2431,36 @@ function TargetMarketingDetailContent({
       />
     );
   }
+
+  // 차등 단가 계산을 위한 파생 값
+  const hasLocationFilter = React.useMemo(() => {
+    if (selectedLocations.length > 0) {
+      // 전국(all)만 선택된 경우는 필터 아님
+      if (selectedLocations.length === 1 && selectedLocations[0].city === 'all') return false;
+      return true;
+    }
+    return targetCity !== 'all' || targetDistrict !== 'all';
+  }, [selectedLocations, targetCity, targetDistrict]);
+
+  const hasIndustryFilter = React.useMemo(() => {
+    return targetTopLevelIndustry !== 'all' || targetIndustry !== 'all';
+  }, [targetTopLevelIndustry, targetIndustry]);
+
+  const hasAmountFilter = React.useMemo(() => {
+    return cardAmount !== 'all';
+  }, [cardAmount]);
+
+  const unitCost = React.useMemo(() => {
+    return calculateUnitCost({
+      adMedium,
+      gender: targetGender,
+      ages: targetAge,
+      hasLocationFilter,
+      hasIndustryFilter,
+      hasAmountFilter,
+      carouselFirst: false, // UI 미지원, 필요 시 true 처리
+    });
+  }, [adMedium, targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, calculateUnitCost]);
 
   return (
     <div className="relative w-full max-w-[1920px] mx-auto bg-white">
@@ -3579,13 +3610,24 @@ function TargetMarketingDetailContent({
 
               <div className="bg-white p-4 rounded-lg space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">캠페인</span>
-                  <span className="text-sm font-semibold text-gray-900">100원/건</span>
+                  <span className="text-sm text-gray-700">캠페인(건당)</span>
+                  <span className="text-sm font-semibold text-gray-900">{unitCost}원/건</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  {(() => {
+                    const parts: string[] = ["기본 100"];
+                    if (hasLocationFilter) parts.push("위치 50");
+                    if (targetGender !== 'all') parts.push("성별 50");
+                    if (!(targetAge.length === 1 && targetAge[0] === 'all') && targetAge.length > 0) parts.push("나이대 50");
+                    if (hasAmountFilter) parts.push("승인금액 50");
+                    if (hasIndustryFilter) parts.push("업종 50");
+                    return parts.join(" + ");
+                  })()}
                 </div>
                 <div className="flex justify-between items-center border-t border-gray-200 pt-2">
                   <span className="text-base font-semibold text-gray-900">합계</span>
                   <span className="text-base font-semibold text-blue-600">
-                    {calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount).toLocaleString()}원
+                    {calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount, unitCost).toLocaleString()}원
                   </span>
                     </div>
                 <div className="flex justify-between items-center">
@@ -3606,7 +3648,7 @@ function TargetMarketingDetailContent({
                    
                   </div>
                 </div>
-                                {calculateRequiredCredits(calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount), userCredits) > 0 && (
+                                {calculateRequiredCredits(calculateTotalCost(sendPolicy, maxRecipients, adRecipientCount, unitCost), userCredits) > 0 && (
                   <div className="flex flex-col w-fit ml-auto">
                    <button
                       className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded cursor-pointer transition-colors hover:bg-blue-700"

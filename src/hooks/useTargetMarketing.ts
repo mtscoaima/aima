@@ -5,7 +5,8 @@ import {
   CAMPAIGN_CONSTANTS, 
   ERROR_MESSAGES,
   TIME_CONSTANTS,
-  BUTTON_CONSTRAINTS
+  BUTTON_CONSTRAINTS,
+  PRICING_STEPS
 } from "@/constants/targetMarketing";
 
 // 템플릿 제목 생성 훅
@@ -560,14 +561,38 @@ export const useTargetOptions = () => {
 
 // 계산 관련 훅
 export const useCalculations = () => {
-  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", maxRecipients: string, adRecipientCount: number) => {
-    
+  // 단가 계산: 선택된 타겟 조건에 따라 차등가 적용
+  const calculateUnitCost = useCallback((params: {
+    adMedium: "naver_talktalk" | "sms";
+    gender: string; // 'all' | 'male' | 'female'
+    ages: string[]; // 포함 시 50원
+    hasLocationFilter: boolean; // true면 위치 차등가 적용
+    hasIndustryFilter: boolean; // true면 업종 차등가 적용
+    hasAmountFilter: boolean; // true면 승인금액 차등가 적용
+    carouselFirst?: boolean; // RCS 첫번째 노출
+  }) => {
+    let unit = PRICING_STEPS.base;
+
+    if (params.hasLocationFilter) unit += PRICING_STEPS.increments.location;
+    if (params.gender && params.gender !== "all") unit += PRICING_STEPS.increments.gender;
+    if (Array.isArray(params.ages) && params.ages.length > 0 && !(params.ages.length === 1 && params.ages[0] === "all")) {
+      unit += PRICING_STEPS.increments.age;
+    }
+    if (params.hasAmountFilter) unit += PRICING_STEPS.increments.amount;
+    if (params.hasIndustryFilter) unit += PRICING_STEPS.increments.industry;
+    if (params.adMedium === "naver_talktalk" && params.carouselFirst) unit += PRICING_STEPS.increments.carouselFirst;
+
+    return unit;
+  }, []);
+
+  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", maxRecipients: string, adRecipientCount: number, unitCost?: number) => {
     // 발송 정책에 따라 다른 수신자 수 사용
     const actualRecipients = sendPolicy === "batch" 
       ? adRecipientCount  // 일괄 발송: 광고 수신자 수 사용
       : parseInt(maxRecipients) || 0;  // 실시간 발송: 최대 수신자 수 사용
     
-    return CAMPAIGN_CONSTANTS.COST_PER_ITEM * actualRecipients;
+    const perItem = unitCost ?? CAMPAIGN_CONSTANTS.COST_PER_ITEM;
+    return perItem * actualRecipients;
   }, []);
 
   const calculateRequiredCredits = useCallback((totalCost: number, userCredits: number) => {
@@ -575,5 +600,5 @@ export const useCalculations = () => {
     return shortage > 0 ? shortage : 0;
   }, []);
 
-  return { calculateTotalCost, calculateRequiredCredits };
+  return { calculateUnitCost, calculateTotalCost, calculateRequiredCredits };
 };
