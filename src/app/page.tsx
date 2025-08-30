@@ -63,11 +63,16 @@ function HeroSection() {
   );
 }
 
-function TestimonialCard({ title, content }: { title: string; content: string }) {
+function TestimonialCard({ title, content, image }: { title: string; content: string; image: string }) {
   return (
     <div className="bg-white rounded-2xl shadow-[0px_0px_10px_0px_rgba(22,129,255,0.3)] overflow-hidden h-full">
-      <div className="h-48 md:h-56 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-        <span className="text-gray-500 font-bold text-lg">사장님 이미지</span>
+      <div className="h-48 md:h-56 relative">
+        <Image
+          src={image}
+          alt={title}
+          fill
+          className="object-cover"
+        />
       </div>
       <div className="p-6 md:p-8">
         <h3 className="font-bold text-lg md:text-xl text-black mb-4">{title}</h3>
@@ -81,15 +86,18 @@ function TestimonialsSection() {
   const testimonials = [
     {
       title: "OO 식당 사장님",
-      content: "손님 응대가 서툴러 매장에 빈자리가 많았는데 에이마를 활용한 후 고객 유입이 빠르게 늘었어요."
+      content: "손님 응대가 서툴러 매장에 빈자리가 많았는데 에이마를 활용한 후 고객 유입이 빠르게 늘었어요.",
+      image: "/images/landing/section2/restaurant-manager.jpg"
     },
     {
       title: "의류 쇼핑몰 사장님", 
-      content: "신상품 홍보가 필요했지만, 대상도 광고 시간도 부족했어요. 이 부분을 에이마가 대신 해결해주어 매출 향상으로 이어졌어요."
+      content: "신상품 홍보가 필요했지만, 대상도 광고 시간도 부족했어요. 이 부분을 에이마가 대신 해결해주어 매출 향상으로 이어졌어요.",
+      image: "/images/landing/section2/cloth-manager.jpg"
     },
     {
       title: "공간대여 스튜디오 사장님",
-      content: "공간 대여업 특성상 공실은 곧 손실인데 에이마로 인근 고객에게 할인 메시지를 발송해 예약을 채웠어요."
+      content: "공간 대여업 특성상 공실은 곧 손실인데 에이마로 인근 고객에게 할인 메시지를 발송해 예약을 채웠어요.",
+      image: "/images/landing/section2/place-manager.jpg"
     }
   ];
 
@@ -104,7 +112,7 @@ function TestimonialsSection() {
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {testimonials.map((testimonial, index) => (
-            <TestimonialCard key={index} {...testimonial} />
+            <TestimonialCard key={index} title={testimonial.title} content={testimonial.content} image={testimonial.image} />
           ))}
         </div>
       </div>
@@ -112,11 +120,16 @@ function TestimonialsSection() {
   );
 }
 
-function FeatureCard({ title, description }: { title: string; description: string }) {
+function FeatureCard({ title, description, image }: { title: string; description: string; image: string }) {
   return (
     <div className="bg-white rounded-2xl shadow-[0px_0px_10px_0px_rgba(22,129,255,0.3)] p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center">
-      <div className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 flex-shrink-0 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
-        <span className="text-blue-600 font-bold">아이콘</span>
+      <div className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 flex-shrink-0 relative rounded-lg overflow-hidden">
+        <Image
+          src={image}
+          alt={title}
+          fill
+          className="object-cover"
+        />
       </div>
       <div className="flex-1 text-center md:text-left">
         <h3 className="font-extrabold text-xl md:text-2xl lg:text-3xl text-black mb-4 tracking-[-0.84px]">
@@ -134,19 +147,23 @@ function FeaturesSection() {
   const features = [
     {
       title: "정밀한 타겟팅",
-      description: "불특정 다수는 이제 그만! 매장에 관심 있는 고객에게만 메시지를 전송해요"
+      description: "불특정 다수는 이제 그만! 매장에 관심 있는 고객에게만 메시지를 전송해요",
+      image: "/images/landing/section3/ads-target.png"
     },
     {
       title: "실시간 혜택 메시지 발송", 
-      description: "우리 매장 근처에서 카드를 결제 한 고객에게 카드 승인 알림과 함께 실시간으로 혜택을 안내해요"
+      description: "우리 매장 근처에서 카드를 결제 한 고객에게 카드 승인 알림과 함께 실시간으로 혜택을 안내해요",
+      image: "/images/landing/section3/realtime-target.png"
     },
     {
       title: "다양한 채널로, 더 많은 고객에게",
-      description: "몇 번 클릭만으로 손쉽게 홍보 설정을 완료해요 네이버 톡톡 • 카카오 친구톡 • 문자 • RCS"
+      description: "몇 번 클릭만으로 손쉽게 홍보 설정을 완료해요 네이버 톡톡 • 카카오 친구톡 • 문자 • RCS",
+      image: "/images/landing/section3/channel-target.png"
     },
     {
       title: "광고 성과 한눈에 확인",
-      description: "메시지 캠페인의 성과를 분석하여 마케팅 효과를 실시간으로 확인해요"
+      description: "메시지 캠페인의 성과를 분석하여 마케팅 효과를 실시간으로 확인해요",
+      image: "/images/landing/section3/datail-target.png"
     }
   ];
 
@@ -163,12 +180,12 @@ function FeaturesSection() {
         <div className="grid gap-6 md:gap-8">
           <div className="grid md:grid-cols-2 gap-6 md:gap-8">
             {features.slice(0, 2).map((feature, index) => (
-              <FeatureCard key={index} {...feature} />
+              <FeatureCard key={index} title={feature.title} description={feature.description} image={feature.image} />
             ))}
           </div>
           <div className="grid md:grid-cols-2 gap-6 md:gap-8">
             {features.slice(2, 4).map((feature, index) => (
-              <FeatureCard key={index + 2} {...feature} />
+              <FeatureCard key={index + 2} title={feature.title} description={feature.description} image={feature.image} />
             ))}
           </div>
         </div>
@@ -250,9 +267,13 @@ function AIDemo() {
 
                 {/* 로봇 이미지 */}
                 <div className="absolute -bottom-8 right-0 lg:right-8 w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 transform rotate-[12deg]">
-                  <div className="w-full h-full bg-gradient-to-br from-blue-200 to-blue-300 rounded-2xl flex items-center justify-center shadow-lg">
-                    <span className="text-blue-600 font-bold text-xl">AI 로봇</span>
-                  </div>
+                  <Image
+                    src="/images/landing/section4/robot-ai.png"
+                    alt="AI 로봇"
+                    width={256}
+                    height={256}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               </div>
             </div>
@@ -269,8 +290,13 @@ function AIDemo() {
                     {/* 컨텐츠 카드들 */}
                     <div className="space-y-4">
                       <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div className="h-32 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
-                          <span className="text-orange-600 font-bold">피자 이미지</span>
+                        <div className="h-32 relative">
+                          <Image
+                            src="/images/landing/section4/pizza-ai.png"
+                            alt="피자 이미지"
+                            fill
+                            className="object-cover"
+                          />
                         </div>
                         <div className="p-3">
                           <h3 className="font-bold text-sm text-black mb-2">
@@ -289,8 +315,13 @@ function AIDemo() {
                       </div>
 
                       <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div className="h-32 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
-                          <span className="text-blue-600 font-bold">항공 이미지</span>
+                        <div className="h-32 relative">
+                          <Image
+                            src="/images/landing/section4/jeju-ai.png"
+                            alt="제주 항공 이미지"
+                            fill
+                            className="object-cover"
+                          />
                         </div>
                         <div className="p-3">
                           <h3 className="font-bold text-sm text-black mb-2">
@@ -309,8 +340,13 @@ function AIDemo() {
                       </div>
 
                       <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div className="h-32 bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
-                          <span className="text-green-600 font-bold">학원 이미지</span>
+                        <div className="h-32 relative">
+                          <Image
+                            src="/images/landing/section4/child-ai.png"
+                            alt="학원 이미지"
+                            fill
+                            className="object-cover"
+                          />
                         </div>
                         <div className="p-3">
                           <h3 className="font-bold text-sm text-black mb-2">
@@ -353,9 +389,9 @@ function CTASection() {
             AI 마케팅으로 매출 향상을 경험해보세요
           </p>
           <Link href="/target-marketing">
-            <ResponsiveButton className="bg-white text-[#1681ff] hover:bg-gray-100">
+            <button className="bg-white text-[#1681FF] px-6 py-3 md:px-8 md:py-4 rounded-2xl font-bold text-sm md:text-base hover:bg-gray-100 transition-colors">
               무료로 시작하기
-            </ResponsiveButton>
+            </button>
           </Link>
         </div>
       </div>
