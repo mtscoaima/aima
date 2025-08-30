@@ -181,7 +181,8 @@ function TargetMarketingDetailContent({
   const [templateTitle, setTemplateTitle] = useState("AI 생성 콘텐츠");
 
   // 캠페인 이름 상태 (별도로 관리)
-  const [campaignName, setCampaignName] = useState("");
+  // 기본값을 '캠페인01'로 설정
+  const [campaignName, setCampaignName] = useState("캠페인01");
 
   // 광고매체 상태 (naver_talktalk 또는 sms)
   const [adMedium, setAdMedium] = useState<"naver_talktalk" | "sms">("naver_talktalk");
@@ -435,7 +436,8 @@ function TargetMarketingDetailContent({
 
       // 상태 복원
       setTemplateTitle((state.templateTitle as string) || "AI 생성 콘텐츠");
-      setCampaignName((state.campaignName as string) || "");
+      // 저장된 값이 없으면 기본값 '캠페인01' 사용
+      setCampaignName((state.campaignName as string) || "캠페인01");
       setAdMedium((state.adMedium as "naver_talktalk" | "sms") || "naver_talktalk");
       setSmsTextContent((state.smsTextContent as string) || "");
       setCurrentGeneratedImage((state.currentGeneratedImage as string) || null);
