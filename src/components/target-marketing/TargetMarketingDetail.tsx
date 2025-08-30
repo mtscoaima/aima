@@ -2422,16 +2422,6 @@ function TargetMarketingDetailContent({
     }
   };
 
-  // 승인 요청 완료 페이지 표시
-  if (showApprovalComplete) {
-    return (
-      <ApprovalRequestComplete
-        onGoBack={handleApprovalCompleteGoBack}
-        onConfirm={handleApprovalCompleteConfirm}
-      />
-    );
-  }
-
   // 차등 단가 계산을 위한 파생 값
   const hasLocationFilter = React.useMemo(() => {
     if (selectedLocations.length > 0) {
@@ -2461,6 +2451,16 @@ function TargetMarketingDetailContent({
       carouselFirst: false, // UI 미지원, 필요 시 true 처리
     });
   }, [adMedium, targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, calculateUnitCost]);
+
+  // 승인 요청 완료 페이지 표시
+  if (showApprovalComplete) {
+    return (
+      <ApprovalRequestComplete
+        onGoBack={handleApprovalCompleteGoBack}
+        onConfirm={handleApprovalCompleteConfirm}
+      />
+    );
+  }
 
   return (
     <div className="relative w-full max-w-[1920px] mx-auto bg-white">
