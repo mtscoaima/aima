@@ -16,6 +16,27 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
+// Validation helpers
+function isValidEmail(email: unknown): boolean {
+  if (typeof email !== 'string') return false;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function isValidBizNumber(biz: unknown): boolean {
+  if (typeof biz !== 'string') return false;
+  const s = biz.replace(/[^0-9]/g, '');
+  if (s.length !== 10) return false;
+  const multipliers = [1,3,7,1,3,7,1,3,5];
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += Number(s[i]) * multipliers[i];
+  }
+  sum += Math.floor((Number(s[8]) * 5) / 10);
+  const check = (10 - (sum % 10)) % 10;
+  return check === Number(s[9]);
+}
+
 // 관리자 권한 확인
 async function verifyAdminToken(request: NextRequest): Promise<{
   isValid: boolean;
@@ -317,7 +338,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // 기업 정보 업데이트
+    // 기업 정보 업데이트 (간단 변경: 회사명만)
     if (updateData.company !== undefined || updateData.userType !== undefined) {
       if (updateData.userType === "개인") {
         updateFields.company_info = null;
@@ -328,6 +349,50 @@ export async function PUT(request: NextRequest) {
           companyName: updateData.company,
         };
       }
+    }
+
+    // 사전 유효성 검사 (기업 상세/세금계산서)
+    if (updateData.companyInfo && typeof updateData.companyInfo === 'object') {
+      const ci = updateData.companyInfo as Record<string, unknown>;
+      if (ci.businessNumber !== undefined && ci.businessNumber !== null) {
+        if (!isValidBizNumber(String(ci.businessNumber))) {
+          return NextResponse.json(
+            { message: "유효하지 않은 사업자등록번호입니다.", success: false },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    if (updateData.taxInvoiceInfo && typeof updateData.taxInvoiceInfo === 'object') {
+      const ti = updateData.taxInvoiceInfo as Record<string, unknown>;
+      if (ti.email !== undefined && ti.email !== null) {
+        const email = String(ti.email).trim();
+        if (email && !isValidEmail(email)) {
+          return NextResponse.json(
+            { message: "유효하지 않은 이메일 형식입니다.", success: false },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // 기업 상세 정보 업데이트 (객체 병합)
+    if (updateData.companyInfo && typeof updateData.companyInfo === 'object') {
+      const existingCompanyInfo = (currentUser.company_info as Record<string, unknown>) || {};
+      updateFields.company_info = {
+        ...existingCompanyInfo,
+        ...(updateData.companyInfo as Record<string, unknown>),
+      };
+    }
+
+    // 세금계산서 담당자 정보 업데이트 (객체 병합)
+    if (updateData.taxInvoiceInfo && typeof updateData.taxInvoiceInfo === 'object') {
+      const existingTaxInfo = (currentUser.tax_invoice_info as Record<string, unknown>) || {};
+      updateFields.tax_invoice_info = {
+        ...existingTaxInfo,
+        ...(updateData.taxInvoiceInfo as Record<string, unknown>),
+      };
     }
 
     // 승인 상태 변경 시 로그 기록

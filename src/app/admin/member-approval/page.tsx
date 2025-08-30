@@ -61,6 +61,23 @@ interface User {
   rejectionReason?: string;
 }
 
+// Daum Postcode global typings (minimal)
+type DaumPostcodeData = {
+  roadAddress?: string;
+  jibunAddress?: string;
+  zonecode?: string;
+};
+
+type DaumPostcodeCtor = new (options: { oncomplete: (data: DaumPostcodeData) => void }) => {
+  open: () => void;
+};
+
+type DaumWindow = Window & {
+  daum?: {
+    Postcode?: DaumPostcodeCtor;
+  };
+};
+
 export default function MemberApprovalPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -76,6 +93,85 @@ export default function MemberApprovalPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState<string>("");
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [editedCompanyInfo, setEditedCompanyInfo] = useState<User['company_info'] | null>(null);
+  const [editedTaxInfo, setEditedTaxInfo] = useState<User['tax_invoice_info'] | undefined>({});
+
+  // 유효성 검사 유틸
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const normalizeBizNumber = (input: string) => input.replace(/[^0-9]/g, "");
+
+  const formatBizNumber = (digitsOnly: string) => {
+    if (digitsOnly.length !== 10) return digitsOnly;
+    return `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3, 5)}-${digitsOnly.slice(5)}`;
+  };
+
+  // 사업자등록번호 검증 (검증 알고리즘 적용)
+  const validateBizNumber = (raw: string) => {
+    const s = normalizeBizNumber(raw);
+    if (s.length !== 10) return false;
+    const multipliers = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += Number(s[i]) * multipliers[i];
+    }
+    sum += Math.floor((Number(s[8]) * 5) / 10);
+    const check = (10 - (sum % 10)) % 10;
+    return check === Number(s[9]);
+  };
+
+  // 주소 검색 (다음 우편번호)
+  const loadDaumPostcodeScript = () => {
+    return new Promise<void>((resolve, reject) => {
+      if (typeof window !== 'undefined') {
+        const w = window as DaumWindow;
+        if (w.daum?.Postcode) {
+          resolve();
+          return;
+        }
+      }
+      const existing = document.querySelector("script[data-daum-postcode]") as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', () => reject(new Error('주소 스크립트 로드 실패')));
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      script.async = true;
+      script.setAttribute('data-daum-postcode', 'true');
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('주소 스크립트 로드 실패'));
+      document.head.appendChild(script);
+    });
+  };
+
+  const handleSearchAddress = async () => {
+    try {
+      await loadDaumPostcodeScript();
+      const w = window as DaumWindow;
+      const Postcode = w.daum?.Postcode;
+      if (!Postcode) throw new Error('주소 스크립트 로드 실패');
+      new Postcode({
+        oncomplete: (data: DaumPostcodeData) => {
+          const roadAddr = data.roadAddress; // 도로명 주소
+          const jibunAddr = data.jibunAddress; // 지번 주소
+          const zonecode = data.zonecode; // 우편번호
+          const address = roadAddr || jibunAddr || '';
+          if (address) {
+            setEditedCompanyInfo(prev => ({ ...(prev || { companyName: '' }), companyAddress: `(${zonecode}) ${address}` }));
+          }
+        }
+      }).open();
+    } catch (e) {
+      console.error(e);
+      alert('주소 검색 스크립트를 불러오지 못했습니다.');
+    }
+  };
 
   // Supabase에서 USER 역할을 가진 회원 정보 가져오기
   useEffect(() => {
@@ -201,6 +297,9 @@ export default function MemberApprovalPage() {
   const handleDetailClick = (user: User) => {
     setSelectedUser(user);
     setRejectionReason(user.rejectionReason || "");
+    setEditMode(false);
+    setEditedCompanyInfo(user.company_info ? { ...user.company_info } : { companyName: "" });
+    setEditedTaxInfo(user.tax_invoice_info ? { ...user.tax_invoice_info } : {});
     setShowDetailModal(true);
   };
 
@@ -208,6 +307,89 @@ export default function MemberApprovalPage() {
     setShowDetailModal(false);
     setSelectedUser(null);
     setRejectionReason("");
+    setEditMode(false);
+    setEditedCompanyInfo(null);
+    setEditedTaxInfo({});
+  };
+
+  const handleSaveCompanyEdits = async () => {
+    if (!selectedUser) return;
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("인증 토큰이 없습니다.");
+        return;
+      }
+
+      // 유효성 검증
+      if (editedCompanyInfo?.businessNumber) {
+        const bn = editedCompanyInfo.businessNumber.trim();
+        if (!validateBizNumber(bn)) {
+          alert('유효하지 않은 사업자등록번호입니다. (예: 123-45-67890)');
+          return;
+        }
+      }
+      if (editedTaxInfo?.email) {
+        const em = (editedTaxInfo.email || '').trim();
+        if (em && !validateEmail(em)) {
+          alert('유효하지 않은 이메일 형식입니다.');
+          return;
+        }
+      }
+
+      // 포맷 정규화 (사업자번호 하이픈)
+      const normalizedCompanyInfo = editedCompanyInfo ? {
+        ...editedCompanyInfo,
+        businessNumber: editedCompanyInfo.businessNumber
+          ? formatBizNumber(normalizeBizNumber(editedCompanyInfo.businessNumber))
+          : editedCompanyInfo.businessNumber,
+      } : undefined;
+
+      const payload: Record<string, unknown> = {
+        userId: selectedUser.id,
+      };
+
+      if (normalizedCompanyInfo) payload.companyInfo = normalizedCompanyInfo;
+      if (editedTaxInfo) payload.taxInvoiceInfo = editedTaxInfo;
+
+      const response = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || "기업 정보 저장에 실패했습니다.");
+      }
+
+      // 로컬 상태 업데이트
+      setUsers(prev => prev.map(u =>
+        u.id === selectedUser.id
+          ? {
+              ...u,
+              company_info: normalizedCompanyInfo || u.company_info,
+              tax_invoice_info: editedTaxInfo || u.tax_invoice_info,
+            }
+          : u
+      ));
+
+      // 선택 사용자도 업데이트
+      setSelectedUser(prev => prev ? {
+        ...prev,
+        company_info: normalizedCompanyInfo || prev.company_info,
+        tax_invoice_info: editedTaxInfo || prev.tax_invoice_info,
+      } : prev);
+
+      setEditMode(false);
+      alert("기업 정보가 저장되었습니다.");
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "기업 정보 저장 중 오류가 발생했습니다.");
+    }
   };
 
   const handleStatusChangeWithReason = async (userId: string, newStatus: string) => {
@@ -794,41 +976,95 @@ export default function MemberApprovalPage() {
 
               {/* 사업자 정보 */}
               <div className="modal-section business-info">
-                <h3>사업자 정보</h3>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <h3>사업자 정보</h3>
+                  <div className="edit-actions">
+                    {!editMode ? (
+                      <button className="btn-outline" onClick={() => setEditMode(true)}>정보 수정</button>
+                    ) : (
+                      <>
+                        <button className="btn-outline" onClick={() => { setEditMode(false); setEditedCompanyInfo(selectedUser?.company_info || { companyName: "" }); setEditedTaxInfo(selectedUser?.tax_invoice_info || {}); }}>취소</button>
+                        <button className="btn-primary" style={{padding:'8px 12px', fontSize:12}} onClick={handleSaveCompanyEdits}>저장</button>
+                      </>
+                    )}
+                  </div>
+                </div>
                 <div className="modal-grid">
                   <div className="modal-field">
                     <label>기업유형</label>
-                    <div className="value">
-                      {selectedUser.company_info?.businessType === "individual" ? "개인사업자" : "법인사업자"}
-                    </div>
+                    {editMode ? (
+                      <select
+                        className="modal-input"
+                        value={editedCompanyInfo?.businessType || "corporate"}
+                        onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessType: e.target.value }))}
+                      >
+                        <option value="individual">개인사업자</option>
+                        <option value="corporate">법인사업자</option>
+                      </select>
+                    ) : (
+                      <div className="value">
+                        {selectedUser.company_info?.businessType === "individual" ? "개인사업자" : "법인사업자"}
+                      </div>
+                    )}
                   </div>
                   <div className="modal-field">
                     <label>사업자명</label>
-                    <div className="value">{selectedUser.company_info?.companyName || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedCompanyInfo?.companyName || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), companyName: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.company_info?.companyName || "-"}</div>
+                    )}
                   </div>
                   <div className="modal-field">
                     <label>대표자명</label>
-                    <div className="value">{selectedUser.company_info?.ceoName || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedCompanyInfo?.ceoName || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), ceoName: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.company_info?.ceoName || "-"}</div>
+                    )}
                   </div>
                   <div className="modal-field">
                     <label>사업자등록번호</label>
-                    <div className="value">{selectedUser.company_info?.businessNumber || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedCompanyInfo?.businessNumber || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessNumber: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.company_info?.businessNumber || "-"}</div>
+                    )}
                   </div>
-                  <div className="modal-field full-width">
-                    <label>주소</label>
-                    <div className="value">{selectedUser.company_info?.companyAddress || "-"}</div>
-                  </div>
+                   <div className="modal-field full-width">
+                     <label>주소</label>
+                     {editMode ? (
+                       <div style={{ display: 'flex', gap: 8 }}>
+                         <input className="modal-input" style={{ flex: 1 }} value={editedCompanyInfo?.companyAddress || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), companyAddress: e.target.value }))} />
+                         <button type="button" className="btn-outline" onClick={handleSearchAddress}>주소검색</button>
+                       </div>
+                     ) : (
+                       <div className="value">{selectedUser.company_info?.companyAddress || "-"}</div>
+                     )}
+                   </div>
                   <div className="modal-field">
                     <label>업태</label>
-                    <div className="value">{selectedUser.company_info?.businessCategory || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedCompanyInfo?.businessCategory || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessCategory: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.company_info?.businessCategory || "-"}</div>
+                    )}
                   </div>
                   <div className="modal-field">
                     <label>업종</label>
-                    <div className="value">{selectedUser.company_info?.businessType2 || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedCompanyInfo?.businessType2 || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessType2: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.company_info?.businessType2 || "-"}</div>
+                    )}
                   </div>
                   <div className="modal-field full-width">
                     <label>홈페이지</label>
-                    <div className="value">{selectedUser.company_info?.homepage || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedCompanyInfo?.homepage || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), homepage: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.company_info?.homepage || "-"}</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -839,15 +1075,27 @@ export default function MemberApprovalPage() {
                 <div className="modal-grid">
                   <div className="modal-field">
                     <label>담당자명</label>
-                    <div className="value">{selectedUser.tax_invoice_info?.manager || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedTaxInfo?.manager || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), manager: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.tax_invoice_info?.manager || "-"}</div>
+                    )}
                   </div>
                   <div className="modal-field">
                     <label>연락처</label>
-                    <div className="value">{selectedUser.tax_invoice_info?.contact || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedTaxInfo?.contact || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), contact: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.tax_invoice_info?.contact || "-"}</div>
+                    )}
                   </div>
                   <div className="modal-field">
                     <label>이메일</label>
-                    <div className="value">{selectedUser.tax_invoice_info?.email || "-"}</div>
+                    {editMode ? (
+                      <input className="modal-input" value={editedTaxInfo?.email || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), email: e.target.value }))} />
+                    ) : (
+                      <div className="value">{selectedUser.tax_invoice_info?.email || "-"}</div>
+                    )}
                   </div>
                 </div>
               </div>
