@@ -38,16 +38,16 @@ interface UserFormData {
   statusReason?: string;
 }
 
-interface LoginLog {
-  id: string;
-  userId: string;
-  userName: string;
-  company?: string;
-  loginIp: string;
-  loginTime: string;
-  success: boolean;
-  sessionStatus: "활성" | "비활성" | "-";
-}
+// interface LoginLog {
+//   id: string;
+//   userId: string;
+//   userName: string;
+//   company?: string;
+//   loginIp: string;
+//   loginTime: string;
+//   success: boolean;
+//   sessionStatus: "활성" | "비활성" | "-";
+// }
 
 
 interface UserStats {
@@ -460,38 +460,38 @@ export default function UserManagementPage() {
     }
   };
 
-  const [loginLogs] = useState<LoginLog[]>([
-    {
-      id: "1",
-      userId: "user001",
-      userName: "홍*동",
-      company: "(주)ABC",
-      loginIp: "192.168.1.100",
-      loginTime: "2024-12-21 09:30:15",
-      success: true,
-      sessionStatus: "활성"
-    },
-    {
-      id: "2",
-      userId: "user002", 
-      userName: "김*수",
-      company: "",
-      loginIp: "10.0.0.50",
-      loginTime: "2024-12-21 08:45:22",
-      success: false,
-      sessionStatus: "-"
-    },
-    {
-      id: "3",
-      userId: "user003",
-      userName: "박*영",
-      company: "(주)XYZ", 
-      loginIp: "172.16.0.25",
-      loginTime: "2024-12-21 11:15:33",
-      success: true,
-      sessionStatus: "활성"
-    }
-  ]);
+  // const [loginLogs] = useState<LoginLog[]>([
+  //   {
+  //     id: "1",
+  //     userId: "user001",
+  //     userName: "홍*동",
+  //     company: "(주)ABC",
+  //     loginIp: "192.168.1.100",
+  //     loginTime: "2024-12-21 09:30:15",
+  //     success: true,
+  //     sessionStatus: "활성"
+  //   },
+  //   {
+  //     id: "2",
+  //     userId: "user002", 
+  //     userName: "김*수",
+  //     company: "",
+  //     loginIp: "10.0.0.50",
+  //     loginTime: "2024-12-21 08:45:22",
+  //     success: false,
+  //     sessionStatus: "-"
+  //   },
+  //   {
+  //     id: "3",
+  //     userId: "user003",
+  //     userName: "박*영",
+  //     company: "(주)XYZ", 
+  //     loginIp: "172.16.0.25",
+  //     loginTime: "2024-12-21 11:15:33",
+  //     success: true,
+  //     sessionStatus: "활성"
+  //   }
+  // ]);
 
 
   // 컴포넌트 마운트 시 데이터 로드
@@ -814,13 +814,13 @@ export default function UserManagementPage() {
   // handleGradeAdjust는 추후 등급 관리 기능에서 구현 예정
 
   // 접속 관리 핸들러들
-  const handleTerminateSession = (sessionId: string) => {
-    console.log("세션 강제 종료:", sessionId);
-  };
+  // const handleTerminateSession = (sessionId: string) => {
+  //   console.log("세션 강제 종료:", sessionId);
+  // };
 
-  const handleBlockIp = (ip: string) => {
-    console.log("IP 차단:", ip);
-  };
+  // const handleBlockIp = (ip: string) => {
+  //   console.log("IP 차단:", ip);
+  // };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -1180,111 +1180,111 @@ export default function UserManagementPage() {
   );
 
 
-  const renderAccessTab = () => (
-    <div className="tab-content">
-      {/* 실시간 접속 현황 */}
-      <div className="access-stats">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-number">245</div>
-            <div className="stat-label">현재 접속자</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-number">1,234</div>
-            <div className="stat-label">오늘 신규 로그인</div>
-          </div>
-          <div className="stat-card warning">
-            <div className="stat-number">3</div>
-            <div className="stat-label">이상 로그인</div>
-          </div>
-          <div className="stat-card danger">
-            <div className="stat-number">12</div>
-            <div className="stat-label">차단된 IP</div>
-          </div>
-        </div>
-      </div>
+  // const renderAccessTab = () => (
+  //   <div className="tab-content">
+  //     {/* 실시간 접속 현황 */}
+  //     <div className="access-stats">
+  //       <div className="stats-grid">
+  //         <div className="stat-card">
+  //           <div className="stat-number">245</div>
+  //           <div className="stat-label">현재 접속자</div>
+  //         </div>
+  //         <div className="stat-card">
+  //           <div className="stat-number">1,234</div>
+  //           <div className="stat-label">오늘 신규 로그인</div>
+  //         </div>
+  //         <div className="stat-card warning">
+  //           <div className="stat-number">3</div>
+  //           <div className="stat-label">이상 로그인</div>
+  //         </div>
+  //         <div className="stat-card danger">
+  //           <div className="stat-number">12</div>
+  //           <div className="stat-label">차단된 IP</div>
+  //         </div>
+  //       </div>
+  //     </div>
 
-      {/* 검색 필터 */}
-      <div className="filter-section">
-        <div className="filter-row">
-          <select className="filter-select">
-            <option value="전체">회원유형 전체</option>
-            <option value="개인">개인</option>
-            <option value="기업">기업</option>
-          </select>
-          
-          <input type="date" className="filter-input" />
-          <span>~</span>
-          <input type="date" className="filter-input" />
+  //     {/* 검색 필터 */}
+  //     <div className="filter-section">
+  //       <div className="filter-row">
+  //         <select className="filter-select">
+  //           <option value="전체">회원유형 전체</option>
+  //           <option value="개인">개인</option>
+  //           <option value="기업">기업</option>
+  //         </select>
+  //         
+  //         <input type="date" className="filter-input" />
+  //         <span>~</span>
+  //         <input type="date" className="filter-input" />
+  //
+  //         <select className="filter-select">
+  //           <option value="전체">로그인 결과</option>
+  //           <option value="성공">성공</option>
+  //           <option value="실패">실패</option>
+  //         </select>
+  //
+  //         <button className="btn-primary">검색</button>
+  //       </div>
+  //     </div>
 
-          <select className="filter-select">
-            <option value="전체">로그인 결과</option>
-            <option value="성공">성공</option>
-            <option value="실패">실패</option>
-          </select>
-
-          <button className="btn-primary">검색</button>
-        </div>
-      </div>
-
-      {/* 접속 이력 테이블 */}
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>사용자ID</th>
-              <th>사용자명</th>
-              <th>기업명</th>
-              <th>접속 IP</th>
-              <th>접속일시</th>
-              <th>성공여부</th>
-              <th>세션상태</th>
-              <th>관리</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loginLogs.map((log) => (
-              <tr key={log.id}>
-                <td>{log.userId}</td>
-                <td>{log.userName}</td>
-                <td>{log.company || '-'}</td>
-                <td>{log.loginIp}</td>
-                <td>{log.loginTime}</td>
-                <td>
-                  <span className={`status-badge ${log.success ? 'status-success' : 'status-failed'}`}>
-                    {log.success ? '성공' : '실패'}
-                  </span>
-                </td>
-                <td>
-                  <span className={`session-badge ${log.sessionStatus === '활성' ? 'session-active' : 'session-inactive'}`}>
-                    {log.sessionStatus}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                    {log.sessionStatus === '활성' && (
-                          <button
-                        onClick={() => handleTerminateSession(log.id)}
-                        className="btn-xs btn-danger"
-                          >
-                        세션종료
-                          </button>
-                    )}
-                          <button
-                      onClick={() => handleBlockIp(log.loginIp)}
-                      className="btn-xs btn-warning"
-                          >
-                      IP차단
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-    </div>
-  );
+  //     {/* 접속 이력 테이블 */}
+  //     <div className="table-container">
+  //       <table className="data-table">
+  //         <thead>
+  //           <tr>
+  //             <th>사용자ID</th>
+  //             <th>사용자명</th>
+  //             <th>기업명</th>
+  //             <th>접속 IP</th>
+  //             <th>접속일시</th>
+  //             <th>성공여부</th>
+  //             <th>세션상태</th>
+  //             <th>관리</th>
+  //           </tr>
+  //         </thead>
+  //         <tbody>
+  //           {/* loginLogs.map((log) => (
+  //             <tr key={log.id}>
+  //               <td>{log.userId}</td>
+  //               <td>{log.userName}</td>
+  //               <td>{log.company || '-'}</td>
+  //               <td>{log.loginIp}</td>
+  //               <td>{log.loginTime}</td>
+  //               <td>
+  //                 <span className={`status-badge ${log.success ? 'status-success' : 'status-failed'}`}>
+  //                   {log.success ? '성공' : '실패'}
+  //                 </span>
+  //               </td>
+  //               <td>
+  //                 <span className={`session-badge ${log.sessionStatus === '활성' ? 'session-active' : 'session-inactive'}`}>
+  //                   {log.sessionStatus}
+  //                 </span>
+  //               </td>
+  //               <td>
+  //                 <div className="action-buttons">
+  //                   {log.sessionStatus === '활성' && (
+  //                     <button
+  //                       onClick={() => handleTerminateSession(log.id)}
+  //                       className="btn-xs btn-danger"
+  //                     >
+  //                       세션종료
+  //                     </button>
+  //                   )}
+  //                   <button
+  //                     onClick={() => handleBlockIp(log.loginIp)}
+  //                     className="btn-xs btn-warning"
+  //                   >
+  //                     IP차단
+  //                   </button>
+  //                 </div>
+  //               </td>
+  //             </tr>
+  //           )) */}
+  //         </tbody>
+  //       </table>
+  //     </div>
+  //   </div>
+  // );
 
   return (
     <AdminGuard>
