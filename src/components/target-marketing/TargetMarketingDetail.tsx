@@ -112,8 +112,13 @@ function TargetMarketingDetailContent({
   // 타겟 필터 상태들 추가
   const [targetGender, setTargetGender] = useState("all");
   const [targetAge, setTargetAge] = useState<string[]>(["all"]);
+  // 도시/구 선택(추가용)
   const [targetCity, setTargetCity] = useState("all");
   const [targetDistrict, setTargetDistrict] = useState("all");
+  // 다중 위치 선택 목록
+  const [selectedLocations, setSelectedLocations] = useState<
+    Array<{ city: string; districts: string[] }>
+  >([]);
   const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
   const [targetIndustry, setTargetIndustry] = useState("all");
   const [cardAmount, setCardAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT);
@@ -138,6 +143,8 @@ function TargetMarketingDetailContent({
   // 드롭다운 상태
   const [isAgeDropdownOpen, setIsAgeDropdownOpen] = useState(false);
   const ageDropdownRef = useRef<HTMLDivElement>(null);
+  // 연령 추가용 단일 선택 값
+  const [ageToAdd, setAgeToAdd] = useState<string>("thirties");
 
   // 캠페인 불러오기 모달 상태
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
@@ -335,6 +342,103 @@ function TargetMarketingDetailContent({
     }
   }, [targetCity, targetDistrict]);
 
+  // 연령 라벨 변환 헬퍼
+  const getAgeLabel = (value: string) => {
+    const opt = targetOptions.age.find((a) => a.value === value);
+    return opt ? opt.label : value;
+  };
+
+  // 도시/구 라벨 변환 헬퍼
+  const getCityLabel = (value: string) => {
+    const opt = targetOptions.cities.find((c) => c.value === value);
+    return opt ? opt.label : value;
+  };
+  const getDistrictLabel = (city: string, value: string) => {
+    const opts = getDistrictsByCity(city);
+    const opt = opts.find((d) => d.value === value);
+    return opt ? opt.label : value;
+  };
+
+  // 연령 추가/삭제
+  const MAX_AGES = 5;
+  const handleAddAge = () => {
+    if (!ageToAdd) return;
+    if (ageToAdd === "all") {
+      setTargetAge(["all"]);
+      return;
+    }
+    setTargetAge((prev) => {
+      if (prev.includes("all")) {
+        return [ageToAdd];
+      }
+      if (prev.includes(ageToAdd)) return prev;
+      if (prev.length >= MAX_AGES) return prev; // 제한
+      return [...prev, ageToAdd];
+    });
+  };
+  const handleRemoveAge = (value: string) => {
+    setTargetAge((prev) => prev.filter((v) => v !== value));
+  };
+
+  // 위치 추가/삭제
+  const MAX_CITIES = 5;
+  const handleAddLocation = () => {
+    if (!targetCity) return;
+    // 전체 도시 선택 시 전역 전체로 대체
+    if (targetCity === "all") {
+      setSelectedLocations([{ city: "all", districts: ["all"] }]);
+      return;
+    }
+
+    setSelectedLocations((prev) => {
+      // 기존 도시 엔트리 찾기
+      const idx = prev.findIndex((l) => l.city === targetCity);
+      // 구/군 전체 선택
+      if (targetDistrict === "all") {
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { city: targetCity, districts: ["all"] };
+          return next;
+        }
+        if (prev.length >= MAX_CITIES) return prev; // 제한
+        return [...prev, { city: targetCity, districts: ["all"] }];
+      }
+
+      if (idx >= 0) {
+        const entry = prev[idx];
+        // 이미 전체인 경우 유지
+        if (entry.districts.includes("all")) return prev;
+        if (entry.districts.includes(targetDistrict)) return prev;
+        const next = [...prev];
+        next[idx] = { city: targetCity, districts: [...entry.districts, targetDistrict] };
+        return next;
+      }
+      if (prev.length >= MAX_CITIES) return prev; // 제한
+      return [...prev, { city: targetCity, districts: [targetDistrict] }];
+    });
+  };
+  const handleRemoveLocation = (city: string, district: string) => {
+    setSelectedLocations((prev) => {
+      const idx = prev.findIndex((l) => l.city === city);
+      if (idx < 0) return prev;
+      const entry = prev[idx];
+      // 전체 제거 시 해당 도시 엔트리 삭제
+      if (district === "all") {
+        const next = [...prev];
+        next.splice(idx, 1);
+        return next;
+      }
+      const districts = entry.districts.filter((d) => d !== district);
+      const next = [...prev];
+      if (districts.length === 0) {
+        next.splice(idx, 1);
+      } else {
+        next[idx] = { city, districts };
+      }
+      return next;
+    });
+  };
+
   // 상위 업종 변경시 세부 업종 옵션 업데이트
   useEffect(() => {
     const industries = getIndustriesByTopLevel(targetTopLevelIndustry);
@@ -406,6 +510,7 @@ function TargetMarketingDetailContent({
       targetAge,
       targetCity,
       targetDistrict,
+      selectedLocations,
       targetTopLevelIndustry,
       targetIndustry,
       cardAmount,
@@ -445,6 +550,9 @@ function TargetMarketingDetailContent({
       setTargetAge((state.targetAge as string[]) || ["all"]);
       setTargetCity((state.targetCity as string) || "all");
       setTargetDistrict((state.targetDistrict as string) || "all");
+      setSelectedLocations(
+        (state.selectedLocations as Array<{ city: string; districts: string[] }>) || []
+      );
       setTargetTopLevelIndustry((state.targetTopLevelIndustry as string) || "all");
       setTargetIndustry((state.targetIndustry as string) || "all");
       setCardAmount((state.cardAmount as string) || "10000");
@@ -2224,6 +2332,22 @@ function TargetMarketingDetailContent({
         );
       }
 
+      // 대표 위치 선택 (호환용)
+      const primaryLocation = (() => {
+        if (selectedLocations.length > 0) {
+          const first = selectedLocations[0];
+          const primaryDistrict = first.districts?.[0] || "all";
+          return {
+            city: first.city,
+            district: primaryDistrict,
+          };
+        }
+        return {
+          city: targetCity,
+          district: targetDistrict,
+        };
+      })();
+
       // 캠페인 데이터 준비
       const campaignData = {
         title: campaignName || templateTitle, // 캠페인 이름 우선, 없으면 템플릿 제목 사용
@@ -2251,11 +2375,18 @@ function TargetMarketingDetailContent({
         expertReviewRequested: expertReviewRequested, // 전문가 검토 요청 여부
         targetFilters: {
           gender: targetGender,
-          ageGroup: targetAge,
+          // 연령 다중 선택 지원 (빈 배열이면 'all')
+          ageGroup: targetAge && targetAge.length > 0 ? targetAge : ["all"],
+          // 호환용 루트 속성도 함께 제공
+          age: targetAge && targetAge.length > 0 ? targetAge : ["all"],
+          // 단일 위치(대표) + 확장 locations 동시 제공
           location: {
-            city: targetCity,
-            district: targetDistrict,
+            city: primaryLocation.city,
+            district: primaryLocation.district,
           },
+          city: primaryLocation.city,
+          district: primaryLocation.district,
+          locations: selectedLocations,
           industry: {
             topLevel: targetTopLevelIndustry,
             specific: targetIndustry,
@@ -2945,56 +3076,116 @@ function TargetMarketingDetailContent({
                  </div>
                </div>
 
-                             {/* 연령 */}
-               <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">연령</div>
-                 <select
-                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                   defaultValue="30대"
-                 >
-                   {Array.from({ length: 9 }, (_, i) => {
-                     const age = (i + 1) * 10;
-                     return (
-                       <option key={age} value={`${age}대`}>
-                         {age}대
-                       </option>
-                     );
-                   })}
-                 </select>
-               </div>
+              {/* 연령 */}
+              <div className="mb-4">
+                <div className="text-sm font-medium text-gray-700 mb-2">연령</div>
+                <div className="flex gap-2 items-center">
+                  <select
+                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                    value={ageToAdd}
+                    onChange={(e) => setAgeToAdd(e.target.value)}
+                  >
+                    {targetOptions.age.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="px-3 py-2 rounded-md bg-white text-blue-600 border border-blue-600 text-sm font-medium cursor-pointer hover:bg-blue-50"
+                    onClick={handleAddAge}
+                  >
+                    + 추가
+                  </button>
+                </div>
+                {targetAge.length > 0 && (
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    {targetAge.map((age) => (
+                      <span
+                        key={age}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs border border-blue-200"
+                      >
+                        {getAgeLabel(age)}
+                        <button
+                          type="button"
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                          onClick={() => handleRemoveAge(age)}
+                          aria-label={`연령 ${getAgeLabel(age)} 제거`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-1 text-xs text-gray-500">최대 5개까지 선택 가능, ‘전체’ 선택 시 단일 선택</div>
+              </div>
 
-                             {/* 카드 사용 위치 */}
-               <div className="mb-6">
-                 <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 위치</div>
-                 <div className="flex gap-4">
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={targetCity}
-                       onChange={(e) => setTargetCity(e.target.value)}
-                     >
-                       {targetOptions.cities.map((option) => (
-                         <option key={option.value} value={option.value}>
-                           {option.label}
-                         </option>
-                       ))}
-                     </select>
-                   </div>
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={targetDistrict}
-                       onChange={(e) => setTargetDistrict(e.target.value)}
-                     >
-                       {getDistrictsByCity(targetCity).map((option) => (
-                         <option key={option.value} value={option.value}>
-                           {option.label}
-                         </option>
-                       ))}
-                     </select>
-                   </div>
-                 </div>
-               </div>
+              {/* 카드 사용 위치 */}
+              <div className="mb-6">
+                <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 위치</div>
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <select
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                      value={targetCity}
+                      onChange={(e) => setTargetCity(e.target.value)}
+                    >
+                      {targetOptions.cities.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <select
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                      value={targetDistrict}
+                      onChange={(e) => setTargetDistrict(e.target.value)}
+                    >
+                      {getDistrictsByCity(targetCity).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    className="px-3 py-2 rounded-md bg-white text-blue-600 border border-blue-600 text-sm font-medium cursor-pointer hover:bg-blue-50"
+                    onClick={handleAddLocation}
+                  >
+                    + 추가
+                  </button>
+                </div>
+                {selectedLocations.length > 0 && (
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    {selectedLocations.map((loc) => (
+                      <div key={loc.city} className="flex items-center gap-2">
+                        {loc.districts.map((d) => (
+                          <span
+                            key={`${loc.city}-${d}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs border border-green-200"
+                          >
+                            {getCityLabel(loc.city)} / {getDistrictLabel(loc.city, d)}
+                            <button
+                              type="button"
+                              className="ml-1 text-green-600 hover:text-green-800"
+                              onClick={() => handleRemoveLocation(loc.city, d)}
+                              aria-label={`${getCityLabel(loc.city)} ${getDistrictLabel(loc.city, d)} 제거`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-1 text-xs text-gray-500">도시는 최대 5곳까지 추가 가능. 도시=전체 선택 시 전국 적용</div>
+              </div>
 
                              {/* 타겟 업종 */}
                <div className="mb-4">
