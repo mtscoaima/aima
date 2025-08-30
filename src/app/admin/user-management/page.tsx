@@ -1307,18 +1307,18 @@ export default function UserManagementPage() {
             >
               회원 정보 관리
             </button>
-            <button 
+            {/* <button 
               className={`tab-button ${activeTab === 'access' ? 'active' : ''}`}
               onClick={() => setActiveTab('access')}
             >
               로그인/접속 관리
-            </button>
+            </button> */}
           </div>
 
           {/* 탭 컨텐츠 */}
           <div className="tab-container">
             {activeTab === 'members' && renderMembersTab()}
-            {activeTab === 'access' && renderAccessTab()}
+            {/* {activeTab === 'access' && renderAccessTab()} */}
           </div>
 
           {/* 회원 모달 */}
