@@ -41,6 +41,7 @@ interface Campaign {
   ad_medium?: "naver_talktalk" | "sms";
   desired_recipients?: string;
   users?: {
+    username?: string;
     name: string;
     email: string;
     phone_number: string;
@@ -86,6 +87,7 @@ export default function CampaignsPage() {
       const matchesSearch = 
         campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         campaign.users?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        campaign.users?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         campaign.users?.email?.toLowerCase().includes(searchTerm.toLowerCase());
       
       // 상태 필터링
@@ -94,6 +96,21 @@ export default function CampaignsPage() {
       return matchesSearch && matchesStatus;
     });
   }, [campaigns, searchTerm, statusFilter]);
+
+  // 상태별 카운트
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      ALL: campaigns.length,
+      PENDING_APPROVAL: 0,
+      REVIEWING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+    };
+    campaigns.forEach((c) => {
+      counts[c.status] = (counts[c.status] || 0) + 1;
+    });
+    return counts;
+  }, [campaigns]);
 
   // 페이지네이션 계산
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -171,9 +188,9 @@ export default function CampaignsPage() {
   const getStatusBadgeClass = (status: Campaign["status"]) => {
     switch (status) {
       case "PENDING_APPROVAL":
-        return "status-badge scheduled";
+        return "status-badge pending";
       case "REVIEWING":
-        return "status-badge scheduled";
+        return "status-badge reviewing";
       case "REJECTED":
         return "status-badge rejected";
       case "APPROVED":
@@ -477,7 +494,7 @@ export default function CampaignsPage() {
               <div className="search-input-wrapper">
                 <input
                   type="text"
-                  placeholder="캠페인명, 생성자 이름, 이메일로 검색..."
+                  placeholder="캠페인명, 생성자명, 아이디(로그인), 이메일 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
@@ -509,6 +526,45 @@ export default function CampaignsPage() {
               <div className="search-results-info">
                 전체 {campaigns.length}개 중 {filteredCampaigns.length}개 캠페인
               </div>
+
+              {/* 상태 빠른 필터 칩 */}
+              <div className="status-chips">
+                <div
+                  className={`status-chip all ${statusFilter === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('ALL')}
+                  title="전체"
+                >
+                  전체 <span className="count">{statusCounts.ALL || 0}</span>
+                </div>
+                <div
+                  className={`status-chip pending ${statusFilter === 'PENDING_APPROVAL' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('PENDING_APPROVAL')}
+                  title="승인 대기"
+                >
+                  승인 대기 <span className="count">{statusCounts.PENDING_APPROVAL || 0}</span>
+                </div>
+                <div
+                  className={`status-chip reviewing ${statusFilter === 'REVIEWING' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('REVIEWING')}
+                  title="검토 중"
+                >
+                  검토 중 <span className="count">{statusCounts.REVIEWING || 0}</span>
+                </div>
+                <div
+                  className={`status-chip approved ${statusFilter === 'APPROVED' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('APPROVED')}
+                  title="승인됨"
+                >
+                  승인됨 <span className="count">{statusCounts.APPROVED || 0}</span>
+                </div>
+                <div
+                  className={`status-chip rejected ${statusFilter === 'REJECTED' ? 'active' : ''}`}
+                  onClick={() => setStatusFilter('REJECTED')}
+                  title="거부됨"
+                >
+                  거부됨 <span className="count">{statusCounts.REJECTED || 0}</span>
+                </div>
+              </div>
             </div>
             <div className="campaigns-content-wrapper">
               <div className="campaigns-section">
@@ -530,6 +586,8 @@ export default function CampaignsPage() {
                         <tr>
                           <th>ID</th>
                           <th>캠페인명</th>
+                          <th>생성자</th>
+                          <th>아이디</th>
                           <th>상태</th>
                           <th>생성일</th>
                           <th>액션</th>
@@ -537,7 +595,7 @@ export default function CampaignsPage() {
                       </thead>
                       <tbody>
                         {currentCampaigns.map((campaign) => (
-                          <tr key={campaign.id}>
+                          <tr key={campaign.id} onClick={() => handleViewDetail(campaign)} style={{cursor: 'pointer'}}>
                             <td className="campaign-id">{campaign.id}</td>
                             <td className="campaign-name">
                               <div>
@@ -549,6 +607,8 @@ export default function CampaignsPage() {
                                 )}
                               </div>
                             </td>
+                            <td className="campaign-owner">{campaign.users?.name || '-'}</td>
+                            <td className="campaign-owner-id">{campaign.users?.username || '-'}</td>
                             <td className="campaign-status">
                               <span
                                 className={getStatusBadgeClass(campaign.status)}
@@ -562,13 +622,13 @@ export default function CampaignsPage() {
                             <td className="campaign-actions">
                               <button
                                 className="action-btn view-btn"
-                                onClick={() => handleViewDetail(campaign)}
+                                onClick={(e) => { e.stopPropagation(); handleViewDetail(campaign); }}
                               >
                                 상세보기
                               </button>
                               <button
                                 className="action-btn approve-btn"
-                                onClick={() => handleApprove(campaign.id)}
+                                onClick={(e) => { e.stopPropagation(); handleApprove(campaign.id); }}
                                 disabled={
                                   processingCampaignId === campaign.id ||
                                   campaign.status === "APPROVED" ||
@@ -581,7 +641,7 @@ export default function CampaignsPage() {
                               </button>
                               <button
                                 className="action-btn reject-btn"
-                                onClick={() => handleReject(campaign.id)}
+                                onClick={(e) => { e.stopPropagation(); handleReject(campaign.id); }}
                                 disabled={
                                   processingCampaignId === campaign.id ||
                                   campaign.status === "APPROVED" ||

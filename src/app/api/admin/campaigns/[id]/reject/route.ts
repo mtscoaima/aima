@@ -86,12 +86,12 @@ export async function POST(
       );
     }
 
-    // 거부 가능한 상태인지 확인
-    if (campaign.status !== "PENDING_APPROVAL") {
+    // 거부 가능한 상태인지 확인 (승인 대기 또는 검토 중)
+    if (campaign.status !== "PENDING_APPROVAL" && campaign.status !== "REVIEWING") {
       return NextResponse.json(
         {
           success: false,
-          message: "승인 대기 상태의 캠페인만 거부할 수 있습니다.",
+          message: "승인 대기 또는 검토 중 캠페인만 거부할 수 있습니다.",
         },
         { status: 400 }
       );

@@ -270,11 +270,12 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   const targetInfo = formatTargetCriteria();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[10000] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
         {/* 배경 오버레이 */}
         <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          className="fixed inset-0 transition-opacity"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.25)" }}
           onClick={onClose}
         />
         

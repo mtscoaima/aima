@@ -96,6 +96,47 @@
   white-space: nowrap;
 }
 
+/* 상태 칩(빠른 필터) */
+.status-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  transition: all 0.15s ease-in-out;
+}
+
+.status-chip .count {
+  font-weight: 700;
+}
+
+.status-chip.all { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.status-chip.all.active { background: #e5e7eb; }
+
+.status-chip.pending { background: rgba(251, 146, 60, 0.12); color: #b45309; border-color: rgba(251,146,60,0.3); }
+.status-chip.pending.active { background: rgba(251, 146, 60, 0.22); }
+
+.status-chip.reviewing { background: rgba(59, 130, 246, 0.12); color: #1d4ed8; border-color: rgba(59,130,246,0.3); }
+.status-chip.reviewing.active { background: rgba(59, 130, 246, 0.22); }
+
+.status-chip.approved { background: rgba(16, 185, 129, 0.12); color: #059669; border-color: rgba(16,185,129,0.3); }
+.status-chip.approved.active { background: rgba(16, 185, 129, 0.22); }
+
+.status-chip.rejected { background: rgba(239, 68, 68, 0.12); color: #b91c1c; border-color: rgba(239,68,68,0.3); }
+.status-chip.rejected.active { background: rgba(239, 68, 68, 0.22); }
+
 /* 페이지네이션 스타일 */
 .pagination-container {
   display: flex;
@@ -454,7 +495,7 @@
 
 .campaigns-table {
   width: 100%;
-  min-width: 800px; /* 5개 컬럼에 맞게 축소 */
+  min-width: 1100px; /* 7개 컬럼에 맞게 조정 */
   border-collapse: collapse;
   background-color: white;
   table-layout: auto;
@@ -475,27 +516,35 @@
   min-width: 80px; /* 최소 너비 보장 */
 }
 
-/* 컬럼별 최소 너비 지정 - 5개 컬럼에 맞게 조정 */
-.campaigns-table th:nth-child(1) {
+/* 컬럼별 최소 너비 지정 - 7개 컬럼에 맞게 조정 */
+.campaigns-table th:nth-child(1) { /* ID */
   min-width: 80px;
   text-align: center;
-} /* ID */
-.campaigns-table th:nth-child(2) {
-  min-width: 300px;
+}
+.campaigns-table th:nth-child(2) { /* 캠페인명 */
+  min-width: 320px;
   text-align: left;
-} /* 캠페인명 */
-.campaigns-table th:nth-child(3) {
+}
+.campaigns-table th:nth-child(3) { /* 생성자 */
+  min-width: 140px;
+  text-align: left;
+}
+.campaigns-table th:nth-child(4) { /* 아이디 */
+  min-width: 140px;
+  text-align: left;
+}
+.campaigns-table th:nth-child(5) { /* 상태 */
   min-width: 120px;
   text-align: center;
-} /* 상태 */
-.campaigns-table th:nth-child(4) {
-  min-width: 120px;
+}
+.campaigns-table th:nth-child(6) { /* 생성일 */
+  min-width: 130px;
   text-align: center;
-} /* 생성일 */
-.campaigns-table th:nth-child(5) {
+}
+.campaigns-table th:nth-child(7) { /* 액션 */
   min-width: 220px;
   text-align: center;
-} /* 액션 */
+}
 
 .campaigns-table td {
   padding: 12px;
@@ -565,6 +614,17 @@
   padding-top: 16px;
 }
 
+.campaign-owner,
+.campaign-owner-id {
+  padding-top: 16px;
+  color: #444;
+}
+
+.campaign-owner-id {
+  font-family: "Menlo", "Monaco", monospace;
+  color: #555;
+}
+
 .campaign-date {
   font-size: 13px;
   color: #666666;
@@ -586,22 +646,16 @@
   white-space: nowrap;
 }
 
-.status-badge.active {
-  background-color: rgba(0, 102, 255, 0.1);
-  color: #0066ff;
-  border-color: rgba(0, 102, 255, 0.3);
-}
-
-.status-badge.completed {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-.status-badge.scheduled {
+.status-badge.pending { /* 승인 대기 */
   background-color: rgba(251, 146, 60, 0.1);
-  color: #f59e0b;
-  border-color: rgba(251, 146, 60, 0.3);
+  color: #b45309; /* darker amber */
+  border-color: rgba(251, 146, 60, 0.35);
+}
+
+.status-badge.reviewing { /* 검토 중 */
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8; /* blue-700 */
+  border-color: rgba(59, 130, 246, 0.35);
 }
 
 .status-badge.approved {
@@ -817,19 +871,15 @@
   scrollbar-color: #6c757d #f8f9fa;
 }
 
-/* 반응형 스타일 개선 - 5개 컬럼 기준 */
+/* 반응형 스타일 개선 - 7개 컬럼 기준 */
 @media (max-width: 1200px) {
   .campaigns-table {
-    min-width: 700px;
+    min-width: 1000px;
   }
-
-  .campaigns-table th:nth-child(2) {
-    min-width: 250px;
-  }
-
-  .campaign-actions {
-    min-width: 200px;
-  }
+  .campaigns-table th:nth-child(2) { min-width: 280px; }
+  .campaigns-table th:nth-child(3) { min-width: 130px; }
+  .campaigns-table th:nth-child(4) { min-width: 130px; }
+  .campaigns-table th:nth-child(7) { min-width: 200px; }
 }
 
 @media (max-width: 1024px) {
@@ -838,24 +888,12 @@
   }
 
   .campaigns-table {
-    min-width: 650px;
+    min-width: 900px;
   }
-
-  .campaigns-table th:nth-child(2) {
-    min-width: 200px;
-  }
-
-  .campaigns-table th:nth-child(3) {
-    min-width: 100px;
-  }
-
-  .campaigns-table th:nth-child(4) {
-    min-width: 100px;
-  }
-
-  .campaign-actions {
-    min-width: 180px;
-  }
+  .campaigns-table th:nth-child(2) { min-width: 240px; }
+  .campaigns-table th:nth-child(3) { min-width: 120px; }
+  .campaigns-table th:nth-child(4) { min-width: 120px; }
+  .campaigns-table th:nth-child(7) { min-width: 180px; }
 
   .campaigns-header {
     flex-direction: column;
@@ -1035,25 +1073,14 @@
     font-size: 2.5rem;
   }
 
-  .campaigns-table {
-    min-width: 500px;
-  }
-
-  .campaigns-table th:nth-child(1) {
-    min-width: 60px;
-  } /* ID */
-  .campaigns-table th:nth-child(2) {
-    min-width: 180px;
-  } /* 캠페인명 */
-  .campaigns-table th:nth-child(3) {
-    min-width: 90px;
-  } /* 상태 */
-  .campaigns-table th:nth-child(4) {
-    min-width: 80px;
-  } /* 생성일 */
-  .campaigns-table th:nth-child(5) {
-    min-width: 140px;
-  } /* 액션 */
+  .campaigns-table { min-width: 750px; }
+  .campaigns-table th:nth-child(1) { min-width: 60px; } /* ID */
+  .campaigns-table th:nth-child(2) { min-width: 200px; } /* 캠페인명 */
+  .campaigns-table th:nth-child(3) { min-width: 100px; } /* 생성자 */
+  .campaigns-table th:nth-child(4) { min-width: 100px; } /* 아이디 */
+  .campaigns-table th:nth-child(5) { min-width: 90px; } /* 상태 */
+  .campaigns-table th:nth-child(6) { min-width: 90px; } /* 생성일 */
+  .campaigns-table th:nth-child(7) { min-width: 140px; } /* 액션 */
 
   .campaigns-table th,
   .campaigns-table td {
@@ -1115,26 +1142,14 @@
     font-size: 2rem;
   }
 
-  .campaigns-table {
-    font-size: 11px;
-    min-width: 450px;
-  }
-
-  .campaigns-table th:nth-child(1) {
-    min-width: 50px;
-  } /* ID */
-  .campaigns-table th:nth-child(2) {
-    min-width: 160px;
-  } /* 캠페인명 */
-  .campaigns-table th:nth-child(3) {
-    min-width: 80px;
-  } /* 상태 */
-  .campaigns-table th:nth-child(4) {
-    min-width: 70px;
-  } /* 생성일 */
-  .campaigns-table th:nth-child(5) {
-    min-width: 120px;
-  } /* 액션 */
+  .campaigns-table { font-size: 11px; min-width: 680px; }
+  .campaigns-table th:nth-child(1) { min-width: 50px; } /* ID */
+  .campaigns-table th:nth-child(2) { min-width: 180px; } /* 캠페인명 */
+  .campaigns-table th:nth-child(3) { min-width: 90px; } /* 생성자 */
+  .campaigns-table th:nth-child(4) { min-width: 90px; } /* 아이디 */
+  .campaigns-table th:nth-child(5) { min-width: 80px; } /* 상태 */
+  .campaigns-table th:nth-child(6) { min-width: 80px; } /* 생성일 */
+  .campaigns-table th:nth-child(7) { min-width: 120px; } /* 액션 */
 
   .campaigns-table th,
   .campaigns-table td {
