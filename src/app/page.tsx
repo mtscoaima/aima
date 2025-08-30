@@ -227,28 +227,16 @@ function AIDemo() {
         {/* AI 데모 인터페이스 */}
         <div className="bg-[#dfeffe] rounded-[20px] p-8 md:p-12 lg:p-16 max-w-[1200px] mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-            {/* 왼쪽: 체크리스트와 AI 채팅 */}
+            {/* 왼쪽: AI 채팅과 체크리스트 */}
             <div className="space-y-8">
-              {/* 체크리스트 */}
-              <div className="space-y-4 md:space-y-6">
-                {steps.map((step, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <CheckIcon />
-                    <p className="font-semibold text-base md:text-lg lg:text-[25px] text-[#3b3b3b] leading-relaxed">
-                      {step}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
               {/* AI 채팅 인터페이스 */}
-              <div className="mt-8 relative">
+              <div className="relative">
                 <div className="bg-[#1681ff] inline-block px-6 py-2 rounded-full mb-4">
                   <span className="text-white font-semibold text-sm md:text-base">에이마 AI 에이전트</span>
                 </div>
-                
-                <div className="bg-white rounded-[24px] p-6 shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] border border-[#1681ff] relative">
-                  <p className="text-black font-medium text-base md:text-lg lg:text-[26px] leading-relaxed">
+
+                <div className="bg-white rounded-[24px] p-6 shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] border border-[#1681ff] relative mb-6">
+                  <p className="text-black font-medium text-sm md:text-base lg:text-lg leading-relaxed">
                     첫 방문 고객을 위한 할인 혜택 광고 만들어줘
                   </p>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-[#1681ff] rounded-xl p-2">
@@ -258,20 +246,32 @@ function AIDemo() {
                   </div>
                 </div>
 
+                {/* 체크리스트 */}
+                <div className="space-y-4 md:space-y-6">
+                  {steps.map((step, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <CheckIcon />
+                      <p className="font-semibold text-base md:text-lg lg:text-[25px] text-[#3b3b3b] leading-relaxed">
+                        {step}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
                 {/* AI 생성 중 표시 */}
-                <div className="flex gap-2 mt-4 ml-4">
+                <div className="flex flex-col gap-2 mt-4" style={{ marginLeft: '150px' }}>
                   <div className="w-3 h-3 bg-[#1681ff] rounded-full animate-pulse"></div>
                   <div className="w-3 h-3 bg-[#1681ff] opacity-50 rounded-full animate-pulse delay-75"></div>
                   <div className="w-3 h-3 bg-[#1681ff] opacity-10 rounded-full animate-pulse delay-150"></div>
                 </div>
 
                 {/* 로봇 이미지 */}
-                <div className="absolute -bottom-8 right-0 lg:right-8 w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 transform rotate-[12deg]">
+                <div className="absolute -bottom-8 lg:-bottom-[200px] right-0 lg:-right-40 xl:-right-56 w-48 h-48 md:w-56 md:h-56 lg:w-72 lg:h-72 xl:w-80 xl:h-80 transform rotate-[12deg] z-10">
                   <Image
                     src="/images/landing/section4/robot-ai.png"
                     alt="AI 로봇"
-                    width={256}
-                    height={256}
+                    width={500}
+                    height={500}
                     className="w-full h-full object-contain"
                   />
                 </div>
