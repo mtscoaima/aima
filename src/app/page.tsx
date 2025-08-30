@@ -16,7 +16,7 @@ function ResponsiveButton({ children, className = "" }: { children: React.ReactN
 
 function HeroSection() {
   return (
-    <section className="relative min-h-[600px] md:min-h-[700px] bg-gradient-to-br from-blue-50 to-white overflow-hidden">
+    <section className="relative min-h-[600px] md:min-h-[700px] bg-gradient-to-br from-blue-50 to-white overflow-hidden pt-20 md:pt-24">
       <div className="container mx-auto px-4 py-12 md:py-16 lg:py-20">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[500px]">
           {/* 텍스트 콘텐츠 */}
