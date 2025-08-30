@@ -6,317 +6,345 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import SalespersonDashboard from "@/components/salesperson/SalespersonDashboard";
 
+function ResponsiveButton({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <button className={`bg-[#1681ff] text-white px-6 py-3 md:px-8 md:py-4 rounded-2xl font-bold text-sm md:text-base hover:bg-[#1460d1] transition-colors ${className}`}>
+      {children}
+    </button>
+  );
+}
+
+function HeroSection() {
+  return (
+    <section className="relative min-h-[600px] md:min-h-[700px] bg-gradient-to-br from-blue-50 to-white overflow-hidden">
+      <div className="container mx-auto px-4 py-12 md:py-16 lg:py-20">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[500px]">
+          {/* 텍스트 콘텐츠 */}
+          <div className="space-y-6 md:space-y-8 text-center lg:text-left">
+            <div className="space-y-2 md:space-y-4">
+              <h1 className="font-bold text-3xl md:text-4xl lg:text-5xl xl:text-6xl leading-tight text-[#333333] tracking-[-0.3px]">
+                <div className="mb-2">마케팅이 쉬워지는</div>
+                <div className="mb-2">AI 간편 마케팅 도우미</div>
+                <div className="text-[#1681ff]">에이마</div>
+              </h1>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="font-semibold text-lg md:text-xl lg:text-2xl text-[#46474c] leading-relaxed">
+                AI 로 간단하게, 효과는 확실하게!
+              </p>
+              <p className="font-semibold text-lg md:text-xl lg:text-2xl text-[#46474c] leading-relaxed">
+                에이마 로 확실한 매출 효과를 경험하세요
+              </p>
+            </div>
+            
+            <div className="pt-4 md:pt-6">
+              <Link href="/target-marketing">
+                <ResponsiveButton>에이마 가입하기</ResponsiveButton>
+              </Link>
+            </div>
+          </div>
+
+          {/* 이미지 콘텐츠 */}
+          <div className="relative h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center">
+            <div className="absolute top-0 left-4 md:left-8 w-32 h-32 md:w-40 md:h-40 transform rotate-[-15deg]">
+              <Image
+                src="/images/landing/ai-icon.svg"
+                alt="AI 아이콘"
+                width={160}
+                height={160}
+                className="w-full h-full"
+              />
+            </div>
+            
+            <div className="absolute top-16 md:top-20 right-4 md:right-8 w-12 h-12 md:w-16 md:h-16">
+              <Image
+                src="/images/landing/star.svg"
+                alt="별 아이콘"
+                width={64}
+                height={64}
+                className="w-full h-full"
+              />
+            </div>
+            
+            <div className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96">
+              <Image
+                src="/images/landing/aima-logo.svg"
+                alt="에이마 로고"
+                width={384}
+                height={384}
+                className="w-full h-full"
+              />
+            </div>
+            
+            <div className="absolute bottom-4 md:bottom-8 right-8 md:right-12 w-24 h-24 md:w-32 md:h-32 transform rotate-[10deg]">
+              <Image
+                src="/images/landing/chart.svg"
+                alt="차트 아이콘"
+                width={128}
+                height={128}
+                className="w-full h-full"
+              />
+            </div>
+            
+            <div className="absolute bottom-16 md:bottom-20 left-8 md:left-12 w-8 h-8 md:w-10 md:h-10">
+              <Image
+                src="/images/landing/diamond.svg"
+                alt="다이아몬드 아이콘"
+                width={40}
+                height={40}
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TestimonialCard({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-[0px_0px_10px_0px_rgba(22,129,255,0.3)] overflow-hidden h-full">
+      <div className="h-48 md:h-56 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+        <span className="text-gray-500 font-bold text-lg">사장님 이미지</span>
+      </div>
+      <div className="p-6 md:p-8">
+        <h3 className="font-bold text-lg md:text-xl text-black mb-4">{title}</h3>
+        <p className="font-medium text-[#5a5c63] text-sm md:text-base leading-relaxed">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function TestimonialsSection() {
+  const testimonials = [
+    {
+      title: "OO 식당 사장님",
+      content: "손님 응대가 서툴러 매장에 빈자리가 많았는데 에이마를 활용한 후 고객 유입이 빠르게 늘었어요."
+    },
+    {
+      title: "의류 쇼핑몰 사장님", 
+      content: "신상품 홍보가 필요했지만, 대상도 광고 시간도 부족했어요. 이 부분을 에이마가 대신 해결해주어 매출 향상으로 이어졌어요."
+    },
+    {
+      title: "공간대여 스튜디오 사장님",
+      content: "공간 대여업 특성상 공실은 곧 손실인데 에이마로 인근 고객에게 할인 메시지를 발송해 예약을 채웠어요."
+    }
+  ];
+
+  return (
+    <section className="py-16 md:py-24 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="font-extrabold text-3xl md:text-4xl lg:text-5xl text-[#333333] tracking-[-0.3px] leading-tight">
+            에이마는 이런 사장님께 꼭! 필요합니다
+          </h2>
+        </div>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {testimonials.map((testimonial, index) => (
+            <TestimonialCard key={index} {...testimonial} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeatureCard({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-[0px_0px_10px_0px_rgba(22,129,255,0.3)] p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center">
+      <div className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 flex-shrink-0 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+        <span className="text-blue-600 font-bold">아이콘</span>
+      </div>
+      <div className="flex-1 text-center md:text-left">
+        <h3 className="font-extrabold text-xl md:text-2xl lg:text-3xl text-black mb-4 tracking-[-0.84px]">
+          {title}
+        </h3>
+        <p className="text-[#2c2c2c] text-sm md:text-base lg:text-lg leading-relaxed tracking-[-0.54px]">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function FeaturesSection() {
+  const features = [
+    {
+      title: "정밀한 타겟팅",
+      description: "불특정 다수는 이제 그만! 매장에 관심 있는 고객에게만 메시지를 전송해요"
+    },
+    {
+      title: "실시간 혜택 메시지 발송", 
+      description: "우리 매장 근처에서 카드를 결제 한 고객에게 카드 승인 알림과 함께 실시간으로 혜택을 안내해요"
+    },
+    {
+      title: "다양한 채널로, 더 많은 고객에게",
+      description: "몇 번 클릭만으로 손쉽게 홍보 설정을 완료해요 네이버 톡톡 • 카카오 친구톡 • 문자 • RCS"
+    },
+    {
+      title: "광고 성과 한눈에 확인",
+      description: "메시지 캠페인의 성과를 분석하여 마케팅 효과를 실시간으로 확인해요"
+    }
+  ];
+
+  return (
+    <section className="py-16 md:py-24 bg-gray-50">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="font-extrabold text-3xl md:text-4xl lg:text-5xl text-[#333333] leading-tight tracking-[-0.3px] mb-6">
+            <div className="mb-2">소액으로 쉽게 시작하는</div>
+            <div>AI 시대의 CRM 마케팅</div>
+          </h2>
+        </div>
+        
+        <div className="grid gap-6 md:gap-8">
+          <div className="grid md:grid-cols-2 gap-6 md:gap-8">
+            {features.slice(0, 2).map((feature, index) => (
+              <FeatureCard key={index} {...feature} />
+            ))}
+          </div>
+          <div className="grid md:grid-cols-2 gap-6 md:gap-8">
+            {features.slice(2, 4).map((feature, index) => (
+              <FeatureCard key={index + 2} {...feature} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <div className="w-6 h-6 rounded-full bg-[#1681ff] flex items-center justify-center flex-shrink-0">
+      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+  );
+}
+
+function AIDemo() {
+  const steps = [
+    "광고 메시지 작성을 완료했어요",
+    "광고 이미지를 생성했어요", 
+    "성별·나이·지역 타깃을 설정했어요"
+  ];
+
+  return (
+    <section className="py-16 md:py-24 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="font-extrabold text-3xl md:text-4xl lg:text-5xl text-[#333333] mb-6 tracking-[-0.3px] leading-tight">
+            누구나 쉽게 쓰는 AI 마케팅 도우미
+          </h2>
+          <p className="font-medium text-lg md:text-xl lg:text-2xl text-[#46474c] leading-relaxed max-w-4xl mx-auto">
+            <span className="block mb-2">AI가 광고 메시지 내용 부터 타깃 설정까지 자동으로 도와주니까</span>
+            <span>복잡한 마케팅도 이제 몇 분이면 끝나요</span>
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* 체크리스트 */}
+          <div className="space-y-6 md:space-y-8">
+            {steps.map((step, index) => (
+              <div key={index} className="flex items-start gap-4">
+                <CheckIcon />
+                <p className="font-semibold text-lg md:text-xl lg:text-2xl text-[#3b3b3b] leading-relaxed">
+                  {step}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* 모바일 앱 미리보기 */}
+          <div className="flex justify-center">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-6 max-w-md">
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div className="h-32 md:h-40 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+                  <span className="text-orange-600 font-bold">피자 이미지</span>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-sm md:text-base text-black mb-2">
+                    첫 방문 고객 할인 혜택!
+                  </h3>
+                  <p className="font-medium text-xs md:text-sm text-black leading-relaxed">
+                    처음 오신 고객님께 드리는 작은 선물 🎁 피자 메뉴 주문 시 시원한 콜라 1잔을 무료로 제공합니다.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">매장 위치</span>
+                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">홈페이지</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div className="h-32 md:h-40 bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
+                  <span className="text-purple-600 font-bold">이벤트 이미지</span>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-sm md:text-base text-black mb-2">
+                    새로운 혜택 소식!
+                  </h3>
+                  <p className="font-medium text-xs md:text-sm text-black leading-relaxed">
+                    이번 주말 특별 이벤트를 놓치지 마세요. 더 많은 혜택이 기다리고 있습니다.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">홈페이지</span>
+                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">블로그</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CTASection() {
+  return (
+    <section className="py-16 md:py-24 bg-gradient-to-br from-[#1681ff] to-[#0066cc]">
+      <div className="container mx-auto px-4 text-center">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="font-extrabold text-3xl md:text-4xl lg:text-5xl text-white mb-6 md:mb-8 leading-tight">
+            지금 바로 에이마와 함께 시작하세요
+          </h2>
+          <p className="font-medium text-lg md:text-xl text-white/90 mb-8 md:mb-12 leading-relaxed">
+            AI 마케팅으로 매출 향상을 경험해보세요
+          </p>
+          <Link href="/target-marketing">
+            <ResponsiveButton className="bg-white text-[#1681ff] hover:bg-gray-100">
+              무료로 시작하기
+            </ResponsiveButton>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const { isAuthenticated, user } = useAuth();
-
-  // 로그인 직후에만 적용되는 리다이렉트 로직을 위한 useEffect는 제거
-  // 루트 페이지는 로그인 여부와 관계없이 접근 가능하도록 변경
 
   // 영업사원으로 로그인한 경우 전용 대시보드 표시
   if (isAuthenticated && user?.role === "SALESPERSON") {
     return <SalespersonDashboard />;
   }
 
-  // 로그인된 사용자도 랜딩 페이지에 접근할 수 있도록 자동 리다이렉트 제거
-
   return (
-    <div className="landing-root">
-      {/* Hero Section */}
-      <section className="landing-hero-section">
-        <div className="landing-hero-bg">
-          <div className="landing-hero-inner">
-            <div className="landing-hero-title-group">
-              <h2 className="landing-hero-title">
-                마케팅의 새로운 기준
-                <br />
-                AI 간편 마케팅 도우미,{" "}
-                <span className="landing-hero-blue">에이마</span>
-              </h2>
-              <p className="landing-hero-desc">
-                클릭 한 번으로 시작하는 쉽고 빠른 가게 홍보
-                <br />
-                에이마로 확실한 매출 효과를 경험하세요!
-              </p>
-              <Link href="/target-marketing" className="landing-hero-btn">
-                지금 바로 시작하기
-              </Link>
-            </div>
-            <div className="landing-hero-rocket" aria-hidden>
-              <Image
-                src="/images/rocket.svg"
-                alt="로켓 일러스트"
-                width={416}
-                height={416}
-                className="landing-hero-rocket-img"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Section */}
-      <section className="landing-why-section">
-        <h3 className="landing-why-title">
-          마케팅 어렵고 비싸서 포기하셨나요?
-          <br />
-          절차는 간단하게, 효과는 확실하게!
-        </h3>
-        <p className="landing-why-desc">
-          에이마라면 복잡한 과정 없이
-          <br />내 주변 고객에게 바로, 저렴하게 홍보할 수 있어요.
-        </p>
-        <div className="landing-why-benefits">
-          <div className="landing-why-benefit-card">
-            <h4>광고비 최대 60% 절감</h4>
-            <p>
-              불특정 다수에게 보내는 비효율적인 홍보는 이제 그만
-              <br />
-              실제로 반응할 가능성이 높은 고객에게만 정확하게 도달하니까
-              <br />
-              광고비는 줄이고, 효과는 상승
-            </p>
-          </div>
-          <div className="landing-why-benefit-card">
-            <h4>원하는 시간에, 바로 반응</h4>
-            <p>
-              가게 주변 고객에게 내가 정한 시간에 맞춰 직접 홍보
-              <br />
-              방문율은 물론, 단골로 이어질 확률까지 높아져요.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Use Case Section */}
-      <section className="landing-usecase-section">
-        <div className="landing-usecase-row">
-          <div className="landing-usecase-text">
-            <h4>
-              주변 직장인·가족 단위 고객에게
-              <br />
-              점심·저녁 시간 맞춤 홍보
-            </h4>
-            <p>
-              방문할 가능성이 높은 고객만 골라 보내니까
-              <br />
-              홍보비 부담은 줄고, 고기 굽는 테이블은 늘어나요
-            </p>
-          </div>
-          <div className="landing-usecase-img"></div>
-        </div>
-        <div className="landing-usecase-row landing-usecase-row-reverse">
-          <div className="landing-usecase-text">
-            <h4>예약 없는 시간대, 빈자리 채워보세요</h4>
-            <p>
-              평일 한산한 시간엔 근처 고객에게 딱 맞춰 할인 알림림
-              <br />
-              단골 유입은 물론, 예약률도 자연스럽게 올라갑니다
-            </p>
-          </div>
-          <div className="landing-usecase-img">
-            <Image
-              src="/images/hairshop.png"
-              alt="미용실 예시"
-              width={340}
-              height={240}
-            />
-          </div>
-        </div>
-        <div className="landing-usecase-row">
-          <div className="landing-usecase-text">
-            <h4>
-              혼자 운영해도
-              <br />
-              마케팅은 자동으로 해결
-            </h4>
-            <p>
-              시간 들이지 않아도 AI가 고객 타깃부터 홍보까지 착착
-              <br />
-              적은 예산으로 꼭 필요한 고객에게 도달 가능
-            </p>
-          </div>
-          <div className="landing-usecase-img">
-            <Image
-              src="/images/flower.png"
-              alt="플라워샵 예시"
-              width={340}
-              height={240}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* AI Section */}
-      <section className="landing-ai-section">
-        <h3 className="landing-ai-title">
-          홍보 문구 고민 끝<br />
-          제작부터 설정까지, AI가 알아서
-        </h3>
-        <p className="landing-ai-desc">
-          마케팅 전문가가 아니어도 괜찮아요.
-          <br />
-          AI가 업종에 맞는 템플릿과 타깃 고객 설정까지 자동으로 만들어줍니다.
-        </p>
-        <div className="landing-ai-images">
-          <Image
-            src="/images/ai-1.png"
-            alt="AI 문구 생성 예시"
-            width={348}
-            height={361}
-          />
-          <Image
-            src="/images/ai-2.png"
-            alt="AI 아이콘"
-            width={187}
-            height={241}
-          />
-          <Image
-            src="/images/ai-3.png"
-            alt="AI 홍보 예시"
-            width={205}
-            height={460}
-          />
-          <Image
-            src="/images/ai-4.png"
-            alt="AI 타깃 예시"
-            width={373}
-            height={248}
-          />
-        </div>
-      </section>
-
-      {/* Smart Marketing Section */}
-      <section className="landing-smart-section">
-        <h3 className="landing-smart-title">
-          우리 가게를 바로 알리는 스마트 마케팅
-        </h3>
-        <p className="landing-smart-desc">
-          에이마는 국내 최대 카드사 빅데이터 분석을 통해
-          <br />
-          가게에 딱 맞는 고객에게 홍보 메시지를 즉시 전달해요.
-        </p>
-        <div className="landing-smart-images">
-          <Image
-            src="/images/store.png"
-            alt="가게 일러스트"
-            width={391}
-            height={359}
-          />
-          <Image
-            src="/images/sms-picture.png"
-            alt="홍보 메시지 그림"
-            width={410}
-            height={273}
-          />
-          <Image
-            src="/images/sms-examples.png"
-            alt="홍보 메시지 예시"
-            width={630}
-            height={335}
-          />
-        </div>
-        <p className="landing-smart-footer">
-          카드 승인 문자 또는 모바일 영수증에
-          <br />
-          우리 가게 홍보 문구를 실어 고객에게 즉시 전송해요.
-        </p>
-      </section>
-
-      {/* Testimonial Section */}
-      <section className="landing-testimonial-section">
-        <h3 className="landing-testimonial-title">
-          에이마로 우리 가게 홍보가 쉬워졌어요
-        </h3>
-        <div className="landing-testimonial-list">
-          <div className="landing-testimonial-item">
-            <div className="landing-testimonial-avatar landing-testimonial-avatar1"></div>
-            <div className="landing-testimonial-bubble">
-              <p>
-                &quot;예전엔 전단지 돌리거나 블로그 글 쓰는 데만 시간을 엄청
-                썼거든요.
-                <br />
-                에이마 쓰고 나서는 손님들이 바로 알아보고 와요.
-                <br />
-                진짜 필요한 분들한테만 홍보가 되니까 너무 편하고 효과도
-                좋아요.&quot;
-                <br />
-                <span className="landing-testimonial-name">
-                  - 송파구 미용실 사장님
-                </span>
-              </p>
-            </div>
-          </div>
-          <div className="landing-testimonial-item">
-            <div className="landing-testimonial-avatar landing-testimonial-avatar2"></div>
-            <div className="landing-testimonial-bubble">
-              <p>
-                &quot;카페 홍보는 늘 감으로 했는데,
-                <br />
-                이제는 AI가 알려주니까 정말 정확하게 다가갈 수 있더라고요.
-                <br />
-                에이마 덕분에 시간도 줄고, 단골도 늘었어요.&quot;
-                <br />
-                <span className="landing-testimonial-name">
-                  - 성수동 카페 사장님
-                </span>
-              </p>
-            </div>
-          </div>
-          <div className="landing-testimonial-item">
-            <div className="landing-testimonial-avatar landing-testimonial-avatar3"></div>
-            <div className="landing-testimonial-bubble">
-              <p>
-                &quot;혼자 가게 하면서 마케팅까지 하려니 너무 막막했어요.
-                <br />
-                에이마는 정말 간편해서 설정도 쉽고, 손님들한테 바로 홍보되니까
-                <br />
-                시간 아끼고 고기도 더 많이 팔게 됐습니다.&quot;
-                <br />
-                <span className="landing-testimonial-name">
-                  - 노원구 고깃집 사장님
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 혜택 Section */}
-      <section className="landing-benefit-section">
-        <h3 className="landing-benefit-title">
-          신규 광고주님께 드리는
-          <br /> 특별한 혜택
-        </h3>
-        <div className="landing-benefit-box">
-          <div className="landing-benefit-content">
-            <span className="landing-benefit-label">포인트 적립 혜택</span>
-            <span className="landing-benefit-desc">
-              결제 금액의 최대 5%를
-              <br /> 포인트로 적립해 드립니다.
-            </span>
-          </div>
-          <div className="landing-benefit-image">
-            <Image
-              src="/images/gift.png"
-              alt="선물 이미지"
-              width={290}
-              height={210}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="landing-cta-section">
-        <h3 className="landing-cta-title">
-          매출을 높이는 단 하나의 솔루션
-          <br />
-          지금 에이마로 시작하세요!
-        </h3>
-        <Link href="/target-marketing" className="landing-cta-btn">
-          무료로 시작하기
-        </Link>
-      </section>
+    <div className="min-h-screen">
+      <main>
+        <HeroSection />
+        <TestimonialsSection />
+        <FeaturesSection />
+        <AIDemo />
+        <CTASection />
+      </main>
     </div>
   );
 }
