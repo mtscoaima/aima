@@ -198,65 +198,140 @@ function AIDemo() {
     <section className="py-16 md:py-24 bg-white">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12 md:mb-16">
-          <h2 className="font-extrabold text-3xl md:text-4xl lg:text-5xl text-[#333333] mb-6 tracking-[-0.3px] leading-tight">
+          <h2 className="font-extrabold text-3xl md:text-4xl lg:text-5xl xl:text-[52px] text-[#333333] mb-6 tracking-[-0.3px] leading-tight">
             누구나 쉽게 쓰는 AI 마케팅 도우미
           </h2>
-          <p className="font-medium text-lg md:text-xl lg:text-2xl text-[#46474c] leading-relaxed max-w-4xl mx-auto">
-            <span className="block mb-2">AI가 광고 메시지 내용 부터 타깃 설정까지 자동으로 도와주니까</span>
-            <span>복잡한 마케팅도 이제 몇 분이면 끝나요</span>
+          <p className="font-medium text-lg md:text-xl lg:text-[22px] text-[#46474c] leading-[30px] max-w-4xl mx-auto">
+            AI가 광고 메시지 내용 부터 타깃 설정까지 자동으로 도와주니까<br />
+            복잡한 마케팅도 이제 몇 분이면 끝나요
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          {/* 체크리스트 */}
-          <div className="space-y-6 md:space-y-8">
-            {steps.map((step, index) => (
-              <div key={index} className="flex items-start gap-4">
-                <CheckIcon />
-                <p className="font-semibold text-lg md:text-xl lg:text-2xl text-[#3b3b3b] leading-relaxed">
-                  {step}
-                </p>
+        {/* AI 데모 인터페이스 */}
+        <div className="bg-[#dfeffe] rounded-[20px] p-8 md:p-12 lg:p-16 max-w-[1200px] mx-auto">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+            {/* 왼쪽: 체크리스트와 AI 채팅 */}
+            <div className="space-y-8">
+              {/* 체크리스트 */}
+              <div className="space-y-4 md:space-y-6">
+                {steps.map((step, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <CheckIcon />
+                    <p className="font-semibold text-base md:text-lg lg:text-[25px] text-[#3b3b3b] leading-relaxed">
+                      {step}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* 모바일 앱 미리보기 */}
-          <div className="flex justify-center">
-            <div className="grid md:grid-cols-2 gap-4 md:gap-6 max-w-md">
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="h-32 md:h-40 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
-                  <span className="text-orange-600 font-bold">피자 이미지</span>
+              {/* AI 채팅 인터페이스 */}
+              <div className="mt-8 relative">
+                <div className="bg-[#1681ff] inline-block px-6 py-2 rounded-full mb-4">
+                  <span className="text-white font-semibold text-sm md:text-base">에이마 AI 에이전트</span>
                 </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-sm md:text-base text-black mb-2">
-                    첫 방문 고객 할인 혜택!
-                  </h3>
-                  <p className="font-medium text-xs md:text-sm text-black leading-relaxed">
-                    처음 오신 고객님께 드리는 작은 선물 🎁 피자 메뉴 주문 시 시원한 콜라 1잔을 무료로 제공합니다.
+                
+                <div className="bg-white rounded-[24px] p-6 shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] border border-[#1681ff] relative">
+                  <p className="text-black font-medium text-base md:text-lg lg:text-[26px] leading-relaxed">
+                    첫 방문 고객을 위한 할인 혜택 광고 만들어줘
                   </p>
-                  <div className="flex gap-2 mt-3">
-                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">매장 위치</span>
-                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">홈페이지</span>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-[#1681ff] rounded-xl p-2">
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* AI 생성 중 표시 */}
+                <div className="flex gap-2 mt-4 ml-4">
+                  <div className="w-3 h-3 bg-[#1681ff] rounded-full animate-pulse"></div>
+                  <div className="w-3 h-3 bg-[#1681ff] opacity-50 rounded-full animate-pulse delay-75"></div>
+                  <div className="w-3 h-3 bg-[#1681ff] opacity-10 rounded-full animate-pulse delay-150"></div>
+                </div>
+
+                {/* 로봇 이미지 */}
+                <div className="absolute -bottom-8 right-0 lg:right-8 w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 transform rotate-[12deg]">
+                  <div className="w-full h-full bg-gradient-to-br from-blue-200 to-blue-300 rounded-2xl flex items-center justify-center shadow-lg">
+                    <span className="text-blue-600 font-bold text-xl">AI 로봇</span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="h-32 md:h-40 bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
-                  <span className="text-purple-600 font-bold">이벤트 이미지</span>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-sm md:text-base text-black mb-2">
-                    새로운 혜택 소식!
-                  </h3>
-                  <p className="font-medium text-xs md:text-sm text-black leading-relaxed">
-                    이번 주말 특별 이벤트를 놓치지 마세요. 더 많은 혜택이 기다리고 있습니다.
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">홈페이지</span>
-                    <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-xs rounded border border-[#5bbbff]">블로그</span>
+            {/* 오른쪽: 모바일 미리보기 */}
+            <div className="flex justify-center items-center">
+              <div className="relative">
+                {/* 모바일 프레임 */}
+                <div className="bg-[#666666] rounded-[30px] p-2 shadow-2xl">
+                  <div className="bg-[#e9edf0] rounded-[20px] p-4 w-[300px] md:w-[350px] h-[600px] md:h-[650px] overflow-y-auto">
+                    {/* 상태바 */}
+                    <div className="bg-[#d9d9d9] h-2 w-20 rounded-full mx-auto mb-4"></div>
+                    
+                    {/* 컨텐츠 카드들 */}
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="h-32 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+                          <span className="text-orange-600 font-bold">피자 이미지</span>
+                        </div>
+                        <div className="p-3">
+                          <h3 className="font-bold text-sm text-black mb-2">
+                            첫 방문 고객 할인 혜택!
+                          </h3>
+                          <p className="font-medium text-xs text-black leading-relaxed mb-3">
+                            처음 오신 고객님께 드리는 작은 선물 🎁<br />
+                            피자 메뉴 주문 시 시원한 콜라 1잔을 무료로 제공합니다.<br />
+                            맛있는 피자를 더 특별하게 즐겨보세요!
+                          </p>
+                          <div className="flex gap-2">
+                            <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-[10px] rounded border border-[#5bbbff]">매장 위치</span>
+                            <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-[10px] rounded border border-[#5bbbff]">홈페이지</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="h-32 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                          <span className="text-blue-600 font-bold">항공 이미지</span>
+                        </div>
+                        <div className="p-3">
+                          <h3 className="font-bold text-sm text-black mb-2">
+                            제주로 떠나는 특별한 혜택
+                          </h3>
+                          <p className="font-medium text-xs text-black leading-relaxed mb-3">
+                            한국 항공과 함께 제주 여행 떠나세요!<br />
+                            항공편 예약 시 제주도 렌트카 1만원 할인 쿠폰을 드립니다.<br />
+                            지금 바로 특별한 제주 여행을 준비해보세요 ✈️🌼
+                          </p>
+                          <div className="flex gap-2">
+                            <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-[10px] rounded border border-[#5bbbff]">홈페이지</span>
+                            <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-[10px] rounded border border-[#5bbbff]">블로그</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="h-32 bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                          <span className="text-green-600 font-bold">학원 이미지</span>
+                        </div>
+                        <div className="p-3">
+                          <h3 className="font-bold text-sm text-black mb-2">
+                            우리 아이 맞춤 학습 진단+2회 체험 수업!
+                          </h3>
+                          <p className="font-medium text-xs text-black leading-relaxed mb-3">
+                            우리 아이 공부, 어디서부터 시작할까요?<br />
+                            지금 상담 예약하고 아이의 가능성을 직접 확인해보세요!
+                          </p>
+                          <div className="flex gap-2">
+                            <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-[10px] rounded border border-[#5bbbff]">학원 위치</span>
+                            <span className="px-2 py-1 bg-[#f5fafe] text-[#1b9cff] text-[10px] rounded border border-[#5bbbff]">홈페이지</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+                
+                {/* 모바일 프레임 테두리 */}
+                <div className="absolute inset-0 border-[10px] border-black rounded-[30px] pointer-events-none"></div>
               </div>
             </div>
           </div>
