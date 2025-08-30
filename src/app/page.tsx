@@ -16,8 +16,8 @@ function ResponsiveButton({ children, className = "" }: { children: React.ReactN
 
 function HeroSection() {
   return (
-    <section className="relative min-h-[600px] md:min-h-[700px] bg-gradient-to-br from-blue-50 to-white overflow-hidden pt-20 md:pt-24">
-      <div className="container mx-auto px-4 py-12 md:py-16 lg:py-20">
+    <section className="relative min-h-[600px] md:min-h-[700px] bg-gradient-to-br from-blue-50 to-white overflow-hidden pt-20 md:pt-32 lg:pt-16">
+      <div className="container mx-auto px-4 py-12 md:py-16 lg:py-16">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[500px]">
           {/* 텍스트 콘텐츠 */}
           <div className="space-y-6 md:space-y-8 text-center lg:text-left">
@@ -46,53 +46,13 @@ function HeroSection() {
           </div>
 
           {/* 이미지 콘텐츠 */}
-          <div className="relative h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center">
-            <div className="absolute top-0 left-4 md:left-8 w-32 h-32 md:w-40 md:h-40 transform rotate-[-15deg]">
-              <Image
-                src="/images/landing/ai-icon.svg"
-                alt="AI 아이콘"
-                width={160}
-                height={160}
-                className="w-full h-full"
-              />
-            </div>
-            
-            <div className="absolute top-16 md:top-20 right-4 md:right-8 w-12 h-12 md:w-16 md:h-16">
-              <Image
-                src="/images/landing/star.svg"
-                alt="별 아이콘"
-                width={64}
-                height={64}
-                className="w-full h-full"
-              />
-            </div>
-            
-            <div className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96">
+          <div className="relative h-[450px] md:h-[550px] lg:h-[650px] flex items-center justify-center">
+            <div className="w-[350px] h-[350px] md:w-[450px] md:h-[450px] lg:w-[550px] lg:h-[550px] xl:w-[600px] xl:h-[600px]">
               <Image
                 src="/images/landing/aima-logo.svg"
                 alt="에이마 로고"
-                width={384}
-                height={384}
-                className="w-full h-full"
-              />
-            </div>
-            
-            <div className="absolute bottom-4 md:bottom-8 right-8 md:right-12 w-24 h-24 md:w-32 md:h-32 transform rotate-[10deg]">
-              <Image
-                src="/images/landing/chart.svg"
-                alt="차트 아이콘"
-                width={128}
-                height={128}
-                className="w-full h-full"
-              />
-            </div>
-            
-            <div className="absolute bottom-16 md:bottom-20 left-8 md:left-12 w-8 h-8 md:w-10 md:h-10">
-              <Image
-                src="/images/landing/diamond.svg"
-                alt="다이아몬드 아이콘"
-                width={40}
-                height={40}
+                width={600}
+                height={600}
                 className="w-full h-full"
               />
             </div>
