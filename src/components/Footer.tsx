@@ -44,15 +44,6 @@ export default function Footer() {
             </div>
             <div>평일 10:00 ~ 17:00 (점심 12:00~13:00) 주말, 공휴일 제외</div>
           </div>
-          <div className="footer-landing-certifications">
-            <Image
-              src="/images/cert.png"
-              alt="인증마크1"
-              width={417}
-              height={97}
-              className="footer-landing-cert-img"
-            />
-          </div>
         </div>
       </div>
     </footer>
