@@ -2844,12 +2844,13 @@ body .landing-root .main-content {
   display: flex;
   gap: 12px;
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 .footer-landing-cert-img {
   object-fit: contain;
-  background: #f5f5f5;
+  background: transparent;
   border-radius: 8px;
-  margin-left: -50px;
+  margin-left: 0;
 }
 
 @media (max-width: 900px) {
