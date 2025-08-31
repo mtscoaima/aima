@@ -34,6 +34,12 @@ export interface Transaction {
   timestamp?: string;
 }
 
+type KnownMetadata = Record<string, string | number | boolean> & {
+  isReward?: boolean;
+  rewardLevel?: string | number | boolean;
+  rewardType?: string | number | boolean;
+};
+
 interface BalanceData {
   balance: number;
   reservedAmount: number;
@@ -262,11 +268,11 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
         .filter((t) => {
           if (t.type !== "charge") return false;
           const desc = (t.description || "").toString();
-          const meta = t.metadata || {};
+          const meta = (t.metadata || {}) as KnownMetadata;
           const isReward =
-            (meta as any).isReward === true ||
-            Object.prototype.hasOwnProperty.call(meta || {}, "rewardLevel") ||
-            Object.prototype.hasOwnProperty.call(meta || {}, "rewardType") ||
+            meta.isReward === true ||
+            "rewardLevel" in meta ||
+            "rewardType" in meta ||
             desc.includes("리워드");
           return isReward;
         })
