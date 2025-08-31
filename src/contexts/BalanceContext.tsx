@@ -57,6 +57,7 @@ interface BalanceContextType {
     metadata?: Record<string, string | number | boolean>
   ) => Promise<void>;
   calculateBalance: () => number;
+  calculatePoints: () => number;
   getReservedAmount: () => number;
   getAvailableBalance: () => number;
   getTransactionHistory: () => Transaction[];
@@ -254,6 +255,27 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     return balanceData.balance;
   };
 
+  // 적립금(포인트) 계산: 리워드 트랜잭션의 합계만 집계
+  const calculatePoints = (): number => {
+    try {
+      return balanceData.transactions
+        .filter((t) => {
+          if (t.type !== "charge") return false;
+          const desc = (t.description || "").toString();
+          const meta = t.metadata || {};
+          const isReward =
+            (meta as any).isReward === true ||
+            Object.prototype.hasOwnProperty.call(meta || {}, "rewardLevel") ||
+            Object.prototype.hasOwnProperty.call(meta || {}, "rewardType") ||
+            desc.includes("리워드");
+          return isReward;
+        })
+        .reduce((sum, t) => sum + Math.max(0, t.amount), 0);
+    } catch {
+      return 0;
+    }
+  };
+
   const getReservedAmount = (): number => {
     return balanceData.reservedAmount;
   };
@@ -329,6 +351,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     formatCurrency,
     addTransaction,
     calculateBalance,
+    calculatePoints,
     getReservedAmount,
     getAvailableBalance,
     getTransactionHistory,

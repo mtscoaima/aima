@@ -8,6 +8,7 @@ interface CreditBalanceProps {
 export function CreditBalance({ refreshKey }: CreditBalanceProps) {
   const {
     calculateBalance,
+    calculatePoints,
     isLoading,
     refreshTransactions,
   } = useBalance();
@@ -22,12 +23,6 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
   }, [refreshKey, refreshTransactions]);
 
   const currentBalance = calculateBalance();
-  
-  // 적립금 계산 (대시보드와 동일한 로직: balance / 20)
-  const calculatePoints = () => {
-    return Math.floor(currentBalance / 20);
-  };
-
   const points = calculatePoints();
 
   if (isLoading) {

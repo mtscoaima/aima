@@ -188,6 +188,7 @@ async function processReferralRewards(
           description: `${level}차 추천 리워드`,
           reference_id: `${referenceId}_reward_${level}`,
           metadata: {
+            isReward: true,
             rewardLevel: level,
             originalReferenceId: referenceId,
             originalUserId: userId,

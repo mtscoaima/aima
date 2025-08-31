@@ -44,7 +44,7 @@ interface AdCostData {
 
 export default function AdvertiserDashboard() {
   const { user } = useAuth();
-  const { balanceData, formatCurrency, isLoading: isBalanceLoading } = useBalance();
+  const { balanceData, formatCurrency, isLoading: isBalanceLoading, calculatePoints } = useBalance();
 
   // 사용자 정보 상태
   const [userData, setUserData] = useState<UserInfoResponse | null>(null);
@@ -381,8 +381,8 @@ export default function AdvertiserDashboard() {
                          <div className="text-xl text-gray-900">{formatCurrency(balanceData.balance)}</div>
                        </div>
                        <div className="text-center border-l pl-4">
-                         <div className="text-sm text-gray-900 font-semibold mb-1">적립금</div>
-                         <div className="text-xl text-gray-900">{Math.floor(balanceData.balance / 20).toLocaleString()} 원</div>
+                       <div className="text-sm text-gray-900 font-semibold mb-1">적립금</div>
+                         <div className="text-xl text-gray-900">{calculatePoints().toLocaleString()} 원</div>
                        </div>
                      </div>
                      <div className="flex justify-center pt-2">
