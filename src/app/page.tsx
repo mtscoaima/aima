@@ -39,7 +39,7 @@ function HeroSection() {
             </div>
             
             <div className="pt-4 md:pt-6">
-              <Link href="/target-marketing">
+              <Link href="/signup">
                 <ResponsiveButton>에이마 가입하기</ResponsiveButton>
               </Link>
             </div>
@@ -388,7 +388,7 @@ function CTASection() {
           <p className="font-medium text-lg md:text-xl text-white/90 mb-8 md:mb-12 leading-relaxed">
             AI 마케팅으로 매출 향상을 경험해보세요
           </p>
-          <Link href="/target-marketing">
+          <Link href="/signup">
             <button className="bg-white text-[#1681FF] px-6 py-3 md:px-8 md:py-4 rounded-2xl font-bold text-sm md:text-base hover:bg-gray-100 transition-colors">
               무료로 시작하기
             </button>
