@@ -93,7 +93,7 @@ function TargetMarketingDetailContent({
   const initialQuestions = useMemo(() => [
     "광고의 목적은 무엇인가요? (답변예시 : 신규고객 유입, 단골고객 확보, 리뷰 및 SNS, 안내)",
     "제공할 혜택이 있다면, 혜택 내용과 제공하는 기간을 알려주세요.(없다면 없다고 말씀해주세요.)",
-    "이번 광고메시지를 어떤 고객에게 전달하고 싶으신가요?"
+    "광고에 사용하고 싶은 이미지가 있다면 올려주세요. 없다면 없다고 말씀해주세요."
   ], []);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
