@@ -395,6 +395,18 @@ export async function PUT(request: NextRequest) {
       };
     }
 
+    // 승인 상태 직접 변경 허용 (APPROVED/PENDING/REJECTED)
+    if (
+      typeof updateData.approval_status === 'string' &&
+      ["APPROVED", "PENDING", "REJECTED"].includes(updateData.approval_status)
+    ) {
+      updateFields.approval_status = updateData.approval_status;
+      // 승인 시 계정 활성화 동기화
+      if (updateData.approval_status === "APPROVED") {
+        updateFields.is_active = true;
+      }
+    }
+
     // 승인 상태 변경 시 로그 기록
     if (updateFields.approval_status && currentUser.approval_status !== updateFields.approval_status) {
       const { data: adminUser } = await supabase
