@@ -2536,6 +2536,14 @@ function TargetMarketingDetailContent({
     });
   }, [adMedium, targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, calculateUnitCost]);
 
+  // 마지막 어시스턴트 메시지 인덱스 (표는 마지막 답변에만 표시)
+  const lastAssistantIndex = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]?.role === "assistant") return i;
+    }
+    return -1;
+  }, [messages]);
+
   // 승인 요청 완료 페이지 표시
   if (showApprovalComplete) {
     return (
@@ -2552,7 +2560,7 @@ function TargetMarketingDetailContent({
         {/* 좌측: AI 채팅 영역 */}
         <div className="flex-1 flex flex-col p-6 bg-white border-r border-gray-200 max-w-[800px] w-full">
           <div className="flex-1 overflow-y-auto pb-4 flex flex-col gap-4 max-h-[calc(100vh-550px)] scroll-smooth" ref={chatMessagesRef}>
-            {messages.map((message) => (
+            {messages.map((message, idx) => (
               <div
                 key={message.id}
                 className={`flex flex-col max-w-[80%] mb-4 ${
@@ -2630,9 +2638,9 @@ function TargetMarketingDetailContent({
                     </div>
                   )}
                   <NumberedParagraph text={message.content} />
-                  {message.role === "assistant" && structuredRecommendation?.length > 0 && (
-                    <StructuredRecommendationTable sections={structuredRecommendation} />)
-                  }
+                  {message.role === "assistant" && idx === lastAssistantIndex && structuredRecommendation?.length > 0 && (
+                    <StructuredRecommendationTable sections={structuredRecommendation} />
+                  )}
                 </div>
                 {/* AI 답변에만 빠른 버튼 표시 (로딩 중이 아니고 질문이 아닐 때만) */}
                 {message.role === "assistant" && !showTypingIndicator && !message.isQuestion && (
