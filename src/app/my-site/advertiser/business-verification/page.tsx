@@ -36,8 +36,17 @@ const AlertModal: React.FC<AlertModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg p-0 max-w-96 w-4/5 shadow-xl">
+    <div
+      className="fixed inset-0 backdrop-blur-sm flex justify-center items-center z-50"
+      style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-white rounded-lg p-0 max-w-96 w-4/5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="px-6 pt-6 pb-0 border-b border-gray-200">
           <h3 className="m-0 text-xl font-semibold text-gray-700 pb-4">{title}</h3>
         </div>
@@ -974,8 +983,17 @@ export default function BusinessVerificationPage() {
 
       <AlertModal isOpen={showModal} title={modalTitle} message={modalMessage} onClose={closeModal} />
       {showAddressModal && (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg p-0 max-w-lg w-11/12 shadow-xl">
+        <div
+          className="fixed inset-0 backdrop-blur-sm flex justify-center items-center z-50"
+          style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
+          onClick={closeAddressModal}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="bg-white rounded-lg p-0 max-w-lg w-11/12 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 pt-6 pb-0 border-b border-gray-200">
               <h3 className="m-0 text-xl font-semibold text-gray-700 pb-4">주소 검색</h3>
             </div>

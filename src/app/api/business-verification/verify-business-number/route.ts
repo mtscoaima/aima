@@ -33,7 +33,10 @@ export async function POST(request: Request) {
     }
 
     // 공공데이터 포털 API 호출
-    const apiUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${serviceKey}`;
+    // 서비스 키는 URL 인코딩하여 전달 (특수문자 포함 가능)
+    const apiUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${encodeURIComponent(
+      serviceKey
+    )}`;
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -48,7 +51,7 @@ export async function POST(request: Request) {
       const errorText = await response.text();
       console.error("공공데이터 포털 API 오류:", response.status, errorText);
 
-      // API 응답에 따른 에러 처리
+      // API 응답에 따른 에러 처리 (매핑 개선)
       if (response.status === 400) {
         return NextResponse.json(
           { error: "잘못된 요청입니다." },
@@ -63,6 +66,16 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: "요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요." },
           { status: 429 }
+        );
+      } else if (response.status === 401 || response.status === 403) {
+        return NextResponse.json(
+          { error: "외부 서비스 인증 오류입니다. 서비스 키를 확인해주세요." },
+          { status: 502 }
+        );
+      } else if (response.status >= 500) {
+        return NextResponse.json(
+          { error: "외부 서비스 장애입니다. 잠시 후 다시 시도해주세요." },
+          { status: 502 }
         );
       } else {
         return NextResponse.json(
