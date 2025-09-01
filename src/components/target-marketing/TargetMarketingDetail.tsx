@@ -2464,10 +2464,10 @@ function TargetMarketingDetailContent({
 
   return (
     <div className="relative w-full max-w-[1920px] mx-auto bg-white">
-      <div className="flex flex-row min-h-screen bg-gray-100 relative gap-0 p-0">
+      <div className="flex flex-row max-h-[calc(100vh-300px)] bg-gray-100 relative gap-0 p-0">
         {/* 좌측: AI 채팅 영역 */}
         <div className="flex-1 flex flex-col p-6 bg-white border-r border-gray-200 max-w-[800px] w-full">
-          <div className="flex-1 overflow-y-auto pb-4 flex flex-col gap-4 max-h-[calc(100vh-200px)] scroll-smooth" ref={chatMessagesRef}>
+          <div className="flex-1 overflow-y-auto pb-4 flex flex-col gap-4 max-h-[calc(100vh-550px)] scroll-smooth" ref={chatMessagesRef}>
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -2736,8 +2736,8 @@ function TargetMarketingDetailContent({
         </div>
 
         {/* 우측: 캠페인 설정 영역 */}
-        <div className="flex-shrink-0">
-          <div className="w-[480px] bg-gray-200 border-l border-gray-200 flex flex-col max-h-screen overflow-y-auto">
+        <div className="flex-shrink-0 bg-white">
+          <div className="w-[480px] bg-gray-200 border-l border-gray-200 flex flex-col max-h-[calc(100vh-320px)] overflow-y-auto">
             {/* 캠페인 설정 섹션 */}
             <div className="bg-gray-100 p-4">
               <div className="flex justify-between items-center mb-4">
@@ -3155,7 +3155,7 @@ function TargetMarketingDetailContent({
 
               {/* 카드 사용 위치 */}
               <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 위치</div>
+                <div className="text-sm font-medium text-gray-700 mb-2">결제 위치</div>
                 <div className="flex gap-2 items-center">
                   <div className="flex-1">
                     <select
@@ -3220,7 +3220,7 @@ function TargetMarketingDetailContent({
 
                              {/* 타겟 업종 */}
                <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 업종</div>
+                 <div className="text-sm font-medium text-gray-700 mb-2">결제 업종</div>
                  <div className="grid grid-cols-2 gap-2">
                    <div>
                      <div className="text-xs text-gray-500 mb-1">대분류</div>
@@ -3257,9 +3257,9 @@ function TargetMarketingDetailContent({
                  </div>
                </div>
 
-                             {/* 카드 승인 금액 */}
+              {/* 카드 승인 금액 */}
                <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 금액</div>
+                 <div className="text-sm font-medium text-gray-700 mb-2">결제 승인 금액</div>
                  
                  {/* 금액 입력 필드 */}
                  <div className="mb-3">
@@ -3320,9 +3320,9 @@ function TargetMarketingDetailContent({
                    </div>
                </div>
 
-                                            {/* 카드 승인 시간 */}
+              {/* 카드 승인 시간 */}
                <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 시간</div>
+                 <div className="text-sm font-medium text-gray-700 mb-2">결제 승인 시간</div>
                  
                  {/* 시간 선택 드롭다운 */}
                  <div className="flex items-center gap-2 mb-3">
@@ -3413,7 +3413,7 @@ function TargetMarketingDetailContent({
               
               <div>
                 <p className="text-sm text-gray-800 mb-2">
-                  ※ 실시간 발송이란? 카드 승인 시점에 해당 카드를 사용한 광고 수신자에게 즉시 광고 메시지를 발송하는 방식입니다.
+                  ※ 실시간 발송이란? 결제 즉시 광고 메시지를 발송하는 방식입니다.
                 </p>
               </div>
 
