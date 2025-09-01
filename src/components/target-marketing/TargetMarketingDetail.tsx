@@ -2330,20 +2330,52 @@ function TargetMarketingDetailContent({
         }
       }
 
-      // 타겟 정보 적용 (캠페인 데이터에서 직접 가져오기)
-      const targetData = campaignData.target_criteria || campaignData.targetCriteria;
-      if (targetData) {
-        setTargetGender(targetData.gender || "all");
-        setTargetAge(targetData.age || ["all"]);
-        setTargetCity(targetData.city || "all");
-        setTargetDistrict(targetData.district || "all");
-        setTargetTopLevelIndustry(targetData.industry?.topLevel || "all");
-        setTargetIndustry(targetData.industry?.specific || "all");
-        setCardAmount(targetData.cardAmount || "10000");
-        setCardAmountInput(targetData.cardAmountInput || "1");
-        setCardStartTime(targetData.cardTime?.startTime || "08:00");
-        setCardEndTime(targetData.cardTime?.endTime || "18:00");
+      // 타겟 정보 적용 (개별 컬럼들에서 직접 가져오기)
+      // gender_ratio에서 성별 정보 추출
+      if (campaignData.gender_ratio) {
+        const { female, male } = campaignData.gender_ratio;
+        if (female > 0 && male === 0) {
+          setTargetGender("female");
+        } else if (male > 0 && female === 0) {
+          setTargetGender("male");
+        } else {
+          setTargetGender("all");
+        }
+      } else {
+        setTargetGender("all");
       }
+
+      // 연령 그룹 설정
+      setTargetAge(campaignData.target_age_groups || ["all"]);
+
+      // 위치 정보 설정 (target_locations_detailed에서 첫 번째 항목 사용)
+      if (campaignData.target_locations_detailed && campaignData.target_locations_detailed.length > 0) {
+        const firstLocation = campaignData.target_locations_detailed[0];
+        setTargetCity(firstLocation.city || "all");
+        setTargetDistrict(firstLocation.districts?.[0] || "all");
+        setSelectedLocations(campaignData.target_locations_detailed);
+      } else {
+        setTargetCity("all");
+        setTargetDistrict("all");
+      }
+
+      // 업종 정보 설정
+      setTargetTopLevelIndustry(campaignData.target_industry_top_level || "all");
+      setTargetIndustry(campaignData.target_industry_specific || "all");
+
+      // 카드 승인 금액 설정
+      if (campaignData.card_amount_min && campaignData.card_amount_max) {
+        const amount = campaignData.card_amount_min / 10000;
+        setCardAmount(amount.toString() + "0000");
+        setCardAmountInput(amount.toString());
+      } else {
+        setCardAmount("10000");
+        setCardAmountInput("1");
+      }
+
+      // 카드 승인 시간 설정
+      setCardStartTime(campaignData.card_time_start || "08:00");
+      setCardEndTime(campaignData.card_time_end || "18:00");
 
       // 버튼 정보 적용 (캠페인에서 buttons 가져오기)
       if (campaignData.buttons && Array.isArray(campaignData.buttons)) {
@@ -2417,29 +2449,15 @@ function TargetMarketingDetailContent({
         );
       }
 
-      // 대표 위치 선택 (호환용)
-      const primaryLocation = (() => {
-        if (selectedLocations.length > 0) {
-          const first = selectedLocations[0];
-          const primaryDistrict = first.districts?.[0] || "all";
-          return {
-            city: first.city,
-            district: primaryDistrict,
-          };
-        }
-        return {
-          city: targetCity,
-          district: targetDistrict,
-        };
-      })();
+      // primaryLocation 변수 제거됨 - 더 이상 사용하지 않음
 
-      // 캠페인 데이터 준비
+      // 캠페인 데이터 준비 (새로운 컬럼들 직접 사용)
       const campaignData = {
-        title: campaignName || templateTitle, // 캠페인 이름 우선, 없으면 템플릿 제목 사용
+        title: campaignName || templateTitle,
         content: smsTextContent,
         imageUrl: currentGeneratedImage,
-        adMedium: adMedium, // 광고매체 추가 (naver_talktalk 또는 sms)
-        sendPolicy: sendPolicy, // 실제 선택된 발송 정책
+        adMedium: adMedium,
+        sendPolicy: sendPolicy,
         validityStartDate: sendPolicy === "realtime" ? validityStartDate : null,
         validityEndDate: sendPolicy === "realtime" ? validityEndDate : null,
         scheduledSendDate:
@@ -2447,45 +2465,29 @@ function TargetMarketingDetailContent({
             ? scheduledDate?.toISOString().split("T")[0]
             : null,
         scheduledSendTime: sendPolicy === "batch" ? batchSendTime : null,
-        maxRecipients: actualMaxRecipients.toString(), // 실제 설정된 수신자 수
-        targetCount: sendPolicy === "batch" ? targetCount : null, // 타겟 대상자 수
-        existingTemplateId: existingTemplateId, // 기존 템플릿 ID 전달
-        // templateTitle 제거됨 - 데이터베이스에서 삭제된 필드
-        buttons: dynamicButtons, // 동적 버튼 데이터 추가
+        maxRecipients: actualMaxRecipients.toString(),
+        existingTemplateId: existingTemplateId,
+        // 새로운 데이터베이스 컬럼들 직접 사용
+        targetAgeGroups: targetAge && targetAge.length > 0 ? targetAge : ["all"],
+        targetLocationsDetailed: selectedLocations,
+        cardAmountMin: cardAmount === "all" ? null : parseInt(cardAmountInput) * 10000,
+        cardAmountMax: cardAmount === "all" ? null : parseInt(cardAmountInput) * 10000,
+        cardTimeStart: cardStartTime,
+        cardTimeEnd: cardEndTime,
+        targetIndustryTopLevel: targetTopLevelIndustry === "all" ? null : targetTopLevelIndustry,
+        targetIndustrySpecific: targetIndustry === "all" ? null : targetIndustry,
+        unitCost: unitCost,
+        estimatedTotalCost: totalCost,
+        expertReviewRequested: expertReviewRequested,
+        expertReviewNotes: null,
+        buttons: dynamicButtons,
         genderRatio: {
           female: femaleRatio,
           male: maleRatio,
-        }, // 성별 비율 데이터 추가
-        desiredRecipients: desiredRecipients.trim() || null, // 희망 수신자 입력 추가
-        expertReviewRequested: expertReviewRequested, // 전문가 검토 요청 여부
-        targetFilters: {
-          gender: targetGender,
-          // 연령 다중 선택 지원 (빈 배열이면 'all')
-          ageGroup: targetAge && targetAge.length > 0 ? targetAge : ["all"],
-          // 호환용 루트 속성도 함께 제공
-          age: targetAge && targetAge.length > 0 ? targetAge : ["all"],
-          // 단일 위치(대표) + 확장 locations 동시 제공
-          location: {
-            city: primaryLocation.city,
-            district: primaryLocation.district,
-          },
-          city: primaryLocation.city,
-          district: primaryLocation.district,
-          locations: selectedLocations,
-          costPerItem: unitCost,
-          industry: {
-            topLevel: targetTopLevelIndustry,
-            specific: targetIndustry,
-          },
-          cardAmount:
-            cardAmount === "all" ? cardAmount : `${cardAmountInput}0000`,
-          cardTime: {
-            startTime: cardStartTime,
-            endTime: cardEndTime,
-          },
         },
-        estimatedCost: totalCost, // 실제 계산된 예상 금액 사용
-        templateDescription: smsTextContent, // 템플릿 설명 추가
+        desiredRecipients: desiredRecipients.trim() || null,
+        estimatedCost: totalCost,
+        templateDescription: smsTextContent,
       };
 
       // 캠페인 생성 API 호출

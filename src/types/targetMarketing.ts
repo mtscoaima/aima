@@ -61,39 +61,25 @@ export interface Campaign {
     image_url?: string;
     category?: string;
   };
-  target_criteria?: {
-    gender?: string;
-    age?: string[];
-    city?: string;
-    district?: string;
-    industry?: {
-      topLevel?: string;
-      specific?: string;
-    };
-    cardAmount?: string;
-    cardAmountInput?: string;
-    cardTime?: {
-      startTime?: string;
-      endTime?: string;
-    };
+  // 새로운 개별 컬럼들
+  target_age_groups?: string[];
+  target_locations_detailed?: any[];
+  card_amount_min?: number;
+  card_amount_max?: number;
+  card_time_start?: string;
+  card_time_end?: string;
+  target_industry_top_level?: string;
+  target_industry_specific?: string;
+  unit_cost?: number;
+  estimated_total_cost?: number;
+  expert_review_requested?: boolean;
+  expert_review_notes?: string;
+  buttons?: any[];
+  gender_ratio?: {
+    female: number;
+    male: number;
   };
-  // 호환성을 위한 이전 필드들
-  targetCriteria?: {
-    gender?: string;
-    age?: string[];
-    city?: string;
-    district?: string;
-    industry?: {
-      topLevel?: string;
-      specific?: string;
-    };
-    cardAmount?: string;
-    cardAmountInput?: string;
-    cardTime?: {
-      startTime?: string;
-      endTime?: string;
-    };
-  };
+  desired_recipients?: string;
 }
 
 export interface Template {

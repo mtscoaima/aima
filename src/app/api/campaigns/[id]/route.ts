@@ -230,7 +230,7 @@ export async function PATCH(
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { name, requestApproval, cancelApprovalRequest, updateTargetCriteria, target_criteria, status } = body;
+    const { name, requestApproval, cancelApprovalRequest, updateTargetCriteria, status } = body;
 
     // 승인 요청인 경우, 승인 요청 취소인 경우, 타깃 조건 수정인 경우, 이름 수정인 경우 구분
     if (requestApproval) {
@@ -352,7 +352,7 @@ export async function PATCH(
       // 캠페인 존재 확인 및 소유자 확인
       const { data: campaign, error: campaignError } = await supabase
         .from("campaigns")
-        .select("id, status, user_id, target_criteria")
+        .select("id, status, user_id")
         .eq("id", campaignId)
         .eq("user_id", userId)
         .single();
@@ -372,40 +372,11 @@ export async function PATCH(
         );
       }
 
-      // 타깃 조건 검증
-      if (!target_criteria || typeof target_criteria !== "object") {
-        return NextResponse.json(
-          { success: false, message: "올바르지 않은 타깃 조건입니다." },
-          { status: 400 }
-        );
-      }
-
-      // 타깃 조건 업데이트
-      const { error: updateError } = await supabase
-        .from("campaigns")
-        .update({ 
-          target_criteria: target_criteria,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", campaignId)
-        .eq("user_id", userId);
-
-      if (updateError) {
-        console.error("캠페인 타깃 조건 수정 오류:", updateError);
-        return NextResponse.json(
-          { success: false, message: "캠페인 수정에 실패했습니다." },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: "캠페인이 성공적으로 수정되었습니다.",
-        data: {
-          id: campaignId,
-          target_criteria: target_criteria,
-        }
-      });
+      // 타깃 조건 수정 기능 제거됨 (target_criteria 삭제로 인해)
+      return NextResponse.json(
+        { success: false, message: "타깃 조건 수정 기능은 더 이상 지원되지 않습니다." },
+        { status: 400 }
+      );
     } else if (status) {
       // 상태 변경 처리
       // 유효한 상태값인지 확인 (새로운 4개 상태)

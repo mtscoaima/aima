@@ -29,16 +29,26 @@ export interface CreateCampaignRequest {
   scheduledSendDate?: string | null;
   scheduledSendTime?: string | null;
   maxRecipients: string;
-  targetCount?: number | null;
   existingTemplateId?: string | null;
-  // templateTitle 제거됨 - template_id로 대체 가능
+  // 새로운 데이터베이스 컬럼들
+  targetAgeGroups: string[];
+  targetLocationsDetailed?: any[];
+  cardAmountMin?: number | null;
+  cardAmountMax?: number | null;
+  cardTimeStart?: string | null;
+  cardTimeEnd?: string | null;
+  targetIndustryTopLevel?: string | null;
+  targetIndustrySpecific?: string | null;
+  unitCost?: number;
+  estimatedTotalCost?: number;
+  expertReviewRequested?: boolean;
+  expertReviewNotes?: string | null;
   buttons?: DynamicButton[];
   genderRatio?: {
     female: number;
     male: number;
   };
   desiredRecipients?: string | null;
-  targetFilters: CampaignTargetFilters;
   estimatedCost: number;
   templateDescription: string;
 }
