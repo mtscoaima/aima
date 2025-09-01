@@ -57,6 +57,8 @@ import * as validationUtils from "@/utils/validationUtils";
 import * as storageUtils from "@/utils/storageUtils";
 import * as idUtils from "@/utils/idUtils";
 import { tokenManager } from "@/lib/api";
+import StructuredRecommendationTable from "./StructuredRecommendationTable";
+import NumberedParagraph from "./NumberedParagraph";
 // styles import removed - using Tailwind CSS instead
 
 function TargetMarketingDetailContent({
@@ -80,6 +82,7 @@ function TargetMarketingDetailContent({
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [smsTextContent, setSmsTextContent] = useState("");
   const [quickActionButtons, setQuickActionButtons] = useState<Array<{text: string}>>([]);
+  const [structuredRecommendation, setStructuredRecommendation] = useState<Array<{ section: string; items: string[] }>>([]);
   const [currentGeneratedImage, setCurrentGeneratedImage] = useState<
     string | null
   >(null);
@@ -516,6 +519,7 @@ function TargetMarketingDetailContent({
       smsTextContent,
       currentGeneratedImage,
       dynamicButtons,
+      structuredRecommendation,
       
       // 캠페인 설정
       campaignName,
@@ -561,7 +565,7 @@ function TargetMarketingDetailContent({
     storageUtils.saveTargetMarketingState(currentState);
   }, [
     messages, isFirstChat, hasShownFirstQuestion, currentQuestionIndex, userAnswers,
-    templateTitle, smsTextContent, currentGeneratedImage, dynamicButtons,
+    templateTitle, smsTextContent, currentGeneratedImage, dynamicButtons, structuredRecommendation,
     campaignName, adMedium, sendPolicy, validityStartDate, validityEndDate, maxRecipients, selectedPeriod,
     targetGender, targetAge, targetCity, targetDistrict, selectedLocations, targetTopLevelIndustry, targetIndustry,
     cardAmount, customAmount, cardAmountInput, cardStartTime, cardEndTime, selectedAmountButton, cardAmountInputValue, selectedTimeButton,
@@ -602,6 +606,9 @@ function TargetMarketingDetailContent({
       setSmsTextContent((state.smsTextContent as string) || "");
       setCurrentGeneratedImage((state.currentGeneratedImage as string) || null);
       setDynamicButtons((state.dynamicButtons as typeof dynamicButtons) || []);
+      if (state.structuredRecommendation) {
+        setStructuredRecommendation(state.structuredRecommendation as Array<{ section: string; items: string[] }>);
+      }
       
       // 캠페인 설정 복원
       setCampaignName((state.campaignName as string) || "캠페인01");
@@ -905,8 +912,13 @@ function TargetMarketingDetailContent({
                     setQuickActionButtons(data.quickActionButtons);
                   }
 
-                  if (data.templateData && data.templateData.title) {
+                  if (data.conciseTitle) {
+                    setTemplateTitle(data.conciseTitle);
+                  } else if (data.templateData && data.templateData.title) {
                     setTemplateTitle(data.templateData.title);
+                  }
+                  if (data.structuredRecommendation) {
+                    setStructuredRecommendation(data.structuredRecommendation);
                   }
 
                   setTimeout(() => {
@@ -986,8 +998,13 @@ function TargetMarketingDetailContent({
                     setCurrentGeneratedImage(data.imageUrl);
                   }
 
-                  if (data.templateData && data.templateData.title) {
+                  if (data.conciseTitle) {
+                    setTemplateTitle(data.conciseTitle);
+                  } else if (data.templateData && data.templateData.title) {
                     setTemplateTitle(data.templateData.title);
+                  }
+                  if (data.structuredRecommendation) {
+                    setStructuredRecommendation(data.structuredRecommendation);
                   }
 
                   if (data.imageUrl && data.templateData) {
@@ -1460,8 +1477,13 @@ function TargetMarketingDetailContent({
                 }
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - text_replace)
-                if (data.templateData && data.templateData.title) {
+                if (data.conciseTitle) {
+                  setTemplateTitle(data.conciseTitle);
+                } else if (data.templateData && data.templateData.title) {
                   setTemplateTitle(data.templateData.title);
+                }
+                if (data.structuredRecommendation) {
+                  setStructuredRecommendation(data.structuredRecommendation);
                 }
 
                 // 텍스트 교체 후 스크롤
@@ -1581,8 +1603,13 @@ function TargetMarketingDetailContent({
                 setIsImageGenerating(false);
 
                 // 템플릿 제목 업데이트 (API 응답에서 온 경우 - response_complete)
-                if (data.templateData && data.templateData.title) {
+                if (data.conciseTitle) {
+                  setTemplateTitle(data.conciseTitle);
+                } else if (data.templateData && data.templateData.title) {
                   setTemplateTitle(data.templateData.title);
+                }
+                if (data.structuredRecommendation) {
+                  setStructuredRecommendation(data.structuredRecommendation);
                 }
 
                 // 이미지가 생성된 경우 템플릿에 추가
@@ -2602,7 +2629,10 @@ function TargetMarketingDetailContent({
                       )}
                     </div>
                   )}
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <NumberedParagraph text={message.content} />
+                  {message.role === "assistant" && structuredRecommendation?.length > 0 && (
+                    <StructuredRecommendationTable sections={structuredRecommendation} />)
+                  }
                 </div>
                 {/* AI 답변에만 빠른 버튼 표시 (로딩 중이 아니고 질문이 아닐 때만) */}
                 {message.role === "assistant" && !showTypingIndicator && !message.isQuestion && (

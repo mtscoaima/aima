@@ -110,3 +110,9 @@ export interface Template {
   is_owner?: boolean;
   buttons?: DynamicButton[];
 }
+
+// AI 구조화 추천 섹션 타입
+export interface StructuredRecommendationSection {
+  section: string;
+  items: string[];
+}

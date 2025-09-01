@@ -52,14 +52,28 @@ export async function POST(request: NextRequest) {
             
             quick_action_buttons 버튼 텍스트는 최대 4개까지 포함해주세요.
             
-            응답은 다음 JSON 형식으로 포함해주세요:
+            응답은 다음 JSON 형식으로 포함해주세요. 반드시 유효한 JSON만 출력하고, 설명 텍스트는 출력하지 마세요.
+            - concise_title: 내용을 직관적이고 간단하게 요약(두괄식). 20자 이내를 권장.
+            - sms_text_content: 제목에 들어간 핵심 단어/구를 반복하지 않되, 의미가 빈약해지지 않도록 보완 설명 위주로 구성. 최대 2줄·90자 이내 유지.
+            - structured_recommendation: response 본문에서 핵심 권장사항을 항목별(섹션/아이템)로 요약한 표 데이터. 번호가 있는 항목(예: "1) 동선 단축: ...")은 섹션명, 콜론 뒤는 bullet로 분해. 번호가 없어도 "톤앤매너:" 등 의미 있는 키워드는 섹션으로 사용.
+            
             {
+              "concise_title": "두괄식 요약 제목",
               "response": "마케팅 조언 및 설명",
               "sms_text_content": "SMS/MMS 전송용 간결한 메시지 (90자 이내, 2줄 제한)",
               "quick_action_buttons": [
                 {
                   "text": "버튼 텍스트"
                 }
+              ],
+              "structured_recommendation": [
+                { "section": "동선 단축", "items": ["랜딩 상단에 리뷰 플랫폼 바로가기 버튼"] },
+                { "section": "사회적 증거", "items": ["최근 베스트 리뷰 2~3개", "평점 시각화"] },
+                { "section": "타이밍", "items": ["구매/방문 1~3시간 내 자동 발송"] },
+                { "section": "장벽 제거", "items": ["로그인/회원가입 없이 작성 가능한 링크"] },
+                { "section": "동기 강화", "items": ["‘리뷰로 더 나은 서비스’ 가치 제안", "우수 리뷰 소개(사전 동의)"] },
+                { "section": "채널 믹스", "items": ["영수증·QR·카톡 동시 운영"] },
+                { "section": "톤앤매너", "items": ["따뜻·정중", "요청은 짧고 명확하게"] }
               ]
             }
             
@@ -125,6 +139,8 @@ export async function POST(request: NextRequest) {
           let isJsonParsed = false;
           let isControllerClosed = false;
           let isQuestion = false;
+          let structuredRecommendation: Array<{ section: string; items: string[] }> | null = null;
+          let conciseTitle: string | null = null;
 
           // 컨트롤러 상태 확인 함수
           const safeEnqueue = (data: string) => {
@@ -175,6 +191,8 @@ export async function POST(request: NextRequest) {
                     smsTextContent = jsonResponse.sms_text_content || "";
                     quickActionButtons = jsonResponse.quick_action_buttons || [];
                     isQuestion = jsonResponse.is_question || false;
+                    structuredRecommendation = jsonResponse.structured_recommendation || null;
+                    conciseTitle = (jsonResponse.concise_title || "").toString();
                     isJsonParsed = true;
 
                     // 기존 텍스트를 지우고 새로운 텍스트로 교체
@@ -184,6 +202,8 @@ export async function POST(request: NextRequest) {
                       smsTextContent: smsTextContent,
                       quickActionButtons: quickActionButtons,
                       isQuestion: isQuestion,
+                      conciseTitle: conciseTitle,
+                      structuredRecommendation: structuredRecommendation,
                     });
                     safeEnqueue(`data: ${data}\n\n`);
                   }
@@ -269,6 +289,8 @@ export async function POST(request: NextRequest) {
                     smsTextContent = jsonResponse.sms_text_content || "";
                     quickActionButtons = jsonResponse.quick_action_buttons || [];
                     isQuestion = jsonResponse.is_question || false;
+                    structuredRecommendation = jsonResponse.structured_recommendation || null;
+                    conciseTitle = (jsonResponse.concise_title || "").toString();
                   } else {
                     displayText = fullText;
                     smsTextContent = extractSMSContent(fullText);
@@ -299,6 +321,8 @@ export async function POST(request: NextRequest) {
                 smsTextContent: smsTextContent,
                 quickActionButtons: quickActionButtons,
                 isQuestion: isQuestion,
+                conciseTitle: conciseTitle,
+                structuredRecommendation: structuredRecommendation,
               });
               safeEnqueue(`data: ${data}\n\n`);
               break;
