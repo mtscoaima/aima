@@ -14,7 +14,8 @@ import { saveCampaignDraft, clearCampaignDraft, fileToBase64, type CampaignDraft
 import {
   targetOptions,
   getDistrictsByCity,
-  getIndustriesByTopLevel,
+  fetchTopLevelIndustries,
+  fetchIndustriesByTopLevel,
 } from "@/lib/targetOptions";
 // Import separated types and hooks
 import {
@@ -122,6 +123,10 @@ function TargetMarketingDetailContent({
   >([]);
   const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
   const [targetIndustry, setTargetIndustry] = useState("all");
+  
+  // 동적 업종 데이터 상태
+  const [topLevelIndustries, setTopLevelIndustries] = useState([{ value: "all", label: "전체" }]);
+  const [industries, setIndustries] = useState([{ value: "all", label: "전체" }]);
   const [cardAmount, setCardAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT);
   const [customAmount, setCustomAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CUSTOM_AMOUNT);
   const [cardAmountInput, setCardAmountInput] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT_INPUT);
@@ -440,18 +445,41 @@ function TargetMarketingDetailContent({
     });
   };
 
+  // 컴포넌트 마운트 시 상위 업종 데이터 로딩
+  useEffect(() => {
+    const loadTopLevelIndustries = async () => {
+      try {
+        const data = await fetchTopLevelIndustries();
+        setTopLevelIndustries(data);
+      } catch (error) {
+        console.error('상위 업종 로딩 오류:', error);
+      } 
+    };
+
+    loadTopLevelIndustries();
+  }, []);
+
   // 상위 업종 변경시 세부 업종 옵션 업데이트
   useEffect(() => {
-    const industries = getIndustriesByTopLevel(targetTopLevelIndustry);
+    const loadIndustries = async () => {
+      try {
+        const industriesData = await fetchIndustriesByTopLevel(targetTopLevelIndustry);
+        setIndustries(industriesData);
 
-    // 현재 선택된 업종이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
-    const validIndustry = industries.find(
-      (option) => option.value === targetIndustry
-    );
+        // 현재 선택된 업종이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
+        const validIndustry = industriesData.find(
+          (option) => option.value === targetIndustry
+        );
 
-    if (!validIndustry && industries.length > 0) {
-      setTargetIndustry(industries[0].value);
-    }
+        if (!validIndustry && industriesData.length > 0) {
+          setTargetIndustry(industriesData[0].value);
+        }
+      } catch (error) {
+        console.error('세부 업종 로딩 오류:', error);
+      } 
+    };
+
+    loadIndustries();
   }, [targetTopLevelIndustry, targetIndustry]);
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
@@ -3290,7 +3318,7 @@ function TargetMarketingDetailContent({
                          setTargetIndustry("all");
                        }}
                      >
-                       {targetOptions.topLevelIndustries.map((option) => (
+                       {topLevelIndustries.map((option) => (
                          <option key={option.value} value={option.value}>
                            {option.label}
                          </option>
@@ -3304,7 +3332,7 @@ function TargetMarketingDetailContent({
                        value={targetIndustry}
                        onChange={(e) => setTargetIndustry(e.target.value)}
                      >
-                       {getIndustriesByTopLevel(targetTopLevelIndustry).map((option) => (
+                       {industries.map((option) => (
                          <option key={option.value} value={option.value}>
                            {option.label}
                          </option>
