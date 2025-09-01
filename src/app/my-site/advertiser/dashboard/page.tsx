@@ -222,7 +222,7 @@ export default function AdvertiserDashboard() {
      labels: generateChartLabels(),
      datasets: [
        {
-         data: [100, 110, 105, 125, 95, 80, 110], // 7일 데이터
+         data: [0, 0, 0, 0, 0, 0, 0], // 7일 데이터
          borderColor: '#3b82f6',
          backgroundColor: '#3b82f6',
          borderWidth: 2,

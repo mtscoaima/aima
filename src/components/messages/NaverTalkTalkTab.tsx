@@ -14,7 +14,7 @@ const categories = [
   "여행",
   "의류/패션",
   "과일",
-  "리뷰",
+  "기타",
 ];
 
 interface Template {
@@ -530,7 +530,6 @@ export default function NaverTalkTalkTab({
                     />
                   </div>
                   <div className="p-4 flex flex-col flex-1">
-                    <div className="text-black text-xs font-medium text-left mb-1 tracking-[-0.1px] font-sans">🎉 GRAND OPENING 🎉</div>
                     <div className="text-black text-sm font-semibold leading-[120%] tracking-[-0.1px] m-0 mb-2 pb-2 border-b border-gray-200 font-sans">{template.name}</div>
                     <p className="text-black text-xs font-normal leading-[147%] tracking-[-0.184px] mt-2 mb-0 pb-3 border-b border-gray-200 font-sans line-clamp-3">{template.content}</p>
                     <div className="flex justify-center mt-auto pt-3">

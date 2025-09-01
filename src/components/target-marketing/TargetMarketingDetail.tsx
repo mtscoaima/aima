@@ -10,7 +10,7 @@ import { PaymentModal } from "@/components/credit/PaymentModal";
 import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { saveCampaignDraft, loadCampaignDraft, clearCampaignDraft, formatDraftAge, fileToBase64, base64ToFile, type CampaignDraft } from "@/lib/campaignDraft";
+import { saveCampaignDraft, clearCampaignDraft, fileToBase64, type CampaignDraft } from "@/lib/campaignDraft";
 import {
   targetOptions,
   getDistrictsByCity,
@@ -64,6 +64,7 @@ function TargetMarketingDetailContent({
   useTemplate,
   initialMessage,
   initialImage,
+  shouldRestore,
 }: TargetMarketingDetailProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -98,7 +99,7 @@ function TargetMarketingDetailContent({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [templates, setTemplates] = useState<GeneratedTemplate[]>([]);
-  const [images, setImages] = useState<(File | string | null)[]>([]);
+  const [images] = useState<(File | string | null)[]>([]);
   const [sendPolicy, setSendPolicy] = useState<"realtime" | "batch">(
     "realtime"
   );
@@ -497,15 +498,35 @@ function TargetMarketingDetailContent({
     setSelectedPackage(null);
   };
 
-  // 현재 상태 저장 (결제 전)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const saveCurrentState = () => {
+  // 현재 상태 저장 (확장된 버전)
+  const saveState = useCallback(() => {
     const currentState = {
+      // 채팅 관련 상태
+      messages: messages.map(msg => ({
+        ...msg,
+        timestamp: msg.timestamp?.toISOString ? msg.timestamp.toISOString() : msg.timestamp
+      })),
+      isFirstChat,
+      hasShownFirstQuestion,
+      currentQuestionIndex,
+      userAnswers,
+      
+      // 생성된 콘텐츠
       templateTitle,
-      campaignName,
-      adMedium,
       smsTextContent,
       currentGeneratedImage,
+      dynamicButtons,
+      
+      // 캠페인 설정
+      campaignName,
+      adMedium,
+      sendPolicy,
+      validityStartDate,
+      validityEndDate,
+      maxRecipients,
+      selectedPeriod,
+      
+      // 타겟 필터
       targetGender,
       targetAge,
       targetCity,
@@ -513,25 +534,42 @@ function TargetMarketingDetailContent({
       selectedLocations,
       targetTopLevelIndustry,
       targetIndustry,
+      
+      // 카드 관련 설정
       cardAmount,
       customAmount,
       cardAmountInput,
       cardStartTime,
       cardEndTime,
-      maxRecipients,
-      sendPolicy,
-      validityStartDate,
-      validityEndDate,
-      dynamicButtons,
+      selectedAmountButton,
+      cardAmountInputValue,
+      selectedTimeButton,
+      
+      // 일괄 발송 설정
+      batchSendDate,
+      batchSendTime,
+      targetCount,
+      adRecipientCount,
       femaleRatio,
       maleRatio,
       desiredRecipients,
+      
+      // 기타
+      existingTemplateId
     };
 
     storageUtils.saveTargetMarketingState(currentState);
-  };
+  }, [
+    messages, isFirstChat, hasShownFirstQuestion, currentQuestionIndex, userAnswers,
+    templateTitle, smsTextContent, currentGeneratedImage, dynamicButtons,
+    campaignName, adMedium, sendPolicy, validityStartDate, validityEndDate, maxRecipients, selectedPeriod,
+    targetGender, targetAge, targetCity, targetDistrict, selectedLocations, targetTopLevelIndustry, targetIndustry,
+    cardAmount, customAmount, cardAmountInput, cardStartTime, cardEndTime, selectedAmountButton, cardAmountInputValue, selectedTimeButton,
+    batchSendDate, batchSendTime, targetCount, adRecipientCount, femaleRatio, maleRatio, desiredRecipients,
+    existingTemplateId
+  ]);
 
-  // 저장된 상태 복원
+  // 저장된 상태 복원 (확장된 버전)
   const restoreState = React.useCallback(() => {
     try {
       const state = storageUtils.restoreTargetMarketingState() as {
@@ -539,13 +577,42 @@ function TargetMarketingDetailContent({
       } | null;
       if (!state) return false;
 
-      // 상태 복원
+      // 채팅 관련 상태 복원
+      if (state.messages) {
+        const restoredMessages = (state.messages as Array<{
+          id: string;
+          role: string;
+          content: string;
+          timestamp: string | Date;
+          attachedFile?: unknown;
+        }>).map(msg => ({
+          ...msg,
+          timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp) : msg.timestamp
+        }));
+        setMessages(restoredMessages as Message[]);
+      }
+      
+      setIsFirstChat((state.isFirstChat as boolean) ?? false);
+      setHasShownFirstQuestion((state.hasShownFirstQuestion as boolean) ?? true);
+      setCurrentQuestionIndex((state.currentQuestionIndex as number) ?? 0);
+      setUserAnswers((state.userAnswers as {[key: number]: string}) ?? {});
+
+      // 생성된 콘텐츠 복원
       setTemplateTitle((state.templateTitle as string) || "AI 생성 콘텐츠");
-      // 저장된 값이 없으면 기본값 '캠페인01' 사용
-      setCampaignName((state.campaignName as string) || "캠페인01");
-      setAdMedium((state.adMedium as "naver_talktalk" | "sms") || "naver_talktalk");
       setSmsTextContent((state.smsTextContent as string) || "");
       setCurrentGeneratedImage((state.currentGeneratedImage as string) || null);
+      setDynamicButtons((state.dynamicButtons as typeof dynamicButtons) || []);
+      
+      // 캠페인 설정 복원
+      setCampaignName((state.campaignName as string) || "캠페인01");
+      setAdMedium((state.adMedium as "naver_talktalk" | "sms") || "naver_talktalk");
+      setSendPolicy((state.sendPolicy as "realtime" | "batch") || "realtime");
+      setValidityStartDate((state.validityStartDate as string) || validityStartDate);
+      setValidityEndDate((state.validityEndDate as string) || validityEndDate);
+      setMaxRecipients((state.maxRecipients as string) || "30");
+      setSelectedPeriod((state.selectedPeriod as "week" | "month" | "year") || "week");
+      
+      // 타겟 필터 복원
       setTargetGender((state.targetGender as string) || "all");
       setTargetAge((state.targetAge as string[]) || ["all"]);
       setTargetCity((state.targetCity as string) || "all");
@@ -555,22 +622,29 @@ function TargetMarketingDetailContent({
       );
       setTargetTopLevelIndustry((state.targetTopLevelIndustry as string) || "all");
       setTargetIndustry((state.targetIndustry as string) || "all");
+      
+      // 카드 관련 설정 복원
       setCardAmount((state.cardAmount as string) || "10000");
       setCustomAmount((state.customAmount as string) || "50");
       setCardAmountInput((state.cardAmountInput as string) || "1");
       setCardStartTime((state.cardStartTime as string) || "08:00");
       setCardEndTime((state.cardEndTime as string) || "18:00");
-      setMaxRecipients((state.maxRecipients as string) || "30");
-      setSendPolicy((state.sendPolicy as "realtime" | "batch") || "realtime");
-      setValidityStartDate((state.validityStartDate as string) || validityStartDate);
-      setValidityEndDate((state.validityEndDate as string) || validityEndDate);
-      setDynamicButtons((state.dynamicButtons as typeof dynamicButtons) || []);
+      setSelectedAmountButton((state.selectedAmountButton as string) || "10000");
+      setCardAmountInputValue((state.cardAmountInputValue as string) || "10,000원");
+      setSelectedTimeButton((state.selectedTimeButton as string) || "morning");
+      
+      // 일괄 발송 설정 복원
+      setBatchSendDate((state.batchSendDate as string) || "오늘+3일");
+      setBatchSendTime((state.batchSendTime as string) || "00:00");
+      setTargetCount((state.targetCount as number) || CAMPAIGN_CONSTANTS.DEFAULT_TARGET_COUNT);
+      setAdRecipientCount((state.adRecipientCount as number) || CAMPAIGN_CONSTANTS.DEFAULT_AD_RECIPIENT_COUNT);
       setFemaleRatio((state.femaleRatio as number) || 70);
       setMaleRatio((state.maleRatio as number) || 30);
       setDesiredRecipients((state.desiredRecipients as string) || "");
+      
+      // 기타 상태 복원
+      setExistingTemplateId((state.existingTemplateId as number) || null);
 
-      // 저장된 상태 제거
-      storageUtils.clearTargetMarketingState();
       return true;
     } catch (error) {
       console.error("상태 복원 실패:", error);
@@ -578,6 +652,21 @@ function TargetMarketingDetailContent({
       return false;
     }
   }, [validityStartDate, validityEndDate]);
+
+
+  // 상태 변경 시 자동 저장 (debounced)
+  useEffect(() => {
+    if (isInitialized && (smsTextContent || messages.length > 0)) {
+      const saveTimer = setTimeout(() => {
+        saveState();
+      }, 1000);
+      return () => clearTimeout(saveTimer);
+    }
+  }, [
+    isInitialized, smsTextContent, messages, campaignName, 
+    adMedium, targetGender, targetAge, selectedLocations, dynamicButtons,
+    validityStartDate, validityEndDate, sendPolicy, maxRecipients, saveState
+  ]);
 
   // 크레딧 충전 모달 열기 (권장 패키지 자동 선택)
   const openCreditModal = () => {
@@ -661,56 +750,11 @@ function TargetMarketingDetailContent({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [saveCampaignDraftData]);
 
-  // 컴포넌트 마운트 시 임시저장 데이터 복원
+  // 컴포넌트 마운트 시 기존 임시저장 데이터 정리
   React.useEffect(() => {
     if (!user?.id) return;
-
-    const savedDraft = loadCampaignDraft(Number(user.id));
-    if (savedDraft) {
-      const shouldRestore = confirm(
-        `이전에 작성하던 캠페인이 있습니다. (${formatDraftAge(savedDraft.timestamp)})\n\n복원하시겠습니까?`
-      );
-
-      if (shouldRestore) {
-        // 상태 복원
-        setMessages(savedDraft.messages.map((msg, index) => ({
-          id: `restored-${index}`,
-          role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
-          content: msg,
-          timestamp: new Date()
-        })));
-        setTemplateTitle(savedDraft.templateTitle);
-        setSmsTextContent(savedDraft.templateContent);
-        setMaxRecipients(savedDraft.maxRecipients.toString());
-        setDesiredRecipients(savedDraft.adRecipientCount.toString());
-
-        // 이미지 복원 (base64를 File로 변환)
-        const restoredImages = savedDraft.images.map((imageData, index) => {
-          if (typeof imageData === 'string' && imageData.startsWith('data:')) {
-            try {
-              return base64ToFile(imageData, `restored_image_${index}.jpg`);
-            } catch (error) {
-              console.error('이미지 복원 실패:', error);
-              return null;
-            }
-          }
-          return imageData;
-        });
-        setImages(restoredImages);
-
-        // 선택된 템플릿 복원
-        if (savedDraft.selectedTemplate) {
-          setSelectedTemplateId(savedDraft.selectedTemplate.id.toString());
-        }
-
-        // 임시저장 데이터 삭제
-        clearCampaignDraft(Number(user.id));
-        
-      } else {
-        // 사용자가 거부한 경우 임시저장 데이터 삭제
-        clearCampaignDraft(Number(user.id));
-      }
-    }
+    // 기존 임시저장 데이터가 있으면 제거 (새로운 복원 시스템 사용)
+    clearCampaignDraft(Number(user.id));
   }, [user?.id]);
 
   // 초기 메시지에 대한 AI 응답 처리 (실제 AI API 호출)
@@ -1844,22 +1888,35 @@ function TargetMarketingDetailContent({
     }
   }, [messages, inputMessage, isLoading, currentGeneratedImage, generateTemplateTitle, smsTextContent, templateTitle, selectedFile, currentQuestionIndex, hasShownFirstQuestion, initialQuestions, isFirstChat, userAnswers]);
 
-  // 초기 메시지 처리
+  // 페이지 진입 시 초기화 처리
   useEffect(() => {
     if (!isInitialized) {
-      const initialMessage = sessionStorage.getItem("initialMessage");
-      if (initialMessage) {
+      const sessionInitialMessage = sessionStorage.getItem("initialMessage");
+      
+      if (shouldRestore) {
+        // 메인 페이지에서 복원 확인 후 진입한 경우
+        const restored = restoreState();
+        if (restored) {
+          setIsFirstChat(false);
+          setHasShownFirstQuestion(true);
+        }
+        setIsInitialized(true);
+      } else if (sessionInitialMessage) {
+        // 새로운 초기 메시지가 있으면 기존 로직 실행
         setIsInitialized(true);
         // 초기 메시지를 자동으로 전송
         setTimeout(() => {
-          handleSendMessage(initialMessage);
+          handleSendMessage(sessionInitialMessage);
         }, 500);
         // 세션 스토리지에서 초기 메시지 제거
         sessionStorage.removeItem("initialMessage");
         sessionStorage.removeItem("initialFile");
+      } else {
+        // 일반적인 경우 정상 초기화
+        setIsInitialized(true);
       }
     }
-  }, [isInitialized, handleSendMessage]);
+  }, [isInitialized, shouldRestore, handleSendMessage, restoreState]);
 
   // sessionStorage에서 선택된 파일 복원
   useEffect(() => {
@@ -2464,10 +2521,10 @@ function TargetMarketingDetailContent({
 
   return (
     <div className="relative w-full max-w-[1920px] mx-auto bg-white">
-      <div className="flex flex-row min-h-screen bg-gray-100 relative gap-0 p-0">
+      <div className="flex flex-row max-h-[calc(100vh-300px)] bg-gray-100 relative gap-0 p-0">
         {/* 좌측: AI 채팅 영역 */}
         <div className="flex-1 flex flex-col p-6 bg-white border-r border-gray-200 max-w-[800px] w-full">
-          <div className="flex-1 overflow-y-auto pb-4 flex flex-col gap-4 max-h-[calc(100vh-200px)] scroll-smooth" ref={chatMessagesRef}>
+          <div className="flex-1 overflow-y-auto pb-4 flex flex-col gap-4 max-h-[calc(100vh-550px)] scroll-smooth" ref={chatMessagesRef}>
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -2736,8 +2793,8 @@ function TargetMarketingDetailContent({
         </div>
 
         {/* 우측: 캠페인 설정 영역 */}
-        <div className="flex-shrink-0">
-          <div className="w-[480px] bg-gray-200 border-l border-gray-200 flex flex-col max-h-screen overflow-y-auto">
+        <div className="flex-shrink-0 bg-white">
+          <div className="w-[480px] bg-gray-200 border-l border-gray-200 flex flex-col max-h-[calc(100vh-320px)] overflow-y-auto">
             {/* 캠페인 설정 섹션 */}
             <div className="bg-gray-100 p-4">
               <div className="flex justify-between items-center mb-4">
@@ -3155,7 +3212,7 @@ function TargetMarketingDetailContent({
 
               {/* 카드 사용 위치 */}
               <div className="mb-6">
-                <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 위치</div>
+                <div className="text-sm font-medium text-gray-700 mb-2">결제 위치</div>
                 <div className="flex gap-2 items-center">
                   <div className="flex-1">
                     <select
@@ -3220,7 +3277,7 @@ function TargetMarketingDetailContent({
 
                              {/* 타겟 업종 */}
                <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">카드 사용 업종</div>
+                 <div className="text-sm font-medium text-gray-700 mb-2">결제 업종</div>
                  <div className="grid grid-cols-2 gap-2">
                    <div>
                      <div className="text-xs text-gray-500 mb-1">대분류</div>
@@ -3257,9 +3314,9 @@ function TargetMarketingDetailContent({
                  </div>
                </div>
 
-                             {/* 카드 승인 금액 */}
+              {/* 카드 승인 금액 */}
                <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 금액</div>
+                 <div className="text-sm font-medium text-gray-700 mb-2">결제 승인 금액</div>
                  
                  {/* 금액 입력 필드 */}
                  <div className="mb-3">
@@ -3320,9 +3377,9 @@ function TargetMarketingDetailContent({
                    </div>
                </div>
 
-                                            {/* 카드 승인 시간 */}
+              {/* 카드 승인 시간 */}
                <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">카드 승인 시간</div>
+                 <div className="text-sm font-medium text-gray-700 mb-2">결제 승인 시간</div>
                  
                  {/* 시간 선택 드롭다운 */}
                  <div className="flex items-center gap-2 mb-3">
@@ -3413,7 +3470,7 @@ function TargetMarketingDetailContent({
               
               <div>
                 <p className="text-sm text-gray-800 mb-2">
-                  ※ 실시간 발송이란? 카드 승인 시점에 해당 카드를 사용한 광고 수신자에게 즉시 광고 메시지를 발송하는 방식입니다.
+                  ※ 실시간 발송이란? 결제 즉시 광고 메시지를 발송하는 방식입니다.
                 </p>
               </div>
 
