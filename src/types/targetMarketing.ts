@@ -46,6 +46,7 @@ export interface TargetMarketingDetailProps {
   useTemplate?: boolean;
   initialMessage?: string;
   initialImage?: string | null;
+  shouldRestore?: boolean;
 }
 
 export interface Campaign {
