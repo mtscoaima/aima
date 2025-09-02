@@ -54,7 +54,6 @@ export interface Campaign {
   name: string;
   status?: string;
   approval_status?: string;
-  buttons?: DynamicButton[];
   message_templates?: {
     name?: string;
     content?: string;
@@ -63,7 +62,7 @@ export interface Campaign {
   };
   // 새로운 개별 컬럼들
   target_age_groups?: string[];
-  target_locations_detailed?: any[];
+  target_locations_detailed?: Array<{ city: string; districts: string[] } | string>;
   card_amount_max?: number;
   card_time_start?: string;
   card_time_end?: string;
@@ -73,7 +72,7 @@ export interface Campaign {
   estimated_total_cost?: number;
   expert_review_requested?: boolean;
   expert_review_notes?: string;
-  buttons?: any[];
+  buttons?: DynamicButton[];
   gender_ratio?: {
     female: number;
     male: number;

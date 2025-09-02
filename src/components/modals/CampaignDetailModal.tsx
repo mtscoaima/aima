@@ -27,7 +27,7 @@ interface RealCampaign {
   desired_recipients?: string | null;
   // 새로운 개별 컬럼들
   target_age_groups?: string[];
-  target_locations_detailed?: any[];
+  target_locations_detailed?: Array<{ city: string; districts: string[] } | string>;
   card_amount_max?: number;
   card_time_start?: string;
   card_time_end?: string;
@@ -42,9 +42,9 @@ interface RealCampaign {
     male: number;
   };
   message_templates?: {
-    name: string;
-    content: string;
-    image_url: string;
+    name?: string;
+    content?: string;
+    image_url?: string;
     category?: string;
   };
 }
@@ -98,7 +98,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               const topLevelData = responseData.rawData || [];
               
               // code로 매칭
-              const topLevelIndustry = topLevelData.find((industry: any) => 
+              const topLevelIndustry = topLevelData.find((industry: { code: string; name: string }) => 
                 industry.code === campaign.target_industry_top_level || 
                 industry.code === String(campaign.target_industry_top_level)
               );
@@ -117,7 +117,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               const specificData = responseData.rawData || [];
               
               // code로 매칭
-              const specificIndustry = specificData.find((industry: any) => 
+              const specificIndustry = specificData.find((industry: { code: string; name: string }) => 
                 industry.code === campaign.target_industry_specific ||
                 industry.code === String(campaign.target_industry_specific)
               );
@@ -142,7 +142,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
     };
 
     fetchIndustryNames();
-  }, [campaign?.target_industry_top_level, campaign?.target_industry_specific]);
+  }, [campaign?.target_industry_top_level, campaign?.target_industry_specific, campaign]);
 
   if (!isOpen || !campaign) return null;
 
@@ -240,7 +240,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
     // 위치 변환 - target_locations_detailed 사용
     const formatLocation = () => {
       if (campaign.target_locations_detailed && campaign.target_locations_detailed.length > 0) {
-        return campaign.target_locations_detailed.map((loc: any) => {
+        return campaign.target_locations_detailed.map((loc: { city: string; districts: string[] } | string) => {
           if (typeof loc === 'string') {
             return loc === 'all' ? '전국' : loc;
           } else if (typeof loc === 'object' && loc.city && loc.districts) {
@@ -307,7 +307,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
       const max = campaign.card_amount_max;
       
       if (max !== null) {
-        return `${max.toLocaleString()}원 미만`;
+        return `${max?.toLocaleString()}원 미만`;
       }
       return '전체';
     };
@@ -545,27 +545,27 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                          </span>
                        </div>
 
-                      {/* 카드 사용 위치 */}
+                      {/* 결제 위치 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 사용 위치</span>
+                        <span className="text-sm font-medium text-gray-700">결제 위치</span>
                         <span className="text-sm text-gray-900">{targetInfo.location || '-'}</span>
                       </div>
 
-                      {/* 카드 사용 업종 */}
+                      {/* 결제 업종 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 사용 업종</span>
+                        <span className="text-sm font-medium text-gray-700">결제 업종</span>
                         <span className="text-sm text-gray-900">{targetInfo.cardUsageIndustry || '-'}</span>
                       </div>
 
-                      {/* 카드 승인 금액 */}
+                      {/* 결제 승인 금액 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 승인 금액</span>
+                        <span className="text-sm font-medium text-gray-700">결제 승인 금액</span>
                         <span className="text-sm text-gray-900">{targetInfo.cardAmount || '-'}</span>
                       </div>
 
-                      {/* 카드 승인 시간 */}
+                      {/* 결제 승인 시간 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 승인 시간</span>
+                        <span className="text-sm font-medium text-gray-700">결제 승인 시간</span>
                         <span className="text-sm text-gray-900">{targetInfo.cardTime || '-'}</span>
                       </div>
 

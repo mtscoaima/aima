@@ -2351,9 +2351,30 @@ function TargetMarketingDetailContent({
       // 위치 정보 설정 (target_locations_detailed에서 첫 번째 항목 사용)
       if (campaignData.target_locations_detailed && campaignData.target_locations_detailed.length > 0) {
         const firstLocation = campaignData.target_locations_detailed[0];
-        setTargetCity(firstLocation.city || "all");
-        setTargetDistrict(firstLocation.districts?.[0] || "all");
-        setSelectedLocations(campaignData.target_locations_detailed);
+        
+        // 타입 가드: 객체인지 문자열인지 확인
+        if (typeof firstLocation === 'object' && firstLocation.city) {
+          setTargetCity(firstLocation.city || "all");
+          setTargetDistrict(firstLocation.districts?.[0] || "all");
+        } else {
+          // 문자열인 경우 (레거시 데이터)
+          setTargetCity(typeof firstLocation === 'string' ? firstLocation : "all");
+          setTargetDistrict("all");
+        }
+        
+        // target_locations_detailed를 selectedLocations 형식으로 변환
+        const convertedLocations = campaignData.target_locations_detailed
+          .map(location => {
+            if (typeof location === 'object' && location.city) {
+              return location;
+            } else if (typeof location === 'string') {
+              return { city: location, districts: ["all"] };
+            }
+            return null;
+          })
+          .filter(Boolean) as Array<{ city: string; districts: string[] }>;
+        
+        setSelectedLocations(convertedLocations);
       } else {
         setTargetCity("all");
         setTargetDistrict("all");
