@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Campaign } from "@/types/targetMarketing";
 
 interface CampaignModalProps {
@@ -20,6 +20,48 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
   selectedCampaignId,
   setSelectedCampaignId,
 }) => {
+  const [industryData, setIndustryData] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    const fetchIndustryData = async () => {
+      try {
+        // 상위 업종 데이터 가져오기
+        const topLevelResponse = await fetch('/api/industries');
+        const topLevelData = await topLevelResponse.json();
+        const topLevelMap: { [key: string]: string } = {};
+        
+        if (topLevelData.rawData && Array.isArray(topLevelData.rawData)) {
+          topLevelData.rawData.forEach((industry: { code: string; name: string }) => {
+            topLevelMap[industry.code] = industry.name;
+          });
+        }
+
+        // 세부 업종 데이터도 가져와야 함
+        const specificMap: { [key: string]: string } = {};
+        // 각 상위 업종에 대해 세부 업종 조회
+        for (const topLevelCode of Object.keys(topLevelMap)) {
+          const specificResponse = await fetch(`/api/industries?top_level_code=${topLevelCode}`);
+          const specificData = await specificResponse.json();
+          
+          if (specificData.rawData && Array.isArray(specificData.rawData)) {
+            specificData.rawData.forEach((industry: { code: string; name: string }) => {
+              specificMap[industry.code] = industry.name;
+            });
+          }
+        }
+
+        // 두 맵을 합쳐서 전체 업종 데이터 생성
+        setIndustryData({ ...topLevelMap, ...specificMap });
+      } catch (error) {
+        console.error('업종 데이터 로딩 실패:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchIndustryData();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleClose = () => {
@@ -72,7 +114,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                       </tr>
                     ) : (
                       campaigns.map((campaign) => {
-                        const targetCriteria = campaign.target_criteria || campaign.targetCriteria;
+                        // 새로운 개별 컬럼들 사용 (target_criteria 대신)
                         return (
                           <tr key={campaign.id}>
                             <td className="py-3 px-4" style={{ width: '60px' }}>
@@ -92,152 +134,86 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '200px' }}>{campaign.name || '이름 없음'}</td>
                             <td className="py-3 px-4 truncate" style={{ width: '180px' }}>
-                              {targetCriteria ? (() => {
-                                // 성별 변환
-                                const getGenderText = (gender: string | undefined) => {
-                                  if (!gender || gender === 'all') return '전체';
-                                  if (gender === 'male' || gender === '남성') return '남성';
-                                  if (gender === 'female' || gender === '여성') return '여성';
-                                  return gender;
-                                };
-                                
-                                // 연령 변환
-                                const getAgeText = (age: string | string[] | undefined) => {
-                                  if (!age) return '전체';
-                                  
-                                  const convertAgeGroup = (ageGroup: string) => {
-                                    if (ageGroup === 'all' || ageGroup === '전체') return '전체';
-                                    if (ageGroup === 'teens') return '10대';
-                                    if (ageGroup === 'twenties') return '20대';
-                                    if (ageGroup === 'thirties') return '30대';
-                                    if (ageGroup === 'forties') return '40대';
-                                    if (ageGroup === 'fifties') return '50대';
-                                    if (ageGroup === 'sixties') return '60대';
-                                    return ageGroup;
-                                  };
-                                  
-                                  if (Array.isArray(age)) {
-                                    return age.map(a => convertAgeGroup(a)).join(',');
-                                  }
-                                  return convertAgeGroup(age);
-                                };
-                                
-                                // 지역 변환
-                                const getLocationText = (location: string | undefined) => {
-                                  if (!location || location === 'all') return '전체';
-                                  
-                                  // 영어 도시명을 한글로 변환
-                                  const cityMap: { [key: string]: string } = {
-                                    'seoul': '서울',
-                                    'busan': '부산',
-                                    'daegu': '대구',
-                                    'incheon': '인천',
-                                    'gwangju': '광주',
-                                    'daejeon': '대전',
-                                    'ulsan': '울산',
-                                    'sejong': '세종',
-                                    'gyeonggi': '경기',
-                                    'gangwon': '강원',
-                                    'chungbuk': '충북',
-                                    'chungnam': '충남',
-                                    'jeonbuk': '전북',
-                                    'jeonnam': '전남',
-                                    'gyeongbuk': '경북',
-                                    'gyeongnam': '경남',
-                                    'jeju': '제주'
-                                  };
-                                  
-                                  return cityMap[location.toLowerCase()] || location;
-                                };
-                                
-                                return `${getGenderText(targetCriteria.gender)}/${getAgeText(targetCriteria.age)}/${getLocationText(targetCriteria.city)}/${getLocationText(targetCriteria.district)}`;
-                              })() : '전체/전체/전체/전체'}
-                            </td>
-                            <td className="py-3 px-4 truncate" style={{ width: '120px' }}>
-                              {/* 카드 사용 업종 정보 */}
                               {(() => {
-                                const industryValue = targetCriteria?.industry?.topLevel || (targetCriteria as Record<string, unknown>)?.cardUsageIndustry;
-                                if (!industryValue || industryValue === 'all') {
-                                  return '전체';
-                                }
+                                // 새로운 스키마 사용
+                                const genderText = campaign.gender_ratio ? 
+                                  (campaign.gender_ratio.male === 100 ? '남성' : 
+                                   campaign.gender_ratio.female === 100 ? '여성' : 
+                                   `남성${campaign.gender_ratio.male}%:여성${campaign.gender_ratio.female}%`) : '전체';
                                 
-                                // industryValue를 string으로 변환
-                                const industryString = String(industryValue);
+                                const ageText = campaign.target_age_groups && campaign.target_age_groups.length > 0 ?
+                                  (campaign.target_age_groups.includes('all') ? '전체' : 
+                                   campaign.target_age_groups.map(age => {
+                                     if (age === 'teens') return '10대';
+                                     if (age === 'twenties') return '20대';
+                                     if (age === 'thirties') return '30대';
+                                     if (age === 'forties') return '40대';
+                                     if (age === 'fifties') return '50대';
+                                     if (age === 'sixties') return '60대';
+                                     return age;
+                                   }).join(',')) : '전체';
                                 
-                                // 영어 업종명을 한글로 변환
-                                const industryMap: { [key: string]: string } = {
-                                  'retail': '소매업',
-                                  'restaurant': '음식점',
-                                  'cafe': '카페',
-                                  'beauty': '미용업',
-                                  'fashion': '패션',
-                                  'healthcare': '의료',
-                                  'education': '교육',
-                                  'entertainment': '엔터테인먼트',
-                                  'automotive': '자동차',
-                                  'finance': '금융',
-                                  'technology': '기술',
-                                  'manufacturing': '제조업',
-                                  'construction': '건설업',
-                                  'agriculture': '농업',
-                                  'transportation': '운송업',
-                                  'hotel': '호텔',
-                                  'travel': '여행',
-                                  'sports': '스포츠',
-                                  'fitness': '피트니스'
-                                };
+                                const locationText = campaign.target_locations_detailed && campaign.target_locations_detailed.length > 0 ?
+                                  campaign.target_locations_detailed.map((loc: { city: string; districts: string[] } | string) => {
+                                    if (typeof loc === 'object' && loc.city) {
+                                      return loc.city;
+                                    }
+                                    return loc;
+                                  }).join(',') : '전국';
                                 
-                                return industryMap[industryString.toLowerCase()] || industryString;
+                                return `${genderText}/${ageText}/${locationText}`;
                               })()}
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '120px' }}>
-                              {/* 카드 승인 금액 - NaN 방지 강화 처리 */}
+                              {/* 카드 사용 업종 정보 - API 데이터 사용 */}
                               {(() => {
-                                const cardAmountValue = targetCriteria?.cardAmount;
+                                const topLevel = campaign.target_industry_top_level;
+                                const specific = campaign.target_industry_specific;
                                 
-                                // 값이 없거나 빈 문자열인 경우
-                                if (!cardAmountValue || cardAmountValue === '' || cardAmountValue === 'undefined' || cardAmountValue === 'null') {
-                                  return '미설정';
-                                }
-                                
-                                // 문자열 처리
-                                let numericValue;
-                                if (typeof cardAmountValue === 'string') {
-                                  // 'all' 또는 '전체' 같은 문자열 처리
-                                  if (cardAmountValue.toLowerCase() === 'all' || cardAmountValue === '전체') {
-                                    return '전체';
-                                  }
-                                  // 'custom' 같은 특수값 처리
-                                  if (cardAmountValue.toLowerCase() === 'custom') {
-                                    return '사용자 설정';
-                                  }
-                                  // 숫자가 아닌 문자가 포함된 경우 제거 후 변환
-                                  const cleanedValue = cardAmountValue.replace(/[^0-9]/g, '');
-                                  if (cleanedValue === '') return '미설정';
-                                  numericValue = parseInt(cleanedValue);
-                                } else {
-                                  numericValue = parseInt(cardAmountValue);
-                                }
-                                
-                                // NaN 체크
-                                if (isNaN(numericValue) || numericValue < 0) {
-                                  return '미설정';
-                                }
-                                
-                                // 0인 경우
-                                if (numericValue === 0) {
+                                if (!topLevel && !specific) {
                                   return '전체';
                                 }
                                 
-                                // 정상적인 금액 표시
-                                return `₩${numericValue.toLocaleString()}`;
+                                // API에서 가져온 업종명 사용
+                                const topLevelName = topLevel ? industryData[topLevel] || topLevel : '';
+                                const specificName = specific ? industryData[specific] || specific : '';
+                                
+                                if (topLevel && specific) {
+                                  return `${topLevelName}>${specificName}`;
+                                }
+                                return topLevelName || specificName || '전체';
+                              })()}
+                            </td>
+                            <td className="py-3 px-4 truncate" style={{ width: '120px' }}>
+                              {/* 카드 승인 금액 - 새로운 스키마 사용 */}
+                              {(() => {
+                                const cardAmountMax = campaign.card_amount_max;
+                                
+                                if (!cardAmountMax && cardAmountMax !== 0) {
+                                  return '미설정';
+                                }
+                                
+                                if (cardAmountMax === 0) {
+                                  return '전체';
+                                }
+                                
+                                return `₩${cardAmountMax.toLocaleString()} 미만`;
                               })()}
                             </td>
                             <td className="py-3 px-4 truncate" style={{ width: '140px' }}>
-                              {targetCriteria?.cardTime && targetCriteria.cardTime.startTime && targetCriteria.cardTime.endTime ? 
-                                `${targetCriteria.cardTime.startTime}~${targetCriteria.cardTime.endTime}` 
-                                : '전체시간'
-                              }
+                              {(() => {
+                                const startTime = campaign.card_time_start;
+                                const endTime = campaign.card_time_end;
+                                
+                                if (startTime && endTime) {
+                                  const formatTime = (time: string) => {
+                                    return time.substring(0, 5); // HH:MM 형식으로 초 제거
+                                  };
+                                  return `${formatTime(startTime)}~${formatTime(endTime)}`;
+                                }
+                                
+                                return '전체시간';
+                              })()}
                             </td>
                             <td className="py-3 px-4 whitespace-nowrap" style={{ width: '100px' }}>
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 whitespace-nowrap">

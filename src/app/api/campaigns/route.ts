@@ -16,12 +16,22 @@ interface CreateCampaignRequest {
   sendPolicy: "realtime" | "batch";
   validityStartDate?: string;
   validityEndDate?: string;
-  scheduledSendDate?: string; // 일괄 발송 날짜
-  scheduledSendTime?: string; // 일괄 발송 시간
+  scheduledSendDate?: string;
+  scheduledSendTime?: string;
   maxRecipients: string;
-  targetCount?: number; // 타겟 대상자 수
-  existingTemplateId?: number; // 기존 템플릿 ID (템플릿 사용하기로 온 경우)
-  // templateTitle 제거됨 - template_id로 대체 가능
+  existingTemplateId?: number;
+  // 새로운 데이터베이스 컬럼들
+  targetAgeGroups: string[];
+  targetLocationsDetailed?: Array<{ city: string; districts: string[] } | string>;
+  cardAmountMax?: number | null;
+  cardTimeStart?: string | null;
+  cardTimeEnd?: string | null;
+  targetIndustryTopLevel?: string | null;
+  targetIndustrySpecific?: string | null;
+  unitCost?: number;
+  estimatedTotalCost?: number;
+  expertReviewRequested?: boolean;
+  expertReviewNotes?: string | null;
   buttons?: {
     id: string;
     text: string;
@@ -29,29 +39,14 @@ interface CreateCampaignRequest {
     url?: string;
     iosUrl?: string;
     androidUrl?: string;
-  }[]; // 동적 버튼 데이터
+  }[];
   genderRatio?: {
     female: number;
     male: number;
-  }; // 성별 비율 데이터
-  desiredRecipients?: string | null; // 희망 수신자 직접 입력
-  expertReviewRequested?: boolean; // 전문가 검토 요청 여부
-  targetFilters: {
-    gender: string;
-    ageGroup: string;
-    location: {
-      city: string;
-      district: string;
-    };
-    cardAmount: string;
-    cardTime: {
-      startTime: string;
-      endTime: string;
-      period: string;
-    };
   };
+  desiredRecipients?: string | null;
   estimatedCost: number;
-  templateDescription?: string; // 설명 템트
+  templateDescription?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -225,7 +220,7 @@ export async function POST(request: NextRequest) {
       // 새로운 템플릿 생성
       const templateData = {
         user_id: userId,
-        name: campaignData.title || "AI 생성 캠페인",
+        name: campaignData.templateDescription || "AI 생성 템플릿",
         content: campaignData.content,
         image_url: campaignData.imageUrl,
         category: "AI_GENERATED",
@@ -283,19 +278,7 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // 타겟 조건 및 추가 설정을 포함한 JSON 데이터 준비
-    const targetCriteria = {
-      ...campaignData.targetFilters,
-      sendPolicy: campaignData.sendPolicy,
-      validityStartDate: campaignData.validityStartDate,
-      validityEndDate: campaignData.validityEndDate,
-      scheduledSendDate: campaignData.scheduledSendDate,
-      scheduledSendTime: campaignData.scheduledSendTime,
-      targetCount: campaignData.targetCount,
-      maxRecipients: parseInt(campaignData.maxRecipients) || 30,
-      templateId: messageTemplate.id, // 템플릿 ID 저장
-      templateTitle: campaignData.title || messageTemplate.name, // 템플릿 제목 저장
-    };
+    // target_criteria 제거됨 - 더 이상 사용하지 않음
 
     // getFirstSentence 함수 제거됨 - description 필드 사용 안함
 
@@ -332,38 +315,56 @@ export async function POST(request: NextRequest) {
       scheduleEndDate = new Date(campaignData.scheduledSendDate).toISOString();
     }
 
-    // 캠페인 데이터 준비 (실제 스키마에 맞게)
+    // 카드 승인 금액 처리
+    const cardAmountMax = campaignData.cardAmountMax || null;
+
+    // 카드 승인 시간 처리
+    const cardTimeStart = campaignData.cardTimeStart || null;
+    const cardTimeEnd = campaignData.cardTimeEnd || null;
+
+    // 캠페인 데이터 준비 (새로운 컬럼들 사용)
     const campaign = {
       user_id: userId,
-      name: campaignData.title || messageTemplate.name, // 템플릿의 제목 사용
-      // description 필드 제거됨 - 템플릿에서 자동 생성 가능
-      template_id: messageTemplate.id, // 템플릿 ID 추가
-      status: "PENDING_APPROVAL", // 승인 대기 상태
+      name: campaignData.title || messageTemplate.name,
+      template_id: messageTemplate.id,
+      status: "PENDING_APPROVAL",
       total_recipients: parseInt(campaignData.maxRecipients) || 30,
-      sent_count: 0, // 기본값
-      success_count: 0, // 기본값
-      failed_count: 0, // 기본값
+      sent_count: 0,
+      success_count: 0,
+      failed_count: 0,
       budget: campaignData.estimatedCost || 0,
-      target_criteria: targetCriteria,
       message_template: campaignData.content,
       schedule_start_date: scheduleStartDate,
       schedule_end_date: scheduleEndDate,
       schedule_send_time_start:
         campaignData.sendPolicy === "batch" && campaignData.scheduledSendTime
           ? campaignData.scheduledSendTime + ":00"
-          : campaignData.targetFilters.cardTime.startTime + ":00",
+          : cardTimeStart ? cardTimeStart + ":00" : null,
       schedule_send_time_end:
         campaignData.sendPolicy === "batch" && campaignData.scheduledSendTime
           ? campaignData.scheduledSendTime + ":00"
-          : campaignData.targetFilters.cardTime.endTime + ":00",
-      // schedule_timezone, schedule_days_of_week 필드 제거됨 - 고정값이므로 애플리케이션에서 처리
-      ad_medium: campaignData.adMedium, // 광고매체 추가
-      // 새로 추가된 필드들
-      // template_title 필드 제거됨 - template_id로 대체 가능
-      buttons: campaignData.buttons || [],
-      gender_ratio: campaignData.genderRatio || null,
-      desired_recipients: campaignData.desiredRecipients || null,
+          : cardTimeEnd ? cardTimeEnd + ":00" : null,
+      ad_medium: campaignData.adMedium,
+      // 새로운 데이터베이스 컬럼들
+      send_policy_type: campaignData.sendPolicy,
+      validity_start_date: campaignData.validityStartDate ? new Date(campaignData.validityStartDate).toISOString().split('T')[0] : null,
+      validity_end_date: campaignData.validityEndDate ? new Date(campaignData.validityEndDate).toISOString().split('T')[0] : null,
+      scheduled_send_date: campaignData.scheduledSendDate ? new Date(campaignData.scheduledSendDate).toISOString().split('T')[0] : null,
+      scheduled_send_time: campaignData.scheduledSendTime || null,
+      target_age_groups: campaignData.targetAgeGroups || ['all'],
+      target_locations_detailed: campaignData.targetLocationsDetailed || [],
+      card_amount_max: cardAmountMax,
+      card_time_start: cardTimeStart,
+      card_time_end: cardTimeEnd,
+      target_industry_top_level: campaignData.targetIndustryTopLevel,
+      target_industry_specific: campaignData.targetIndustrySpecific,
+      unit_cost: campaignData.unitCost || 0,
+      estimated_total_cost: campaignData.estimatedTotalCost || campaignData.estimatedCost || 0,
       expert_review_requested: campaignData.expertReviewRequested || false,
+      expert_review_notes: campaignData.expertReviewNotes,
+      buttons: campaignData.buttons || [],
+      gender_ratio: campaignData.genderRatio || {},
+      desired_recipients: campaignData.desiredRecipients,
       created_at: kstTime,
       updated_at: kstTime,
     };

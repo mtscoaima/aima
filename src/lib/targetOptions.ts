@@ -321,121 +321,31 @@ export const districtsData: Record<string, TargetOption[]> = {
   ]
 };
 
-// CSV 데이터 기반 상위 업종 목록 (전체 옵션 포함)
-export const topLevelIndustriesData: TargetOption[] = [
-  { value: "all", label: "전체" },
-  { value: "1", label: "서비스업" },
-  { value: "2", label: "제조·화학" },
-  { value: "3", label: "IT·웹·통신" },
-  { value: "4", label: "은행·금융업" },
-  { value: "5", label: "미디어·디자인" },
-  { value: "6", label: "교육업" },
-  { value: "7", label: "의료·제약·복지" },
-  { value: "8", label: "판매·유통" },
-  { value: "9", label: "건설업" },
-  { value: "10", label: "기관·협회" }
-];
+// API에서 업종 데이터를 가져오는 함수들
+export const fetchTopLevelIndustries = async (): Promise<TargetOption[]> => {
+  try {
+    const response = await fetch('/api/industries');
+    const data = await response.json();
+    return data.topLevelIndustries || [{ value: "all", label: "전체" }];
+  } catch (error) {
+    console.error('상위 업종 조회 오류:', error);
+    return [{ value: "all", label: "전체" }];
+  }
+};
 
-// CSV 데이터 기반 세부 업종 목록 (상위 업종별 분류)
-export const industriesData: Record<string, TargetOption[]> = {
-  all: [{ value: "all", label: "전체" }],
-  "1": [ // 서비스업
-    { value: "all", label: "전체" },
-    { value: "108", label: "호텔·여행·항공" },
-    { value: "109", label: "외식업·식음료" },
-    { value: "111", label: "시설관리·경비·용역" },
-    { value: "115", label: "레저·스포츠·여가" },
-    { value: "118", label: "AS·카센터·주유" },
-    { value: "119", label: "렌탈·임대" },
-    { value: "120", label: "웨딩·장례·이벤트" },
-    { value: "121", label: "기타서비스업" },
-    { value: "122", label: "뷰티·미용" }
-  ],
-  "2": [ // 제조·화학
-    { value: "all", label: "전체" },
-    { value: "201", label: "전기·전자·제어" },
-    { value: "202", label: "기계·설비·자동차" },
-    { value: "204", label: "석유·화학·에너지" },
-    { value: "205", label: "섬유·의류·패션" },
-    { value: "207", label: "화장품·뷰티" },
-    { value: "208", label: "생활용품·소비재·사무" },
-    { value: "209", label: "가구·목재·제지" },
-    { value: "210", label: "농업·어업·광업·임업" },
-    { value: "211", label: "금속·재료·철강·요업" },
-    { value: "212", label: "조선·항공·우주" },
-    { value: "213", label: "기타제조업" },
-    { value: "214", label: "식품가공·개발" },
-    { value: "215", label: "반도체·광학·LCD" },
-    { value: "216", label: "환경" }
-  ],
-  "3": [ // IT·웹·통신
-    { value: "all", label: "전체" },
-    { value: "301", label: "솔루션·SI·ERP·CRM" },
-    { value: "302", label: "웹에이젼시" },
-    { value: "304", label: "쇼핑몰·오픈마켓" },
-    { value: "305", label: "포털·인터넷·컨텐츠" },
-    { value: "306", label: "네트워크·통신·모바일" },
-    { value: "307", label: "하드웨어·장비" },
-    { value: "308", label: "정보보안·백신" },
-    { value: "313", label: "IT컨설팅" },
-    { value: "314", label: "게임" }
-  ],
-  "4": [ // 은행·금융업
-    { value: "all", label: "전체" },
-    { value: "401", label: "은행·금융·저축" },
-    { value: "402", label: "대출·캐피탈·여신" },
-    { value: "405", label: "기타금융" },
-    { value: "406", label: "증권·보험·카드" }
-  ],
-  "5": [ // 미디어·디자인
-    { value: "all", label: "전체" },
-    { value: "501", label: "신문·잡지·언론사" },
-    { value: "502", label: "방송사·케이블" },
-    { value: "503", label: "연예·엔터테인먼트" },
-    { value: "504", label: "광고·홍보·전시" },
-    { value: "505", label: "영화·배급·음악" },
-    { value: "506", label: "공연·예술·문화" },
-    { value: "509", label: "출판·인쇄·사진" },
-    { value: "510", label: "캐릭터·애니메이션" },
-    { value: "511", label: "디자인·설계" }
-  ],
-  "6": [ // 교육업
-    { value: "all", label: "전체" },
-    { value: "601", label: "초중고·대학" },
-    { value: "602", label: "학원·어학원" },
-    { value: "603", label: "유아·유치원" },
-    { value: "604", label: "교재·학습지" },
-    { value: "605", label: "전문·기능학원" }
-  ],
-  "7": [ // 의료·제약·복지
-    { value: "all", label: "전체" },
-    { value: "701", label: "의료(진료과목별)" },
-    { value: "702", label: "의료(병원종류별)" },
-    { value: "703", label: "제약·보건·바이오" },
-    { value: "704", label: "사회복지" }
-  ],
-  "8": [ // 판매·유통
-    { value: "all", label: "전체" },
-    { value: "801", label: "판매(매장종류별)" },
-    { value: "802", label: "판매(상품품목별)" },
-    { value: "803", label: "유통·무역·상사" },
-    { value: "804", label: "운송·운수·물류" }
-  ],
-  "9": [ // 건설업
-    { value: "all", label: "전체" },
-    { value: "901", label: "건설·건축·토목·시공" },
-    { value: "902", label: "실내·인테리어·조경" },
-    { value: "903", label: "환경·설비" },
-    { value: "904", label: "부동산·임대·중개" }
-  ],
-  "10": [ // 기관·협회
-    { value: "all", label: "전체" },
-    { value: "1001", label: "정부·공공기관·공기업" },
-    { value: "1002", label: "협회·단체" },
-    { value: "1003", label: "법률·법무·특허" },
-    { value: "1004", label: "세무·회계" },
-    { value: "1005", label: "연구소·컨설팅·조사" }
-  ]
+export const fetchIndustriesByTopLevel = async (topLevelCode: string): Promise<TargetOption[]> => {
+  if (topLevelCode === "all") {
+    return [{ value: "all", label: "전체" }];
+  }
+  
+  try {
+    const response = await fetch(`/api/industries?top_level_code=${topLevelCode}`);
+    const data = await response.json();
+    return data.industries || [{ value: "all", label: "전체" }];
+  } catch (error) {
+    console.error('세부 업종 조회 오류:', error);
+    return [{ value: "all", label: "전체" }];
+  }
 };
 
 // 선택된 도시에 따른 구/군 목록 반환 함수
@@ -447,13 +357,13 @@ export const getDistrictsByCity = (cityValue: string): TargetOption[] => {
   return districtsData[cityValue] || [{ value: "all", label: "전체" }];
 };
 
-// 선택된 상위 업종에 따른 세부 업종 목록 반환 함수
+// 선택된 상위 업종에 따른 세부 업종 목록 반환 함수 (동기식 - 레거시 지원)
 export const getIndustriesByTopLevel = (topLevelCode: string): TargetOption[] => {
   if (topLevelCode === "all") {
-    // 전체 선택 시 모든 세부 업종의 전체 옵션만 반환
     return [{ value: "all", label: "전체" }];
   }
-  return industriesData[topLevelCode] || [{ value: "all", label: "전체" }];
+  // 동적 데이터를 위해서는 fetchIndustriesByTopLevel 함수를 사용하세요
+  return [{ value: "all", label: "전체" }];
 };
 
 // 타겟 추천 결과 옵션들
@@ -473,8 +383,8 @@ export const targetOptions: TargetOptions = {
   ],
   cities: citiesData,
   districts: [{ value: "all", label: "전체" }], // 기본값, 실제로는 getDistrictsByCity 함수 사용
-  topLevelIndustries: topLevelIndustriesData,
-  industries: [{ value: "all", label: "전체" }], // 기본값, 실제로는 getIndustriesByTopLevel 함수 사용
+  topLevelIndustries: [{ value: "all", label: "전체" }], // fetchTopLevelIndustries()로 동적 로딩
+  industries: [{ value: "all", label: "전체" }], // fetchIndustriesByTopLevel()로 동적 로딩
   cardAmounts: [
     { value: "10000", label: "1만원 미만" },
     { value: "50000", label: "5만원 미만" },

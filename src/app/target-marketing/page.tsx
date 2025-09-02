@@ -54,9 +54,9 @@ function TargetMarketingPageContent() {
     }
   }, [activeTab, currentView]);
 
-  // 복원 상태 체크 함수
+  // 복원 상태 체크 함수 - 캠페인 만들기 탭에서만 동작
   const checkForRestorableState = useCallback(() => {
-    if (typeof window === 'undefined' || hasHandledRestore) return;
+    if (typeof window === 'undefined' || hasHandledRestore || activeTab !== 'naver-talktalk') return;
     
     try {
       const savedStateJson = sessionStorage.getItem('targetMarketingState');
@@ -74,31 +74,31 @@ function TargetMarketingPageContent() {
       console.error('복원 상태 확인 실패:', error);
       sessionStorage.removeItem('targetMarketingState');
     }
-  }, [hasHandledRestore]);
+  }, [hasHandledRestore, activeTab]);
 
-  // 페이지 진입 시 복원 여부 확인 (마운트, focus, visibilitychange 이벤트)
+  // 페이지 진입 시 복원 여부 확인 (마운트, focus, visibilitychange 이벤트) - 캠페인 만들기 탭에서만
   useEffect(() => {
-    if (currentView === 'main') {
+    if (currentView === 'main' && activeTab === 'naver-talktalk') {
       checkForRestorableState();
     }
 
     // 페이지가 포커스될 때마다 체크 (뒤로가기, 탭 전환 등)
     const handleFocus = () => {
-      if (!showRestoreModal && currentView === 'main') {
+      if (!showRestoreModal && currentView === 'main' && activeTab === 'naver-talktalk') {
         checkForRestorableState();
       }
     };
 
     // 페이지 가시성이 변경될 때마다 체크
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !showRestoreModal && currentView === 'main') {
+      if (document.visibilityState === 'visible' && !showRestoreModal && currentView === 'main' && activeTab === 'naver-talktalk') {
         checkForRestorableState();
       }
     };
 
     // 브라우저 히스토리 변경 시 체크
     const handlePopState = () => {
-      if (!showRestoreModal && currentView === 'main') {
+      if (!showRestoreModal && currentView === 'main' && activeTab === 'naver-talktalk') {
         setTimeout(() => checkForRestorableState(), 100);
       }
     };
@@ -112,7 +112,7 @@ function TargetMarketingPageContent() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [checkForRestorableState, showRestoreModal, currentView, hasHandledRestore]);
+  }, [checkForRestorableState, showRestoreModal, currentView, hasHandledRestore, activeTab]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);

@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { DynamicButton } from "@/types/targetMarketing";
+import { formatLocations } from "@/utils/locationMapping";
 
-// RealCampaign 인터페이스 (CampaignManagementTab.tsx와 동일)
+// RealCampaign 인터페이스 (새로운 컬럼들 사용)
 interface RealCampaign {
   id: number;
   name: string;
@@ -21,33 +22,30 @@ interface RealCampaign {
   failed_count: number;
   created_at: string;
   updated_at?: string;
-  rejection_reason?: string; // 추가된 속성
-  buttons?: DynamicButton[]; // 추가된 속성
-  ad_medium?: "naver_talktalk" | "sms"; // 광고매체
-  desired_recipients?: string | null; // 희망 수신자
-  target_criteria: {
-    gender?: string | string[];
-    ageGroup?: string | string[];
-    location?: {
-      city?: string;
-      district?: string;
-    };
-    cardAmount?: string;
-    cardTime?: {
-      startTime?: string;
-      endTime?: string;
-      period?: string;
-    };
-    sendPolicy?: string;
-    cardUsageIndustry?: string;
-    costPerItem?: number;
-    dailyMaxCount?: number;
-    [key: string]: unknown;
+  rejection_reason?: string;
+  buttons?: DynamicButton[];
+  ad_medium?: "naver_talktalk" | "sms";
+  desired_recipients?: string | null;
+  // 새로운 개별 컬럼들
+  target_age_groups?: string[];
+  target_locations_detailed?: Array<{ city: string; districts: string[] } | string>;
+  card_amount_max?: number;
+  card_time_start?: string;
+  card_time_end?: string;
+  target_industry_top_level?: string;
+  target_industry_specific?: string;
+  unit_cost?: number;
+  estimated_total_cost?: number;
+  expert_review_requested?: boolean;
+  expert_review_notes?: string;
+  gender_ratio?: {
+    female: number;
+    male: number;
   };
   message_templates?: {
-    name: string;
-    content: string;
-    image_url: string;
+    name?: string;
+    content?: string;
+    image_url?: string;
     category?: string;
   };
 }
@@ -60,6 +58,7 @@ interface CampaignDetailModalProps {
   campaigns?: RealCampaign[];
   currentIndex?: number;
   onNavigate?: (direction: 'prev' | 'next') => void;
+  isAdminView?: boolean;
 }
 
 const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
@@ -69,9 +68,11 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   onUpdateCampaignName,
   campaigns = [],
   currentIndex = 0,
-  onNavigate
+  onNavigate,
+  isAdminView = false
 }) => {
   const [editedName, setEditedName] = useState("");
+  const [industryNames, setIndustryNames] = useState<{topLevel: string, specific: string}>({topLevel: '', specific: ''});
 
   // campaign이 변경될 때마다 editedName 업데이트
   React.useEffect(() => {
@@ -79,6 +80,70 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
       setEditedName(campaign.name);
     }
   }, [campaign?.name]);
+
+  // 업종 이름 가져오기
+  useEffect(() => {
+    const fetchIndustryNames = async () => {
+      if (campaign && (campaign.target_industry_top_level || campaign.target_industry_specific)) {
+        try {
+          let topLevelName = '';
+          let specificName = '';
+
+          // 대분류 이름 가져오기
+          if (campaign.target_industry_top_level) {
+            const topLevelResponse = await fetch('/api/industries');
+            if (topLevelResponse.ok) {
+              const responseData = await topLevelResponse.json();
+              
+              // API 응답에서 rawData 사용 (code, name 직접 매칭)
+              const topLevelData = responseData.rawData || [];
+              
+              // code로 매칭
+              const topLevelIndustry = topLevelData.find((industry: { code: string; name: string }) => 
+                industry.code === campaign.target_industry_top_level || 
+                industry.code === String(campaign.target_industry_top_level)
+              );
+              
+              topLevelName = topLevelIndustry?.name || campaign.target_industry_top_level;
+            }
+          }
+
+          // 세부업종 이름 가져오기
+          if (campaign.target_industry_specific && campaign.target_industry_top_level) {
+            const specificResponse = await fetch(`/api/industries?top_level_code=${campaign.target_industry_top_level}`);
+            if (specificResponse.ok) {
+              const responseData = await specificResponse.json();
+              
+              // API 응답에서 rawData 사용 (code, name 직접 매칭)
+              const specificData = responseData.rawData || [];
+              
+              // code로 매칭
+              const specificIndustry = specificData.find((industry: { code: string; name: string }) => 
+                industry.code === campaign.target_industry_specific ||
+                industry.code === String(campaign.target_industry_specific)
+              );
+              
+              specificName = specificIndustry?.name || campaign.target_industry_specific;
+            }
+          }
+
+          setIndustryNames({ topLevel: topLevelName, specific: specificName });
+        } catch (error) {
+          console.error('Failed to fetch industry names:', error);
+          // 에러 시 원래 값 사용
+          setIndustryNames({
+            topLevel: campaign.target_industry_top_level || '',
+            specific: campaign.target_industry_specific || ''
+          });
+        }
+      } else {
+        // campaign이나 industry 정보가 없으면 초기화
+        setIndustryNames({ topLevel: '', specific: '' });
+      }
+    };
+
+    fetchIndustryNames();
+  }, [campaign?.target_industry_top_level, campaign?.target_industry_specific, campaign]);
 
   if (!isOpen || !campaign) return null;
 
@@ -139,131 +204,110 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
+      hour12: false
     });
   };
 
   // 타겟 기준 정보 포맷팅
   const formatTargetCriteria = () => {
-    const criteria = campaign.target_criteria || {};
-    
-    // 성별 변환
-    const formatGender = (gender: string | string[]) => {
-      if (Array.isArray(gender)) {
-        return gender.map(g => {
-          if (g === 'male' || g === '남성') return '남성';
-          if (g === 'female' || g === '여성') return '여성';
-          if (g === 'all' || g === '전체') return '전체';
-          return g;
+    // 성별 변환 - gender_ratio 사용
+    const formatGender = () => {
+      if (campaign.gender_ratio) {
+        const { female, male } = campaign.gender_ratio;
+        return `남성 ${male}% : 여성 ${female}%`;
+      }
+      return '전체';
+    };
+
+    // 연령대 변환 - target_age_groups 사용
+    const formatAgeGroup = () => {
+      if (campaign.target_age_groups && campaign.target_age_groups.length > 0) {
+        if (campaign.target_age_groups.includes('all')) return '전체';
+        return campaign.target_age_groups.map(age => {
+          if (age === 'all' || age === '전체') return '전체';
+          if (age === 'teens') return '10대';
+          if (age === 'twenties') return '20대';
+          if (age === 'thirties') return '30대';
+          if (age === 'forties') return '40대';
+          if (age === 'fifties') return '50대';
+          if (age === 'sixties') return '60대';
+          return age.includes('대') ? age : `${age}대`;
         }).join(', ');
-      } else {
-        if (gender === 'male' || gender === '남성') return '남성';
-        if (gender === 'female' || gender === '여성') return '여성';
-        if (gender === 'all' || gender === '전체') return '전체';
-        return gender;
       }
+      return '전체';
     };
-    
-    // 연령대 변환
-    const formatAgeGroup = (ageGroup: string | string[]) => {
-      const convertAge = (age: string) => {
-        if (age === 'all' || age === '전체') return '전체';
-        if (age === 'teens') return '10대';
-        if (age === 'twenties') return '20대';
-        if (age === 'thirties') return '30대';
-        if (age === 'forties') return '40대';
-        if (age === 'fifties') return '50대';
-        if (age === 'sixties') return '60대';
-        return age;
-      };
-      
-      if (Array.isArray(ageGroup)) {
-        return ageGroup.map(a => convertAge(a)).join(', ');
-      } else {
-        return convertAge(ageGroup);
+
+    // 위치 변환 - target_locations_detailed 사용
+    const formatLocation = () => {
+      return formatLocations(campaign.target_locations_detailed || []);
+    };
+
+    // 업종 변환 - target_industry_top_level과 target_industry_specific 사용
+    const formatIndustry = () => {
+      const topLevel = industryNames.topLevel;
+      const specific = industryNames.specific;
+            
+      if (topLevel && specific) {
+        return `${topLevel}, ${specific}`;
+      } else if (topLevel) {
+        return topLevel;
+      } else if (specific) {
+        return specific;
       }
-    };
-    
-    // 지역 변환
-    const formatLocation = (location: { city?: string; district?: string; } | undefined) => {
-      if (!location) return '';
       
-      const convertLocationName = (name: string) => {
-        const locationMap: { [key: string]: string } = {
-          'seoul': '서울',
-          'busan': '부산',
-          'daegu': '대구',
-          'incheon': '인천',
-          'gwangju': '광주',
-          'daejeon': '대전',
-          'ulsan': '울산',
-          'sejong': '세종',
-          'gyeonggi': '경기',
-          'gangwon': '강원',
-          'chungbuk': '충북',
-          'chungnam': '충남',
-          'jeonbuk': '전북',
-          'jeonnam': '전남',
-          'gyeongbuk': '경북',
-          'gyeongnam': '경남',
-          'jeju': '제주',
-          'all': '전체'
-        };
-        
-        return locationMap[name.toLowerCase()] || name;
+      // 백업: 원래 값들 사용
+      const originalTopLevel = campaign.target_industry_top_level;
+      const originalSpecific = campaign.target_industry_specific;
+      
+      if (originalTopLevel && originalSpecific) {
+        return `${originalTopLevel} > ${originalSpecific}`;
+      }
+      return originalTopLevel || originalSpecific || '전체';
+    };
+
+    // 카드 승인 금액 - card_amount_max 사용
+    const formatCardAmount = () => {
+      const max = campaign.card_amount_max;
+      
+      if (max !== null) {
+        return `${max?.toLocaleString()}원 미만`;
+      }
+      return '전체';
+    };
+
+    // 카드 승인 시간 - card_time_start, card_time_end 사용 (24시간 형식, 초 단위 제거)
+    const formatCardTime = () => {
+      const startTime = campaign.card_time_start;
+      const endTime = campaign.card_time_end;
+      
+      // HH:MM:SS 형태를 HH:MM 형태로 변환하는 함수
+      const removeSeconds = (timeString: string) => {
+        if (!timeString) return timeString;
+        const parts = timeString.split(':');
+        if (parts.length >= 2) {
+          return `${parts[0]}:${parts[1]}`;
+        }
+        return timeString;
       };
       
-      const city = location.city ? convertLocationName(location.city) : '';
-      const district = location.district ? convertLocationName(location.district) : '';
-      
-      return `${city} ${district}`.trim();
+      if (startTime && endTime) {
+        return `${removeSeconds(startTime)} ~ ${removeSeconds(endTime)}`;
+      } else if (startTime) {
+        return `${removeSeconds(startTime)}부터`;
+      } else if (endTime) {
+        return `${removeSeconds(endTime)}까지`;
+      }
+      return '전체';
     };
-    
-    // 업종 변환
-    const formatIndustry = (industry: string | undefined) => {
-      if (!industry || industry === 'all') return '전체';
-      
-      const industryMap: { [key: string]: string } = {
-        'retail': '소매업',
-        'restaurant': '음식점',
-        'cafe': '카페',
-        'beauty': '미용업',
-        'fashion': '패션',
-        'healthcare': '의료',
-        'education': '교육',
-        'entertainment': '엔터테인먼트',
-        'automotive': '자동차',
-        'finance': '금융',
-        'technology': '기술',
-        'manufacturing': '제조업',
-        'construction': '건설업',
-        'agriculture': '농업',
-        'transportation': '운송업',
-        'hotel': '호텔',
-        'travel': '여행',
-        'sports': '스포츠',
-        'fitness': '피트니스',
-        'all': '전체'
-      };
-      
-      return industryMap[industry.toLowerCase()] || industry;
-    };
-    
-    const gender = criteria.gender ? formatGender(criteria.gender) : '';
-    const ageGroup = criteria.ageGroup ? formatAgeGroup(criteria.ageGroup) : '';
-    const location = formatLocation(criteria.location);
-    const cardAmount = criteria.cardAmount || '';
-    const cardTime = criteria.cardTime ? 
-      `${criteria.cardTime.startTime || ''} ~ ${criteria.cardTime.endTime || ''}` : '';
-    const cardUsageIndustry = formatIndustry(criteria.cardUsageIndustry);
 
     return {
-      gender,
-      ageGroup,
-      location,
-      cardAmount,
-      cardTime,
-      cardUsageIndustry
+      gender: formatGender(),
+      ageGroup: formatAgeGroup(),
+      location: formatLocation(),
+      cardAmount: formatCardAmount(),
+      cardTime: formatCardTime(),
+      cardUsageIndustry: formatIndustry()
     };
   };
 
@@ -407,23 +451,27 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       {/* 캠페인 이름 */}
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">캠페인 이름</span>
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="text"
-                            value={editedName}
-                            onChange={(e) => setEditedName(e.target.value)}
-                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') handleSaveName();
-                            }}
-                          />
-                          <button
-                            onClick={handleSaveName}
-                            className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors duration-200"
-                          >
-                            수정
-                          </button>
-                        </div>
+                        {isAdminView ? (
+                          <span className="text-sm text-gray-900">{campaign.name}</span>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={editedName}
+                              onChange={(e) => setEditedName(e.target.value)}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') handleSaveName();
+                              }}
+                            />
+                            <button
+                              onClick={handleSaveName}
+                              className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors duration-200"
+                            >
+                              수정
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* 생성일 */}
@@ -461,27 +509,27 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                          </span>
                        </div>
 
-                      {/* 카드 사용 위치 */}
+                      {/* 결제 위치 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 사용 위치</span>
+                        <span className="text-sm font-medium text-gray-700">결제 위치</span>
                         <span className="text-sm text-gray-900">{targetInfo.location || '-'}</span>
                       </div>
 
-                      {/* 카드 사용 업종 */}
+                      {/* 결제 업종 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 사용 업종</span>
+                        <span className="text-sm font-medium text-gray-700">결제 업종</span>
                         <span className="text-sm text-gray-900">{targetInfo.cardUsageIndustry || '-'}</span>
                       </div>
 
-                      {/* 카드 승인 금액 */}
+                      {/* 결제 승인 금액 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 승인 금액</span>
+                        <span className="text-sm font-medium text-gray-700">결제 승인 금액</span>
                         <span className="text-sm text-gray-900">{targetInfo.cardAmount || '-'}</span>
                       </div>
 
-                      {/* 카드 승인 시간 */}
+                      {/* 결제 승인 시간 */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">카드 승인 시간</span>
+                        <span className="text-sm font-medium text-gray-700">결제 승인 시간</span>
                         <span className="text-sm text-gray-900">{targetInfo.cardTime || '-'}</span>
                       </div>
 
@@ -489,12 +537,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                        <div className="flex items-center justify-between">
                          <span className="text-sm font-medium text-gray-700">희망 수신자</span>
                          <span className="text-sm text-gray-900">
-                           {(() => {
-                             if (campaign.desired_recipients && campaign.desired_recipients.trim() !== '') {
-                               return `${parseInt(campaign.desired_recipients).toLocaleString()}명`;
-                             }
-                             return '없음';
-                           })()}
+                           {campaign.desired_recipients && campaign.desired_recipients.trim() !== '' ? campaign.desired_recipients : '없음'}
                          </span>
                        </div>
 
@@ -518,7 +561,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       {/* 캠페인 단가 */}
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">캠페인 단가</span>
-                        <span className="text-sm text-gray-900">{campaign.target_criteria?.costPerItem || 100}원</span>
+                        <span className="text-sm text-gray-900">{campaign.unit_cost ? `${campaign.unit_cost.toLocaleString()}원` : '100원'}</span>
                       </div>
 
                       {/* 합계 */}
@@ -533,52 +576,59 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 </div>
                 
               </div>
-              {/* 목록 버튼 */}
-               <div className="flex justify-end mt-auto">
-                 <button
-                   onClick={onClose}
-                   className="px-6 py-2 bg-white border-2 border-gray-300 hover:bg-gray-100 text-gray-900 text-sm whitespace-nowrap transition-colors duration-200"
-                 >
-                   목록
-                 </button>
-               </div>
+              {/* 목록 버튼 - 관리자 뷰에서는 숨김 */}
+               {!isAdminView && (
+                 <div className="flex justify-end mt-auto">
+                   <button
+                     onClick={onClose}
+                     className="px-6 py-2 bg-white border-2 border-gray-300 hover:bg-gray-100 text-gray-900 text-sm whitespace-nowrap transition-colors duration-200"
+                   >
+                     목록
+                   </button>
+                 </div>
+               )}
+               
+               {/* 관리자 뷰일 때 하단 여백 추가 */}
+               {isAdminView && <div className="mb-8"></div>}
             </div>
 
-            {/* 전문가 검토 의견 */}
-            <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <h4 className="text-base font-semibold text-gray-900">전문가 검토 의견</h4>
-                  <span className="text-xs text-gray-500">{formatDate(new Date().toISOString())}</span>
+            {/* 전문가 검토 의견 - 관리자 뷰에서는 숨김 */}
+            {!isAdminView && (
+              <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-4">
+                    <h4 className="text-base font-semibold text-gray-900">전문가 검토 의견</h4>
+                    <span className="text-xs text-gray-500">{formatDate(new Date().toISOString())}</span>
+                  </div>
+                  
+                  {/* 추가 문의 버튼 */}
+                  <button
+                    onClick={() => {
+                      // 1:1 문의하기 페이지로 이동
+                      window.location.href = '/support';
+                    }}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors duration-200"
+                  >
+                    추가 문의
+                  </button>
                 </div>
                 
-                {/* 추가 문의 버튼 */}
-                <button
-                  onClick={() => {
-                    // 1:1 문의하기 페이지로 이동
-                    window.location.href = '/support';
-                  }}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors duration-200"
-                >
-                  추가 문의
-                </button>
-              </div>
-              
-              <div className="bg-white border border-gray-200 rounded p-4 min-h-[100px] flex items-center justify-center">
-                <p className="text-gray-500 text-sm">준비중입니다.</p>
-              </div>
+                <div className="bg-white border border-gray-200 rounded p-4 min-h-[100px] flex items-center justify-center">
+                  <p className="text-gray-500 text-sm">준비중입니다.</p>
+                </div>
 
-              {/* 첨부파일 다운로드 (준비중) */}
-              <div className="mt-4 text-sm text-gray-500 text-right">
-                <span>첨부파일: </span>
-                <button 
-                  className="text-blue-500 hover:text-blue-600 underline"
-                  onClick={() => alert('첨부파일 다운로드 기능은 준비중입니다.')}
-                >
-                  전문가의견.jpg (준비중)
-                </button>
+                {/* 첨부파일 다운로드 (준비중) */}
+                <div className="mt-4 text-sm text-gray-500 text-right">
+                  <span>첨부파일: </span>
+                  <button 
+                    className="text-blue-500 hover:text-blue-600 underline"
+                    onClick={() => alert('첨부파일 다운로드 기능은 준비중입니다.')}
+                  >
+                    전문가의견.jpg (준비중)
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
 
