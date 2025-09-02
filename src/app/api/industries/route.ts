@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
         }))
       ];
 
-      return NextResponse.json({ industries });
+      // Also return raw data for direct code/name matching
+      return NextResponse.json({ industries, rawData: data });
     } else {
       // 상위 업종들 조회
       const { data, error } = await supabase
@@ -55,7 +56,8 @@ export async function GET(request: NextRequest) {
         }))
       ];
 
-      return NextResponse.json({ topLevelIndustries });
+      // Also return raw data for direct code/name matching
+      return NextResponse.json({ topLevelIndustries, rawData: data });
     }
   } catch (error) {
     console.error('업종 API 오류:', error);

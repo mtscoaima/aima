@@ -23,7 +23,6 @@ interface CreateCampaignRequest {
   // 새로운 데이터베이스 컬럼들
   targetAgeGroups: string[];
   targetLocationsDetailed?: any[];
-  cardAmountMin?: number | null;
   cardAmountMax?: number | null;
   cardTimeStart?: string | null;
   cardTimeEnd?: string | null;
@@ -221,7 +220,7 @@ export async function POST(request: NextRequest) {
       // 새로운 템플릿 생성
       const templateData = {
         user_id: userId,
-        name: campaignData.title || "AI 생성 캠페인",
+        name: campaignData.templateDescription || "AI 생성 템플릿",
         content: campaignData.content,
         image_url: campaignData.imageUrl,
         category: "AI_GENERATED",
@@ -317,7 +316,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 카드 승인 금액 처리
-    const cardAmountMin = campaignData.cardAmountMin || null;
     const cardAmountMax = campaignData.cardAmountMax || null;
 
     // 카드 승인 시간 처리
@@ -355,7 +353,6 @@ export async function POST(request: NextRequest) {
       scheduled_send_time: campaignData.scheduledSendTime || null,
       target_age_groups: campaignData.targetAgeGroups || ['all'],
       target_locations_detailed: campaignData.targetLocationsDetailed || [],
-      card_amount_min: cardAmountMin,
       card_amount_max: cardAmountMax,
       card_time_start: cardTimeStart,
       card_time_end: cardTimeEnd,

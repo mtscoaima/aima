@@ -33,7 +33,6 @@ export interface CreateCampaignRequest {
   // 새로운 데이터베이스 컬럼들
   targetAgeGroups: string[];
   targetLocationsDetailed?: any[];
-  cardAmountMin?: number | null;
   cardAmountMax?: number | null;
   cardTimeStart?: string | null;
   cardTimeEnd?: string | null;

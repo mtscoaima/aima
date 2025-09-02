@@ -28,7 +28,6 @@ interface Campaign {
   rejection_reason?: string;
   created_at: string;
   updated_at: string;
-  target_criteria: Record<string, unknown>;
   message_template: string;
   schedule_start_date?: string;
   schedule_end_date?: string;
@@ -40,6 +39,22 @@ interface Campaign {
   buttons?: DynamicButton[];
   ad_medium?: "naver_talktalk" | "sms";
   desired_recipients?: string;
+  // 새로운 개별 컬럼들
+  target_age_groups?: string[];
+  target_locations_detailed?: any[];
+  card_amount_max?: number;
+  card_time_start?: string;
+  card_time_end?: string;
+  target_industry_top_level?: string;
+  target_industry_specific?: string;
+  unit_cost?: number;
+  estimated_total_cost?: number;
+  expert_review_requested?: boolean;
+  expert_review_notes?: string;
+  gender_ratio?: {
+    female: number;
+    male: number;
+  };
   users?: {
     username?: string;
     name: string;
@@ -47,9 +62,10 @@ interface Campaign {
     phone_number: string;
   };
   message_templates?: {
-    name: string;
-    content: string;
-    image_url: string;
+    name?: string;
+    content?: string;
+    image_url?: string;
+    category?: string;
   };
 }
 
@@ -397,6 +413,7 @@ export default function CampaignsPage() {
       name: campaign.name,
       description: campaign.description,
       status: campaign.status,
+      approval_status: campaign.status,
       schedule_start_date: campaign.schedule_start_date,
       schedule_end_date: campaign.schedule_end_date,
       budget: campaign.budget,
@@ -411,9 +428,51 @@ export default function CampaignsPage() {
       buttons: campaign.buttons,
       ad_medium: campaign.ad_medium,
       desired_recipients: campaign.desired_recipients,
-      target_criteria: campaign.target_criteria,
+      // 새로운 개별 컬럼들
+      target_age_groups: campaign.target_age_groups,
+      target_locations_detailed: campaign.target_locations_detailed,
+      card_amount_max: campaign.card_amount_max,
+      card_time_start: campaign.card_time_start,
+      card_time_end: campaign.card_time_end,
+      target_industry_top_level: campaign.target_industry_top_level,
+      target_industry_specific: campaign.target_industry_specific,
+      unit_cost: campaign.unit_cost,
+      estimated_total_cost: campaign.estimated_total_cost,
+      expert_review_requested: campaign.expert_review_requested,
+      expert_review_notes: campaign.expert_review_notes,
+      gender_ratio: campaign.gender_ratio,
       message_templates: campaign.message_templates
     };
+  };
+
+  // 캠페인 이름 업데이트 함수 (관리자용)
+  const updateCampaignName = async (campaignId: number | string, newName: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`/api/admin/campaigns/${campaignId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: newName })
+      });
+
+      if (!response.ok) {
+        throw new Error('캠페인 이름 수정 실패');
+      }
+
+      // 캠페인 목록 새로고침
+      await fetchCampaigns();
+      
+      // 선택된 캠페인 업데이트
+      if (selectedCampaign && selectedCampaign.id === campaignId) {
+        setSelectedCampaign({ ...selectedCampaign, name: newName });
+      }
+    } catch (error) {
+      console.error('캠페인 이름 수정 실패:', error);
+      alert('캠페인 이름 수정에 실패했습니다.');
+    }
   };
 
   if (loading) {
@@ -763,9 +822,11 @@ export default function CampaignsPage() {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           campaign={convertCampaignToModalFormat(selectedCampaign)}
+          onUpdateCampaignName={updateCampaignName}
           campaigns={filteredCampaigns.map(convertCampaignToModalFormat)}
           currentIndex={currentIndex}
           onNavigate={handleNavigate}
+          isAdminView={true}
         />
       )}
     </div>

@@ -2364,8 +2364,8 @@ function TargetMarketingDetailContent({
       setTargetIndustry(campaignData.target_industry_specific || "all");
 
       // 카드 승인 금액 설정
-      if (campaignData.card_amount_min && campaignData.card_amount_max) {
-        const amount = campaignData.card_amount_min / 10000;
+      if (campaignData.card_amount_max) {
+        const amount = campaignData.card_amount_max / 10000;
         setCardAmount(amount.toString() + "0000");
         setCardAmountInput(amount.toString());
       } else {
@@ -2470,7 +2470,6 @@ function TargetMarketingDetailContent({
         // 새로운 데이터베이스 컬럼들 직접 사용
         targetAgeGroups: targetAge && targetAge.length > 0 ? targetAge : ["all"],
         targetLocationsDetailed: selectedLocations,
-        cardAmountMin: cardAmount === "all" ? null : parseInt(cardAmountInput) * 10000,
         cardAmountMax: cardAmount === "all" ? null : parseInt(cardAmountInput) * 10000,
         cardTimeStart: cardStartTime,
         cardTimeEnd: cardEndTime,
@@ -2487,7 +2486,7 @@ function TargetMarketingDetailContent({
         },
         desiredRecipients: desiredRecipients.trim() || null,
         estimatedCost: totalCost,
-        templateDescription: smsTextContent,
+        templateDescription: templateTitle.trim() || `AI 생성 템플릿 ${new Date().toLocaleDateString('ko-KR')}`,
       };
 
       // 캠페인 생성 API 호출

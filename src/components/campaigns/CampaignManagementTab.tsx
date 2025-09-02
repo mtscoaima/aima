@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { DynamicButton } from "@/types/targetMarketing";
 import RejectionReasonModal from "@/components/modals/RejectionReasonModal";
 import CampaignDetailModal from "@/components/modals/CampaignDetailModal";
 import DateRangeModal from "@/components/modals/DateRangeModal";
@@ -23,31 +24,30 @@ interface RealCampaign {
   failed_count: number;
   created_at: string;
   updated_at?: string;
-  ad_medium?: "naver_talktalk" | "sms"; // 광고매체
-  desired_recipients?: string | null; // 희망 수신자
-  target_criteria: {
-    gender?: string | string[];
-    ageGroup?: string | string[];
-    location?: {
-      city?: string;
-      district?: string;
-    };
-    cardAmount?: string;
-    cardTime?: {
-      startTime?: string;
-      endTime?: string;
-      period?: string;
-    };
-    sendPolicy?: string;
-    cardUsageIndustry?: string;
-    costPerItem?: number;
-    dailyMaxCount?: number;
-    [key: string]: unknown;
+  rejection_reason?: string;
+  buttons?: DynamicButton[];
+  ad_medium?: "naver_talktalk" | "sms";
+  desired_recipients?: string | null;
+  // 새로운 개별 컬럼들
+  target_age_groups?: string[];
+  target_locations_detailed?: any[];
+  card_amount_max?: number;
+  card_time_start?: string;
+  card_time_end?: string;
+  target_industry_top_level?: string;
+  target_industry_specific?: string;
+  unit_cost?: number;
+  estimated_total_cost?: number;
+  expert_review_requested?: boolean;
+  expert_review_notes?: string;
+  gender_ratio?: {
+    female: number;
+    male: number;
   };
   message_templates?: {
-    name: string;
-    content: string;
-    image_url: string;
+    name?: string;
+    content?: string;
+    image_url?: string;
     category?: string;
   };
 }
@@ -67,9 +67,16 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
   });
 
   // 날짜 필터링 상태
-  const [dateFilter, setDateFilter] = useState({
-    startDate: "2025-08-07",
-    endDate: "2025-08-13"
+  const [dateFilter, setDateFilter] = useState(() => {
+    const today = new Date();
+    const endDate = new Date(today);
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 6); // 오늘 포함 7일 (6일 전부터)
+    
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    };
   });
   
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);

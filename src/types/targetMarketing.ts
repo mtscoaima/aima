@@ -64,7 +64,6 @@ export interface Campaign {
   // 새로운 개별 컬럼들
   target_age_groups?: string[];
   target_locations_detailed?: any[];
-  card_amount_min?: number;
   card_amount_max?: number;
   card_time_start?: string;
   card_time_end?: string;
