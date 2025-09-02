@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { DynamicButton } from "@/types/targetMarketing";
+import { formatLocations } from "@/utils/locationMapping";
 
 // RealCampaign 인터페이스 (새로운 컬럼들 사용)
 interface RealCampaign {
@@ -239,44 +240,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
     // 위치 변환 - target_locations_detailed 사용
     const formatLocation = () => {
-      if (campaign.target_locations_detailed && campaign.target_locations_detailed.length > 0) {
-        return campaign.target_locations_detailed.map((loc: { city: string; districts: string[] } | string) => {
-          if (typeof loc === 'string') {
-            return loc === 'all' ? '전국' : loc;
-          } else if (typeof loc === 'object' && loc.city && loc.districts) {
-            // city와 districts 배열 구조 처리
-            const cityMap: { [key: string]: string } = {
-              'seoul': '서울', 'busan': '부산', 'daegu': '대구', 'incheon': '인천',
-              'gwangju': '광주', 'daejeon': '대전', 'ulsan': '울산', 'sejong': '세종',
-              'gyeonggi': '경기', 'gangwon': '강원', 'chungbuk': '충북', 'chungnam': '충남',
-              'jeonbuk': '전북', 'jeonnam': '전남', 'gyeongbuk': '경북', 'gyeongnam': '경남',
-              'jeju': '제주'
-            };
-            
-            const districtMap: { [key: string]: string } = {
-              'sasang': '사상구', 'saha': '사하구', 'geumjeong': '금정구',
-              'busanjin': '부산진구', 'dong': '동구', 'jung': '중구',
-              'gangnam': '강남구', 'gangdong': '강동구', 'gangbuk': '강북구',
-              'gangseo': '강서구', 'gwanak': '관악구', 'gwangjin': '광진구',
-              'guro': '구로구', 'geumcheon': '금천구', 'nowon': '노원구',
-              'dobong': '도봉구', 'dongdaemun': '동대문구', 'dongjak': '동작구',
-              'mapo': '마포구', 'seodaemun': '서대문구', 'seocho': '서초구',
-              'seongdong': '성동구', 'seongbuk': '성북구', 'songpa': '송파구',
-              'yangcheon': '양천구', 'yeongdeungpo': '영등포구', 'yongsan': '용산구',
-              'eunpyeong': '은평구', 'jongno': '종로구'
-            };
-            
-            const cityName = cityMap[loc.city.toLowerCase()] || loc.city;
-            const districtNames = loc.districts.map((district: string) => 
-              districtMap[district.toLowerCase()] || district
-            );
-            
-            return `${cityName}시 ${districtNames.join(', ')}`;
-          }
-          return '';
-        }).filter(Boolean).join(', ');
-      }
-      return '전국';
+      return formatLocations(campaign.target_locations_detailed || []);
     };
 
     // 업종 변환 - target_industry_top_level과 target_industry_specific 사용
