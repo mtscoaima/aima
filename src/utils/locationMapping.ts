@@ -66,7 +66,6 @@ export const districtMap: { [key: string]: string } = {
   'gijang': '기장군',
   'dongnae': '동래구',
   'yeongdo': '영도구',
-  'gangseo': '강서구',
 
   // 대구광역시 (8개 구/군)
   'jung_daegu': '중구',
