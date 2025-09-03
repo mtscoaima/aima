@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import { tokenManager } from "@/lib/api";
 
 // 사용자 데이터 타입 정의
 interface User {
@@ -30,14 +31,25 @@ interface PointChargeData {
   reason: string;
 }
 
+// 일괄 충전 오류 타입 정의
+interface BulkChargeError {
+  userId: string;
+  username: string;
+  name: string;
+  error: string;
+}
+
 export default function PointChargeManagementPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0
+  });
   
   // 검색 및 필터링
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,7 +65,33 @@ export default function PointChargeManagementPage() {
     reason: ""
   });
 
-  const itemsPerPage = 20;
+  // 페이지네이션 함수들
+  const handlePageSizeChange = (newSize: number) => {
+    setPagination(prev => ({ 
+      ...prev, 
+      limit: newSize, 
+      page: 1 
+    }));
+  };
+
+  const handlePageChange = (pageNumber: number) => {
+    setPagination(prev => ({ ...prev, page: pageNumber }));
+    // 테이블 상단으로 스크롤
+    document.querySelector('.point-charge-management-content')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleFirstPage = () => handlePageChange(1);
+  const handleLastPage = () => handlePageChange(pagination.totalPages);
+  const handlePrevPage = () => {
+    if (pagination.page > 1) {
+      handlePageChange(pagination.page - 1);
+    }
+  };
+  const handleNextPage = () => {
+    if (pagination.page < pagination.totalPages) {
+      handlePageChange(pagination.page + 1);
+    }
+  };
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -63,52 +101,77 @@ export default function PointChargeManagementPage() {
     setIsSidebarOpen(false);
   };
 
-  // 임시 데이터 - 실제 구현 시 API에서 가져올 데이터
+  // 실제 API에서 사용자 데이터 로드
   const loadUsers = useCallback(async () => {
     setLoading(true);
     
-    // 임시 데이터 생성
-    const dummyUsers: User[] = Array.from({ length: 50 }, (_, index) => ({
-      id: `user_${index + 1}`,
-      username: `user${index + 1}`,
-      name: `사용자${index + 1}`,
-      email: `user${index + 1}@example.com`,
-      phone: `010-1234-${String(index + 1).padStart(4, '0')}`,
-      userType: index % 3 === 0 ? "기업" : "개인",
-      company: index % 3 === 0 ? `회사${index + 1}` : undefined,
-      status: ["정상", "정지", "대기"][index % 3] as "정상" | "정지" | "대기",
-      role: index % 10 === 0 ? "SALESPERSON" : "USER",
-      joinDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-      pointBalance: Math.floor(Math.random() * 100000),
-      totalPointCharged: Math.floor(Math.random() * 200000),
-      totalPointUsed: Math.floor(Math.random() * 150000),
-      lastPointActivity: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-    }));
+    try {
+      // 인증 토큰 가져오기
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        throw new Error("인증 토큰이 없습니다.");
+      }
 
-    // 검색 및 필터링 적용
-    let filteredUsers = dummyUsers;
-    
-    if (searchQuery) {
-      filteredUsers = filteredUsers.filter(user => 
-        user.name.includes(searchQuery) ||
-        user.username.includes(searchQuery)
-      );
+      // API 호출
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
+
+      if (searchQuery.trim()) {
+        params.append("search", searchQuery.trim());
+      }
+
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+
+      const response = await fetch(`/api/admin/point-status?${params.toString()}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "사용자 정보를 불러오는데 실패했습니다.");
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setUsers(data.users);
+        if (data.pagination) {
+          setPagination(data.pagination);
+        }
+      } else {
+        throw new Error("데이터 로드에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("사용자 데이터 로드 오류:", error);
+      
+      // 에러 처리 - 빈 상태로 설정
+      setUsers([]);
+      setPagination({
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0
+      });
+      
+      // 사용자에게 에러 알림 (선택적)
+      if (error instanceof Error && error.message.includes("인증")) {
+        // 인증 오류의 경우 로그인 페이지로 리다이렉트할 수 있음
+        console.error("인증 오류:", error.message);
+      } else {
+        console.error("데이터 로드 오류:", error);
+      }
+    } finally {
+      setLoading(false);
     }
-    
-    if (statusFilter !== "all") {
-      filteredUsers = filteredUsers.filter(user => user.status === statusFilter);
-    }
-
-    // 페이지네이션 적용
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-    setUsers(paginatedUsers);
-    setTotalUsers(filteredUsers.length);
-    setTotalPages(Math.ceil(filteredUsers.length / itemsPerPage));
-    setLoading(false);
-  }, [currentPage, searchQuery, statusFilter]);
+  }, [pagination.page, pagination.limit, searchQuery, statusFilter]);
 
   useEffect(() => {
     loadUsers();
@@ -158,17 +221,44 @@ export default function PointChargeManagementPage() {
       return;
     }
 
-    // TODO: API 호출
-    console.log("개별 포인트 충전:", {
-      userId: selectedUser.id,
-      amount: pointChargeData.amount,
-      description: pointChargeData.description,
-      reason: pointChargeData.reason
-    });
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
 
-    alert(`${selectedUser.name}님에게 ${pointChargeData.amount}포인트가 충전되었습니다.`);
-    setShowPointChargeModal(false);
-    loadUsers(); // 데이터 새로고침
+      const response = await fetch("/api/admin/point-charge", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          amount: pointChargeData.amount,
+          description: pointChargeData.description,
+          reason: pointChargeData.reason,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "포인트 충전에 실패했습니다.");
+      }
+
+      if (result.success) {
+        alert(result.message);
+        setShowPointChargeModal(false);
+        loadUsers(); // 데이터 새로고침
+      } else {
+        throw new Error("포인트 충전에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("포인트 충전 오류:", error);
+      alert(error instanceof Error ? error.message : "포인트 충전에 실패했습니다.");
+    }
   };
 
   // 일괄 포인트 충전 처리
@@ -187,18 +277,54 @@ export default function PointChargeManagementPage() {
       return;
     }
 
-    // TODO: API 호출
-    console.log("일괄 포인트 충전:", {
-      userIds: selectedUsers,
-      amount: pointChargeData.amount,
-      description: pointChargeData.description,
-      reason: pointChargeData.reason
-    });
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+        return;
+      }
 
-    alert(`선택한 ${selectedUsers.length}명에게 각각 ${pointChargeData.amount}포인트가 충전되었습니다.`);
-    setShowBulkChargeModal(false);
-    setSelectedUsers([]);
-    loadUsers(); // 데이터 새로고침
+      const response = await fetch("/api/admin/point-charge/bulk", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userIds: selectedUsers,
+          amount: pointChargeData.amount,
+          description: pointChargeData.description,
+          reason: pointChargeData.reason,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "일괄 포인트 충전에 실패했습니다.");
+      }
+
+      if (result.success) {
+        alert(result.message);
+        
+        // 부분 실패가 있었다면 오류 정보도 표시
+        if (result.errors && result.errors.length > 0) {
+          const errorMessages = result.errors.map((err: BulkChargeError) => 
+            `${err.name} (${err.username}): ${err.error}`
+          ).join('\n');
+          alert(`일부 사용자 충전 실패:\n${errorMessages}`);
+        }
+        
+        setShowBulkChargeModal(false);
+        setSelectedUsers([]);
+        loadUsers(); // 데이터 새로고침
+      } else {
+        throw new Error("일괄 포인트 충전에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("일괄 포인트 충전 오류:", error);
+      alert(error instanceof Error ? error.message : "일괄 포인트 충전에 실패했습니다.");
+    }
   };
 
   // 상태 뱃지 컴포넌트
@@ -220,43 +346,17 @@ export default function PointChargeManagementPage() {
     );
   };
 
-  // 역할 뱃지 컴포넌트
-  const RoleBadge = ({ role }: { role: string }) => {
-    const getRoleColor = (role: string) => {
-      switch (role) {
-        case "ADMIN": return "bg-purple-100 text-purple-800";
-        case "SALESPERSON": return "bg-blue-100 text-blue-800";
-        case "USER": return "bg-gray-100 text-gray-800";
-        default: return "bg-gray-100 text-gray-800";
-      }
-    };
-
-    const getRoleName = (role: string) => {
-      switch (role) {
-        case "ADMIN": return "관리자";
-        case "SALESPERSON": return "영업사원";
-        case "USER": return "일반회원";
-        default: return role;
-      }
-    };
-
-    return (
-      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(role)}`}>
-        {getRoleName(role)}
-      </span>
-    );
-  };
 
   return (
     <AdminGuard>
       <AdminHeader onToggleSidebar={toggleSidebar} />
       <AdminSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
       <div className="flex min-h-[calc(100vh-64px)] mt-16 bg-gray-50 text-gray-800 font-['Noto_Sans_KR','-apple-system','BlinkMacSystemFont','Segoe_UI','Roboto','sans-serif']">
-        <div className="flex-1 ml-0 lg:ml-[250px] p-4 lg:p-6 bg-gray-50 transition-all duration-300 ease-in-out overflow-x-auto min-w-0">
+        <div className="flex-1 ml-0 lg:ml-[250px] p-4 lg:p-6 bg-gray-50 transition-all duration-300 ease-in-out overflow-x-auto min-w-0 point-charge-management-content">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 md:gap-0">
             <h1 className="m-0 text-2xl md:text-3xl font-bold text-gray-800">포인트 충전 관리</h1>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">전체 {totalUsers.toLocaleString()}명</span>
+              <span className="text-sm text-gray-600">전체 {pagination.total.toLocaleString()}명</span>
             </div>
           </div>
 
@@ -405,31 +505,92 @@ export default function PointChargeManagementPage() {
 
           {/* 페이지네이션 */}
           {!loading && users.length > 0 && (
-            <div className="flex items-center justify-between mt-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalUsers)} / {totalUsers}명
-                </span>
+            <div className="flex flex-col lg:flex-row justify-between items-center p-4 lg:p-6 bg-gray-50 border-t border-gray-200 gap-4">
+              <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6">
+                <div className="text-sm text-gray-600 whitespace-nowrap">
+                  {((pagination.page - 1) * pagination.limit + 1)}-{Math.min(pagination.page * pagination.limit, pagination.total)} 
+                  / 전체 {pagination.total.toLocaleString()}명
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700 whitespace-nowrap">페이지당</span>
+                  <select
+                    value={pagination.limit}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    className="px-2 py-1 text-sm border border-gray-300 rounded cursor-pointer bg-white min-w-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400"
+                  >
+                    <option value={10}>10개</option>
+                    <option value={20}>20개</option>
+                    <option value={50}>50개</option>
+                    <option value={100}>100개</option>
+                  </select>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  이전
-                </button>
-                <span className="px-3 py-1 text-sm">
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  다음
-                </button>
-              </div>
+              
+              {pagination.totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleFirstPage}
+                    disabled={pagination.page === 1}
+                    className="flex items-center justify-center min-w-8 h-9 text-base font-bold border border-gray-300 bg-white text-gray-700 cursor-pointer transition-all duration-200 rounded hover:bg-gray-100 hover:border-gray-400 disabled:bg-gray-50 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="첫 페이지"
+                  >
+                    ««
+                  </button>
+                  
+                  <button
+                    onClick={handlePrevPage}
+                    disabled={pagination.page === 1}
+                    className="flex items-center justify-center min-w-8 h-9 text-base font-bold border border-gray-300 bg-white text-gray-700 cursor-pointer transition-all duration-200 rounded hover:bg-gray-100 hover:border-gray-400 disabled:bg-gray-50 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="이전 페이지"
+                  >
+                    ‹
+                  </button>
+                  
+                  {/* 페이지 번호 버튼들 */}
+                  {(() => {
+                    const startPage = Math.max(1, pagination.page - 2);
+                    const endPage = Math.min(pagination.totalPages, startPage + 4);
+                    const pages = [];
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => handlePageChange(i)}
+                          className={`flex items-center justify-center min-w-9 h-9 text-sm font-medium border cursor-pointer transition-all duration-200 rounded ${
+                            i === pagination.page 
+                              ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700 hover:border-blue-700' 
+                              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400'
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
+                  
+                  <button
+                    onClick={handleNextPage}
+                    disabled={pagination.page === pagination.totalPages}
+                    className="flex items-center justify-center min-w-8 h-9 text-base font-bold border border-gray-300 bg-white text-gray-700 cursor-pointer transition-all duration-200 rounded hover:bg-gray-100 hover:border-gray-400 disabled:bg-gray-50 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="다음 페이지"
+                  >
+                    ›
+                  </button>
+                  
+                  <button
+                    onClick={handleLastPage}
+                    disabled={pagination.page === pagination.totalPages}
+                    className="flex items-center justify-center min-w-8 h-9 text-base font-bold border border-gray-300 bg-white text-gray-700 cursor-pointer transition-all duration-200 rounded hover:bg-gray-100 hover:border-gray-400 disabled:bg-gray-50 disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    title="마지막 페이지"
+                  >
+                    »»
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
