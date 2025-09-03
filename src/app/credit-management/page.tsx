@@ -131,7 +131,14 @@ const CreditManagementPage = () => {
     let filtered = allTransactions;
 
     if (filterType === "history") {
-      filtered = allTransactions.filter((t) => t.type === "charge");
+      // 충전 트랜잭션 중 포인트 충전(metadata.isReward=true) 제외
+      filtered = allTransactions.filter((t) => {
+        if (t.type === "charge") {
+          const metadata = t.metadata || {};
+          return !(metadata.isReward === true);
+        }
+        return false;
+      });
     } else if (filterType === "usage") {
       // 사용 관련 트랜잭션만 포함 (usage만, 예약/예약해제 제외)
       filtered = allTransactions.filter((t) => t.type === "usage");
@@ -305,9 +312,6 @@ const CreditManagementPage = () => {
               <div className="space-y-4">
                 {transactions.map((transaction) => {
                   const metadata = transaction.metadata || {};
-                  const packageName =
-                    metadata.packageName ||
-                    `광고머니 ${transaction.amount.toLocaleString()}개 패키지`;
                   const templateName = metadata.templateName || null;
                   const isCharge = transaction.type === "charge";
                   const isRefund = transaction.type === "refund";
@@ -361,9 +365,7 @@ const CreditManagementPage = () => {
 
                       <div className="mt-2">
                         <div className="text-sm text-gray-900 font-medium">
-                          {isCharge
-                            ? packageName
-                            : templateName || transaction.description}
+                          {templateName || transaction.description}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {new Date(transaction.created_at).toLocaleString(
@@ -393,9 +395,7 @@ const CreditManagementPage = () => {
                   >
                     <div>
                       <div className="font-medium text-gray-900">
-                        {transaction.type === "charge"
-                          ? "광고머니 충전"
-                          : transaction.description}
+                        {transaction.description}
                       </div>
                       <div className="text-sm text-gray-500">
                         {new Date(transaction.created_at).toLocaleString(

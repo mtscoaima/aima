@@ -54,11 +54,11 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
             </div>
           </div>
           
-          {/* 적립금 */}
+          {/* 포인트트 */}
           <div className="text-center">
-            <div className="text-sm text-gray-600 mb-2">적립금</div>
+            <div className="text-sm text-gray-600 mb-2">포인트</div>
             <div className="text-2xl font-bold text-gray-900">
-              {points.toLocaleString()} 원
+              {points.toLocaleString()} P
             </div>
           </div>
         </div>

@@ -317,66 +317,134 @@ export async function POST(
     const campaignCost = campaign.budget || 0;
     const campaignUserId = campaign.user_id;
 
-    // 1. 예약 해제 (unreserve)
-    const unreserveTransactionData = {
-      user_id: campaignUserId,
-      type: "unreserve",
-      amount: campaignCost,
-      description: `캠페인 예약 해제 (${campaign.name})`,
-      reference_id: `campaign_unreserve_${campaignId}`,
-      metadata: {
-        campaign_id: parseInt(campaignId),
-        campaign_name: campaign.name,
-        unreserve_type: "campaign_approval",
-      },
-      status: "completed",
-    };
-
-    const { error: unreserveError } = await supabase
+    // 해당 캠페인에 대한 예약 트랜잭션들 조회
+    const { data: reserveTransactions, error: reserveError } = await supabase
       .from("transactions")
-      .insert(unreserveTransactionData);
+      .select("amount, metadata, reference_id")
+      .eq("user_id", campaignUserId)
+      .eq("type", "reserve")
+      .eq("status", "completed")
+      .or(`reference_id.like.%campaign_reserve_${campaignId}%,reference_id.like.%campaign_point_reserve_${campaignId}%`);
 
-    if (unreserveError) {
-      console.error("예약 해제 오류:", unreserveError);
-      return NextResponse.json(
-        { success: false, message: "예약 해제 처리에 실패했습니다." },
-        { status: 500 }
-      );
+    if (reserveError) {
+      console.error("예약 트랜잭션 조회 오류:", reserveError);
     }
 
-    // 2. 실제 사용 차감 (usage)
-    const usageTransactionData = {
-      user_id: campaignUserId,
-      type: "usage",
-      amount: campaignCost,
-      description: `캠페인 실행 (${campaign.name})`,
-      reference_id: `campaign_usage_${campaignId}`,
-      metadata: {
-        campaign_id: parseInt(campaignId),
-        campaign_name: campaign.name,
-        usage_type: "campaign_execution",
-      },
-      status: "completed",
-    };
+    // 포인트 예약과 광고머니 예약 분리
+    let pointReservedAmount = 0;
+    let creditReservedAmount = 0;
 
-    const { error: usageError } = await supabase
-      .from("transactions")
-      .insert(usageTransactionData);
-
-    if (usageError) {
-      console.error("사용 차감 오류:", usageError);
-      return NextResponse.json(
-        { success: false, message: "사용 차감 처리에 실패했습니다." },
-        { status: 500 }
-      );
+    if (reserveTransactions) {
+      for (const transaction of reserveTransactions) {
+        const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
+        if (metadata?.transactionType === "point") {
+          pointReservedAmount += transaction.amount;
+        } else {
+          creditReservedAmount += transaction.amount;
+        }
+      }
     }
 
-    // 3. 리워드 지급 (전체 추천 체인 처리)
+    // 예약된 총 금액이 없으면 전체 캠페인 비용을 광고머니로 처리 (하위 호환성)
+    if (pointReservedAmount === 0 && creditReservedAmount === 0) {
+      creditReservedAmount = campaignCost;
+    }
+
+    const transactions = [];
+
+    // 1. 포인트 예약 해제 (포인트가 예약되어 있을 경우)
+    if (pointReservedAmount > 0) {
+      transactions.push({
+        user_id: campaignUserId,
+        type: "unreserve",
+        amount: pointReservedAmount,
+        description: `캠페인 포인트 예약 해제 (${campaign.name})`,
+        reference_id: `campaign_point_unreserve_${campaignId}`,
+        metadata: {
+          campaign_id: parseInt(campaignId),
+          campaign_name: campaign.name,
+          unreserve_type: "campaign_approval",
+          transactionType: "point",
+        },
+        status: "completed",
+      });
+    }
+
+    // 2. 광고머니 예약 해제 (광고머니가 예약되어 있을 경우)
+    if (creditReservedAmount > 0) {
+      transactions.push({
+        user_id: campaignUserId,
+        type: "unreserve",
+        amount: creditReservedAmount,
+        description: `캠페인 광고머니 예약 해제 (${campaign.name})`,
+        reference_id: `campaign_credit_unreserve_${campaignId}`,
+        metadata: {
+          campaign_id: parseInt(campaignId),
+          campaign_name: campaign.name,
+          unreserve_type: "campaign_approval",
+          transactionType: "credit",
+        },
+        status: "completed",
+      });
+    }
+
+    // 3. 포인트 실제 사용 (포인트가 예약되어 있을 경우)
+    if (pointReservedAmount > 0) {
+      transactions.push({
+        user_id: campaignUserId,
+        type: "usage",
+        amount: pointReservedAmount,
+        description: `캠페인 포인트 사용 (${campaign.name})`,
+        reference_id: `campaign_point_usage_${campaignId}`,
+        metadata: {
+          campaign_id: parseInt(campaignId),
+          campaign_name: campaign.name,
+          usage_type: "campaign_execution",
+          transactionType: "point",
+        },
+        status: "completed",
+      });
+    }
+
+    // 4. 광고머니 실제 사용 (광고머니가 예약되어 있을 경우)
+    if (creditReservedAmount > 0) {
+      transactions.push({
+        user_id: campaignUserId,
+        type: "usage",
+        amount: creditReservedAmount,
+        description: `캠페인 광고머니 사용 (${campaign.name})`,
+        reference_id: `campaign_credit_usage_${campaignId}`,
+        metadata: {
+          campaign_id: parseInt(campaignId),
+          campaign_name: campaign.name,
+          usage_type: "campaign_execution",
+          transactionType: "credit",
+        },
+        status: "completed",
+      });
+    }
+
+    // 트랜잭션 실행
+    if (transactions.length > 0) {
+      const { error: transactionError } = await supabase
+        .from("transactions")
+        .insert(transactions);
+
+      if (transactionError) {
+        console.error("트랜잭션 처리 오류:", transactionError);
+        return NextResponse.json(
+          { success: false, message: "예약 해제 및 사용 처리에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+    }
+
+    // 5. 리워드 지급 (광고머니 사용분에 대해서만)
     try {
       await processReferralRewards(
         campaignUserId,
-        campaignCost,
-        `campaign_usage_${campaignId}`
+        creditReservedAmount, // 광고머니 사용분에 대해서만 리워드 지급 (포인트는 제외)
+        `campaign_credit_usage_${campaignId}`
       );
     } catch (rewardError) {
       console.error("리워드 처리 중 오류:", rewardError);
