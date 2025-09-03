@@ -8,6 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { usePathname } from "next/navigation";
 import { tokenManager } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -160,11 +161,13 @@ const transactionAPI = {
 
 export function BalanceProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
+  const pathname = usePathname();
   const [balanceData, setBalanceData] =
     useState<BalanceData>(defaultBalanceData);
   const [isLoading, setIsLoading] = useState(false);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshRef = useRef<number>(0);
+  const lastPathnameRef = useRef<string>(pathname);
 
   const refreshTransactions = useCallback(async () => {
     if (!user || !tokenManager.isLoggedIn()) {
@@ -242,6 +245,26 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [user, authLoading, refreshTransactions]);
+
+  // 페이지 이동 시 잔액 정보 자동 새로고침
+  useEffect(() => {
+    if (user && !authLoading && pathname !== lastPathnameRef.current) {
+      console.log('페이지 이동 감지: ', lastPathnameRef.current, ' -> ', pathname);
+      lastPathnameRef.current = pathname;
+      
+      // 잔액 관련 페이지들에서만 자동 새로고침 수행
+      const balanceRelatedPages = [
+        '/', // 대시보드
+        '/my-site/advertiser/dashboard',
+        '/credit-management',
+        '/target-marketing'
+      ];
+      
+      if (balanceRelatedPages.some(page => pathname.startsWith(page))) {
+        refreshTransactions();
+      }
+    }
+  }, [pathname, user, authLoading, refreshTransactions]);
 
   // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
