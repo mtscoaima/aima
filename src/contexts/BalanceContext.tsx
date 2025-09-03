@@ -257,37 +257,91 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // 광고머니 잔액 계산: transaction 기반 실시간 계산 
   const calculateBalance = (): number => {
-    return balanceData.balance;
+    try {
+      let creditBalance = 0;
+      
+      for (const transaction of balanceData.transactions) {
+        const metadata = transaction.metadata as any;
+        
+        if (transaction.type === "charge") {
+          // 광고머니 충전 (포인트 제외)
+          if (!metadata?.isReward) {
+            creditBalance += transaction.amount;
+          }
+        } else if (transaction.type === "usage") {
+          // 광고머니 사용 (포인트 사용 제외)
+          if (metadata?.transactionType !== "point") {
+            creditBalance -= transaction.amount;
+          }
+        } else if (transaction.type === "refund") {
+          creditBalance += transaction.amount;
+        } else if (transaction.type === "penalty") {
+          creditBalance -= transaction.amount;
+        }
+        // reserve/unreserve는 잔액에 영향 없음 (예약만)
+      }
+      
+      return Math.max(0, creditBalance);
+    } catch {
+      return balanceData.balance; // fallback
+    }
   };
 
-  // 적립금(포인트) 계산: 리워드 트랜잭션의 합계만 집계
+  // 포인트 잔액 계산: transaction 기반 실시간 계산
   const calculatePoints = (): number => {
     try {
-      return balanceData.transactions
-        .filter((t) => {
-          if (t.type !== "charge") return false;
-          const desc = (t.description || "").toString();
-          const meta = (t.metadata || {}) as KnownMetadata;
-          const isReward =
-            meta.isReward === true ||
-            "rewardLevel" in meta ||
-            "rewardType" in meta ||
-            desc.includes("리워드");
-          return isReward;
-        })
-        .reduce((sum, t) => sum + Math.max(0, t.amount), 0);
+      let pointBalance = 0;
+      
+      for (const transaction of balanceData.transactions) {
+        const metadata = transaction.metadata as any;
+        
+        if (transaction.type === "charge") {
+          // 포인트 충전 (metadata.isReward = true)
+          if (metadata?.isReward === true) {
+            pointBalance += transaction.amount;
+          }
+        } else if (transaction.type === "usage") {
+          // 포인트 사용 (metadata.transactionType = "point")
+          if (metadata?.transactionType === "point") {
+            pointBalance -= transaction.amount;
+          }
+        }
+        // reserve/unreserve는 잔액에 영향 없음 (예약만)
+      }
+      
+      return Math.max(0, pointBalance);
     } catch {
       return 0;
     }
   };
 
+  // 예약 금액 계산: transaction 기반 실시간 계산
   const getReservedAmount = (): number => {
-    return balanceData.reservedAmount;
+    try {
+      let reserveAmount = 0;
+      let unreserveAmount = 0;
+      
+      for (const transaction of balanceData.transactions) {
+        if (transaction.type === "reserve" && transaction.status === "completed") {
+          reserveAmount += transaction.amount;
+        } else if (transaction.type === "unreserve" && transaction.status === "completed") {
+          unreserveAmount += transaction.amount;
+        }
+      }
+      
+      return Math.max(0, reserveAmount - unreserveAmount);
+    } catch {
+      return balanceData.reservedAmount; // fallback
+    }
   };
 
+  // 사용 가능한 잔액 계산: 광고머니 - 예약금
   const getAvailableBalance = (): number => {
-    return balanceData.availableBalance;
+    const creditBalance = calculateBalance();
+    const reservedAmount = getReservedAmount();
+    return Math.max(0, creditBalance - reservedAmount);
   };
 
   const addTransaction = async (

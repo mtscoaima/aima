@@ -8,6 +8,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// 트랜잭션 메타데이터 타입 정의
+interface TransactionMetadata {
+  transactionType?: string;
+  pointType?: string;
+  chargedBy?: string;
+  adminUserId?: number;
+  reason?: string;
+  isReward?: boolean;
+  bulkChargeId?: string;
+  campaign_id?: number;
+  campaign_name?: string;
+  reserve_type?: string;
+  reserveType?: string;
+  usage_type?: string;
+  usageType?: string;
+}
+
 interface CreateCampaignRequest {
   title?: string;
   content: string;
@@ -118,6 +135,45 @@ export async function POST(request: NextRequest) {
     // 예상 비용 계산
     const campaignCost = campaignData.estimatedCost || 0;
 
+    // 포인트 잔액 계산 (transactions 기반)
+    const { data: pointTransactions, error: pointError } = await supabase
+      .from("transactions")
+      .select("amount, type, metadata")
+      .eq("user_id", userId)
+      .eq("status", "completed");
+
+    if (pointError) {
+      console.error("포인트 트랜잭션 조회 오류:", pointError);
+      return NextResponse.json(
+        { success: false, message: "포인트 조회에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    // 포인트 충전 계산 (metadata.isReward = true)
+    const pointCharged = (pointTransactions || [])
+      .filter(t => {
+        if (t.type === "charge") {
+          const metadata = t.metadata as TransactionMetadata;
+          return metadata && metadata.isReward === true;
+        }
+        return false;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // 포인트 사용 계산 (metadata.transactionType = "point")
+    const pointUsed = (pointTransactions || [])
+      .filter(t => {
+        if (t.type === "usage") {
+          const metadata = t.metadata as TransactionMetadata;
+          return metadata && metadata.transactionType === "point";
+        }
+        return false;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const availablePoints = Math.max(0, pointCharged - pointUsed);
+
     // 사용 가능한 크레딧 확인
     const { data: balanceData, error: balanceError } = await supabase
       .from("user_balances")
@@ -175,12 +231,13 @@ export async function POST(request: NextRequest) {
     const reservedAmount = Math.max(0, reserveTotal - unreserveTotal);
     const availableBalance = currentBalance - reservedAmount;
 
-    // 사용 가능한 크레딧 부족 검증
-    if (availableBalance < campaignCost) {
+    // 포인트 + 광고머니 총 사용 가능 금액 검증
+    const totalAvailable = availablePoints + availableBalance;
+    if (totalAvailable < campaignCost) {
       return NextResponse.json(
         {
           success: false,
-          message: `사용 가능한 크레딧이 부족합니다. 예약된 크레딧: ${reservedAmount.toLocaleString()}원, 사용 가능한 크레딧: ${availableBalance.toLocaleString()}원`,
+          message: `사용 가능한 잔액이 부족합니다. 포인트: ${availablePoints.toLocaleString()}P, 광고머니: ${availableBalance.toLocaleString()}원, 필요 금액: ${campaignCost.toLocaleString()}원`,
         },
         { status: 400 }
       );
@@ -396,42 +453,79 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 캠페인이 성공적으로 생성되었으면 예약 크레딧 차감
-    const reserveTransactionData = {
-      user_id: userId,
-      type: "reserve",
-      amount: campaignCost,
-      description: `캠페인 예약 (${campaign.name})`,
-      reference_id: `campaign_reserve_${newCampaign.id}`,
-      metadata: {
-        campaign_id: newCampaign.id,
-        campaign_name: campaign.name,
-        reserve_type: "campaign_approval",
-      },
-      status: "completed",
-    };
+    // 포인트 우선 차감 로직
+    const pointsToUse = Math.min(availablePoints, campaignCost);
+    const creditToReserve = campaignCost - pointsToUse;
 
-    const { error: reserveTransactionError } = await supabase
-      .from("transactions")
-      .insert(reserveTransactionData);
+    const transactions = [];
 
-    if (reserveTransactionError) {
-      console.error("예약 크레딧 차감 오류:", reserveTransactionError);
+    // 1. 포인트 예약 트랜잭션 (포인트가 있을 경우)
+    if (pointsToUse > 0) {
+      const pointReserveTransaction = {
+        user_id: userId,
+        type: "reserve",
+        amount: pointsToUse,
+        description: `캠페인 포인트 예약 (${campaign.name})`,
+        reference_id: `campaign_point_reserve_${newCampaign.id}`,
+        metadata: {
+          campaign_id: newCampaign.id,
+          campaign_name: campaign.name,
+          transactionType: "point",
+          reserveType: "campaign_approval",
+        },
+        status: "completed",
+      };
+      transactions.push(pointReserveTransaction);
+    }
 
-      // 캠페인 생성은 성공했으므로 경고 메시지와 함께 응답
-      return NextResponse.json({
-        success: true,
-        message:
-          "캠페인이 저장되었으나 예약 크레딧 차감에 실패했습니다. 관리자에게 문의해주세요.",
-        campaign: newCampaign,
-        warning: "예약 크레딧 차감 실패",
-      });
+    // 2. 광고머니 예약 트랜잭션 (부족 금액이 있을 경우)
+    if (creditToReserve > 0) {
+      const reserveTransactionData = {
+        user_id: userId,
+        type: "reserve",
+        amount: creditToReserve,
+        description: `캠페인 광고머니 예약 (${campaign.name})`,
+        reference_id: `campaign_reserve_${newCampaign.id}`,
+        metadata: {
+          campaign_id: newCampaign.id,
+          campaign_name: campaign.name,
+          reserve_type: "campaign_approval",
+          transactionType: "credit",
+        },
+        status: "completed",
+      };
+      transactions.push(reserveTransactionData);
+    }
+
+    // 트랜잭션 실행
+    if (transactions.length > 0) {
+      const { error: transactionError } = await supabase
+        .from("transactions")
+        .insert(transactions);
+
+      if (transactionError) {
+        console.error("트랜잭션 처리 오류:", transactionError);
+
+        // 캠페인 생성은 성공했으므로 경고 메시지와 함께 응답
+        return NextResponse.json({
+          success: true,
+          message:
+            "캠페인이 저장되었으나 포인트/크레딧 차감에 실패했습니다. 관리자에게 문의해주세요.",
+          campaign: newCampaign,
+          warning: "포인트/크레딧 차감 실패",
+        });
+      }
     }
 
     return NextResponse.json({
       success: true,
       message: "캠페인이 성공적으로 저장되었습니다.",
       campaign: newCampaign,
+      paymentBreakdown: {
+        totalCost: campaignCost,
+        pointsUsed: pointsToUse,
+        creditsReserved: creditToReserve,
+      },
     });
   } catch {
     return NextResponse.json(

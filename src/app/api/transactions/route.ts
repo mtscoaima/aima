@@ -286,26 +286,59 @@ async function getReservedAmount(userId: number): Promise<number> {
   }
 }
 
-// 사용 가능한 크레딧 계산 함수
+// 트랜잭션 기반 광고머니 잔액 계산 함수
+async function calculateCreditBalance(userId: number): Promise<number> {
+  try {
+    const { data: transactions, error } = await supabase
+      .from("transactions")
+      .select("amount, type, metadata")
+      .eq("user_id", userId)
+      .eq("status", "completed");
+
+    if (error) {
+      console.error("트랜잭션 조회 오류:", error);
+      return 0;
+    }
+
+    let balance = 0;
+    
+    for (const transaction of transactions || []) {
+      const metadata = transaction.metadata as any;
+      
+      if (transaction.type === "charge") {
+        // 광고머니 충전만 계산 (포인트 제외)
+        if (!metadata?.isReward) {
+          balance += transaction.amount;
+        }
+      } else if (transaction.type === "usage") {
+        // 광고머니 사용만 계산 (포인트 사용 제외)
+        if (metadata?.transactionType !== "point") {
+          balance -= transaction.amount;
+        }
+      } else if (transaction.type === "refund") {
+        balance += transaction.amount;
+      } else if (transaction.type === "penalty") {
+        balance -= transaction.amount;
+      }
+      // reserve/unreserve는 잔액에 영향 없음 (예약만)
+    }
+
+    return Math.max(0, balance);
+  } catch (error) {
+    console.error("광고머니 잔액 계산 중 오류:", error);
+    return 0;
+  }
+}
+
+// 사용 가능한 크레딧 계산 함수 (transaction 기반)
 async function getAvailableBalance(userId: number): Promise<{
   totalBalance: number;
   reservedAmount: number;
   availableBalance: number;
 }> {
   try {
-    // 현재 잔액 조회
-    const { data: balanceData, error: balanceError } = await supabase
-      .from("user_balances")
-      .select("current_balance")
-      .eq("user_id", userId)
-      .single();
-
-    if (balanceError && balanceError.code !== "PGRST116") {
-      console.error("잔액 조회 오류:", balanceError);
-      return { totalBalance: 0, reservedAmount: 0, availableBalance: 0 };
-    }
-
-    const totalBalance = balanceData?.current_balance || 0;
+    // transaction 기반으로 광고머니 잔액 계산
+    const totalBalance = await calculateCreditBalance(userId);
     const reservedAmount = await getReservedAmount(userId);
     const availableBalance = totalBalance - reservedAmount;
 
