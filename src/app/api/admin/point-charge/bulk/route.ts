@@ -6,6 +6,17 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+// 트랜잭션 메타데이터 타입 정의
+interface TransactionMetadata {
+  transactionType?: string;
+  pointType?: string;
+  chargedBy?: string;
+  adminUserId?: number;
+  reason?: string;
+  isReward?: boolean;
+  bulkChargeId?: string;
+}
+
 // Supabase 클라이언트 생성
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   db: {
@@ -136,18 +147,38 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // 충전 후 사용자의 총 포인트 계산
+        // 충전 후 사용자의 총 포인트 계산 (포인트 트랜잭션만)
         const { data: userTransactions, error: balanceError } = await supabase
           .from("transactions")
-          .select("amount, type")
+          .select("amount, type, metadata")
           .eq("user_id", user.id)
           .eq("status", "completed");
 
         let newBalance = 0;
         if (!balanceError && userTransactions) {
-          newBalance = userTransactions
-            .filter(t => t.type === "charge")
+          // 포인트 충전 계산
+          const pointCharged = userTransactions
+            .filter(t => {
+              if (t.type === "charge") {
+                const metadata = t.metadata as TransactionMetadata;
+                return metadata && metadata.isReward === true;
+              }
+              return false;
+            })
             .reduce((sum, t) => sum + t.amount, 0);
+
+          // 포인트 사용 계산
+          const pointUsed = userTransactions
+            .filter(t => {
+              if (t.type === "usage") {
+                const metadata = t.metadata as TransactionMetadata;
+                return metadata && metadata.transactionType === "point";
+              }
+              return false;
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+
+          newBalance = pointCharged - pointUsed;
         }
 
         results.push({

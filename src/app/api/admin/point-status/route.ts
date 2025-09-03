@@ -6,6 +6,44 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+// 트랜잭션 메타데이터 타입 정의
+interface TransactionMetadata {
+  transactionType?: string;
+  pointType?: string;
+  chargedBy?: string;
+  adminUserId?: number;
+  reason?: string;
+  isReward?: boolean;
+  bulkChargeId?: string;
+}
+
+// 사용자 상태 결정 함수
+function getUserDisplayStatus(user: any): string {
+  // is_active가 false면 정지
+  if (user.is_active === false) {
+    return "정지";
+  }
+  
+  // approval_status 기반 판단
+  if (user.approval_status) {
+    switch (user.approval_status.toLowerCase()) {
+      case "approved":
+        return "정상";
+      case "pending": 
+        return "대기";
+      case "rejected":
+        return "거부";
+      case "suspended":
+        return "정지";
+      default:
+        return "대기";
+    }
+  }
+  
+  // 기본값
+  return "대기";
+}
+
 // Supabase 클라이언트 생성
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   db: {
@@ -37,10 +75,10 @@ function getUserInfoFromToken(request: NextRequest): { userId: number; role: str
 // 포인트 관련 트랜잭션 계산
 async function calculateUserPoints(userId: number) {
   try {
-    // 포인트 충전 트랜잭션 (리워드 트랜잭션)
+    // 포인트 충전 트랜잭션 (metadata.isReward가 true인 것만)
     const { data: chargeTransactions, error: chargeError } = await supabase
       .from("transactions")
-      .select("amount")
+      .select("amount, metadata")
       .eq("user_id", userId)
       .eq("type", "charge")
       .eq("status", "completed");
@@ -50,28 +88,33 @@ async function calculateUserPoints(userId: number) {
       return { pointBalance: 0, totalPointCharged: 0, totalPointUsed: 0 };
     }
 
-    // 리워드 트랜잭션만 필터링 (metadata에서 isReward가 true이거나 description에 리워드가 포함된 것)
+    // 포인트 트랜잭션만 필터링 (metadata.isReward가 true인 것만)
     let totalPointCharged = 0;
     if (chargeTransactions) {
       for (const transaction of chargeTransactions) {
-        // 모든 charge 트랜잭션을 포인트로 간주 (실제로는 metadata 확인 필요)
-        totalPointCharged += transaction.amount;
+        const metadata = transaction.metadata as TransactionMetadata;
+        if (metadata && metadata.isReward === true) {
+          totalPointCharged += transaction.amount;
+        }
       }
     }
 
-    // 포인트 사용 트랜잭션 (향후 point_usage 타입으로 분리 예정)
+    // 포인트 사용 트랜잭션 (metadata.transactionType이 "point"인 것만)
     const { data: usageTransactions, error: usageError } = await supabase
       .from("transactions")
-      .select("amount")
+      .select("amount, metadata")
       .eq("user_id", userId)
       .eq("type", "usage")
       .eq("status", "completed");
 
     let totalPointUsed = 0;
     if (!usageError && usageTransactions) {
-      // 현재는 일반 사용과 포인트 사용을 구분하기 어려우므로 0으로 설정
-      // 추후 point_usage 타입 도입 시 수정 필요
-      totalPointUsed = 0;
+      for (const transaction of usageTransactions) {
+        const metadata = transaction.metadata as TransactionMetadata;
+        if (metadata && metadata.transactionType === "point") {
+          totalPointUsed += transaction.amount;
+        }
+      }
     }
 
     const pointBalance = totalPointCharged - totalPointUsed;
@@ -92,19 +135,24 @@ async function getLastPointActivity(userId: number): Promise<string> {
   try {
     const { data: lastActivity, error } = await supabase
       .from("transactions")
-      .select("created_at")
+      .select("created_at, metadata")
       .eq("user_id", userId)
-      .eq("type", "charge")
       .eq("status", "completed")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+      .order("created_at", { ascending: false });
 
     if (error || !lastActivity) {
       return "";
     }
 
-    return lastActivity.created_at;
+    // 포인트 관련 트랜잭션 찾기
+    for (const transaction of lastActivity) {
+      const metadata = transaction.metadata as TransactionMetadata;
+      if (metadata && (metadata.isReward === true || metadata.transactionType === "point")) {
+        return transaction.created_at;
+      }
+    }
+
+    return "";
   } catch (error) {
     return "";
   }
@@ -141,6 +189,8 @@ export async function GET(request: NextRequest) {
         email,
         phone_number,
         approval_status,
+        is_active,
+        email_verified,
         role,
         created_at,
         company_info
@@ -152,100 +202,65 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${search}%,username.ilike.%${search}%`);
     }
 
-    // 상태 필터 적용
-    if (status !== "all") {
-      // 상태 매핑 (UI의 한국어 상태를 DB의 영어 상태로 변환)
-      let dbStatus = status;
-      switch (status) {
-        case "정상":
-          dbStatus = "approved";
-          break;
-        case "정지":
-          dbStatus = "suspended";
-          break;
-        case "대기":
-          dbStatus = "pending";
-          break;
-        case "거부":
-          dbStatus = "rejected";
-          break;
-      }
-      query = query.eq("approval_status", dbStatus);
-    }
+    // 상태 필터 적용 - 복잡한 상태 로직 때문에 데이터 가져온 후 필터링
 
-    // 총 개수 조회를 위한 쿼리 구성 - 일반회원만 조회
-    let countQuery = supabase
+    // 전체 사용자 조회 (상태 필터링은 나중에 처리)
+    const { data: allUsers, error: allUsersError } = await supabase
       .from("users")
-      .select("*", { count: "exact", head: true })
+      .select(`
+        id,
+        username,
+        name,
+        email,
+        phone_number,
+        approval_status,
+        is_active,
+        email_verified,
+        role,
+        created_at,
+        company_info
+      `)
       .eq("role", "USER");
-    
-    if (search) {
-      countQuery = countQuery.or(`name.ilike.%${search}%,username.ilike.%${search}%`);
-    }
-    
-    if (status !== "all") {
-      let dbStatus = status;
-      switch (status) {
-        case "정상":
-          dbStatus = "approved";
-          break;
-        case "정지":
-          dbStatus = "suspended";
-          break;
-        case "대기":
-          dbStatus = "pending";
-          break;
-        case "거부":
-          dbStatus = "rejected";
-          break;
-      }
-      countQuery = countQuery.eq("approval_status", dbStatus);
-    }
-    
-    const { count: totalCount, error: countError } = await countQuery;
 
-    if (countError) {
-      console.error("사용자 수 조회 오류:", countError);
-    }
-
-    // 페이지네이션 적용하여 사용자 조회
-    const { data: users, error: usersError } = await query
-      .range(offset, offset + limit - 1)
-      .order("created_at", { ascending: false });
-
-    if (usersError) {
-      console.error("사용자 조회 오류:", usersError);
+    if (allUsersError) {
+      console.error("사용자 조회 오류:", allUsersError);
       return NextResponse.json(
         { error: "사용자 정보 조회에 실패했습니다." },
         { status: 500 }
       );
     }
 
+    // 검색 필터링
+    let filteredUsers = allUsers || [];
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredUsers = filteredUsers.filter(user => 
+        user.name?.toLowerCase().includes(searchLower) ||
+        user.username?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // 상태 필터링
+    if (status !== "all") {
+      filteredUsers = filteredUsers.filter(user => {
+        const displayStatus = getUserDisplayStatus(user);
+        return displayStatus === status;
+      });
+    }
+
+    // 페이지네이션 적용
+    const totalCount = filteredUsers.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedUsers = filteredUsers.slice(offset, offset + limit);
+
     // 각 사용자별 포인트 정보 계산
     const usersWithPoints = await Promise.all(
-      (users || []).map(async (user) => {
+      paginatedUsers.map(async (user) => {
         const pointData = await calculateUserPoints(user.id);
         const lastActivity = await getLastPointActivity(user.id);
         
-        // 상태 매핑 (DB의 영어 상태를 UI의 한국어 상태로 변환)
-        let displayStatus = user.approval_status;
-        switch (user.approval_status) {
-          case "approved":
-            displayStatus = "정상";
-            break;
-          case "suspended":
-            displayStatus = "정지";
-            break;
-          case "pending":
-            displayStatus = "대기";
-            break;
-          case "rejected":
-            displayStatus = "거부";
-            break;
-          default:
-            displayStatus = "대기"; // 기본값
-            break;
-        }
+        // 실제 데이터베이스 필드 기반 상태 결정
+        const displayStatus = getUserDisplayStatus(user);
 
         // 회사 정보에서 회원 타입 결정
         const userType = user.company_info && 
@@ -274,10 +289,10 @@ export async function GET(request: NextRequest) {
       success: true,
       users: usersWithPoints,
       pagination: {
-        total: totalCount || 0,
+        total: totalCount,
         page,
         limit,
-        totalPages: Math.ceil((totalCount || 0) / limit),
+        totalPages,
       },
     });
   } catch (error) {

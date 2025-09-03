@@ -194,6 +194,12 @@ export default function PointChargeManagementPage() {
 
   // 개별 포인트 충전 모달 열기
   const openPointChargeModal = (user: User) => {
+    // 상태가 정상이 아닌 경우 알림 표시
+    if (user.status !== "정상") {
+      alert(`${user.name}님의 현재 상태가 '${user.status}'입니다.\n정상 상태의 사용자에게만 포인트를 충전할 수 있습니다.`);
+      return;
+    }
+
     setSelectedUser(user);
     setPointChargeData({ amount: 0, description: "", reason: "" });
     setShowPointChargeModal(true);
@@ -205,6 +211,28 @@ export default function PointChargeManagementPage() {
       alert("충전할 사용자를 선택해주세요.");
       return;
     }
+
+    // 선택된 사용자들 중 정상 상태가 아닌 사용자 찾기
+    const selectedUserObjects = users.filter(user => selectedUsers.includes(user.id));
+    const nonNormalUsers = selectedUserObjects.filter(user => user.status !== "정상");
+    const normalUsers = selectedUserObjects.filter(user => user.status === "정상");
+
+    if (nonNormalUsers.length > 0) {
+      const nonNormalNames = nonNormalUsers.map(user => `${user.name}(${user.status})`).join(", ");
+      
+      if (normalUsers.length === 0) {
+        alert(`선택된 사용자들의 상태가 정상이 아닙니다.\n${nonNormalNames}\n\n정상 상태의 사용자에게만 포인트를 충전할 수 있습니다.`);
+        return;
+      } else {
+        const confirmMessage = `선택된 사용자 중 일부는 정상 상태가 아닙니다.\n${nonNormalNames}\n\n정상 상태의 ${normalUsers.length}명에게만 포인트를 충전하시겠습니까?`;
+        if (!confirm(confirmMessage)) {
+          return;
+        }
+        // 정상 상태 사용자들로만 선택 목록 업데이트
+        setSelectedUsers(normalUsers.map(user => user.id));
+      }
+    }
+
     setPointChargeData({ amount: 0, description: "", reason: "" });
     setShowBulkChargeModal(true);
   };
@@ -384,6 +412,7 @@ export default function PointChargeManagementPage() {
                   <option value="정상">정상</option>
                   <option value="정지">정지</option>
                   <option value="대기">대기</option>
+                  <option value="거부">거부</option>
                 </select>
               </div>
             </div>
@@ -490,7 +519,16 @@ export default function PointChargeManagementPage() {
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <button
                             onClick={() => openPointChargeModal(user)}
-                            className="text-blue-600 hover:text-blue-900 font-medium"
+                            className={`font-medium ${
+                              user.status === "정상" 
+                                ? "text-blue-600 hover:text-blue-900 cursor-pointer" 
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
+                            title={
+                              user.status !== "정상" 
+                                ? `현재 상태: ${user.status} (정상 상태에서만 충전 가능)` 
+                                : "포인트 충전"
+                            }
                           >
                             포인트충전
                           </button>
