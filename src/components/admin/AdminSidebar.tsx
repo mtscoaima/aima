@@ -20,6 +20,12 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       href: "/admin/user-management",
     },
     {
+      id: "point-charge-management",
+      label: "포인트 충전 관리",
+      icon: "💰",
+      href: "/admin/point-charge-management",
+    },
+    {
       id: "campaigns",
       label: "캠페인 관리",
       icon: "📢",
@@ -62,9 +68,10 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     if (window.innerWidth <= 768) {
       onClose();
     }
-    // 회원관리, 캠페인 관리, 기업정보관리, 고객지원 관리, 설정관리, 통계 관리, 세금계산서 관리 페이지는 실제로 이동 가능
+    // 회원관리, 포인트 충전 관리, 캠페인 관리, 기업정보관리, 고객지원 관리, 설정관리, 통계 관리, 세금계산서 관리 페이지는 실제로 이동 가능
     if (
       href === "/admin/user-management" ||
+      href === "/admin/point-charge-management" ||
       href === "/admin/campaigns" ||
       href === "/admin/member-approval" ||
       href === "/admin/customer-support" ||
