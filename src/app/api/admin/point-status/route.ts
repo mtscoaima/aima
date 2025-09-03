@@ -17,8 +17,19 @@ interface TransactionMetadata {
   bulkChargeId?: string;
 }
 
+interface UserWithStatus {
+  id: number;
+  username: string;
+  name: string;
+  email: string;
+  phone_number: string;
+  is_active: boolean;
+  approval_status: string;
+  role: string;
+}
+
 // 사용자 상태 결정 함수
-function getUserDisplayStatus(user: any): string {
+function getUserDisplayStatus(user: UserWithStatus): string {
   // is_active가 false면 정지
   if (user.is_active === false) {
     return "정지";
@@ -92,7 +103,7 @@ async function calculateUserPoints(userId: number) {
     let totalPointCharged = 0;
     if (chargeTransactions) {
       for (const transaction of chargeTransactions) {
-        const metadata = transaction.metadata as TransactionMetadata;
+        const metadata = transaction.metadata as TransactionMetadata | null;
         if (metadata && metadata.isReward === true) {
           totalPointCharged += transaction.amount;
         }
@@ -110,7 +121,7 @@ async function calculateUserPoints(userId: number) {
     let totalPointUsed = 0;
     if (!usageError && usageTransactions) {
       for (const transaction of usageTransactions) {
-        const metadata = transaction.metadata as TransactionMetadata;
+        const metadata = transaction.metadata as TransactionMetadata | null;
         if (metadata && metadata.transactionType === "point") {
           totalPointUsed += transaction.amount;
         }
@@ -141,6 +152,9 @@ async function getLastPointActivity(userId: number): Promise<string> {
       .order("created_at", { ascending: false });
 
     if (error || !lastActivity) {
+      if (error) {
+        console.error("마지막 포인트 활동 조회 오류:", error);
+      }
       return "";
     }
 
@@ -153,7 +167,7 @@ async function getLastPointActivity(userId: number): Promise<string> {
     }
 
     return "";
-  } catch (error) {
+  } catch {
     return "";
   }
 }
@@ -178,29 +192,6 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "all";
 
     const offset = (page - 1) * limit;
-
-    // 기본 쿼리 구성 - 일반회원만 조회
-    let query = supabase
-      .from("users")
-      .select(`
-        id,
-        username,
-        name,
-        email,
-        phone_number,
-        approval_status,
-        is_active,
-        email_verified,
-        role,
-        created_at,
-        company_info
-      `)
-      .eq("role", "USER");
-
-    // 검색 조건 적용
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,username.ilike.%${search}%`);
-    }
 
     // 상태 필터 적용 - 복잡한 상태 로직 때문에 데이터 가져온 후 필터링
 
@@ -263,8 +254,8 @@ export async function GET(request: NextRequest) {
         const displayStatus = getUserDisplayStatus(user);
 
         // 회사 정보에서 회원 타입 결정
-        const userType = user.company_info && 
-          (user.company_info as any)?.companyName ? "기업" : "개인";
+        const companyInfo = user.company_info as { companyName?: string } | null;
+        const userType = companyInfo?.companyName ? "기업" : "개인";
 
         return {
           id: user.id.toString(),
@@ -273,7 +264,7 @@ export async function GET(request: NextRequest) {
           email: user.email,
           phone: user.phone_number || "",
           userType,
-          company: user.company_info ? (user.company_info as any)?.companyName : undefined,
+          company: companyInfo?.companyName || undefined,
           status: displayStatus,
           role: user.role,
           joinDate: user.created_at,

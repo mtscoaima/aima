@@ -34,11 +34,6 @@ export interface Transaction {
   timestamp?: string;
 }
 
-type KnownMetadata = Record<string, string | number | boolean> & {
-  isReward?: boolean;
-  rewardLevel?: string | number | boolean;
-  rewardType?: string | number | boolean;
-};
 
 interface BalanceData {
   balance: number;
@@ -263,7 +258,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       let creditBalance = 0;
       
       for (const transaction of balanceData.transactions) {
-        const metadata = transaction.metadata as any;
+        const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
         
         if (transaction.type === "charge") {
           // 광고머니 충전 (포인트 제외)
@@ -295,7 +290,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       let pointBalance = 0;
       
       for (const transaction of balanceData.transactions) {
-        const metadata = transaction.metadata as any;
+        const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
         
         if (transaction.type === "charge") {
           // 포인트 충전 (metadata.isReward = true)

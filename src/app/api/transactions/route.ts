@@ -303,7 +303,7 @@ async function calculateCreditBalance(userId: number): Promise<number> {
     let balance = 0;
     
     for (const transaction of transactions || []) {
-      const metadata = transaction.metadata as any;
+      const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
       
       if (transaction.type === "charge") {
         // 광고머니 충전만 계산 (포인트 제외)

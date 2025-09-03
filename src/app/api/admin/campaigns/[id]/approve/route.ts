@@ -336,7 +336,7 @@ export async function POST(
 
     if (reserveTransactions) {
       for (const transaction of reserveTransactions) {
-        const metadata = transaction.metadata as any;
+        const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
         if (metadata?.transactionType === "point") {
           pointReservedAmount += transaction.amount;
         } else {

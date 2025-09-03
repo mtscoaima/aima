@@ -312,9 +312,6 @@ const CreditManagementPage = () => {
               <div className="space-y-4">
                 {transactions.map((transaction) => {
                   const metadata = transaction.metadata || {};
-                  const packageName =
-                    metadata.packageName ||
-                    `광고머니 ${transaction.amount.toLocaleString()}개 패키지`;
                   const templateName = metadata.templateName || null;
                   const isCharge = transaction.type === "charge";
                   const isRefund = transaction.type === "refund";
