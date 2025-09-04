@@ -16,11 +16,11 @@ interface Template {
 }
 
 interface TemplateManagementTabProps {
-  onNavigateToNaver: () => void;
+  onNavigateToDetail: () => void;
 }
 
 const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
-  onNavigateToNaver
+  onNavigateToDetail
 }) => {
   const { user } = useAuth();
 
@@ -560,13 +560,13 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
             </button>
           </div>
 
-          {/* 템플릿 만들기 버튼 */}
+          {/* 캠페인 만들기 버튼 */}
           <div className="flex items-center">
             <button 
               className="bg-blue-500 text-white border-none rounded-md px-4 py-2 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap hover:bg-blue-600"
-              onClick={onNavigateToNaver}
+              onClick={onNavigateToDetail}
             >
-              템플릿 만들기
+              캠페인 만들기
             </button>
           </div>
 

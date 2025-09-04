@@ -178,7 +178,10 @@ function TargetMarketingPageContent() {
             )}
             {activeTab === "template-management" && (
               <TemplateManagementTab 
-                onNavigateToNaver={() => handleTabChange("naver-talktalk")}
+                onNavigateToDetail={() => {
+                  handleTabChange("naver-talktalk")
+                  setCurrentView('detail')
+                }}
               />
             )}
           </>
