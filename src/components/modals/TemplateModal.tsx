@@ -10,6 +10,8 @@ interface TemplateModalProps {
   templateList: Template[];
   selectedTemplateId: string | null;
   setSelectedTemplateId: (id: string | null) => void;
+  activeTab: 'my' | 'public';
+  setActiveTab: (tab: 'my' | 'public') => void;
 }
 
 const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -20,12 +22,31 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
   templateList,
   selectedTemplateId,
   setSelectedTemplateId,
+  activeTab,
+  setActiveTab,
 }) => {
   if (!isOpen) return null;
 
   const handleClose = () => {
     onClose();
     setSelectedTemplateId(null);
+  };
+
+  // 탭별 템플릿 필터링 (is_owner 기반)
+  const filteredTemplates = templateList.filter(template => {
+    if (activeTab === 'my') {
+      // 내 템플릿: is_owner가 true
+      return template.is_owner === true;
+    } else {
+      // 공개 템플릿: is_owner가 false이고 is_private=false
+      return template.is_owner === false && template.is_private === false;
+    }
+  });
+
+  // 탭 변경 핸들러
+  const handleTabChange = (tab: 'my' | 'public') => {
+    setActiveTab(tab);
+    setSelectedTemplateId(null); // 선택 초기화
   };
 
   return (
@@ -39,6 +60,32 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
           >
             ✕
           </button>
+        </div>
+
+        {/* 탭 네비게이션 */}
+        <div className="border-b border-gray-200">
+          <div className="flex px-4">
+            <button
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'my'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              onClick={() => handleTabChange('my')}
+            >
+              내 템플릿 ({templateList.filter(t => t.is_owner === true).length})
+            </button>
+            <button
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'public'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              onClick={() => handleTabChange('public')}
+            >
+              공개 템플릿 ({templateList.filter(t => t.is_owner === false && t.is_private === false).length})
+            </button>
+          </div>
         </div>
         
         <div className="p-6 overflow-y-auto max-h-[60vh]">
@@ -64,14 +111,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
               <div className="overflow-y-auto" style={{ maxHeight: '240px' }}>
                 <table className="w-full border-collapse">
                   <tbody className="divide-y divide-gray-200">
-                    {templateList.length === 0 ? (
+                    {filteredTemplates.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-gray-500">
-                          템플릿이 없습니다.
+                          {activeTab === 'my' ? '내가 만든 템플릿이 없습니다.' : '공개된 템플릿이 없습니다.'}
                         </td>
                       </tr>
                     ) : (
-                      templateList.map((template) => (
+                      filteredTemplates.map((template) => (
                         <tr key={template.id}>
                           <td className="py-3 px-4" style={{ width: '60px' }}>
                             <input

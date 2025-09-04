@@ -90,6 +90,7 @@ export interface Template {
   updated_at?: string;
   is_private?: boolean;
   is_owner?: boolean;
+  user_id?: string | number;
   buttons?: DynamicButton[];
 }
 

@@ -167,6 +167,7 @@ function TargetMarketingDetailContent({
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [activeTemplateTab, setActiveTemplateTab] = useState<'my' | 'public'>('my');
 
   // 미리보기 모달 상태
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -2270,6 +2271,7 @@ function TargetMarketingDetailContent({
   const handleOpenTemplateModal = () => {
     setIsTemplateModalOpen(true);
     setSelectedTemplateId(null); // 선택 초기화
+    setActiveTemplateTab('my'); // 탭 초기화
     fetchTemplates();
   };
 
@@ -3865,6 +3867,8 @@ function TargetMarketingDetailContent({
         templateList={templateList}
         selectedTemplateId={selectedTemplateId}
         setSelectedTemplateId={setSelectedTemplateId}
+        activeTab={activeTemplateTab}
+        setActiveTab={setActiveTemplateTab}
       />
 
       {/* 미리보기 모달 */}
