@@ -383,12 +383,15 @@ export default function NaverTalkTalkTab({
                   handleStartChat();
                 }
               }}
-              placeholder={`Ex) 서울 홍대 헤어샵 오픈 행사 카페 50%할인 이벤트 홍보
-                            여름 맞이 최대 50% 할인 이벤트 홍보
-                            카페 시즌 음료 무료 사이즈 업 이벤트 안내`
+              placeholder={`Step 1) 당신의 사업을 상세하게 설명해주시거나 참고할 사이트를 알려주세요.
+                            Step 2) 만드려고 하는 광고의 목적을 알려주세요
+                            Step 3) 광고의 혜택과 기간을 알려주세요
+                            Step 4) 참고할 사이트나 이미지가 있다면 올려주세요. (전경, 제품이미지 등)
+    
+                            ※ 타겟팅은 에이마의 추천을 받아, 다음 단계에서 상세하게 직접 설정이 가능합니다`
                           }
               className="w-full text-base resize-none transition-colors duration-200 font-inherit border-none outline-none placeholder-gray-400 whitespace-pre-line"
-              rows={4}
+              rows={6}
             />
 
             {/* 첨부된 파일 미리보기 */}
