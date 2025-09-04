@@ -3053,63 +3053,14 @@ function TargetMarketingDetailContent({
                                 </span>
                               </div>
                               
-                              {/* 링크 타입 선택 */}
-                              <div className="mb-2">
-                                <div className="flex gap-4">
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name={`linkType-${button.id}`}
-                                      value="web"
-                                      checked={button.linkType === 'web'}
-                                      onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app', dynamicButtons, setDynamicButtons)}
-                                      className="text-blue-600"
-                                    />
-                                    웹링크
-                                  </label>
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name={`linkType-${button.id}`}
-                                      value="app"
-                                      checked={button.linkType === 'app'}
-                                      onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app', dynamicButtons, setDynamicButtons)}
-                                      className="text-blue-600"
-                                    />
-                                    앱링크
-                                  </label>
-                                </div>
-                              </div>
-
-                              {/* 링크 입력창 */}
-                              <div className="col-span-2 mb-2">
-                                {button.linkType === 'web' ? (
-                                  <input
-                                    type="text"
-                                    placeholder="웹링크 주소"
-                                    value={button.url || ''}
-                                    onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value, dynamicButtons, setDynamicButtons)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                  />
-                                ) : (
-                                  <div className="space-y-2">
-                                    <input
-                                      type="text"
-                                      placeholder="iOS 앱 링크"
-                                      value={button.iosUrl || ''}
-                                      onChange={(e) => updateDynamicButton(button.id, 'iosUrl', e.target.value, dynamicButtons, setDynamicButtons)}
-                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                      type="text"
-                                      placeholder="Android 앱 링크"
-                                      value={button.androidUrl || ''}
-                                      onChange={(e) => updateDynamicButton(button.id, 'androidUrl', e.target.value, dynamicButtons, setDynamicButtons)}
-                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                    />
-                                  </div>
-                                )}
-                              </div>
+                              {/* 웹링크 입력창 */}
+                                <input
+                                  type="text"
+                                  placeholder="웹링크 주소"
+                                  value={button.url || ''}
+                                  onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value, dynamicButtons, setDynamicButtons)}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                                />
 
                               <div className="col-span-2 flex gap-2 justify-end">
                                 <button

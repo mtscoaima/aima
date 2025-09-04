@@ -35,10 +35,8 @@ export interface Package {
 export interface DynamicButton {
   id: string;
   text: string;
-  linkType: 'web' | 'app';
+  linkType: 'web';
   url?: string;        // 웹링크용
-  iosUrl?: string;     // iOS 앱링크용
-  androidUrl?: string; // Android 앱링크용
 }
 
 export interface TargetMarketingDetailProps {
