@@ -72,9 +72,10 @@ function TargetMarketingDetailContent({
   const router = useRouter();
   const { user } = useAuth();
   const {
-    balanceData,
     isLoading: isLoadingCredits,
     refreshTransactions,
+    calculateBalance,
+    calculatePoints,
   } = useBalance();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -215,8 +216,8 @@ function TargetMarketingDetailContent({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [requiredAmount, setRequiredAmount] = useState<number>(0);
 
-  // BalanceContext에서 크레딧 정보 가져오기
-  const userCredits = balanceData.balance;
+  // BalanceContext에서 크레딧 정보 가져오기 (광고머니 + 포인트)
+  const userCredits = calculateBalance() + calculatePoints();
 
   // 이미지 생성 로딩 상태 추가
   const [isImageGenerating, setIsImageGenerating] = useState(false);
@@ -3706,7 +3707,7 @@ function TargetMarketingDetailContent({
 
               <div className="bg-white p-4 rounded-lg space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">캠페인(건당)</span>
+                  <span className="text-sm text-gray-700">광고 단가(발송 건 당)</span>
                   <span className="text-sm font-semibold text-gray-900">{unitCost}원/건</span>
                 </div>
                 <div className="text-xs text-gray-500">
@@ -3727,7 +3728,7 @@ function TargetMarketingDetailContent({
                   </span>
                     </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">충전 잔액</span>
+                  <span className="text-sm text-gray-700">전체 가용 금액</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">
                       {isLoadingCredits ? (

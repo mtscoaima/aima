@@ -125,7 +125,7 @@ export const ERROR_MESSAGES = {
   WEB_LINK_REQUIRED: "웹링크 주소를 입력해주세요.",
   APP_LINK_REQUIRED: "iOS 또는 Android 링크 중 하나는 입력해주세요.",
   LOGIN_REQUIRED: "로그인이 필요합니다.",
-  INSUFFICIENT_CREDITS: "크레딧이 부족합니다. 크레딧을 충전해주세요.",
+  INSUFFICIENT_CREDITS: "광고머니가 부족합니다. 광고머니를 충전해주세요.",
   TEMPLATE_CONTENT_REQUIRED: "저장할 템플릿 내용이 없습니다.",
   TEMPLATE_NAME_REQUIRED: "템플릿 이름을 입력해주세요.",
   CATEGORY_REQUIRED: "카테고리를 선택해주세요.",
@@ -139,5 +139,5 @@ export const SUCCESS_MESSAGES = {
   TEMPLATE_SAVED: "템플릿이 성공적으로 저장되었습니다!",
   CAMPAIGN_LOADED: "캠페인이 성공적으로 불러와졌습니다.",
   TEMPLATE_LOADED: "템플릿이 성공적으로 불러와졌습니다.",
-  PAYMENT_COMPLETED: "결제가 완료되었습니다. 크레딧이 충전되었습니다.",
+  PAYMENT_COMPLETED: "결제가 완료되었습니다. 광고머니가 충전되었습니다.",
 } as const;
