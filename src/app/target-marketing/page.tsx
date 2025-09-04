@@ -14,6 +14,13 @@ interface DetailProps {
   initialMessage?: string;
   initialImage?: string | null;
   shouldRestore?: boolean;
+  templateData?: {
+    id: number;
+    name: string;
+    template_code: string;
+    content?: string;
+    image_url?: string;
+  };
 }
 
 // 실제 캠페인 데이터 인터페이스
@@ -178,9 +185,16 @@ function TargetMarketingPageContent() {
             )}
             {activeTab === "template-management" && (
               <TemplateManagementTab 
-                onNavigateToDetail={() => {
+                onNavigateToDetail={(templateData) => {
                   handleTabChange("naver-talktalk")
                   setCurrentView('detail')
+                  if (templateData) {
+                    // NaverTalkTalkTab과 동일한 방식으로 templateId와 useTemplate 플래그 설정
+                    setDetailProps({ 
+                      templateId: templateData.id,
+                      useTemplate: true
+                    });
+                  }
                 }}
               />
             )}

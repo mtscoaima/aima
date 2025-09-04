@@ -16,7 +16,7 @@ interface Template {
 }
 
 interface TemplateManagementTabProps {
-  onNavigateToDetail: () => void;
+  onNavigateToDetail: (templateData?: Template) => void;
 }
 
 const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
@@ -161,6 +161,84 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
       setSelectedTemplates(prev => [...prev, templateId]);
     } else {
       setSelectedTemplates(prev => prev.filter(id => id !== templateId));
+    }
+  };
+
+  // 캠페인 만들기 핸들러
+  const handleCampaignCreate = async () => {
+    if (selectedTemplates.length === 0) return;
+    
+    if (selectedTemplates.length > 1) {
+      alert("두 개 이상의 템플릿이 선택되었습니다.");
+      return;
+    }
+
+    // 선택된 템플릿 정보 찾기
+    const selectedTemplate = templates.find(template => template.id === selectedTemplates[0]);
+    if (selectedTemplate) {
+      try {
+        // 먼저 상세 템플릿 정보를 API에서 가져오기
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          alert("인증 토큰이 없습니다. 다시 로그인해주세요.");
+          return;
+        }
+
+        const response = await fetch(`/api/templates/${selectedTemplate.id}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const templateWithDetails = {
+            ...selectedTemplate,
+            content: data.template.content || "",
+            image_url: data.template.image_url || null,
+            buttons: data.template.buttons || []
+          };
+
+          // 선택된 템플릿을 localStorage에 저장 (NaverTalkTalkTab과 동일하게)
+          try {
+            localStorage.setItem("selectedTemplate", JSON.stringify(templateWithDetails));
+          } catch (error) {
+            console.error("localStorage 저장 실패:", error);
+            
+            // LocalStorage가 가득 찬 경우, 기존 데이터 일부 정리 후 재시도
+            if (error instanceof Error && error.name === 'QuotaExceededError') {
+              try {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (key && (key.startsWith('temp_') || key.startsWith('cache_'))) {
+                    keysToRemove.push(key);
+                  }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                // 재시도
+                localStorage.setItem("selectedTemplate", JSON.stringify(templateWithDetails));
+              } catch (retryError) {
+                console.error("localStorage 재시도 실패:", retryError);
+                alert("브라우저 저장소가 부족합니다. 브라우저 캐시를 정리해주세요.");
+                return;
+              }
+            }
+          }
+
+          // 상세 페이지로 이동 (템플릿 사용)
+          onNavigateToDetail(templateWithDetails);
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          alert(errorData.error || "템플릿 정보를 불러오는데 실패했습니다.");
+        }
+      } catch (error) {
+        console.error("템플릿 정보 로드 오류:", error);
+        alert("템플릿 정보를 불러오는 중 오류가 발생했습니다.");
+      }
     }
   };
 
@@ -563,8 +641,13 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
           {/* 캠페인 만들기 버튼 */}
           <div className="flex items-center">
             <button 
-              className="bg-blue-500 text-white border-none rounded-md px-4 py-2 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap hover:bg-blue-600"
-              onClick={onNavigateToDetail}
+              className={`border-none rounded-md px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                selectedTemplates.length > 0
+                  ? "bg-blue-500 text-white cursor-pointer hover:bg-blue-600"
+                  : "bg-gray-400 text-gray-200 cursor-not-allowed"
+              }`}
+              disabled={selectedTemplates.length === 0}
+              onClick={handleCampaignCreate}
             >
               캠페인 만들기
             </button>
