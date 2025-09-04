@@ -14,12 +14,6 @@ const supabaseKey = supabaseServiceKey;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-interface UploadedFile {
-  fileName: string;
-  fileUrl: string;
-  uploadedAt: string;
-}
-
 export async function POST(request: NextRequest) {
   try {
     // JWT 토큰 검증

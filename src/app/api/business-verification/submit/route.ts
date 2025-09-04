@@ -119,7 +119,15 @@ export async function POST(request: NextRequest) {
     };
 
     // 3. 문서 정보 구성 (기존 문서 고려) - null 값은 저장하지 않음
-    const documents: any = {};
+    const documents: Record<string, {
+      fileName: string;
+      fileSize: number;
+      fileType: string;
+      fileData: string;
+      fileUrl: string;
+      uploadedAt: string;
+      status: string;
+    }> = {};
     
     // 사업자등록증 처리
     if (data.businessDocumentFile) {
