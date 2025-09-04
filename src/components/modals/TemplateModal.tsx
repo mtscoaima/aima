@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Template } from "@/types/targetMarketing";
 
@@ -25,28 +25,53 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
   activeTab,
   setActiveTab,
 }) => {
+  // 검색 상태
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+
+  // 모달이 열릴 때 검색어 초기화
+  useEffect(() => {
+    if (isOpen) {
+      setSearchKeyword('');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleClose = () => {
     onClose();
     setSelectedTemplateId(null);
+    setSearchKeyword(''); // 검색어도 초기화
   };
 
-  // 탭별 템플릿 필터링 (is_owner 기반)
+  // 탭별 템플릿 필터링 및 검색 필터링
   const filteredTemplates = templateList.filter(template => {
+    // 탭 필터링
+    let tabMatch = false;
     if (activeTab === 'my') {
       // 내 템플릿: is_owner가 true
-      return template.is_owner === true;
+      tabMatch = template.is_owner === true;
     } else {
       // 공개 템플릿: is_owner가 false이고 is_private=false
-      return template.is_owner === false && template.is_private === false;
+      tabMatch = template.is_owner === false && template.is_private === false;
     }
+
+    // 검색 필터링 (탭 조건을 만족하는 경우에만)
+    if (!tabMatch) return false;
+    
+    if (!searchKeyword.trim()) return true;
+    
+    const keyword = searchKeyword.toLowerCase().trim();
+    const templateName = (template.name || '').toLowerCase();
+    const templateCode = (template.template_code || '').toLowerCase();
+    
+    return templateName.includes(keyword) || templateCode.includes(keyword);
   });
 
   // 탭 변경 핸들러
   const handleTabChange = (tab: 'my' | 'public') => {
     setActiveTab(tab);
     setSelectedTemplateId(null); // 선택 초기화
+    setSearchKeyword(''); // 검색어도 초기화
   };
 
   return (
@@ -87,6 +112,27 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* 검색 박스 */}
+        <div className="px-4 pb-4 border-b border-gray-200">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="템플릿 이름 또는 코드로 검색..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {searchKeyword && (
+              <button
+                onClick={() => setSearchKeyword('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
         
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           {isLoading ? (
@@ -114,7 +160,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {filteredTemplates.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-gray-500">
-                          {activeTab === 'my' ? '내가 만든 템플릿이 없습니다.' : '공개된 템플릿이 없습니다.'}
+                          {searchKeyword.trim() ? (
+                            `"${searchKeyword}"에 대한 검색 결과가 없습니다.`
+                          ) : (
+                            activeTab === 'my' ? '내가 만든 템플릿이 없습니다.' : '공개된 템플릿이 없습니다.'
+                          )}
                         </td>
                       </tr>
                     ) : (
