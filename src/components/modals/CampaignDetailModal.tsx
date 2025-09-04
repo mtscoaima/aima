@@ -564,9 +564,9 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                         <span className="text-sm text-gray-900">{campaign.unit_cost ? `${campaign.unit_cost.toLocaleString()}원` : '100원'}</span>
                       </div>
 
-                      {/* 합계 */}
+                      {/* 광고 금액 */}
                       <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                        <span className="text-sm font-semibold text-gray-700">합계</span>
+                        <span className="text-sm font-semibold text-gray-700">광고 금액</span>
                         <span className="text-sm font-semibold text-gray-900">{(Number(campaign.budget) || 0).toLocaleString()}원</span>
                       </div>
                     </div>

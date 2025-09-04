@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         // 사용자 정보 조회
         const { data: user } = await supabase
           .from("users")
-          .select("username, name, email, phone_number")
+          .select("username, name, email, phone_number, company_info")
           .eq("id", campaign.user_id)
           .single();
 
