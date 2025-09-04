@@ -214,22 +214,22 @@ export default function MemberApprovalPage() {
         // 데이터 타입 변환 및 처리
         const processedUsers: User[] = (result.users || []).map(
           (user: Record<string, unknown>) => ({
-            id: (user.id as number).toString(),
-            name: (user.name as string) || "",
-            email: (user.email as string) || "",
-            phone_number: (user.phone_number as string) || "",
-            company_info: (user.company_info as User['company_info']) || { companyName: "" },
-            tax_invoice_info: (user.tax_invoice_info as User['tax_invoice_info']) || {},
-            created_at: (user.created_at as string) || new Date().toISOString(),
-            documents: (user.documents as UserDocuments) || {},
-            approval_status: (user.approval_status as string) || "PENDING",
-            approval_log: (user.approval_log as User['approval_log']) || {},
-            representativeName: (user.representativeName as string) || "",
-            companyAddress: (user.companyAddress as string) || "",
-            approvalDate: (user.approvalDate as string) || "",
-            approver: (user.approver as string) || "",
-            rejectionReason: (user.rejectionReason as string) || "",
-          })
+              id: (user.id as number).toString(),
+              name: (user.name as string) || "",
+              email: (user.email as string) || "",
+              phone_number: (user.phone_number as string) || "",
+              company_info: (user.company_info as User['company_info']) || { companyName: "" },
+              tax_invoice_info: (user.tax_invoice_info as User['tax_invoice_info']) || {},
+              created_at: (user.created_at as string) || new Date().toISOString(),
+              documents: (user.documents as UserDocuments) || {},
+              approval_status: (user.approval_status as string) || "PENDING",
+              approval_log: (user.approval_log as User['approval_log']) || {},
+              representativeName: (user.representativeName as string) || "",
+              companyAddress: (user.companyAddress as string) || "",
+              approvalDate: (user.approvalDate as string) || "",
+              approver: (user.approver as string) || "",
+              rejectionReason: (user.rejectionReason as string) || "",
+            })
         );
 
         setUsers(processedUsers);
@@ -965,7 +965,7 @@ export default function MemberApprovalPage() {
                   </div>
                   <div className="modal-field">
                     <label>연락처</label>
-                    <div className="value">{formatPhoneNumber(selectedUser.phone_number)}</div>
+                    <div className="value">{formatPhoneNumber(selectedUser.phone_number || "")}</div>
                   </div>
                   <div className="modal-field">
                     <label>가입일</label>

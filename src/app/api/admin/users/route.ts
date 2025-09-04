@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
         company: company_info?.companyName || "",
         userType: company_info ? "기업" : "개인",
         email: user.email,
-        phone: user.phone_number,
+        phone_number: user.phone_number,
         status: user.is_active 
           ? (user.approval_status === "APPROVED" ? "정상" : 
              user.approval_status === "REJECTED" ? "거부" : "대기")

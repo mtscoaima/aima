@@ -118,47 +118,44 @@ export async function POST(request: NextRequest) {
       submittedAt: new Date().toISOString(),
     };
 
-    // 3. 문서 정보 구성 (기존 문서 고려)
-    const documents = {
-      businessRegistration: data.businessDocumentFile
-        ? {
-            // 새로운 파일이 있는 경우
-            fileName: data.businessDocumentFile.name,
-            fileSize: data.businessDocumentFile.size,
-            fileType: data.businessDocumentFile.type,
-            fileData: data.businessDocumentFile.data, // base64 데이터 저장
-            fileUrl: `data:${data.businessDocumentFile.type};base64,${data.businessDocumentFile.data}`,
-            uploadedAt: new Date().toISOString(),
-            status: "uploaded",
-          }
-        : data.hasExistingBusinessDocument &&
-          existingDocuments.businessRegistration
-        ? {
-            // 기존 문서 유지
-            ...existingDocuments.businessRegistration,
-            status: "existing",
-          }
-        : null,
-      employmentCertificate: data.employmentDocumentFile
-        ? {
-            // 새로운 파일이 있는 경우
-            fileName: data.employmentDocumentFile.name,
-            fileSize: data.employmentDocumentFile.size,
-            fileType: data.employmentDocumentFile.type,
-            fileData: data.employmentDocumentFile.data, // base64 데이터 저장
-            fileUrl: `data:${data.employmentDocumentFile.type};base64,${data.employmentDocumentFile.data}`,
-            uploadedAt: new Date().toISOString(),
-            status: "uploaded",
-          }
-        : data.hasExistingEmploymentDocument &&
-          existingDocuments.employmentCertificate
-        ? {
-            // 기존 문서 유지
-            ...existingDocuments.employmentCertificate,
-            status: "existing",
-          }
-        : null,
-    };
+    // 3. 문서 정보 구성 (기존 문서 고려) - null 값은 저장하지 않음
+    const documents: any = {};
+    
+    // 사업자등록증 처리
+    if (data.businessDocumentFile) {
+      documents.businessRegistration = {
+        fileName: data.businessDocumentFile.name,
+        fileSize: data.businessDocumentFile.size,
+        fileType: data.businessDocumentFile.type,
+        fileData: data.businessDocumentFile.data, // base64 데이터 저장
+        fileUrl: `data:${data.businessDocumentFile.type};base64,${data.businessDocumentFile.data}`,
+        uploadedAt: new Date().toISOString(),
+        status: "uploaded",
+      };
+    } else if (data.hasExistingBusinessDocument && existingDocuments.businessRegistration) {
+      documents.businessRegistration = {
+        ...existingDocuments.businessRegistration,
+        status: "existing",
+      };
+    }
+    
+    // 재직증명서 처리
+    if (data.employmentDocumentFile) {
+      documents.employmentCertificate = {
+        fileName: data.employmentDocumentFile.name,
+        fileSize: data.employmentDocumentFile.size,
+        fileType: data.employmentDocumentFile.type,
+        fileData: data.employmentDocumentFile.data, // base64 데이터 저장
+        fileUrl: `data:${data.employmentDocumentFile.type};base64,${data.employmentDocumentFile.data}`,
+        uploadedAt: new Date().toISOString(),
+        status: "uploaded",
+      };
+    } else if (data.hasExistingEmploymentDocument && existingDocuments.employmentCertificate) {
+      documents.employmentCertificate = {
+        ...existingDocuments.employmentCertificate,
+        status: "existing",
+      };
+    }
 
     // 4. 승인 로그 추가
     const approvalLog = {
