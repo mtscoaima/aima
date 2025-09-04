@@ -171,20 +171,6 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
         validUrl = 'https://' + validUrl;
       }
       window.open(validUrl, '_blank');
-    } else if (button.linkType === 'app') {
-      // 앱링크의 경우 사용자 에이전트에 따라 적절한 링크 열기
-      const userAgent = navigator.userAgent;
-      if (/iPad|iPhone|iPod/.test(userAgent) && button.iosUrl) {
-        window.open(button.iosUrl, '_blank');
-      } else if (/Android/.test(userAgent) && button.androidUrl) {
-        window.open(button.androidUrl, '_blank');
-      } else {
-        // iOS/Android 링크 중 가장 먼저 설정된 것 사용
-        const linkToOpen = button.iosUrl || button.androidUrl;
-        if (linkToOpen) {
-          window.open(linkToOpen, '_blank');
-        }
-      }
     }
   };
 
@@ -564,9 +550,9 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                         <span className="text-sm text-gray-900">{campaign.unit_cost ? `${campaign.unit_cost.toLocaleString()}원` : '100원'}</span>
                       </div>
 
-                      {/* 합계 */}
+                      {/* 광고 금액 */}
                       <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                        <span className="text-sm font-semibold text-gray-700">합계</span>
+                        <span className="text-sm font-semibold text-gray-700">광고 금액</span>
                         <span className="text-sm font-semibold text-gray-900">{(Number(campaign.budget) || 0).toLocaleString()}원</span>
                       </div>
                     </div>

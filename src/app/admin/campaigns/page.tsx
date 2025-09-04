@@ -60,6 +60,9 @@ interface Campaign {
     name: string;
     email: string;
     phone_number: string;
+    company_info?: {
+      companyName?: string;
+    };
   };
   message_templates?: {
     name?: string;
@@ -645,6 +648,7 @@ export default function CampaignsPage() {
                         <tr>
                           <th>ID</th>
                           <th>캠페인명</th>
+                          <th>사업자명</th>
                           <th>생성자</th>
                           <th>아이디</th>
                           <th>상태</th>
@@ -666,6 +670,7 @@ export default function CampaignsPage() {
                                 )}
                               </div>
                             </td>
+                            <td className="campaign-company">{campaign.users?.company_info?.companyName || '-'}</td>
                             <td className="campaign-owner">{campaign.users?.name || '-'}</td>
                             <td className="campaign-owner-id">{campaign.users?.username || '-'}</td>
                             <td className="campaign-status">

@@ -399,44 +399,12 @@ const validateAllButtonUrls = (dynamicButtons: DynamicButton[]): { isValid: bool
     const button = dynamicButtons[i];
     const buttonIndex = i + 1;
 
-    if (button.linkType === 'web') {
-      const validation = validateUrl(button.url || '', 'web');
-      if (!validation.isValid) {
-        return { 
-          isValid: false, 
-          errorMessage: `버튼 ${buttonIndex}: ${validation.errorMessage}` 
-        };
-      }
-    } else if (button.linkType === 'app') {
-      // iOS URL 검증
-      if (button.iosUrl && button.iosUrl.trim()) {
-        const iosValidation = validateUrl(button.iosUrl, 'ios');
-        if (!iosValidation.isValid) {
-          return { 
-            isValid: false, 
-            errorMessage: `버튼 ${buttonIndex} (iOS): ${iosValidation.errorMessage}` 
-          };
-        }
-      }
-
-      // Android URL 검증
-      if (button.androidUrl && button.androidUrl.trim()) {
-        const androidValidation = validateUrl(button.androidUrl, 'android');
-        if (!androidValidation.isValid) {
-          return { 
-            isValid: false, 
-            errorMessage: `버튼 ${buttonIndex} (Android): ${androidValidation.errorMessage}` 
-          };
-        }
-      }
-
-      // 앱 링크는 iOS 또는 Android 중 하나는 반드시 있어야 함
-      if (!button.iosUrl?.trim() && !button.androidUrl?.trim()) {
-        return { 
-          isValid: false, 
-          errorMessage: `버튼 ${buttonIndex}: iOS 또는 Android URL 중 하나는 반드시 입력해야 합니다.` 
-        };
-      }
+    const validation = validateUrl(button.url || '', 'web');
+    if (!validation.isValid) {
+      return { 
+        isValid: false, 
+        errorMessage: `버튼 ${buttonIndex}: ${validation.errorMessage}` 
+      };
     }
   }
   return { isValid: true };
@@ -462,59 +430,28 @@ export const useDynamicButtons = () => {
   const updateDynamicButton = useCallback((id: string, field: keyof DynamicButton, value: string, dynamicButtons: DynamicButton[], setDynamicButtons: (buttons: DynamicButton[]) => void) => {
     setDynamicButtons(dynamicButtons.map(button => {
       if (button.id === id) {
-        const updatedButton = { ...button, [field]: value };
-        
-        // linkType이 변경될 때 적절한 필드들을 초기화
-        if (field === 'linkType') {
-          if (value === 'web') {
-            updatedButton.iosUrl = undefined;
-            updatedButton.androidUrl = undefined;
-            updatedButton.url = updatedButton.url || "";
-          } else if (value === 'app') {
-            updatedButton.url = undefined;
-            updatedButton.iosUrl = updatedButton.iosUrl || "";
-            updatedButton.androidUrl = updatedButton.androidUrl || "";
-          }
-        }
-        
-        return updatedButton;
+        return { ...button, [field]: value };
       }
       return button;
     }));
   }, []);
 
   const handleLinkCheck = useCallback((button: DynamicButton) => {
-    if (button.linkType === 'web') {
-      if (!button.url?.trim()) {
-        alert(ERROR_MESSAGES.WEB_LINK_REQUIRED);
-        return;
-      }
-      
-      let validUrl = button.url.trim();
-      if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
-        validUrl = 'https://' + validUrl;
-      }
+    if (!button.url?.trim()) {
+      alert(ERROR_MESSAGES.WEB_LINK_REQUIRED);
+      return;
+    }
+    
+    let validUrl = button.url.trim();
+    if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
+      validUrl = 'https://' + validUrl;
+    }
 
-      try {
-        new URL(validUrl);
-        window.open(validUrl, '_blank', 'noopener,noreferrer');
-      } catch {
-        alert(ERROR_MESSAGES.INVALID_URL);
-      }
-    } else if (button.linkType === 'app') {
-      if (!button.iosUrl?.trim() && !button.androidUrl?.trim()) {
-        alert(ERROR_MESSAGES.APP_LINK_REQUIRED);
-        return;
-      }
-      
-      let message = '앱링크 확인:\n';
-      if (button.iosUrl?.trim()) {
-        message += `iOS: ${button.iosUrl}\n`;
-      }
-      if (button.androidUrl?.trim()) {
-        message += `Android: ${button.androidUrl}`;
-      }
-      alert(message);
+    try {
+      new URL(validUrl);
+      window.open(validUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      alert(ERROR_MESSAGES.INVALID_URL);
     }
   }, []);
 

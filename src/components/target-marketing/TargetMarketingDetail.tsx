@@ -72,9 +72,10 @@ function TargetMarketingDetailContent({
   const router = useRouter();
   const { user } = useAuth();
   const {
-    balanceData,
     isLoading: isLoadingCredits,
     refreshTransactions,
+    calculateBalance,
+    calculatePoints,
   } = useBalance();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -166,6 +167,7 @@ function TargetMarketingDetailContent({
   const [templateList, setTemplateList] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [activeTemplateTab, setActiveTemplateTab] = useState<'my' | 'public'>('my');
 
   // 미리보기 모달 상태
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -215,8 +217,8 @@ function TargetMarketingDetailContent({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [requiredAmount, setRequiredAmount] = useState<number>(0);
 
-  // BalanceContext에서 크레딧 정보 가져오기
-  const userCredits = balanceData.balance;
+  // BalanceContext에서 크레딧 정보 가져오기 (광고머니 + 포인트)
+  const userCredits = calculateBalance() + calculatePoints();
 
   // 이미지 생성 로딩 상태 추가
   const [isImageGenerating, setIsImageGenerating] = useState(false);
@@ -329,11 +331,39 @@ function TargetMarketingDetailContent({
 
 
 
-  // 시간 유효성 검증
+  // 마지막 변경된 시간 추적을 위한 ref
+  const lastChangedTimeRef = useRef<'start' | 'end' | null>(null);
+
+  // 시간 변경 핸들러
+  const handleStartTimeChange = (newStartTime: string) => {
+    lastChangedTimeRef.current = 'start';
+    setCardStartTime(newStartTime);
+  };
+
+  const handleEndTimeChange = (newEndTime: string) => {
+    lastChangedTimeRef.current = 'end';
+    setCardEndTime(newEndTime);
+  };
+
+  // 시간 유효성 검증 - 마지막에 변경된 시간에 따라 다른 시간 조정
   useEffect(() => {
-    const { endTime, isAdjusted } = dateUtils.validateAndAdjustTimeRange(cardStartTime, cardEndTime);
-    if (isAdjusted) {
-      setCardEndTime(endTime);
+    const startHour = dateUtils.parseHourFromTimeString(cardStartTime);
+    const endHour = dateUtils.parseHourFromTimeString(cardEndTime);
+
+    if (startHour >= endHour) {
+      if (lastChangedTimeRef.current === 'start') {
+        // 시작 시간을 변경한 경우: 종료 시간 조정
+        const { endTime, isAdjusted } = dateUtils.validateAndAdjustTimeRange(cardStartTime, cardEndTime);
+        if (isAdjusted) {
+          setCardEndTime(endTime);
+        }
+      } else if (lastChangedTimeRef.current === 'end') {
+        // 종료 시간을 변경한 경우: 시작 시간 조정
+        const { startTime, isAdjusted } = dateUtils.validateAndAdjustTimeRangeReverse(cardStartTime, cardEndTime);
+        if (isAdjusted) {
+          setCardStartTime(startTime);
+        }
+      }
     }
   }, [cardStartTime, cardEndTime]);
 
@@ -2269,6 +2299,7 @@ function TargetMarketingDetailContent({
   const handleOpenTemplateModal = () => {
     setIsTemplateModalOpen(true);
     setSelectedTemplateId(null); // 선택 초기화
+    setActiveTemplateTab('my'); // 탭 초기화
     fetchTemplates();
   };
 
@@ -2606,10 +2637,10 @@ function TargetMarketingDetailContent({
 
   return (
     <div className="relative w-full max-w-[1920px] mx-auto bg-white">
-      <div className="flex flex-row max-h-[calc(100vh-300px)] bg-gray-100 relative gap-0 p-0">
+      <div className="flex flex-row relative gap-0 p-0">
         {/* 좌측: AI 채팅 영역 */}
-        <div className="flex-1 flex flex-col p-6 bg-white border-r border-gray-200 max-w-[800px] w-full">
-          <div className="flex-1 overflow-y-auto pb-4 flex flex-col gap-4 max-h-[calc(100vh-550px)] scroll-smooth" ref={chatMessagesRef}>
+        <div className="flex-1 flex flex-col p-6 bg-white border-r border-gray-200 max-w-[800px] h-fit w-full">
+          <div className="flex-1 overflow-y-auto pb-4 flex flex-col gap-4 min-h-[calc(100vh-550px)] h-fit scroll-smooth" ref={chatMessagesRef}>
             {messages.map((message, idx) => (
               <div
                 key={message.id}
@@ -2882,7 +2913,7 @@ function TargetMarketingDetailContent({
 
         {/* 우측: 캠페인 설정 영역 */}
         <div className="flex-shrink-0 bg-white">
-          <div className="w-[480px] bg-gray-200 border-l border-gray-200 flex flex-col max-h-[calc(100vh-320px)] overflow-y-auto">
+          <div className="w-[480px] bg-gray-200 border-l border-gray-200 flex flex-col">
             {/* 캠페인 설정 섹션 */}
             <div className="bg-gray-100 p-4">
               <div className="flex justify-between items-center mb-4">
@@ -3053,63 +3084,14 @@ function TargetMarketingDetailContent({
                                 </span>
                               </div>
                               
-                              {/* 링크 타입 선택 */}
-                              <div className="mb-2">
-                                <div className="flex gap-4">
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name={`linkType-${button.id}`}
-                                      value="web"
-                                      checked={button.linkType === 'web'}
-                                      onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app', dynamicButtons, setDynamicButtons)}
-                                      className="text-blue-600"
-                                    />
-                                    웹링크
-                                  </label>
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name={`linkType-${button.id}`}
-                                      value="app"
-                                      checked={button.linkType === 'app'}
-                                      onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app', dynamicButtons, setDynamicButtons)}
-                                      className="text-blue-600"
-                                    />
-                                    앱링크
-                                  </label>
-                                </div>
-                              </div>
-
-                              {/* 링크 입력창 */}
-                              <div className="col-span-2 mb-2">
-                                {button.linkType === 'web' ? (
-                                  <input
-                                    type="text"
-                                    placeholder="웹링크 주소"
-                                    value={button.url || ''}
-                                    onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value, dynamicButtons, setDynamicButtons)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                  />
-                                ) : (
-                                  <div className="space-y-2">
-                                    <input
-                                      type="text"
-                                      placeholder="iOS 앱 링크"
-                                      value={button.iosUrl || ''}
-                                      onChange={(e) => updateDynamicButton(button.id, 'iosUrl', e.target.value, dynamicButtons, setDynamicButtons)}
-                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                      type="text"
-                                      placeholder="Android 앱 링크"
-                                      value={button.androidUrl || ''}
-                                      onChange={(e) => updateDynamicButton(button.id, 'androidUrl', e.target.value, dynamicButtons, setDynamicButtons)}
-                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                    />
-                                  </div>
-                                )}
-                              </div>
+                              {/* 웹링크 입력창 */}
+                                <input
+                                  type="text"
+                                  placeholder="웹링크 주소"
+                                  value={button.url || ''}
+                                  onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value, dynamicButtons, setDynamicButtons)}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                                />
 
                               <div className="col-span-2 flex gap-2 justify-end">
                                 <button
@@ -3177,25 +3159,17 @@ function TargetMarketingDetailContent({
 
             {/* 광고 수신자 설정 섹션 */}
             <div className="bg-gray-100 p-4 mb-1">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-1">
                 <div className="text-base font-semibold text-gray-800">광고 수신자 설정</div>
               </div>
               
-              {/* 예상 수신자 수 */}
+              {/* 설명 */}
               <div className="mb-4 rounded-lg">
-                <div className="flex bg-gray-200 text-sm font-semibold text-gray-700 mb-1 justify-between p-2 rounded">
-                  <div>예상 수신자 수</div>
-                  <div>
-                    총
-                    <span className="text-sm font-semibold text-blue-600">50</span>
-                    명
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500 mt-1 ml-2">※ 예상 수신자 수 란?</div>
-                <div className="text-xs text-gray-500 ml-2">통계치를 기반하여 예측한 광고 수신자수입니다.</div>
+                <div className="text-xs text-gray-500 mt-1">에이마가 제휴한 결제데이터를 기반으로</div>
+                <div className="text-xs text-gray-500">광고주의 가장 적합한 타깃에게 광고를 노출합니다.</div>
               </div>
 
-                             {/* 성별 */}
+              {/* 성별 */}
                <div className="mb-4">
                  <div className="text-sm font-medium text-gray-700 mb-2">성별</div>
                  <div className="flex gap-2">
@@ -3475,7 +3449,7 @@ function TargetMarketingDetailContent({
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
                        value={cardStartTime}
-                       onChange={(e) => setCardStartTime(e.target.value)}
+                       onChange={(e) => handleStartTimeChange(e.target.value)}
                      >
                        {generateTimeOptions().map((time) => (
                          <option key={`start-${time}`} value={time}>
@@ -3489,7 +3463,7 @@ function TargetMarketingDetailContent({
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
                        value={cardEndTime}
-                       onChange={(e) => setCardEndTime(e.target.value)}
+                       onChange={(e) => handleEndTimeChange(e.target.value)}
                      >
                        {generateTimeOptions().map((time) => (
                          <option key={`end-${time}`} value={time}>
@@ -3541,7 +3515,7 @@ function TargetMarketingDetailContent({
                  <textarea
                    value={desiredRecipients}
                    onChange={(e) => setDesiredRecipients(e.target.value)}
-                   placeholder="원하시는 광고 수신자를 직접 입력해 주세요."
+                   placeholder="원하시는 타겟팅 조건을 직접 입력해주시면 유사한 타겟팅을 추천해 드립니다."
                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:border-blue-500 bg-white"
                    rows={3}
                    maxLength={500}
@@ -3755,7 +3729,7 @@ function TargetMarketingDetailContent({
 
               <div className="bg-white p-4 rounded-lg space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">캠페인(건당)</span>
+                  <span className="text-sm text-gray-700">광고 단가(발송 건 당)</span>
                   <span className="text-sm font-semibold text-gray-900">{unitCost}원/건</span>
                 </div>
                 <div className="text-xs text-gray-500">
@@ -3776,7 +3750,7 @@ function TargetMarketingDetailContent({
                   </span>
                     </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">충전 잔액</span>
+                  <span className="text-sm text-gray-700">전체 가용 금액</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">
                       {isLoadingCredits ? (
@@ -3913,6 +3887,8 @@ function TargetMarketingDetailContent({
         templateList={templateList}
         selectedTemplateId={selectedTemplateId}
         setSelectedTemplateId={setSelectedTemplateId}
+        activeTab={activeTemplateTab}
+        setActiveTab={setActiveTemplateTab}
       />
 
       {/* 미리보기 모달 */}

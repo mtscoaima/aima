@@ -44,7 +44,7 @@ interface AdCostData {
 
 export default function AdvertiserDashboard() {
   const { user } = useAuth();
-  const { balanceData, formatCurrency, isLoading: isBalanceLoading, calculatePoints } = useBalance();
+  const { isLoading: isBalanceLoading, calculateBalance, calculatePoints } = useBalance();
 
   // 사용자 정보 상태
   const [userData, setUserData] = useState<UserInfoResponse | null>(null);
@@ -354,7 +354,7 @@ export default function AdvertiserDashboard() {
               )}
             </div>
 
-            {/* 충전금/포인트 카드 */}
+            {/* 광고머니/포인트 카드 */}
              <div className="bg-white rounded-xl border-2 border-gray-300 p-6 flex flex-col justify-center">
                <div className="space-y-4">
                  {isBalanceLoading ? (
@@ -377,8 +377,8 @@ export default function AdvertiserDashboard() {
                    <>
                      <div className="grid grid-cols-2 gap-4">
                        <div className="text-center">
-                         <div className="text-sm text-gray-900 font-semibold mb-1">충전금</div>
-                         <div className="text-xl text-gray-900">{formatCurrency(balanceData.balance)}</div>
+                         <div className="text-sm text-gray-900 font-semibold mb-1">광고머니</div>
+                         <div className="text-xl text-gray-900">{calculateBalance().toLocaleString()} 원</div>
                        </div>
                        <div className="text-center border-l pl-4">
                        <div className="text-sm text-gray-900 font-semibold mb-1">포인트</div>

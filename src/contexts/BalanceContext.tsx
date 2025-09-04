@@ -249,7 +249,6 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
   // 페이지 이동 시 잔액 정보 자동 새로고침
   useEffect(() => {
     if (user && !authLoading && pathname !== lastPathnameRef.current) {
-      console.log('페이지 이동 감지: ', lastPathnameRef.current, ' -> ', pathname);
       lastPathnameRef.current = pathname;
       
       // 잔액 관련 페이지들에서만 자동 새로고침 수행

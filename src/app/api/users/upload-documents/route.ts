@@ -14,12 +14,6 @@ const supabaseKey = supabaseServiceKey;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-interface UploadedFile {
-  fileName: string;
-  fileUrl: string;
-  uploadedAt: string;
-}
-
 export async function POST(request: NextRequest) {
   try {
     // JWT 토큰 검증
@@ -65,7 +59,30 @@ export async function POST(request: NextRequest) {
       "employmentCertificate"
     ) as File | null;
 
-    const documents: { [key: string]: UploadedFile } = {};
+    // 기존 사용자 문서 정보 조회
+    const { data: existingUser, error: fetchError } = await supabase
+      .from("users")
+      .select("documents")
+      .eq("id", userId)
+      .single();
+
+    if (fetchError) {
+      console.error("기존 사용자 데이터 조회 실패:", fetchError);
+      return NextResponse.json(
+        {
+          message: "사용자 정보 조회에 실패했습니다.",
+          error: fetchError.message,
+          status: 500,
+          timestamp: getKSTISOString(),
+          path: "/api/users/upload-documents",
+        },
+        { status: 500 }
+      );
+    }
+
+    // 기존 documents와 새로 업로드될 documents를 병합
+    const existingDocuments = existingUser?.documents || {};
+    const updatedDocuments = { ...existingDocuments };
 
     // 사업자등록증 업로드
     if (businessRegistration) {
@@ -92,7 +109,7 @@ export async function POST(request: NextRequest) {
         .from("user-documents")
         .getPublicUrl(filePath);
 
-      documents.businessRegistration = {
+      updatedDocuments.businessRegistration = {
         fileName: businessRegistration.name,
         fileUrl: urlData.publicUrl,
         uploadedAt: getKSTISOString(),
@@ -124,18 +141,18 @@ export async function POST(request: NextRequest) {
         .from("user-documents")
         .getPublicUrl(filePath);
 
-      documents.employmentCertificate = {
+      updatedDocuments.employmentCertificate = {
         fileName: employmentCertificate.name,
         fileUrl: urlData.publicUrl,
         uploadedAt: getKSTISOString(),
       };
     }
 
-    // 사용자 문서 정보 업데이트
+    // 사용자 문서 정보 업데이트 (기존 문서 보존)
     const { error: updateError } = await supabase
       .from("users")
       .update({
-        documents: documents,
+        documents: updatedDocuments,
         updated_at: getKSTISOString(),
       })
       .eq("id", userId);
@@ -147,7 +164,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         message: "문서 업로드가 완료되었습니다.",
-        documents: documents,
+        documents: updatedDocuments,
       },
       { status: 200 }
     );
