@@ -124,6 +124,34 @@ export const validateAndAdjustTimeRange = (
 };
 
 /**
+ * 종료 시간 선택 시 시작 시간과의 유효성을 검증하고 필요시 시작 시간을 조정
+ */
+export const validateAndAdjustTimeRangeReverse = (
+  startTime: string,
+  endTime: string
+): { startTime: string; endTime: string; isAdjusted: boolean } => {
+  const startHour = parseHourFromTimeString(startTime);
+  const endHour = parseHourFromTimeString(endTime);
+
+  if (endHour <= startHour) {
+    const newStartHour = Math.max(endHour - 1, 0);
+    const adjustedStartTime = formatTimeString(newStartHour);
+    
+    return {
+      startTime: adjustedStartTime,
+      endTime,
+      isAdjusted: true,
+    };
+  }
+
+  return {
+    startTime,
+    endTime,
+    isAdjusted: false,
+  };
+};
+
+/**
  * 두 날짜 사이의 일수 계산
  */
 export const getDaysBetweenDates = (startDate: string, endDate: string): number => {

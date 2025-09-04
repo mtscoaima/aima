@@ -331,11 +331,39 @@ function TargetMarketingDetailContent({
 
 
 
-  // 시간 유효성 검증
+  // 마지막 변경된 시간 추적을 위한 ref
+  const lastChangedTimeRef = useRef<'start' | 'end' | null>(null);
+
+  // 시간 변경 핸들러
+  const handleStartTimeChange = (newStartTime: string) => {
+    lastChangedTimeRef.current = 'start';
+    setCardStartTime(newStartTime);
+  };
+
+  const handleEndTimeChange = (newEndTime: string) => {
+    lastChangedTimeRef.current = 'end';
+    setCardEndTime(newEndTime);
+  };
+
+  // 시간 유효성 검증 - 마지막에 변경된 시간에 따라 다른 시간 조정
   useEffect(() => {
-    const { endTime, isAdjusted } = dateUtils.validateAndAdjustTimeRange(cardStartTime, cardEndTime);
-    if (isAdjusted) {
-      setCardEndTime(endTime);
+    const startHour = dateUtils.parseHourFromTimeString(cardStartTime);
+    const endHour = dateUtils.parseHourFromTimeString(cardEndTime);
+
+    if (startHour >= endHour) {
+      if (lastChangedTimeRef.current === 'start') {
+        // 시작 시간을 변경한 경우: 종료 시간 조정
+        const { endTime, isAdjusted } = dateUtils.validateAndAdjustTimeRange(cardStartTime, cardEndTime);
+        if (isAdjusted) {
+          setCardEndTime(endTime);
+        }
+      } else if (lastChangedTimeRef.current === 'end') {
+        // 종료 시간을 변경한 경우: 시작 시간 조정
+        const { startTime, isAdjusted } = dateUtils.validateAndAdjustTimeRangeReverse(cardStartTime, cardEndTime);
+        if (isAdjusted) {
+          setCardStartTime(startTime);
+        }
+      }
     }
   }, [cardStartTime, cardEndTime]);
 
@@ -3131,25 +3159,17 @@ function TargetMarketingDetailContent({
 
             {/* 광고 수신자 설정 섹션 */}
             <div className="bg-gray-100 p-4 mb-1">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-1">
                 <div className="text-base font-semibold text-gray-800">광고 수신자 설정</div>
               </div>
               
-              {/* 예상 수신자 수 */}
+              {/* 설명 */}
               <div className="mb-4 rounded-lg">
-                <div className="flex bg-gray-200 text-sm font-semibold text-gray-700 mb-1 justify-between p-2 rounded">
-                  <div>예상 수신자 수</div>
-                  <div>
-                    총
-                    <span className="text-sm font-semibold text-blue-600">50</span>
-                    명
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500 mt-1 ml-2">※ 예상 수신자 수 란?</div>
-                <div className="text-xs text-gray-500 ml-2">통계치를 기반하여 예측한 광고 수신자수입니다.</div>
+                <div className="text-xs text-gray-500 mt-1">에이마가 제휴한 결제데이터를 기반으로</div>
+                <div className="text-xs text-gray-500">광고주의 가장 적합한 타깃에게 광고를 노출합니다.</div>
               </div>
 
-                             {/* 성별 */}
+              {/* 성별 */}
                <div className="mb-4">
                  <div className="text-sm font-medium text-gray-700 mb-2">성별</div>
                  <div className="flex gap-2">
@@ -3429,7 +3449,7 @@ function TargetMarketingDetailContent({
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
                        value={cardStartTime}
-                       onChange={(e) => setCardStartTime(e.target.value)}
+                       onChange={(e) => handleStartTimeChange(e.target.value)}
                      >
                        {generateTimeOptions().map((time) => (
                          <option key={`start-${time}`} value={time}>
@@ -3443,7 +3463,7 @@ function TargetMarketingDetailContent({
                      <select
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
                        value={cardEndTime}
-                       onChange={(e) => setCardEndTime(e.target.value)}
+                       onChange={(e) => handleEndTimeChange(e.target.value)}
                      >
                        {generateTimeOptions().map((time) => (
                          <option key={`end-${time}`} value={time}>
@@ -3495,7 +3515,7 @@ function TargetMarketingDetailContent({
                  <textarea
                    value={desiredRecipients}
                    onChange={(e) => setDesiredRecipients(e.target.value)}
-                   placeholder="원하시는 광고 수신자를 직접 입력해 주세요."
+                   placeholder="원하시는 타겟팅 조건을 직접 입력해주시면 유사한 타겟팅을 추천해 드립니다."
                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:border-blue-500 bg-white"
                    rows={3}
                    maxLength={500}
