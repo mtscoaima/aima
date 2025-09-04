@@ -46,9 +46,9 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
       
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-6">
-          {/* 충전금 */}
+          {/* 광고머니 */}
           <div className="text-center">
-            <div className="text-sm text-gray-600 mb-2">충전금</div>
+            <div className="text-sm text-gray-600 mb-2">광고머니</div>
             <div className="text-2xl font-bold text-blue-600">
               {currentBalance.toLocaleString()}원
             </div>

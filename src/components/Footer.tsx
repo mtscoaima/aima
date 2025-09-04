@@ -27,7 +27,7 @@ export default function Footer() {
           </div>
           <div className="footer-landing-company-info">
             (주)엠티에스컴퍼니 | 주소: 서울특별시 강남구 삼성로 434, 8층(대치동,
-            크레타나인대치)
+            익성대치)
             <br />
             대표이사: 정희원 | 사업자등록번호: 513-88-00391 | aima@mtsco.co.kr
           </div>
