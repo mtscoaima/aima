@@ -66,7 +66,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                   
                   {/* 템플릿 내용 */}
                   {smsTextContent && (
-                    <div className="text-gray-700 text-sm mb-4">
+                    <div className="text-gray-700 text-sm mb-4 whitespace-pre-wrap">
                       {smsTextContent}
                     </div>
                   )}

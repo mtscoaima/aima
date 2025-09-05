@@ -134,7 +134,7 @@ function TargetMarketingDetailContent({
   
   // 동적 업종 데이터 상태 (하위 호환성을 위해 유지)
   const [topLevelIndustries, setTopLevelIndustries] = useState([{ value: "all", label: "전체" }]);
-  const [industries, setIndustries] = useState([{ value: "all", label: "전체" }]);
+  // const [industries, setIndustries] = useState([{ value: "all", label: "전체" }]);
   const [cardAmount, setCardAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT);
   const [customAmount, setCustomAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CUSTOM_AMOUNT);
   const [cardAmountInput, setCardAmountInput] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT_INPUT);
@@ -598,8 +598,8 @@ function TargetMarketingDetailContent({
       targetCity,
       targetDistrict,
       selectedLocations,
-      targetTopLevelIndustry,
-      targetIndustry,
+      // targetTopLevelIndustry,
+      // targetIndustry,
       
       // 카드 관련 설정
       cardAmount,
@@ -629,7 +629,7 @@ function TargetMarketingDetailContent({
     messages, isFirstChat, hasShownFirstQuestion, currentQuestionIndex, userAnswers,
     templateTitle, smsTextContent, currentGeneratedImage, dynamicButtons, structuredRecommendation,
     campaignName, adMedium, sendPolicy, validityStartDate, validityEndDate, maxRecipients, selectedPeriod,
-    targetGender, targetAge, targetCity, targetDistrict, selectedLocations, targetTopLevelIndustryText, targetIndustryText,
+    targetGender, targetAge, targetCity, targetDistrict, selectedLocations,
     cardAmount, customAmount, cardAmountInput, cardStartTime, cardEndTime, selectedAmountButton, cardAmountInputValue, selectedTimeButton,
     batchSendDate, batchSendTime, targetCount, adRecipientCount, femaleRatio, maleRatio, desiredRecipients,
     existingTemplateId
@@ -2460,7 +2460,7 @@ function TargetMarketingDetailContent({
                 const industriesData = await fetchIndustriesByTopLevel(topLevelValue.toString());
                 const specificIndustry = industriesData.find(industry => industry.value === specificValue);
                 setTargetIndustryText(specificIndustry?.label || specificValue.toString());
-              } catch (error) {
+              } catch {
                 setTargetIndustryText(specificValue.toString());
               }
             } else {
