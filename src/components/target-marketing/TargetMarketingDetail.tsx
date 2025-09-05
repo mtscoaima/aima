@@ -3172,58 +3172,68 @@ function TargetMarketingDetailContent({
               {/* 성별 */}
                <div className="mb-4">
                  <div className="text-sm font-medium text-gray-700 mb-2">성별</div>
-                 <div className="flex gap-2">
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value="여성"
-                       disabled
-                     >
-                       <option>여성</option>
-                     </select>
-                   </div>
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={`${femaleRatio}%`}
-                       onChange={(e) => {
-                         const newFemaleRatio = parseInt(e.target.value.replace('%', ''));
-                         setFemaleRatio(newFemaleRatio);
-                         setMaleRatio(100 - newFemaleRatio);
-                       }}
-                     >
-                       {Array.from({ length: 101 }, (_, i) => (
-                         <option key={i} value={`${i}%`}>{i}%</option>
-                       ))}
-                     </select>
-                       </div>
-                         </div>
-                 <div className="flex gap-2 mt-2">
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value="남성"
-                       disabled
-                     >
-                       <option>남성</option>
-                     </select>
+                 {femaleRatio > 0 && (
+                   <div className="flex gap-2">
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value="여성"
+                         disabled
+                       >
+                         <option>여성</option>
+                       </select>
                      </div>
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={`${maleRatio}%`}
-                       onChange={(e) => {
-                         const newMaleRatio = parseInt(e.target.value.replace('%', ''));
-                         setMaleRatio(newMaleRatio);
-                         setFemaleRatio(100 - newMaleRatio);
-                       }}
-                     >
-                       {Array.from({ length: 101 }, (_, i) => (
-                         <option key={i} value={`${i}%`}>{i}%</option>
-                       ))}
-                     </select>
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value={femaleRatio === 100 ? "전체" : `${femaleRatio}%`}
+                         onChange={(e) => {
+                           const value = e.target.value;
+                           const newFemaleRatio = value === "전체" ? 100 : parseInt(value.replace('%', ''));
+                           setFemaleRatio(newFemaleRatio);
+                           setMaleRatio(100 - newFemaleRatio);
+                         }}
+                       >
+                         {Array.from({ length: 101 }, (_, i) => (
+                           <option key={i} value={i === 100 ? "전체" : `${i}%`}>
+                             {i === 100 ? "전체" : `${i}%`}
+                           </option>
+                         ))}
+                       </select>
+                         </div>
+                           </div>
+                 )}
+                 {maleRatio > 0 && (
+                   <div className="flex gap-2 mt-2">
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value="남성"
+                         disabled
+                       >
+                         <option>남성</option>
+                       </select>
+                       </div>
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value={maleRatio === 100 ? "전체" : `${maleRatio}%`}
+                         onChange={(e) => {
+                           const value = e.target.value;
+                           const newMaleRatio = value === "전체" ? 100 : parseInt(value.replace('%', ''));
+                           setMaleRatio(newMaleRatio);
+                           setFemaleRatio(100 - newMaleRatio);
+                         }}
+                       >
+                         {Array.from({ length: 101 }, (_, i) => (
+                           <option key={i} value={i === 100 ? "전체" : `${i}%`}>
+                             {i === 100 ? "전체" : `${i}%`}
+                           </option>
+                         ))}
+                       </select>
+                     </div>
                    </div>
-                 </div>
+                 )}
                </div>
 
               {/* 연령 */}
