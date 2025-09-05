@@ -3021,7 +3021,7 @@ function TargetMarketingDetailContent({
                   className="px-3 py-1.5 bg-white text-blue-600 border border-blue-600 rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-blue-100"
                   onClick={() => setIsPreviewModalOpen(true)}
                 >
-                  미리보기
+                  미리보기 및 이미지 저장
                 </button>
               </div>
                 <div className="flex flex-col gap-4">
