@@ -22,16 +22,17 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 }) => {
   const previewRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   if (!isOpen) return null;
 
   const handleButtonClick = (button: DynamicButton) => {
-    if (button.linkType === 'web' && button.url) {
+    if (button.linkType === "web" && button.url) {
       let validUrl = button.url.trim();
-      if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
-        validUrl = 'https://' + validUrl;
+      if (!validUrl.startsWith("http://") && !validUrl.startsWith("https://")) {
+        validUrl = "https://" + validUrl;
       }
-      window.open(validUrl, '_blank');
+      window.open(validUrl, "_blank");
     }
   };
 
@@ -40,99 +41,102 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
     try {
       setIsSaving(true);
-      
-      // 동적 버튼들을 임시로 숨김
-      const buttonElements = previewRef.current.querySelectorAll('[data-exclude-from-capture="true"]');
-      const originalDisplayValues = Array.from(buttonElements).map(el => (el as HTMLElement).style.display);
-      buttonElements.forEach(el => {
-        (el as HTMLElement).style.display = 'none';
+
+      // 1) 버튼 임시 숨김
+      const buttonElements = previewRef.current.querySelectorAll(
+        '[data-exclude-from-capture="true"]'
+      );
+      const originalDisplayValues = Array.from(buttonElements).map(
+        (el) => (el as HTMLElement).style.display
+      );
+      buttonElements.forEach((el) => {
+        (el as HTMLElement).style.display = "none";
       });
 
-      // 미리보기 영역에 임시 스타일 추가
-      const tempStyle = document.createElement('style');
+      // 2) 임시 스타일
+      const tempStyle = document.createElement("style");
       tempStyle.textContent = `
-        .preview-capture * {
-          color: rgb(55, 65, 81) !important;
-        }
-        .preview-capture .bg-white {
-          background-color: rgb(255, 255, 255) !important;
-        }
-        .preview-capture .bg-gray-200 {
-          background-color: rgb(229, 231, 235) !important;
-        }
-        .preview-capture .text-gray-700 {
-          color: rgb(55, 65, 81) !important;
-        }
-        .preview-capture .text-gray-500 {
-          color: rgb(107, 114, 128) !important;
-        }
-        .preview-capture .text-gray-900 {
-          color: rgb(17, 24, 39) !important;
-        }
-        .preview-capture .border-gray-600 {
-          border-color: rgb(75, 85, 99) !important;
-        }
+        .preview-capture * { color: rgb(55,65,81) !important; }
+        .preview-capture .bg-white { background-color:#fff !important; }
+        .preview-capture .bg-gray-200 { background-color: rgb(229,231,235) !important; }
+        .preview-capture .text-gray-700 { color: rgb(55,65,81) !important; }
+        .preview-capture .text-gray-500 { color: rgb(107,114,128) !important; }
+        .preview-capture .text-gray-900 { color: rgb(17,24,39) !important; }
+        .preview-capture .border-gray-600 { border-color: rgb(75,85,99) !important; }
       `;
       document.head.appendChild(tempStyle);
-      
-      // 캡처할 영역에 클래스 추가
-      previewRef.current.classList.add('preview-capture');
 
-      // html2canvas로 해당 영역을 캡처 (자동 크기 감지)
-      const canvas = await html2canvas(previewRef.current, {
+      // 3) 클래스로 캡처대상 표시
+      const el = previewRef.current;
+      el.classList.add("preview-capture");
+
+      // 4) 레이아웃 적용 완료를 한 프레임 기다렸다가 캡처
+      setIsCapturing(true);
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+
+      // 이미지 로딩 보장
+      const imgEl = el.querySelector('img[data-capture-img]') as HTMLImageElement | null;
+      if (imgEl) {
+        if (!imgEl.complete) await new Promise<void>(res => imgEl.addEventListener('load', () => res(), { once: true }));
+        // decode로 렌더 안정화
+        try { 
+          if ('decode' in imgEl && typeof imgEl.decode === 'function') {
+            await imgEl.decode();
+          }
+        } catch {}
+      } 
+
+      // 5) 요소 실제 크기 기준으로 캔버스 생성 (여기가 '잘림' 방지 핵심)
+      const width = Math.ceil(el.scrollWidth);
+      const height = Math.ceil(el.scrollHeight);
+
+      const canvas = await html2canvas(el, {
         background: '#ffffff',
         useCORS: true,
         allowTaint: true,
         logging: false,
+        width,
+        height,
       });
-
-      // 임시 스타일과 클래스 제거
+  
+      // 복원
+      setIsCapturing(false);
       document.head.removeChild(tempStyle);
-      previewRef.current.classList.remove('preview-capture');
-
-      // 버튼들을 다시 보이게 함
-      buttonElements.forEach((el, index) => {
-        (el as HTMLElement).style.display = originalDisplayValues[index];
+      el.classList.remove("preview-capture");
+      buttonElements.forEach((el, i) => {
+        (el as HTMLElement).style.display = originalDisplayValues[i];
       });
 
-      // 파일 크기 최적화 함수
-      const optimizeImageSize = (canvas: HTMLCanvasElement, maxSizeBytes: number = 3 * 1024 * 1024) => {
+      // 파일 크기 최적화
+      const optimizeImageSize = (
+        canvas: HTMLCanvasElement,
+        maxSizeBytes: number = 3 * 1024 * 1024
+      ) => {
         let quality = 0.9;
-        let imageData = canvas.toDataURL('image/jpeg', quality);
-        
-        // 3MB 이하가 될 때까지 품질 조정
-        while (imageData.length > maxSizeBytes && quality > 0.1) {
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        while (dataUrl.length > maxSizeBytes && quality > 0.2) {
           quality -= 0.1;
-          imageData = canvas.toDataURL('image/jpeg', quality);
+          dataUrl = canvas.toDataURL("image/jpeg", quality);
         }
-        
-        // 여전히 크다면 PNG로 시도
-        if (imageData.length > maxSizeBytes) {
-          imageData = canvas.toDataURL('image/png');
+        if (dataUrl.length > maxSizeBytes) {
+          dataUrl = canvas.toDataURL("image/png");
         }
-        
-        return imageData;
+        return dataUrl;
       };
 
-      // 이미지 최적화
       const optimizedImage = optimizeImageSize(canvas);
-      
-      // 다운로드 링크 생성
-      const link = document.createElement('a');
-      const fileExtension = optimizedImage.startsWith('data:image/png') ? 'png' : 'jpg';
-      link.download = `템플릿_미리보기_${new Date().getTime()}.${fileExtension}`;
+
+      // 다운로드
+      const link = document.createElement("a");
+      const ext = optimizedImage.startsWith("data:image/png") ? "png" : "jpg";
+      link.download = `템플릿_미리보기_${Date.now()}.${ext}`;
       link.href = optimizedImage;
-      
-      // 다운로드 실행
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      console.log(`이미지 크기: ${(optimizedImage.length / 1024 / 1024).toFixed(2)}MB`);
-      
-    } catch (error) {
-      console.error('이미지 저장 실패:', error);
-      alert('이미지 저장에 실패했습니다.');
+    } catch (e) {
+      console.error("이미지 저장 실패:", e);
+      alert("이미지 저장에 실패했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -150,37 +154,62 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             ✕
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto max-h-[70vh] flex items-center justify-center">
           <div className="bg-gray-200 rounded-3xl p-3 shadow-2xl">
-            <div ref={previewRef} className="bg-white rounded-2xl p-4 max-w-xs">
-              {currentGeneratedImage && (
-                <div className="relative mb-4">
-                  <Image
-                    src={currentGeneratedImage || ""}
-                    alt="템플릿 미리보기"
-                    width={280}
-                    height={200}
-                    className="w-full h-auto rounded-lg"
-                  />
-                  
-                  {/* 템플릿 제목 */}
+            {/* 캡처 대상: 고정폭을 주면 결과가 더 안정적입니다. */}
+            <div
+              ref={previewRef}
+              className="bg-white rounded-2xl p-4 w-[320px] max-w-full"
+            >
+              {currentGeneratedImage ? (
+                <>
+                 <div className="mb-4">
+                    {isCapturing ? (
+                      // 캡처 전용 <img>
+                      <img
+                        src={currentGeneratedImage || ""}
+                        alt="템플릿 미리보기"
+                        width={280}
+                        height={200}
+                        className="w-full h-auto rounded-lg"
+                        crossOrigin="anonymous"
+                        data-capture-img
+                        decoding="async"
+                      />
+                    ) : (
+                      // 평소에는 Next/Image 사용
+                      <Image
+                        src={currentGeneratedImage || ""}
+                        alt="템플릿 미리보기"
+                        width={280}
+                        height={200}
+                        className="w-full h-auto rounded-lg"
+                        crossOrigin="anonymous"
+                        priority
+                        unoptimized
+                      />
+                    )}
+                  </div>
                   {templateTitle && (
                     <div className="font-bold text-gray-900 mb-2">
                       {templateTitle}
                     </div>
                   )}
-                  
-                  {/* 템플릿 내용 */}
+
                   {smsTextContent && (
                     <div className="text-gray-700 text-sm mb-4 whitespace-pre-wrap">
                       {smsTextContent}
                     </div>
                   )}
-                  
-                  {/* 동적 버튼들 - 버튼이 있는 경우에만 표시 */}
+
                   {dynamicButtons.length > 0 && (
-                    <div className={dynamicButtons.length === 2 ? "flex gap-2" : "space-y-2"} data-exclude-from-capture="true">
+                    <div
+                      className={
+                        dynamicButtons.length === 2 ? "flex gap-2" : "space-y-2"
+                      }
+                      data-exclude-from-capture="true"
+                    >
                       {dynamicButtons.map((button, index) => (
                         <button
                           key={index}
@@ -194,10 +223,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                       ))}
                     </div>
                   )}
-                </div>
-              )}
-              
-              {!currentGeneratedImage && (
+                </>
+              ) : (
                 <div className="text-center text-gray-500 py-8">
                   <p>미리볼 이미지가 없습니다.</p>
                   <p>먼저 이미지를 생성해주세요.</p>
@@ -206,8 +233,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
             </div>
           </div>
         </div>
-        
-        {/* 이미지로 저장 버튼 */}
+
         <div className="flex justify-center p-4 border-t border-gray-200">
           <button
             onClick={handleSaveAsImage}
@@ -220,9 +246,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                 저장 중...
               </>
             ) : (
-              <>
-                이미지로 저장
-              </>
+              <>이미지로 저장</>
             )}
           </button>
         </div>
