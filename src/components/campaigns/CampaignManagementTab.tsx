@@ -22,6 +22,9 @@ interface RealCampaign {
   sent_count: number;
   success_count: number;
   failed_count: number;
+  click_count: number;
+  conversion_count: number;
+  impression_count: number;
   created_at: string;
   updated_at?: string;
   rejection_reason?: string;
@@ -89,34 +92,69 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
   const firstDropdownRef = useRef<HTMLDivElement>(null);
   const secondDropdownRef = useRef<HTMLDivElement>(null);
 
-  // 차트 지표 옵션들 (추후 확장 가능)
+  // 차트 지표 옵션들 (새로운 DB 컬럼 사용)
   const chartMetricOptions = [
     { value: "impressions", label: "노출 수", color: "#3b82f6" },
     { value: "clicks", label: "클릭 수", color: "#10b981" },
-    // 추후 확장 예시:
-    // { value: "conversions", label: "전환 수", color: "#f59e0b" },
-    // { value: "cost", label: "비용", color: "#ef4444" },
-    // { value: "ctr", label: "클릭률", color: "#8b5cf6" },
-    // { value: "cpm", label: "CPM", color: "#ec4899" }
+    { value: "conversions", label: "전환 수", color: "#f59e0b" },
+    { value: "opens", label: "오픈 수", color: "#ef4444" },
+    { value: "sent", label: "발송 수", color: "#8b5cf6" },
+    { value: "ctr", label: "클릭률", color: "#ec4899" },
+    { value: "openRate", label: "오픈률", color: "#06b6d4" }
   ];
   
-  // 더미 차트 데이터
+  // 실제 캠페인 데이터 기반 차트 데이터
   const getChartData = () => {
-    const dates = [];
-    const impressions = [];
-    const clicks = [];
-    
+    const dates: string[] = [];
     const start = new Date(dateFilter.startDate);
     const end = new Date(dateFilter.endDate);
+    const filteredData = getFilteredCampaigns(); // 여기서 filteredCampaigns 가져오기
     
+    // 날짜 배열 생성
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(new Date(d).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }));
-      // 더미 데이터 생성
-      impressions.push(Math.floor(Math.random() * 400) + 200);
-      clicks.push(Math.floor(Math.random() * 150) + 50);
     }
     
-    return { dates, impressions, clicks };
+    // 메트릭별 데이터 생성 함수
+    const getMetricData = (metricValue: string) => {
+      return dates.map(date => {
+        // 해당 날짜에 생성된 캠페인들
+        const dayCampaigns = filteredData.filter(campaign => {
+          const campaignDate = new Date(campaign.created_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
+          return campaignDate === date;
+        });
+        
+        // 해당 날짜의 총합 계산
+        if (metricValue === 'ctr') {
+          const totalSent = dayCampaigns.reduce((sum, campaign) => sum + (campaign.sent_count || 0), 0);
+          const totalClicks = dayCampaigns.reduce((sum, campaign) => sum + (campaign.click_count || 0), 0);
+          return totalSent > 0 ? (totalClicks / totalSent) * 100 : 0;
+        } else if (metricValue === 'openRate') {
+          const totalSent = dayCampaigns.reduce((sum, campaign) => sum + (campaign.sent_count || 0), 0);
+          const totalOpens = dayCampaigns.reduce((sum, campaign) => sum + (campaign.success_count || 0), 0);
+          return totalSent > 0 ? (totalOpens / totalSent) * 100 : 0;
+        } else {
+          return dayCampaigns.reduce((sum, campaign) => {
+            switch (metricValue) {
+              case 'impressions': return sum + (campaign.impression_count || 0);
+              case 'clicks': return sum + (campaign.click_count || 0);
+              case 'conversions': return sum + (campaign.conversion_count || 0);
+              case 'opens': return sum + (campaign.success_count || 0);
+              case 'sent': return sum + (campaign.sent_count || 0);
+              default: return sum;
+            }
+          }, 0);
+        }
+      });
+    };
+    
+    return { 
+      dates, 
+      getMetricData,
+      // 기존 호환성을 위해 유지
+      impressions: getMetricData('impressions'),
+      clicks: getMetricData('clicks')
+    };
   };
   
   const [campaigns, setCampaigns] = useState<RealCampaign[]>([]);
@@ -330,12 +368,16 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
 
   // 차트 렌더링 함수 (두 개의 선을 동시에 표시)
   const renderChart = () => {
-    const { dates, impressions, clicks } = getChartData();
-    const allData = { impressions, clicks };
+    const { dates, getMetricData } = getChartData();
     
-    const firstData = allData[firstMetric as keyof typeof allData];
-    const secondData = allData[secondMetric as keyof typeof allData];
-    const maxValue = Math.max(...firstData, ...secondData);
+    const firstData = getMetricData(firstMetric);
+    const secondData = getMetricData(secondMetric);
+    
+    // NaN 값을 0으로 대체하고 유효한 숫자만 사용
+    const cleanFirstData = firstData.map(val => isNaN(val) ? 0 : val);
+    const cleanSecondData = secondData.map(val => isNaN(val) ? 0 : val);
+    
+    const maxValue = Math.max(...cleanFirstData, ...cleanSecondData, 1); // 최소값 1로 설정
     
     const chartWidth = 1200;
     const chartHeight = 200;
@@ -344,11 +386,11 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
     const xStep = (chartWidth - padding * 2) / (dates.length - 1);
     const yScale = (chartHeight - padding * 2) / maxValue;
     
-    const firstPoints = firstData.map((value, index) => 
+    const firstPoints = cleanFirstData.map((value, index) => 
       `${padding + index * xStep},${chartHeight - padding - value * yScale}`
     ).join(' ');
     
-    const secondPoints = secondData.map((value, index) =>
+    const secondPoints = cleanSecondData.map((value, index) =>
       `${padding + index * xStep},${chartHeight - padding - value * yScale}`
     ).join(' ');
     
@@ -370,8 +412,8 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
           <rect width="100%" height="100%" fill="url(#grid)" />
           
           {/* Y축 라벨 */}
-          {[0, Math.floor(maxValue * 0.25), Math.floor(maxValue * 0.5), Math.floor(maxValue * 0.75), maxValue].map(value => (
-            <g key={value}>
+          {[0, Math.floor(maxValue * 0.25), Math.floor(maxValue * 0.5), Math.floor(maxValue * 0.75), maxValue].map((value, index) => (
+            <g key={`yaxis-${index}-${value}`}>
               <text 
                 x={padding - 10} 
                 y={chartHeight - padding - (value * yScale)} 
@@ -893,9 +935,19 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
                     return totalSent > 0 ? `${((totalOpen / totalSent) * 100).toFixed(1)}%` : '0%';
                   })()}
                 </td>
-                <td className="px-4 py-3 text-center text-sm text-gray-400">-</td>
-                <td className="px-4 py-3 text-center text-sm text-gray-400">-</td>
-                <td className="px-4 py-3 text-center text-sm text-gray-400">-</td>
+                <td className="px-4 py-3 text-center text-sm text-blue-600">
+                  {filteredCampaigns.reduce((sum, c) => sum + (c.click_count || 0), 0).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-center text-sm text-blue-600">
+                  {(() => {
+                    const totalSent = filteredCampaigns.reduce((sum, c) => sum + (c.sent_count || 0), 0);
+                    const totalClick = filteredCampaigns.reduce((sum, c) => sum + (c.click_count || 0), 0);
+                    return totalSent > 0 ? `${((totalClick / totalSent) * 100).toFixed(1)}%` : '0%';
+                  })()}
+                </td>
+                <td className="px-4 py-3 text-center text-sm text-blue-600">
+                  {filteredCampaigns.reduce((sum, c) => sum + (c.conversion_count || 0), 0).toLocaleString()}
+                </td>
                 <td className="px-4 py-3 text-center text-sm text-gray-400">-</td>
                 <td className="px-4 py-3 text-center text-sm text-blue-600">
                   {filteredCampaigns.reduce((sum, c) => sum + (Number(c.budget) || 0), 0).toLocaleString()}
@@ -918,7 +970,10 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
                 const approvalStatus = getApprovalStatusText(campaign.status);
                 const sentCount = campaign.sent_count || 0;
                 const openCount = campaign.success_count || 0;
+                const clickCount = campaign.click_count || 0;
+                const conversionCount = campaign.conversion_count || 0;
                 const openRate = sentCount > 0 ? ((openCount / sentCount) * 100).toFixed(1) : '0.0';
+                const clickRate = sentCount > 0 ? ((clickCount / sentCount) * 100).toFixed(1) : '0.0';
 
                 return (
                   <tr key={campaign.id} className="hover:bg-gray-50">
@@ -985,18 +1040,18 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
                     </td>
                     
                     {/* 클릭 수 */}
-                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-400">
-                      -
+                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-900">
+                      {clickCount.toLocaleString()}
                     </td>
                     
                     {/* 클릭율 */}
-                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-400">
-                      -
+                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-900">
+                      {clickRate}%
                     </td>
                     
                     {/* 전환 수 */}
-                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-400">
-                      -
+                    <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-900">
+                      {conversionCount.toLocaleString()}
                     </td>
                     
                     {/* 평균 발송 비용 */}

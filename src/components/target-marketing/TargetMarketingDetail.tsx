@@ -125,12 +125,16 @@ function TargetMarketingDetailContent({
   const [selectedLocations, setSelectedLocations] = useState<
     Array<{ city: string; districts: string[] }>
   >([]);
-  const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
-  const [targetIndustry, setTargetIndustry] = useState("all");
+  // const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
+  // const [targetIndustry, setTargetIndustry] = useState("all");
   
-  // 동적 업종 데이터 상태
+  // 텍스트 입력용 업종 상태
+  const [targetTopLevelIndustryText, setTargetTopLevelIndustryText] = useState("");
+  const [targetIndustryText, setTargetIndustryText] = useState("");
+  
+  // 동적 업종 데이터 상태 (하위 호환성을 위해 유지)
   const [topLevelIndustries, setTopLevelIndustries] = useState([{ value: "all", label: "전체" }]);
-  const [industries, setIndustries] = useState([{ value: "all", label: "전체" }]);
+  // const [industries, setIndustries] = useState([{ value: "all", label: "전체" }]);
   const [cardAmount, setCardAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT);
   const [customAmount, setCustomAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CUSTOM_AMOUNT);
   const [cardAmountInput, setCardAmountInput] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT_INPUT);
@@ -478,7 +482,7 @@ function TargetMarketingDetailContent({
     });
   };
 
-  // 컴포넌트 마운트 시 상위 업종 데이터 로딩
+  // 컴포넌트 마운트 시 상위 업종 데이터 로딩 (하위 호환성을 위해 유지)
   useEffect(() => {
     const loadTopLevelIndustries = async () => {
       try {
@@ -492,28 +496,28 @@ function TargetMarketingDetailContent({
     loadTopLevelIndustries();
   }, []);
 
-  // 상위 업종 변경시 세부 업종 옵션 업데이트
-  useEffect(() => {
-    const loadIndustries = async () => {
-      try {
-        const industriesData = await fetchIndustriesByTopLevel(targetTopLevelIndustry);
-        setIndustries(industriesData);
+  // 상위 업종 변경시 세부 업종 옵션 업데이트 (하위 호환성을 위해 유지)
+  // useEffect(() => {
+  //   const loadIndustries = async () => {
+  //     try {
+  //       const industriesData = await fetchIndustriesByTopLevel(targetTopLevelIndustry);
+  //       setIndustries(industriesData);
 
-        // 현재 선택된 업종이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
-        const validIndustry = industriesData.find(
-          (option) => option.value === targetIndustry
-        );
+  //       // 현재 선택된 업종이 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
+  //       const validIndustry = industriesData.find(
+  //         (option) => option.value === targetIndustry
+  //       );
 
-        if (!validIndustry && industriesData.length > 0) {
-          setTargetIndustry(industriesData[0].value);
-        }
-      } catch (error) {
-        console.error('세부 업종 로딩 오류:', error);
-      } 
-    };
+  //       if (!validIndustry && industriesData.length > 0) {
+  //         setTargetIndustry(industriesData[0].value);
+  //       }
+  //     } catch (error) {
+  //       console.error('세부 업종 로딩 오류:', error);
+  //     } 
+  //   };
 
-    loadIndustries();
-  }, [targetTopLevelIndustry, targetIndustry]);
+  //   loadIndustries();
+  // }, [targetTopLevelIndustry, targetIndustry]);
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
@@ -594,8 +598,8 @@ function TargetMarketingDetailContent({
       targetCity,
       targetDistrict,
       selectedLocations,
-      targetTopLevelIndustry,
-      targetIndustry,
+      // targetTopLevelIndustry,
+      // targetIndustry,
       
       // 카드 관련 설정
       cardAmount,
@@ -625,7 +629,7 @@ function TargetMarketingDetailContent({
     messages, isFirstChat, hasShownFirstQuestion, currentQuestionIndex, userAnswers,
     templateTitle, smsTextContent, currentGeneratedImage, dynamicButtons, structuredRecommendation,
     campaignName, adMedium, sendPolicy, validityStartDate, validityEndDate, maxRecipients, selectedPeriod,
-    targetGender, targetAge, targetCity, targetDistrict, selectedLocations, targetTopLevelIndustry, targetIndustry,
+    targetGender, targetAge, targetCity, targetDistrict, selectedLocations,
     cardAmount, customAmount, cardAmountInput, cardStartTime, cardEndTime, selectedAmountButton, cardAmountInputValue, selectedTimeButton,
     batchSendDate, batchSendTime, targetCount, adRecipientCount, femaleRatio, maleRatio, desiredRecipients,
     existingTemplateId
@@ -685,8 +689,8 @@ function TargetMarketingDetailContent({
       setSelectedLocations(
         (state.selectedLocations as Array<{ city: string; districts: string[] }>) || []
       );
-      setTargetTopLevelIndustry((state.targetTopLevelIndustry as string) || "all");
-      setTargetIndustry((state.targetIndustry as string) || "all");
+      // setTargetTopLevelIndustry((state.targetTopLevelIndustry as string) || "all");
+      // setTargetIndustry((state.targetIndustry as string) || "all");
       
       // 카드 관련 설정 복원
       setCardAmount((state.cardAmount as string) || "10000");
@@ -838,8 +842,8 @@ function TargetMarketingDetailContent({
         setTargetAge(analysis.age);
         setTargetCity(analysis.city);
         setTargetDistrict(analysis.district);
-        setTargetTopLevelIndustry(analysis.topLevelIndustry);
-        setTargetIndustry(analysis.industry);
+        // setTargetTopLevelIndustry(analysis.topLevelIndustry);
+        // setTargetIndustry(analysis.industry);
         setCardAmount(analysis.cardAmount);
         setCardStartTime(analysis.startTime);
         setCardEndTime(analysis.endTime);
@@ -2438,9 +2442,43 @@ function TargetMarketingDetailContent({
         setTargetDistrict("all");
       }
 
-      // 업종 정보 설정
-      setTargetTopLevelIndustry(campaignData.target_industry_top_level || "all");
-      setTargetIndustry(campaignData.target_industry_specific || "all");
+      // 업종 정보 설정 (하위 호환성 포함)
+      const processIndustryData = async () => {
+        const topLevelValue = campaignData.target_industry_top_level;
+        const specificValue = campaignData.target_industry_specific;
+
+        if (topLevelValue) {
+          // 숫자 형태인지 확인 (기존 코드 데이터)
+          if (/^\d+$/.test(topLevelValue.toString())) {
+            // 기존 코드인 경우 API에서 해당 텍스트를 찾아서 설정
+            const topLevelIndustry = topLevelIndustries.find(industry => industry.value === topLevelValue);
+            setTargetTopLevelIndustryText(topLevelIndustry?.label || topLevelValue.toString());
+
+            if (specificValue && /^\d+$/.test(specificValue.toString())) {
+              // 세부업종도 코드인 경우
+              try {
+                const industriesData = await fetchIndustriesByTopLevel(topLevelValue.toString());
+                const specificIndustry = industriesData.find(industry => industry.value === specificValue);
+                setTargetIndustryText(specificIndustry?.label || specificValue.toString());
+              } catch {
+                setTargetIndustryText(specificValue.toString());
+              }
+            } else {
+              // 세부업종이 이미 텍스트인 경우
+              setTargetIndustryText(specificValue?.toString() || "");
+            }
+          } else {
+            // 이미 텍스트 형태인 경우 (새 데이터)
+            setTargetTopLevelIndustryText(topLevelValue.toString());
+            setTargetIndustryText(specificValue?.toString() || "");
+          }
+        } else {
+          setTargetTopLevelIndustryText("");
+          setTargetIndustryText("");
+        }
+      };
+
+      processIndustryData();
 
       // 카드 승인 금액 설정
       if (campaignData.card_amount_max) {
@@ -2552,8 +2590,8 @@ function TargetMarketingDetailContent({
         cardAmountMax: cardAmount === "all" ? null : parseInt(cardAmountInput) * 10000,
         cardTimeStart: cardStartTime,
         cardTimeEnd: cardEndTime,
-        targetIndustryTopLevel: targetTopLevelIndustry === "all" ? null : targetTopLevelIndustry,
-        targetIndustrySpecific: targetIndustry === "all" ? null : targetIndustry,
+        targetIndustryTopLevel: targetTopLevelIndustryText.trim() || null,
+        targetIndustrySpecific: targetIndustryText.trim() || null,
         unitCost: unitCost,
         estimatedTotalCost: totalCost,
         expertReviewRequested: expertReviewRequested,
@@ -2598,8 +2636,8 @@ function TargetMarketingDetailContent({
   }, [selectedLocations, targetCity, targetDistrict]);
 
   const hasIndustryFilter = React.useMemo(() => {
-    return targetTopLevelIndustry !== 'all' || targetIndustry !== 'all';
-  }, [targetTopLevelIndustry, targetIndustry]);
+    return targetTopLevelIndustryText.trim() !== '' || targetIndustryText.trim() !== '';
+  }, [targetTopLevelIndustryText, targetIndustryText]);
 
   const hasAmountFilter = React.useMemo(() => {
     return cardAmount !== 'all';
@@ -2983,7 +3021,7 @@ function TargetMarketingDetailContent({
                   className="px-3 py-1.5 bg-white text-blue-600 border border-blue-600 rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-blue-100"
                   onClick={() => setIsPreviewModalOpen(true)}
                 >
-                  미리보기
+                  미리보기 및 이미지 저장
                 </button>
               </div>
                 <div className="flex flex-col gap-4">
@@ -3172,58 +3210,68 @@ function TargetMarketingDetailContent({
               {/* 성별 */}
                <div className="mb-4">
                  <div className="text-sm font-medium text-gray-700 mb-2">성별</div>
-                 <div className="flex gap-2">
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value="여성"
-                       disabled
-                     >
-                       <option>여성</option>
-                     </select>
-                   </div>
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={`${femaleRatio}%`}
-                       onChange={(e) => {
-                         const newFemaleRatio = parseInt(e.target.value.replace('%', ''));
-                         setFemaleRatio(newFemaleRatio);
-                         setMaleRatio(100 - newFemaleRatio);
-                       }}
-                     >
-                       {Array.from({ length: 101 }, (_, i) => (
-                         <option key={i} value={`${i}%`}>{i}%</option>
-                       ))}
-                     </select>
-                       </div>
-                         </div>
-                 <div className="flex gap-2 mt-2">
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value="남성"
-                       disabled
-                     >
-                       <option>남성</option>
-                     </select>
+                 {femaleRatio > 0 && (
+                   <div className="flex gap-2">
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value="여성"
+                         disabled
+                       >
+                         <option>여성</option>
+                       </select>
                      </div>
-                   <div className="flex-1">
-                     <select
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={`${maleRatio}%`}
-                       onChange={(e) => {
-                         const newMaleRatio = parseInt(e.target.value.replace('%', ''));
-                         setMaleRatio(newMaleRatio);
-                         setFemaleRatio(100 - newMaleRatio);
-                       }}
-                     >
-                       {Array.from({ length: 101 }, (_, i) => (
-                         <option key={i} value={`${i}%`}>{i}%</option>
-                       ))}
-                     </select>
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value={femaleRatio === 100 ? "전체" : `${femaleRatio}%`}
+                         onChange={(e) => {
+                           const value = e.target.value;
+                           const newFemaleRatio = value === "전체" ? 100 : parseInt(value.replace('%', ''));
+                           setFemaleRatio(newFemaleRatio);
+                           setMaleRatio(100 - newFemaleRatio);
+                         }}
+                       >
+                         {Array.from({ length: 101 }, (_, i) => (
+                           <option key={i} value={i === 100 ? "전체" : `${i}%`}>
+                             {i === 100 ? "전체" : `${i}%`}
+                           </option>
+                         ))}
+                       </select>
+                         </div>
+                           </div>
+                 )}
+                 {maleRatio > 0 && (
+                   <div className="flex gap-2 mt-2">
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value="남성"
+                         disabled
+                       >
+                         <option>남성</option>
+                       </select>
+                       </div>
+                     <div className="flex-1">
+                       <select
+                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                         value={maleRatio === 100 ? "전체" : `${maleRatio}%`}
+                         onChange={(e) => {
+                           const value = e.target.value;
+                           const newMaleRatio = value === "전체" ? 100 : parseInt(value.replace('%', ''));
+                           setMaleRatio(newMaleRatio);
+                           setFemaleRatio(100 - newMaleRatio);
+                         }}
+                       >
+                         {Array.from({ length: 101 }, (_, i) => (
+                           <option key={i} value={i === 100 ? "전체" : `${i}%`}>
+                             {i === 100 ? "전체" : `${i}%`}
+                           </option>
+                         ))}
+                       </select>
+                     </div>
                    </div>
-                 </div>
+                 )}
                </div>
 
               {/* 연령 */}
@@ -3343,35 +3391,23 @@ function TargetMarketingDetailContent({
                  <div className="grid grid-cols-2 gap-2">
                    <div>
                      <div className="text-xs text-gray-500 mb-1">대분류</div>
-                     <select
+                     <input
+                       type="text"
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={targetTopLevelIndustry}
-                       onChange={(e) => {
-                         setTargetTopLevelIndustry(e.target.value);
-                         // 대분류 변경 시 세부업종을 "all"로 자동 설정
-                         setTargetIndustry("all");
-                       }}
-                     >
-                       {topLevelIndustries.map((option) => (
-                         <option key={option.value} value={option.value}>
-                           {option.label}
-                         </option>
-                       ))}
-                     </select>
+                       value={targetTopLevelIndustryText}
+                       onChange={(e) => setTargetTopLevelIndustryText(e.target.value)}
+                       placeholder="예: 음식점업"
+                     />
                    </div>
                    <div>
                      <div className="text-xs text-gray-500 mb-1">세부업종</div>
-                     <select
+                     <input
+                       type="text"
                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={targetIndustry}
-                       onChange={(e) => setTargetIndustry(e.target.value)}
-                     >
-                       {industries.map((option) => (
-                         <option key={option.value} value={option.value}>
-                           {option.label}
-                         </option>
-                       ))}
-                     </select>
+                       value={targetIndustryText}
+                       onChange={(e) => setTargetIndustryText(e.target.value)}
+                       placeholder="예: 한식당"
+                     />
                    </div>
                  </div>
                </div>

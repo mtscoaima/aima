@@ -1010,7 +1010,7 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
                       )}
                       
                       {editTemplateContent && (
-                        <div className="text-sm text-gray-500 leading-6 text-left">
+                        <div className="text-sm text-gray-500 leading-6 text-left whitespace-pre-wrap">
                           {editTemplateContent}
                         </div>
                       )}
