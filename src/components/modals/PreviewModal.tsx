@@ -167,6 +167,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
                  <div className="mb-4">
                     {isCapturing ? (
                       // 캡처 전용 <img>
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={currentGeneratedImage || ""}
                         alt="템플릿 미리보기"

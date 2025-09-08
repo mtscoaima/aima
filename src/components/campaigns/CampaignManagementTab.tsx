@@ -105,7 +105,7 @@ const CampaignManagementTab: React.FC<CampaignManagementTabProps> = ({
   
   // 실제 캠페인 데이터 기반 차트 데이터
   const getChartData = () => {
-    const dates = [];
+    const dates: string[] = [];
     const start = new Date(dateFilter.startDate);
     const end = new Date(dateFilter.endDate);
     const filteredData = getFilteredCampaigns(); // 여기서 filteredCampaigns 가져오기
