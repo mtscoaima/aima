@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "MTS마케팅 - SaaS 마케팅 플랫폼",
   description:
     "AI 기반 타깃 마케팅 솔루션으로 효과적인 마케팅 캠페인을 만들어보세요",
+  other: {
+    "naver-site-verification": "2acbc824d4bda0f427257226955d03ff9ce9dd6b",
+  },
 };
 
 export default function RootLayout({
