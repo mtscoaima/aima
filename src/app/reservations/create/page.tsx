@@ -103,23 +103,25 @@ export default function CreateReservationPage() {
       if (response.ok) {
         const data = await response.json();
         setSpaces(data.spaces || []);
-        
-        // 첫 번째 공간을 기본값으로 설정
-        if (data.spaces && data.spaces.length > 0) {
-          const firstSpace = data.spaces[0];
-          setFormData(prev => ({
-            ...prev,
-            space_id: firstSpace.id,
-            space: firstSpace.name
-          }));
-        }
       }
     } catch (error) {
       console.error('Error fetching spaces:', error);
     } finally {
       setLoadingSpaces(false);
     }
-  }, [getAccessToken]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 첫 번째 공간을 기본값으로 설정 (별도 useEffect)
+  useEffect(() => {
+    if (spaces.length > 0 && !formData.space_id) {
+      const firstSpace = spaces[0];
+      setFormData(prev => ({
+        ...prev,
+        space_id: firstSpace.id,
+        space: firstSpace.name
+      }));
+    }
+  }, [spaces, formData.space_id]);
 
   // 예약 생성
   const handleSubmit = async () => {

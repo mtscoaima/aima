@@ -74,7 +74,7 @@ export default function ReservationListPage() {
     } finally {
       setLoading(false);
     }
-  }, [getAccessToken]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 날짜 포맷팅 함수
   const formatDate = (dateString: string) => {

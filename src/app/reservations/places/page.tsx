@@ -53,7 +53,7 @@ export default function ReservationPlacesPage() {
     } finally {
       setLoading(false);
     }
-  }, [getAccessToken]);
+  }, []); // 의존성 배열에서 getAccessToken 제거
 
   // 공간 삭제
   const handleDeleteSpace = async (spaceId: number, spaceName: string) => {
