@@ -200,6 +200,12 @@ export default function Navigation() {
                     충전하기
                   </button>
                   <button
+                    onClick={() => handleNavClick("/reservations")}
+                    className="landing-nav-menu-item landing-nav-menu-btn"
+                  >
+                    예약 관리
+                  </button>
+                  <button
                     onClick={() => handleNavClick("/messages/send")}
                     className="landing-nav-menu-item landing-nav-menu-btn"
                   >
@@ -275,6 +281,12 @@ export default function Navigation() {
                     className="mobile-menu-item mobile-menu-btn"
                   >
                     충전하기
+                  </button>
+                  <button
+                    onClick={() => handleNavClick("/reservations")}
+                    className="mobile-menu-item mobile-menu-btn"
+                  >
+                    예약 관리
                   </button>
                   <button
                     onClick={() => handleNavClick("/messages/send")}
