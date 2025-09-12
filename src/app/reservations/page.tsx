@@ -67,7 +67,7 @@ export default function ReservationsPage() {
             <div className="md:col-span-2 space-y-4">
               {/* 내 공간 */}
               <div 
-                onClick={() => handleMenuClick('/reservations/workspace')}
+                onClick={() => handleMenuClick('/reservations/places')}
                 className="bg-white rounded-xl p-4 border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors duration-200 flex items-center justify-between"
               >
                 <div className="flex items-center space-x-3">
