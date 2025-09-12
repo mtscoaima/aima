@@ -1,22 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-
+import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 
+interface Space {
+  id: number;
+  name: string;
+  icon_text: string;
+  icon_color: string;
+}
+
+interface ReservationFormData {
+  space_id: number | null;
+  space: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  channel: string;
+  customerName: string;
+  phoneNumber: string;
+  people: string;
+  memo: string;
+}
+
 export default function CreateReservationPage() {
+  const { getAccessToken } = useAuth();
   const router = useRouter();
   
-  const [formData, setFormData] = useState({
-    space: "내공간",
-    date: "2025.9.11 (목)",
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [loadingSpaces, setLoadingSpaces] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState<ReservationFormData>({
+    space_id: null,
+    space: "",
+    date: new Date().toISOString().split('T')[0], // YYYY-MM-DD 형식
     startTime: "18",
     endTime: "20",
-    channel: "선택안함",
+    channel: "manual",
     customerName: "",
     phoneNumber: "",
-    people: "",
+    people: "1",
     memo: ""
   });
 
@@ -28,11 +54,23 @@ export default function CreateReservationPage() {
     router.back();
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleInputChange = (field: keyof ReservationFormData, value: string | number) => {
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+      
+      // 공간 선택 시 space_id도 함께 업데이트
+      if (field === 'space' && typeof value === 'string') {
+        const selectedSpace = spaces.find(s => s.name === value);
+        if (selectedSpace) {
+          updated.space_id = selectedSpace.id;
+        }
+      }
+      
+      return updated;
+    });
   };
 
   const handleAdvancedSettings = () => {
@@ -47,9 +85,129 @@ export default function CreateReservationPage() {
     // 글래 입력하기 (UI만 구현)
   };
 
-  const handleSubmit = () => {
-    // 예약 추가하기 (UI만 구현)
+  // 공간 목록 가져오기
+  const fetchSpaces = useCallback(async () => {
+    try {
+      setLoadingSpaces(true);
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const response = await fetch('/api/reservations/spaces', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSpaces(data.spaces || []);
+        
+        // 첫 번째 공간을 기본값으로 설정
+        if (data.spaces && data.spaces.length > 0) {
+          const firstSpace = data.spaces[0];
+          setFormData(prev => ({
+            ...prev,
+            space_id: firstSpace.id,
+            space: firstSpace.name
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching spaces:', error);
+    } finally {
+      setLoadingSpaces(false);
+    }
+  }, [getAccessToken]);
+
+  // 예약 생성
+  const handleSubmit = async () => {
+    // 기본 유효성 검사
+    if (!formData.space_id) {
+      alert('공간을 선택해주세요.');
+      return;
+    }
+
+    if (!formData.customerName.trim()) {
+      alert('고객 이름을 입력해주세요.');
+      return;
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      alert('전화번호를 입력해주세요.');
+      return;
+    }
+
+    if (parseInt(formData.startTime) >= parseInt(formData.endTime)) {
+      alert('종료 시간이 시작 시간보다 늦어야 합니다.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        alert('인증이 필요합니다. 로그인을 다시 시도해주세요.');
+        return;
+      }
+
+      // 날짜와 시간을 ISO 문자열로 변환
+      const startDateTime = new Date(`${formData.date}T${formData.startTime.padStart(2, '0')}:00:00`);
+      const endDateTime = new Date(`${formData.date}T${formData.endTime.padStart(2, '0')}:00:00`);
+
+      const reservationData = {
+        space_id: formData.space_id,
+        customer_name: formData.customerName.trim(),
+        customer_phone: formData.phoneNumber.trim(),
+        customer_email: null, // 이메일 필드가 없으므로 null
+        start_datetime: startDateTime.toISOString(),
+        end_datetime: endDateTime.toISOString(),
+        guest_count: parseInt(formData.people) || 1,
+        total_amount: 0, // 기본값
+        deposit_amount: 0, // 기본값
+        special_requirements: formData.memo.trim() || null,
+        booking_type: 'hourly',
+        booking_channel: formData.channel
+      };
+
+      const response = await fetch('/api/reservations/bookings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reservationData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 409) {
+          alert('선택한 시간에 이미 예약이 있습니다. 다른 시간을 선택해주세요.');
+        } else {
+          throw new Error(errorData.error || '예약 생성에 실패했습니다.');
+        }
+        return;
+      }
+
+      const { reservation } = await response.json();
+      console.log('Reservation created successfully:', reservation);
+      
+      alert('예약이 성공적으로 생성되었습니다!');
+      router.push('/reservations/list');
+      
+    } catch (error) {
+      console.error('Error creating reservation:', error);
+      alert(error instanceof Error ? error.message : '예약 생성에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  useEffect(() => {
+    fetchSpaces();
+  }, [fetchSpaces]);
 
   const handleDateClick = () => {
     setShowDateCalendar(!showDateCalendar);
@@ -162,9 +320,17 @@ export default function CreateReservationPage() {
                   onChange={(e) => handleInputChange("space", e.target.value)}
                   className="w-full p-4 bg-white border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex items-center"
                 >
-                  <option value="내공간">🏢 내공간</option>
-                  <option value="공간1">🏢 공간 1</option>
-                  <option value="공간2">🏢 공간 2</option>
+                  {loadingSpaces ? (
+                    <option value="">공간 로딩 중...</option>
+                  ) : spaces.length === 0 ? (
+                    <option value="">등록된 공간이 없습니다</option>
+                  ) : (
+                    spaces.map((space) => (
+                      <option key={space.id} value={space.name}>
+                        {space.icon_text} {space.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -422,9 +588,21 @@ export default function CreateReservationPage() {
             <div className="pt-6">
               <button
                 onClick={handleSubmit}
-                className="w-full py-4 px-4 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-lg"
+                disabled={isSubmitting || !formData.space_id || !formData.customerName.trim() || !formData.phoneNumber.trim()}
+                className={`w-full py-4 px-4 rounded-lg font-medium transition-colors text-lg ${
+                  isSubmitting || !formData.space_id || !formData.customerName.trim() || !formData.phoneNumber.trim()
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
               >
-                예약 추가하기
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    예약 생성 중...
+                  </div>
+                ) : (
+                  '예약 추가하기'
+                )}
               </button>
             </div>
           </div>

@@ -1,32 +1,118 @@
 "use client";
 
-import React, { useState } from "react";
-
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 import { useRouter } from "next/navigation";
 
+interface Space {
+  id: number;
+  name: string;
+  icon_text: string;
+  icon_color: string;
+}
+
+interface Reservation {
+  id: number;
+  user_id: number;
+  space_id: number;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  start_datetime: string;
+  end_datetime: string;
+  guest_count: number;
+  total_amount: number;
+  deposit_amount: number;
+  special_requirements?: string;
+  booking_type: string;
+  status: string;
+  payment_status: string;
+  booking_channel: string;
+  created_at: string;
+  updated_at: string;
+  spaces?: Space;
+}
+
 export default function ReservationListPage() {
+  const { getAccessToken } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("registration"); // "registration" or "imminent"
+  const [activeTab, setActiveTab] = useState("registration");
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock reservation data
-  const reservations = [
-    {
-      id: 1,
-      place: "내공",
-      placeName: "김예약",
-      phone: "전화",
-      date: "2025.09.11 (목) 17:00 ~ 19:00",
-      status: "샘플",
-      registeredAt: "2025.9.11 (목) 오후 4:22"
+  // 예약 목록 가져오기
+  const fetchReservations = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = await getAccessToken();
+      if (!token) {
+        setError('인증이 필요합니다.');
+        return;
+      }
+
+      const response = await fetch('/api/reservations/bookings', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('예약 목록을 불러오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setReservations(data.reservations || []);
+    } catch (err) {
+      console.error('Error fetching reservations:', err);
+      setError(err instanceof Error ? err.message : '예약 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, [getAccessToken]);
 
-  const getFilteredReservations = () => {
-    // For now, return all reservations regardless of tab
-    // In a real app, you would filter based on activeTab
-    return reservations;
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = days[date.getDay()];
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    
+    return {
+      date: `${year}.${month.toString().padStart(2, '0')}.${day.toString().padStart(2, '0')} (${dayOfWeek})`,
+      time: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    };
   };
+
+  // 예약 상태별 필터링
+  const getFilteredReservations = () => {
+    const now = new Date();
+    
+    if (activeTab === 'imminent') {
+      // 임박 예약: 오늘부터 7일 내 예약
+      const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return reservations.filter(reservation => {
+        const startDate = new Date(reservation.start_datetime);
+        return startDate >= now && startDate <= oneWeekFromNow && reservation.status === 'confirmed';
+      });
+    } else {
+      // 등록순 예약: 모든 예약
+      return reservations;
+    }
+  };
+
+  useEffect(() => {
+    fetchReservations();
+  }, [fetchReservations]);
 
   return (
     <RoleGuard allowedRoles={["USER"]}>
@@ -81,45 +167,112 @@ export default function ReservationListPage() {
 
         {/* Content */}
         <div className="space-y-4">
-          {activeTab === "registration" && getFilteredReservations().length > 0 ? (
-            // Reservation Items
-            getFilteredReservations().map((reservation) => (
-              <div key={reservation.id} className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="flex items-start space-x-4">
-                  {/* Place Icon */}
-                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    {reservation.place}
-                  </div>
-                  
-                  {/* Reservation Details */}
-                  <div className="flex-1">
-                    <div className="text-lg font-semibold text-gray-900 mb-1">
-                      {reservation.date}
-                    </div>
-                    <div className="text-gray-600 mb-2">
-                      [{reservation.status}] {reservation.placeName} {reservation.phone}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      등록일시 {reservation.registeredAt}
-                    </div>
-                  </div>
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-16">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+              <p className="text-gray-600">예약 목록을 불러오는 중...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-red-800">{error}</p>
                 </div>
               </div>
-            ))
-          ) : activeTab === "imminent" ? (
-            // Empty state for imminent tab
-            <div className="text-center py-16">
-              <p className="text-gray-500">
-                이용 예정인 예약이 없습니다.
-              </p>
             </div>
-          ) : (
-            // Empty state for registration tab when no data
-            <div className="text-center py-16">
-              <p className="text-gray-500">
-                등록된 예약이 없습니다.
-              </p>
-            </div>
+          )}
+
+          {/* Reservation Items */}
+          {!loading && !error && (
+            <>
+              {getFilteredReservations().length > 0 ? (
+                getFilteredReservations().map((reservation) => {
+                  const startDate = formatDate(reservation.start_datetime);
+                  const endDate = formatDate(reservation.end_datetime);
+                  const createdDate = formatDate(reservation.created_at);
+                  
+                  return (
+                    <div key={reservation.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                      <div className="flex items-start space-x-4">
+                        {/* Place Icon */}
+                        <div 
+                          className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-semibold flex-shrink-0"
+                          style={{ backgroundColor: reservation.spaces?.icon_color || '#8BC34A' }}
+                        >
+                          {reservation.spaces?.icon_text || reservation.spaces?.name?.substring(0, 2) || '공간'}
+                        </div>
+                        
+                        {/* Reservation Details */}
+                        <div className="flex-1">
+                          <div className="text-lg font-semibold text-gray-900 mb-1">
+                            {startDate.date} {startDate.time} ~ {endDate.time}
+                          </div>
+                          <div className="text-gray-600 mb-2">
+                            [{reservation.status === 'confirmed' ? '확정' : reservation.status === 'completed' ? '완료' : reservation.status === 'cancelled' ? '취소' : '대기'}] {reservation.customer_name} {reservation.customer_phone}
+                          </div>
+                          <div className="text-sm text-gray-500 mb-2">
+                            {reservation.spaces?.name} · {reservation.guest_count}명
+                            {reservation.total_amount > 0 && ` · ${reservation.total_amount.toLocaleString()}원`}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            등록일시 {createdDate.date} {createdDate.time}
+                          </div>
+                          {reservation.special_requirements && (
+                            <div className="text-sm text-gray-600 mt-2 p-2 bg-gray-50 rounded">
+                              메모: {reservation.special_requirements}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Status Badge */}
+                        <div className={`px-2 py-1 rounded text-xs font-medium ${
+                          reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          reservation.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                          reservation.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {reservation.status === 'confirmed' ? '확정' : 
+                           reservation.status === 'completed' ? '완료' : 
+                           reservation.status === 'cancelled' ? '취소' : '대기'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                // Empty state
+                <div className="text-center py-16">
+                  <div className="text-gray-400 mb-4">
+                    <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1M8 7v13a2 2 0 002 2h4a2 2 0 002-2V7M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h1m10-6V7a2 2 0 00-2-2H9a2 2 0 00-2 2v6" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {activeTab === 'imminent' ? '이용 예정인 예약이 없습니다' : '등록된 예약이 없습니다'}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {activeTab === 'imminent' ? '7일 이내 예약이 없습니다.' : '첫 번째 예약을 추가해보세요!'}
+                  </p>
+                  {activeTab === 'registration' && (
+                    <button
+                      onClick={() => router.push('/reservations/create')}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                    >
+                      예약 추가하기
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

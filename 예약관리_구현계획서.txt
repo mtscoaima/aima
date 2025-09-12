@@ -1,0 +1,308 @@
+=====================================================
+MTS Message 예약 관리 시스템 구현 계획서 (간소화 버전)
+현재 UI 기반 필수 기능만 구현
+=====================================================
+
+📋 목차
+1. 현재 UI 분석 및 실제 필요 기능
+2. 간소화된 구현 계획
+3. 최소 데이터베이스 설계
+4. API 설계
+5. 우선순위 및 일정
+
+=====================================================
+1. 현재 UI 분석 및 실제 필요 기능
+=====================================================
+
+🎯 **실제 UI에서 확인된 필수 기능만 구현:**
+
+📱 **현재 UI 구조 (간소화됨):**
+/reservations/
+├── page.tsx (단순 메뉴 대시보드)
+├── places/
+│   ├── page.tsx (공간 목록 - 단순 UI)
+│   └── add/ (공간 추가 - 단순 폼)
+├── create/ (예약 생성 - 단순 폼)
+├── list/ (예약 리스트 - 단순 목록)
+├── calendar/ (캘린더 - 단순 뷰)
+├── message/ (메시지 - 단순 기능)
+└── statistics/ (통계 - 단순 대시보드)
+
+🔍 **UI 분석 결과:**
+- 현재 UI는 매우 단순한 구조
+- 복잡한 기능보다는 기본적인 CRUD 중심
+- 기존 계획이 과도하게 복잡함
+- HTML 구조는 유지하고 기능만 연결
+
+=====================================================
+2. 간소화된 핵심 기능 (현재 UI 기준)
+=====================================================
+
+🎯 **실제 구현할 핵심 기능 (11개):**
+
+📦 **스마트 캘린더 기능 (7개):**
+1. **내 공간 생성하기** - 여러 플랫폼에 흩어진 내 공간들을 한번에 관리
+2. **예약 추가하기** - 스마트 캘린더로 예약 세부 사항들을 편리하게 기록
+3. **예약 정보 입력하기** - 금액 추가, 부분 환불 등, 예약 별 특이사항들을 꼼꼼하게 기록
+4. **예약 캘린더 보기** - 등록된 예약들을 캘린더로 빠르게 파악하고 관리. 여러 공간 운영 시 원하는 공간의 캘린더만 필터해서 조회 가능
+5. **최근 예약 내역 보기** - 최근 예약 리스트를 한눈에 확인
+6. **공유 캘린더 만들기** - 실시간 예약 현황을 예약 문의자, 청소 이모님 등 외부에 링크 하나로 편리하게 공유
+7. **예약 데이터 다운받기** - 통계에 활용된 원본 예약 데이터를 다운받아 엑셀로 활용
+
+💬 **메시지 기능 (4개):**
+8. **발신자 정보 설정하기** - 고객으로부터 메시지를 수신할 호스트님의 연락처 등록
+9. **메시지 보내기** - 개별 고객에게 직접 메시지 발송
+10. **자동 템플릿 만들기** - 예약 안내 메시지를 자동화. 예약자 상세 내역은 자동으로 입력
+11. **자동 메시지를 위한 발송 규칙 만들기** - 메시지를 자동으로 발송할 규칙 설정
+
+❌ **제외된 기능:**
+- 보낸 메시지 확인하기 (복잡함)
+- 발송 예정 메시지 확인하기 (복잡함)
+- 결제 관리 (범위 외)
+- 복잡한 통계 (기본 데이터 다운로드만)
+
+=====================================================
+3. 간소화된 구현 계획 (현재 UI 기준)
+=====================================================
+
+📅 **Phase 1: 스마트 캘린더 핵심 (2주)**
+-------------------
+🎯 **목표: 기본 예약 관리 시스템**
+
+**1.1 내 공간 생성하기**
+- `/reservations/places/add`: 기본 공간 등록 폼 (이름, 아이콘만)
+- `/reservations/places`: 공간 목록 표시 (현재 UI 그대로)
+
+**1.2 예약 추가하기**
+- `/reservations/create`: 기본 예약 생성 폼 (현재 UI 그대로)
+- 고객 정보, 날짜/시간, 메모만 입력
+
+**1.3 예약 캘린더 보기**
+- `/reservations/calendar`: 월간 캘린더 (현재 UI 그대로)
+- 예약 데이터 표시만
+
+**1.4 최근 예약 내역 보기**
+- `/reservations/list`: 예약 목록 (현재 UI 그대로)
+- 기본 필터링만
+
+**1.5 예약 데이터 다운받기**
+- `/reservations/statistics`: 기본 통계 + CSV 다운로드
+
+📅 **Phase 2: 메시지 시스템 (2주)**
+-------------------
+🎯 **목표: 기본 SMS 기능**
+
+**2.1 발신자 정보 설정하기**
+- `/reservations/message/sender-contact`: 기본 연락처 등록
+
+**2.2 메시지 보내기**
+- `/reservations/message/send`: 단순 메시지 발송
+
+**2.3 자동 템플릿 만들기**
+- `/reservations/message/templates`: 기본 템플릿 관리
+
+**2.4 자동 메시지 발송 규칙**
+- `/reservations/message/auto`: 기본 자동 발송 규칙
+
+📅 **Phase 3: 공유 캘린더 (1주)**
+-------------------
+🎯 **목표: 외부 공유 기능**
+
+**3.1 공유 캘린더 만들기**
+- `/reservations/calendar/shared`: 공유 링크 생성
+- 읽기 전용 캘린더 뷰
+
+=====================================================
+4. 기술 스택 (기존 유지)
+=====================================================
+
+🏗️ **프론트엔드 (기존 유지):**
+- Next.js 15 + React 19
+- TypeScript
+- Tailwind CSS 4
+- 현재 UI 구조 그대로 활용
+
+🔧 **백엔드 (기존 유지):**
+- Next.js API Routes
+- Supabase 데이터베이스
+- JWT 인증 (기존 구조 유지)
+
+🔗 **외부 API (필요시만):**
+- Naver SENS (SMS)
+- CSV Export 라이브러리
+
+
+=====================================================
+5. 최소 데이터베이스 설계 (간소화)
+=====================================================
+
+🗄️ **핵심 테이블 3개만:**
+
+```sql
+-- 공간 테이블 (간소화)
+CREATE TABLE spaces (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    name VARCHAR(100) NOT NULL,
+    icon_text VARCHAR(2) DEFAULT '',
+    icon_color VARCHAR(7) DEFAULT '#8BC34A',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 예약 테이블 (간소화)
+CREATE TABLE reservations (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    space_id BIGINT REFERENCES spaces(id),
+    customer_name VARCHAR(100) NOT NULL,
+    customer_phone VARCHAR(20) NOT NULL,
+    customer_email VARCHAR(255),
+    start_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    guest_count INTEGER DEFAULT 1,
+    total_amount INTEGER DEFAULT 0,
+    deposit_amount INTEGER DEFAULT 0,
+    special_requirements TEXT,
+    booking_type VARCHAR(20) DEFAULT 'hourly',
+    status VARCHAR(20) DEFAULT 'confirmed',
+    payment_status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 메시지 템플릿 (간소화)
+CREATE TABLE message_templates (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    name VARCHAR(100) NOT NULL,
+    content TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+**🔧 기본 인덱스:**
+```sql
+CREATE INDEX idx_spaces_user ON spaces(user_id);
+CREATE INDEX idx_reservations_user_date ON reservations(user_id, start_datetime);
+CREATE INDEX idx_reservations_space ON reservations(space_id);
+```
+
+=====================================================
+6. 최소 API 설계 (간소화)
+=====================================================
+
+🌐 **핵심 API만 (9개 엔드포인트):**
+
+**📦 공간 관리:**
+```
+GET    /api/spaces              # 공간 목록
+POST   /api/spaces              # 공간 추가
+DELETE /api/spaces/[id]         # 공간 삭제
+```
+
+**📅 예약 관리:**
+```
+GET    /api/reservations        # 예약 목록
+POST   /api/reservations        # 예약 추가
+PUT    /api/reservations/[id]   # 예약 수정
+DELETE /api/reservations/[id]   # 예약 삭제
+```
+
+**📊 데이터 Export:**
+```
+GET    /api/export/reservations # CSV 다운로드
+```
+
+**📱 메시지 (추후):**
+```
+GET    /api/messages/templates  # 템플릿 목록
+```
+
+=====================================================
+7. 간소화된 개발 일정
+=====================================================
+
+📅 **Phase 1: 스마트 캘린더 (1주)**
+```
+✅ 공간 관리 API (완료)
+✅ 예약 관리 API (완료) 
+⭕ 캘린더/리스트 UI 데이터 연동
+⭕ CSV Export 기능
+```
+
+📅 **Phase 2: 메시지 시스템 (1주)**
+```
+⭕ 기본 템플릿 관리
+⭕ 단순 SMS 발송
+⭕ 발신번호 등록
+⭕ 자동 발송 규칙
+```
+
+📅 **Phase 3: 공유 캘린더 (1주)**
+```
+⭕ 공유 링크 생성
+⭕ 읽기 전용 캘린더
+```
+
+🎯 **총 개발 기간: 3주 (기존 9주 → 3주)**
+
+=====================================================
+📝 주요 고려사항
+=====================================================
+
+🔒 보안:
+- PCI DSS 준수 (결제 정보)
+- 개인정보보호법 준수
+- JWT 토큰 보안 강화
+- API Rate Limiting
+
+🚀 확장성:
+- 멀티 테넌트 아키텍처 고려
+- 캐싱 전략 수립
+- 데이터베이스 파티셔닝 계획
+- CDN 활용 방안
+
+📊 모니터링:
+- 에러 추적 시스템 (Sentry)
+- 성능 모니터링 (Vercel Analytics)
+- 사용자 행동 분석 도구 연동
+- 실시간 알림 시스템
+
+=====================================================
+🎯 성공 지표 (KPI)
+=====================================================
+
+📈 비즈니스 지표:
+- 예약 생성률 증가: 월 50건 → 200건
+- 결제 전환율: 80% 이상
+- 고객 재방문율: 40% 이상
+- 운영 시간 단축: 일 2시간 → 30분
+
+🔧 기술 지표:
+- 페이지 로딩 속도: 2초 이하
+- API 응답 시간: 500ms 이하
+- 시스템 가동률: 99.9% 이상
+- 모바일 사용성 점수: 90점 이상
+
+=====================================================
+8. 다음 단계
+=====================================================
+
+🎯 **현재 상태:**
+✅ 공간 관리 API 완료
+✅ 예약 관리 API 완료
+✅ 기본 UI 구조 완료
+
+🚀 **다음 할 일:**
+1. 데이터베이스 재마이그레이션 (간소화된 스키마)
+2. 캘린더/리스트 페이지 API 연동
+3. CSV Export 기능 추가
+4. 메시지 시스템 기본 기능
+
+=====================================================
+작성일: 2025-09-12
+수정일: 2025-09-12 (UI 기반 간소화 업데이트)
+작성자: MTS Message 개발팀
+버전: 3.0 (간소화 버전)
+=====================================================
