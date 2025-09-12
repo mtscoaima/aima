@@ -2,17 +2,22 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 
+type ViewSettings = {
+  spaces: { [key: string]: boolean };
+  sortBy: string;
+  displayInfo: { [key: string]: boolean };
+  options: { [key: string]: boolean };
+};
+
 export default function ReservationCalendarPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date(2025, 8)); // 2025년 9월
   const [showViewModal, setShowViewModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [statsMonth, setStatsMonth] = useState(new Date(2025, 8)); // 통계 모달용 월
-  const [viewSettings, setViewSettings] = useState({
+  const [viewSettings, setViewSettings] = useState<ViewSettings>({
     spaces: { 내공간: true },
     sortBy: "시간순",
     displayInfo: { 시간: true, 예약자명: true, 총금액: false, 예약채널: false },
@@ -63,14 +68,25 @@ export default function ReservationCalendarPage() {
     setShowViewModal(false);
   };
 
-  const handleViewSettingChange = (category: string, key: string, value: any) => {
-    setViewSettings(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [key]: value
+  const handleViewSettingChange = (category: string, key: string, value: boolean | string) => {
+    setViewSettings(prev => {
+      if (category === 'sortBy') {
+        return { ...prev, sortBy: value as string };
       }
-    }));
+      
+      const categoryData = prev[category as keyof typeof prev];
+      if (typeof categoryData === 'object' && categoryData !== null) {
+        return {
+          ...prev,
+          [category]: {
+            ...categoryData,
+            [key]: value
+          }
+        };
+      }
+      
+      return prev;
+    });
   };
 
   // 캘린더 날짜 생성
@@ -78,7 +94,6 @@ export default function ReservationCalendarPage() {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
 

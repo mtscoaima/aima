@@ -2,11 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+
 import RoleGuard from "@/components/RoleGuard";
 
 export default function MessageSenderContactPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const [selectedSender, setSelectedSender] = useState("내공간");
 

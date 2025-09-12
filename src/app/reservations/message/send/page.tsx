@@ -2,11 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+
 import RoleGuard from "@/components/RoleGuard";
 
 export default function MessageSendPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const [sendType, setSendType] = useState("immediate"); // "immediate" or "scheduled"
   const [message, setMessage] = useState("");

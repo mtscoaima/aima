@@ -2,11 +2,9 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 
 export default function SharedCalendarPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   const handleBackClick = () => {

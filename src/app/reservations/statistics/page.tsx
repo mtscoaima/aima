@@ -11,7 +11,7 @@ export default function ReservationStatisticsPage() {
   const [selectedSpace, setSelectedSpace] = useState("전체 공간");
 
   // Mock data - set to false to show empty state
-  const [hasData, setHasData] = useState(false);
+  const [hasData] = useState(false);
 
   const handleBack = () => {
     router.back();

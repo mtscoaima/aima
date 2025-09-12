@@ -2,11 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+
 import RoleGuard from "@/components/RoleGuard";
 
 export default function MessageReservedListPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("scheduled"); // "scheduled" or "sent"
 

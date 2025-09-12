@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+
 import RoleGuard from "@/components/RoleGuard";
 import { useRouter } from "next/navigation";
 
 export default function ReservationListPage() {
-  const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("registration"); // "registration" or "imminent"
 

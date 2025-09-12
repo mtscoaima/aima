@@ -2,11 +2,9 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 
 export default function CreateSharedCalendarPage() {
-  const { user } = useAuth();
   const router = useRouter();
   
   const [formData, setFormData] = useState({
@@ -143,7 +141,7 @@ export default function CreateSharedCalendarPage() {
               </div>
               
               <div className="mt-4 space-y-2 text-sm text-gray-600">
-                <p>• 예약처명은 '김**' 형식으로 별 앞글자만 표기됩니다.</p>
+                <p>• 예약처명은 &apos;김**&apos; 형식으로 별 앞글자만 표기됩니다.</p>
                 <p>• 과거 날짜의 예약 정보도 표시되지 않습니다.</p>
               </div>
             </div>

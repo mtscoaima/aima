@@ -2,11 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+
 import RoleGuard from "@/components/RoleGuard";
 
 export default function MessageTemplatesPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   // 샘플 템플릿 데이터
@@ -26,12 +25,14 @@ export default function MessageTemplatesPage() {
     // 템플릿 만들기 기능 (UI만 구현)
   };
 
-  const handleEditTemplate = (templateId: number) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleEditTemplate = (_templateId: number) => {
     // 템플릿 수정 기능 (UI만 구현)
   };
 
-  const handleDeleteTemplate = (templateId: number) => {
-    // 템플릿 삭제 기능 (UI만 구현)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleDeleteTemplate = (_templateId: number) => {
+    // 템플릿 삭제 기능 (UI만 구퍨)
   };
 
   return (
