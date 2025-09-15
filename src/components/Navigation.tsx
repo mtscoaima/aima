@@ -27,7 +27,6 @@ export default function Navigation() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showServicePreparing, setShowServicePreparing] = useState(false);
 
   const isHomePage = pathname === "/";
   const isAdminPage = pathname.startsWith("/admin");
@@ -68,12 +67,6 @@ export default function Navigation() {
 
   // 네비게이션 메뉴 클릭 핸들러
   const handleNavClick = (href: string) => {
-    // 문자발송 메뉴 클릭 시 서비스 준비중 팝업 표시
-    if (href === "/messages/send") {
-      setShowServicePreparing(true);
-      setShowMobileMenu(false);
-      return;
-    }
     router.push(href);
     setShowMobileMenu(false); // 모바일 메뉴 닫기
   };
@@ -209,7 +202,7 @@ export default function Navigation() {
                     onClick={() => handleNavClick("/messages/send")}
                     className="landing-nav-menu-item landing-nav-menu-btn"
                   >
-                    문자발송
+                    메시지발송
                   </button>
                   <button
                     onClick={() => handleNavClick("/support")}
@@ -292,7 +285,7 @@ export default function Navigation() {
                     onClick={() => handleNavClick("/messages/send")}
                     className="mobile-menu-item mobile-menu-btn"
                   >
-                    문자발송
+                    메시지발송
                   </button>
                   <button
                     onClick={() => handleNavClick("/support")}
@@ -635,35 +628,6 @@ export default function Navigation() {
 
       </nav>
 
-      {/* 서비스 준비중 팝업 - nav 외부에 위치 */}
-      {showServicePreparing && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[9999]" 
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.1)' }}
-          onClick={() => setShowServicePreparing(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-sm mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center">
-              <div className="text-gray-400 text-6xl mb-4">⏳</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                문자발송
-              </h3>
-              <p className="text-gray-600 mb-6">
-                서비스 준비중입니다
-              </p>
-              <button
-                onClick={() => setShowServicePreparing(false)}
-                className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
