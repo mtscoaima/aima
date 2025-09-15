@@ -21,8 +21,6 @@ export default function ReservationPlacesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
-  const [isRenaming, setIsRenaming] = useState<number | null>(null);
-  const [newSpaceName, setNewSpaceName] = useState("");
 
   // 공간 목록 가져오기
   const fetchSpaces = useCallback(async () => {
@@ -58,54 +56,12 @@ export default function ReservationPlacesPage() {
     }
   }, []); // 의존성 배열에서 getAccessToken 제거
 
-  // 공간 이름 변경
+  // 공간 이름 변경 (편집 페이지로 이동)
   const handleRenameSpace = async (spaceId: number, currentName: string) => {
-    setIsRenaming(spaceId);
-    setNewSpaceName(currentName);
+    router.push(`/reservations/places/edit?id=${spaceId}`);
     setOpenDropdownId(null);
   };
 
-  const handleSaveRename = async (spaceId: number) => {
-    if (!newSpaceName.trim()) {
-      alert('공간 이름을 입력해주세요.');
-      return;
-    }
-
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        alert('인증이 필요합니다.');
-        return;
-      }
-
-      const response = await fetch(`/api/reservations/spaces/${spaceId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: newSpaceName.trim() }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '공간 이름 변경에 실패했습니다.');
-      }
-
-      alert('공간 이름이 성공적으로 변경되었습니다.');
-      setIsRenaming(null);
-      setNewSpaceName("");
-      await fetchSpaces(); // 목록 새로고침
-    } catch (err) {
-      console.error('Error renaming space:', err);
-      alert(err instanceof Error ? err.message : '공간 이름 변경에 실패했습니다.');
-    }
-  };
-
-  const handleCancelRename = () => {
-    setIsRenaming(null);
-    setNewSpaceName("");
-  };
 
   // 공간 삭제 (예약도 함께 삭제)
   const handleDeleteSpace = async (spaceId: number, spaceName: string) => {
@@ -239,7 +195,10 @@ export default function ReservationPlacesPage() {
               spaces.map((space) => (
                 <div key={space.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                    <div 
+                      className="flex items-center flex-1 cursor-pointer hover:bg-gray-50 -m-2 p-2 rounded-lg transition-colors"
+                      onClick={() => router.push(`/reservations/places/detail?id=${space.id}`)}
+                    >
                       <div 
                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-semibold mr-4"
                         style={{ backgroundColor: space.icon_color }}
@@ -247,49 +206,10 @@ export default function ReservationPlacesPage() {
                         {space.icon_text}
                       </div>
                       <div>
-                        {isRenaming === space.id ? (
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="text"
-                              value={newSpaceName}
-                              onChange={(e) => setNewSpaceName(e.target.value)}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleSaveRename(space.id);
-                                } else if (e.key === 'Escape') {
-                                  handleCancelRename();
-                                }
-                              }}
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => handleSaveRename(space.id)}
-                              className="text-green-600 hover:text-green-800 p-1"
-                              title="저장"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={handleCancelRename}
-                              className="text-gray-600 hover:text-gray-800 p-1"
-                              title="취소"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <span className="text-gray-900 font-medium">{space.name}</span>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {new Date(space.created_at).toLocaleDateString('ko-KR')}
-                            </p>
-                          </>
-                        )}
+                        <span className="text-gray-900 font-medium">{space.name}</span>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {new Date(space.created_at).toLocaleDateString('ko-KR')}
+                        </p>
                       </div>
                     </div>
                     

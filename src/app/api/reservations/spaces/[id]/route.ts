@@ -24,10 +24,10 @@ function getUserIdFromToken(request: NextRequest): string | null {
   }
 }
 
-// 공간 정보 수정
-export async function PUT(
+// 개별 공간 조회
+export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -35,13 +35,51 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const spaceId = parseInt(params.id);
+    const { id } = await params;
+    const spaceId = parseInt(id);
+    if (isNaN(spaceId)) {
+      return NextResponse.json({ error: "Invalid space ID" }, { status: 400 });
+    }
+
+    // 공간 정보 조회
+    const { data: space, error } = await supabase
+      .from("spaces")
+      .select("*")
+      .eq("id", spaceId)
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching space:", error);
+      return NextResponse.json({ error: "Space not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ space });
+  } catch (error) {
+    console.error("Error in GET /api/reservations/spaces/[id]:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// 공간 정보 수정
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const userId = getUserIdFromToken(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const spaceId = parseInt(id);
     if (isNaN(spaceId)) {
       return NextResponse.json({ error: "Invalid space ID" }, { status: 400 });
     }
 
     const body = await request.json();
-    const { name } = body;
+    const { name, icon_text, icon_color } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "Space name is required" }, { status: 400 });
@@ -59,10 +97,15 @@ export async function PUT(
       return NextResponse.json({ error: "Space not found" }, { status: 404 });
     }
 
-    // 공간 이름 업데이트
+    // 업데이트할 데이터 준비
+    const updateData: any = { name: name.trim() };
+    if (icon_text !== undefined) updateData.icon_text = icon_text;
+    if (icon_color !== undefined) updateData.icon_color = icon_color;
+
+    // 공간 정보 업데이트
     const { data, error } = await supabase
       .from("spaces")
-      .update({ name: name.trim() })
+      .update(updateData)
       .eq("id", spaceId)
       .eq("user_id", userId)
       .select()
@@ -83,7 +126,7 @@ export async function PUT(
 // 공간 삭제 (예약도 함께 삭제)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -91,7 +134,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const spaceId = parseInt(params.id);
+    const { id } = await params;
+    const spaceId = parseInt(id);
     if (isNaN(spaceId)) {
       return NextResponse.json({ error: "Invalid space ID" }, { status: 400 });
     }
