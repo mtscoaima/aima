@@ -214,7 +214,11 @@ export default function ReservationListPage() {
                   const createdDate = formatDate(reservation.created_at);
                   
                   return (
-                    <div key={reservation.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                    <div 
+                      key={reservation.id} 
+                      className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => router.push(`/reservations/detail?id=${reservation.id}`)}
+                    >
                       <div className="flex items-start space-x-4">
                         {/* Place Icon */}
                         <div 

@@ -513,13 +513,14 @@ export default function ReservationCalendarPage() {
                           return (
                             <div 
                               key={reservation.id}
-                              className={`text-xs px-1 py-1 ${borderRadius} truncate flex items-center space-x-1 ${
+                              className={`text-xs px-1 py-1 ${borderRadius} truncate flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity ${
                                 reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                                 reservation.status === 'completed' ? 'bg-blue-100 text-blue-800' :
                                 reservation.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                 'bg-yellow-100 text-yellow-800'
                               }`}
                               title={`${reservation.spaces?.name || ''} - ${reservation.customer_name} (${timeStr})`}
+                              onClick={() => router.push(`/reservations/detail?id=${reservation.id}`)}
                             >
                               {/* 공간 아이콘 */}
                               <div 
