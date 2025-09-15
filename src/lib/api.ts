@@ -592,4 +592,19 @@ export const tokenManager = {
     if (!tokenManager.isLocalStorageAvailable()) return false;
     return !!localStorage.getItem("accessToken");
   },
+
+  // JWT 토큰 만료 확인
+  isTokenExpired: (token: string): boolean => {
+    try {
+      // JWT 토큰을 base64 디코딩해서 payload 추출
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // exp 필드가 있고 현재 시간보다 작으면 만료
+      return payload.exp && payload.exp < currentTime;
+    } catch (error) {
+      // 토큰 파싱 실패 시 만료된 것으로 간주
+      return true;
+    }
+  },
 };

@@ -16,6 +16,7 @@ interface ReservationFormData {
   space_id: number | null;
   space: string;
   date: string;
+  displayDate: string;
   startTime: string;
   endTime: string;
   channel: string;
@@ -32,14 +33,16 @@ export default function CreateReservationPage() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loadingSpaces, setLoadingSpaces] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priceData, setPriceData] = useState<{amount: string, notes: string} | null>(null);
   
   const [formData, setFormData] = useState<ReservationFormData>({
     space_id: null,
     space: "",
     date: new Date().toISOString().split('T')[0], // YYYY-MM-DD 형식
+    displayDate: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' }),
     startTime: "18",
     endTime: "20",
-    channel: "manual",
+    channel: "",
     customerName: "",
     phoneNumber: "",
     people: "1",
@@ -48,7 +51,7 @@ export default function CreateReservationPage() {
 
   const [showChannelModal, setShowChannelModal] = useState(false);
   const [showDateCalendar, setShowDateCalendar] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 8)); // 2025년 9월
+  const [currentMonth, setCurrentMonth] = useState(new Date()); // 현재 날짜
 
   const handleBackClick = () => {
     router.back();
@@ -69,6 +72,42 @@ export default function CreateReservationPage() {
         }
       }
       
+      // 시간 선택 시 자동 조정
+      if (field === 'startTime') {
+        const startHour = parseInt(value as string);
+        // 종료 시간이 시작 시간보다 작거나 같으면 자동 조정
+        const currentEndTime = prev.endTime;
+        let endHour;
+        let isEndNextDay = false;
+        
+        if (currentEndTime.startsWith('next_')) {
+          endHour = parseInt(currentEndTime.replace('next_', ''));
+          isEndNextDay = true;
+        } else {
+          endHour = parseInt(currentEndTime);
+        }
+        
+        // 같은 날이고 종료 시간이 시작 시간보다 작거나 같으면 조정
+        if (!isEndNextDay && endHour <= startHour) {
+          updated.endTime = Math.min(startHour + 1, 24).toString();
+        }
+      }
+      
+      if (field === 'endTime') {
+        const endValue = value as string;
+        const startHour = parseInt(prev.startTime);
+        
+        if (endValue.startsWith('next_')) {
+          // 다음날 시간은 항상 유효함
+        } else {
+          const endHour = parseInt(endValue);
+          // 같은 날에서 종료 시간이 시작 시간보다 작거나 같으면 시작 시간 조정
+          if (endHour <= startHour) {
+            updated.startTime = Math.max(endHour - 1, 1).toString();
+          }
+        }
+      }
+      
       return updated;
     });
   };
@@ -82,7 +121,17 @@ export default function CreateReservationPage() {
   };
 
   const handleGuestRegistration = () => {
-    // 글래 입력하기 (UI만 구현)
+    // 현재 폼 데이터를 sessionStorage에 저장
+    const formDataToSave = {
+      ...formData,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem('reservationFormData', JSON.stringify(formDataToSave));
+    
+    // 현재 입력된 금액이 있다면 URL에 포함하여 전달
+    const currentAmount = priceData?.amount || '';
+    const pricePageUrl = currentAmount ? `/reservations/create/price?amount=${currentAmount}` : '/reservations/create/price';
+    router.push(pricePageUrl);
   };
 
   // 공간 목록 가져오기
@@ -141,7 +190,20 @@ export default function CreateReservationPage() {
       return;
     }
 
-    if (parseInt(formData.startTime) >= parseInt(formData.endTime)) {
+    // 시간 유효성 검사 (다음날 고려)
+    const startHour = parseInt(formData.startTime);
+    let endHour;
+    let isEndNextDay = false;
+    
+    if (formData.endTime.startsWith('next_')) {
+      endHour = parseInt(formData.endTime.replace('next_', ''));
+      isEndNextDay = true;
+    } else {
+      endHour = parseInt(formData.endTime);
+    }
+    
+    // 같은 날에서만 시간 비교
+    if (!isEndNextDay && endHour <= startHour) {
       alert('종료 시간이 시작 시간보다 늦어야 합니다.');
       return;
     }
@@ -157,7 +219,19 @@ export default function CreateReservationPage() {
 
       // 날짜와 시간을 ISO 문자열로 변환
       const startDateTime = new Date(`${formData.date}T${formData.startTime.padStart(2, '0')}:00:00`);
-      const endDateTime = new Date(`${formData.date}T${formData.endTime.padStart(2, '0')}:00:00`);
+      
+      // 종료 시간 처리 (다음날 고려)
+      let endDateTime;
+      if (formData.endTime.startsWith('next_')) {
+        const nextDayHour = parseInt(formData.endTime.replace('next_', ''));
+        const nextDate = new Date(formData.date);
+        nextDate.setDate(nextDate.getDate() + 1); // 다음날로 설정
+        const nextDateStr = nextDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        endDateTime = new Date(`${nextDateStr}T${nextDayHour.toString().padStart(2, '0')}:00:00`);
+      } else {
+        const endHour = parseInt(formData.endTime);
+        endDateTime = new Date(`${formData.date}T${endHour.toString().padStart(2, '0')}:00:00`);
+      }
 
       const reservationData = {
         space_id: formData.space_id,
@@ -167,11 +241,11 @@ export default function CreateReservationPage() {
         start_datetime: startDateTime.toISOString(),
         end_datetime: endDateTime.toISOString(),
         guest_count: parseInt(formData.people) || 1,
-        total_amount: 0, // 기본값
+        total_amount: priceData?.amount ? parseInt(priceData.amount) : 0,
         deposit_amount: 0, // 기본값
         special_requirements: formData.memo.trim() || null,
         booking_type: 'hourly',
-        booking_channel: formData.channel
+        booking_channel: formData.channel === "직접입력" ? "manual" : formData.channel
       };
 
       const response = await fetch('/api/reservations/bookings', {
@@ -196,6 +270,10 @@ export default function CreateReservationPage() {
       const { reservation } = await response.json();
       console.log('Reservation created successfully:', reservation);
       
+      // 예약 생성 성공 시 sessionStorage 정리
+      sessionStorage.removeItem('reservationPrice');
+      sessionStorage.removeItem('reservationFormData');
+      
       alert('예약이 성공적으로 생성되었습니다!');
       router.push('/reservations/list');
       
@@ -211,6 +289,41 @@ export default function CreateReservationPage() {
     fetchSpaces();
   }, [fetchSpaces]);
 
+  // 페이지 로드 시 sessionStorage에서 금액 정보와 폼 데이터 불러오기
+  useEffect(() => {
+    // 금액 정보 복원
+    const savedPriceData = sessionStorage.getItem('reservationPrice');
+    if (savedPriceData) {
+      try {
+        const parsed = JSON.parse(savedPriceData);
+        setPriceData(parsed);
+      } catch (error) {
+        console.error('Error parsing price data:', error);
+      }
+    }
+
+    // 폼 데이터 복원
+    const savedFormData = sessionStorage.getItem('reservationFormData');
+    if (savedFormData) {
+      try {
+        const parsed = JSON.parse(savedFormData);
+        // 타임스탬프가 30분 이내인 경우에만 복원 (유효성 체크)
+        const thirtyMinutes = 30 * 60 * 1000;
+        if (Date.now() - parsed.timestamp < thirtyMinutes) {
+          // timestamp 제거 후 폼 데이터 설정
+          const { ...formDataWithoutTimestamp } = parsed;
+          setFormData(formDataWithoutTimestamp);
+        } else {
+          // 만료된 데이터 삭제
+          sessionStorage.removeItem('reservationFormData');
+        }
+      } catch (error) {
+        console.error('Error parsing form data:', error);
+        sessionStorage.removeItem('reservationFormData');
+      }
+    }
+  }, []);
+
   const handleDateClick = () => {
     setShowDateCalendar(!showDateCalendar);
   };
@@ -220,9 +333,25 @@ export default function CreateReservationPage() {
   };
 
   const handleDateSelect = (date: Date) => {
+    // 오늘 이전 날짜는 선택 불가
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      return;
+    }
+    
     const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const formattedDate = `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} (${days[date.getDay()]})`;
-    handleInputChange("date", formattedDate);
+    const isoDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const displayDate = `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} (${days[date.getDay()]})`;
+    
+    setFormData(prev => ({
+      ...prev,
+      date: isoDate,
+      displayDate: displayDate
+    }));
     setShowDateCalendar(false);
   };
 
@@ -260,9 +389,35 @@ export default function CreateReservationPage() {
 
   const calendarDays = generateCalendarDays();
 
+  // 종료 시간 옵션 생성
+  const generateEndTimeOptions = () => {
+    const options = [];
+    
+    // 당일 1시~24시
+    for (let i = 1; i <= 24; i++) {
+      options.push({
+        value: i.toString(),
+        label: `${i}시`,
+        isNextDay: false
+      });
+    }
+    
+    // 다음날 1시~11시
+    for (let i = 1; i <= 11; i++) {
+      options.push({
+        value: `next_${i}`,
+        label: `다음날 ${i}시`,
+        isNextDay: true
+      });
+    }
+    
+    return options;
+  };
+
+  const endTimeOptions = generateEndTimeOptions();
+
   // 예약채널 목록
   const channels = [
-    "선택안함",
     "아워플레이스", 
     "스페이스클라우드",
     "여기어때",
@@ -272,7 +427,8 @@ export default function CreateReservationPage() {
     "네이버 예약",
     "전화",
     "인스타그램",
-    "홈페이지"
+    "홈페이지",
+    "직접입력"
   ];
 
   return (
@@ -329,7 +485,7 @@ export default function CreateReservationPage() {
                   ) : (
                     spaces.map((space) => (
                       <option key={space.id} value={space.name}>
-                        {space.icon_text} {space.name}
+                        {space.name}
                       </option>
                     ))
                   )}
@@ -353,7 +509,7 @@ export default function CreateReservationPage() {
                 onClick={handleDateClick}
                 className="w-full flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
               >
-                <span className="text-blue-600 font-medium">{formData.date}</span>
+                <span className="text-blue-600 font-medium">{formData.displayDate}</span>
                 <svg 
                   className={`w-4 h-4 text-blue-600 transition-transform ${showDateCalendar ? 'rotate-180' : ''}`} 
                   fill="none" 
@@ -408,20 +564,29 @@ export default function CreateReservationPage() {
                     {/* 캘린더 그리드 */}
                     <div className="grid grid-cols-7 gap-1">
                       {calendarDays.map((day, index) => {
+                        const today = new Date();
+                        const isToday = day.toDateString() === today.toDateString();
                         const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-                        const isSelected = day.getDate() === 11 && isCurrentMonth; // 11일이 선택됨
+                        const isPastDate = day < today && !isToday;
                         const dayOfWeek = day.getDay();
+                        
+                        // 선택된 날짜 확인
+                        const selectedDate = formData.date ? new Date(formData.date) : null;
+                        const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
 
                         return (
                           <button
                             key={index}
-                            onClick={() => handleDateSelect(day)}
-                            className={`p-2 text-sm rounded-lg hover:bg-gray-100 ${
-                              !isCurrentMonth ? 'text-gray-400' :
+                            onClick={() => !isPastDate && handleDateSelect(day)}
+                            disabled={isPastDate}
+                            className={`p-2 text-sm rounded-lg transition-colors ${
+                              isPastDate ? 'text-gray-300 cursor-not-allowed' :
+                              !isCurrentMonth ? 'text-gray-400 hover:bg-gray-100' :
                               isSelected ? 'bg-blue-500 text-white' :
-                              dayOfWeek === 0 ? 'text-red-500' :
-                              dayOfWeek === 6 ? 'text-blue-500' :
-                              'text-gray-900'
+                              isToday ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                              dayOfWeek === 0 ? 'text-red-500 hover:bg-gray-100' :
+                              dayOfWeek === 6 ? 'text-blue-500 hover:bg-gray-100' :
+                              'text-gray-900 hover:bg-gray-100'
                             }`}
                           >
                             {day.getDate()}
@@ -447,7 +612,7 @@ export default function CreateReservationPage() {
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i.toString()}>{i}시</option>
+                      <option key={i} value={(i + 1).toString()}>{i + 1}시</option>
                     ))}
                   </select>
                 </div>
@@ -458,8 +623,10 @@ export default function CreateReservationPage() {
                     onChange={(e) => handleInputChange("endTime", e.target.value)}
                     className="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-blue-600 font-medium"
                   >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i.toString()}>{i}시</option>
+                    {endTimeOptions.map((option, index) => (
+                      <option key={index} value={option.value}>
+                        {option.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -487,7 +654,9 @@ export default function CreateReservationPage() {
                 onClick={handleChannelClick}
                 className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <span className="text-gray-900">{formData.channel}</span>
+                <span className={formData.channel ? "text-gray-900" : "text-gray-500"}>
+                  {formData.channel || "예약 채널을 선택하세요"}
+                </span>
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -546,9 +715,33 @@ export default function CreateReservationPage() {
               </div>
             </div>
 
-            {/* 급액 */}
+            {/* 금액 */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">급액</h3>
+              <h3 className="text-lg font-semibold text-gray-900">금액</h3>
+              
+              {/* 입력된 금액 표시 */}
+              {priceData?.amount && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-lg font-semibold text-blue-900">
+                        {parseInt(priceData.amount).toLocaleString()}원
+                      </div>
+                      {priceData.notes && (
+                        <div className="text-sm text-blue-700 mt-1">
+                          {priceData.notes}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleGuestRegistration}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      수정
+                    </button>
+                  </div>
+                </div>
+              )}
               
               <button
                 onClick={handlePaymentLinks}
@@ -567,7 +760,7 @@ export default function CreateReservationPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span className="font-medium">글래 입력하기</span>
+                <span className="font-medium">금액 입력하기</span>
               </button>
             </div>
 
@@ -590,9 +783,23 @@ export default function CreateReservationPage() {
             <div className="pt-6">
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !formData.space_id || !formData.customerName.trim() || !formData.phoneNumber.trim()}
+                disabled={
+                  isSubmitting || 
+                  !formData.space_id || 
+                  !formData.customerName.trim() || 
+                  !formData.phoneNumber.trim() || 
+                  !formData.people.trim() ||
+                  !formData.channel ||
+                  !priceData?.amount
+                }
                 className={`w-full py-4 px-4 rounded-lg font-medium transition-colors text-lg ${
-                  isSubmitting || !formData.space_id || !formData.customerName.trim() || !formData.phoneNumber.trim()
+                  isSubmitting || 
+                  !formData.space_id || 
+                  !formData.customerName.trim() || 
+                  !formData.phoneNumber.trim() || 
+                  !formData.people.trim() ||
+                  !formData.channel ||
+                  !priceData?.amount
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}
@@ -631,11 +838,11 @@ export default function CreateReservationPage() {
                       key={index}
                       onClick={() => handleChannelSelect(channel)}
                       className={`w-full p-4 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-b-0 ${
-                        channel === "선택안함" ? 'text-blue-600' : 'text-gray-900'
+                        channel === formData.channel ? 'text-blue-600 bg-blue-50' : 'text-gray-900'
                       }`}
                     >
                       <span>{channel}</span>
-                      {channel === "선택안함" && (
+                      {channel === formData.channel && (
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>

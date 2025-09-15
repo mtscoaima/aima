@@ -93,20 +93,29 @@ export default function ReservationListPage() {
     };
   };
 
-  // 예약 상태별 필터링
+  // 예약 상태별 필터링 및 정렬
   const getFilteredReservations = () => {
     const now = new Date();
     
     if (activeTab === 'imminent') {
-      // 임박 예약: 오늘부터 7일 내 예약
-      const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      return reservations.filter(reservation => {
-        const startDate = new Date(reservation.start_datetime);
-        return startDate >= now && startDate <= oneWeekFromNow && reservation.status === 'confirmed';
-      });
+      // 이용 임박순: 오늘 이후 예약만 표시하고 시작 시간이 가까운 순으로 정렬
+      return reservations
+        .filter(reservation => {
+          const startDate = new Date(reservation.start_datetime);
+          return startDate >= now && reservation.status === 'confirmed';
+        })
+        .sort((a, b) => {
+          // 시작 시간이 가까운 순으로 정렬 (오름차순)
+          return new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime();
+        });
     } else {
-      // 등록순 예약: 모든 예약
-      return reservations;
+      // 등록순: 모든 예약을 등록일 기준으로 오래된 순부터 정렬
+      return reservations
+        .slice() // 원본 배열 복사
+        .sort((a, b) => {
+          // 등록일(created_at) 기준으로 오래된 순 정렬 (오름차순)
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
     }
   };
 
@@ -118,50 +127,54 @@ export default function ReservationListPage() {
     <RoleGuard allowedRoles={["USER"]}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center">
-            <button 
-              onClick={() => router.back()}
-              className="mr-4 p-2"
+        <div className="flex items-center mb-8">
+          <button 
+            onClick={() => router.back()}
+            className="mr-4 p-2"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <h1 className="text-xl font-semibold text-gray-900">
+            예약 리스트
+          </h1>
+        </div>
+
+        {/* Tab Navigation with Calendar */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setActiveTab("registration")}
+              className={`px-6 py-2 rounded-full font-medium transition-colors ${
+                activeTab === "registration"
+                  ? "bg-blue-100 text-blue-600 border-2 border-blue-300"
+                  : "bg-gray-100 text-gray-600 border-2 border-transparent"
+              }`}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
+              등록순
             </button>
-            <h1 className="text-xl font-semibold text-gray-900">
-              예약 리스트
-            </h1>
+            <button
+              onClick={() => setActiveTab("imminent")}
+              className={`px-6 py-2 rounded-full font-medium transition-colors ${
+                activeTab === "imminent"
+                  ? "bg-blue-100 text-blue-600 border-2 border-blue-300"
+                  : "bg-gray-100 text-gray-600 border-2 border-transparent"
+              }`}
+            >
+              이용 임박순
+            </button>
           </div>
           
           {/* Calendar Icon */}
-          <button className="p-2 text-blue-500">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <button 
+            onClick={() => router.push('/reservations/calendar')}
+            className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+            title="캘린더 보기"
+          >
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
             </svg>
-          </button>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex space-x-2 mb-6">
-          <button
-            onClick={() => setActiveTab("registration")}
-            className={`px-6 py-2 rounded-full font-medium transition-colors ${
-              activeTab === "registration"
-                ? "bg-blue-100 text-blue-600 border-2 border-blue-300"
-                : "bg-gray-100 text-gray-600 border-2 border-transparent"
-            }`}
-          >
-            등록순
-          </button>
-          <button
-            onClick={() => setActiveTab("imminent")}
-            className={`px-6 py-2 rounded-full font-medium transition-colors ${
-              activeTab === "imminent"
-                ? "bg-blue-100 text-blue-600 border-2 border-blue-300"
-                : "bg-gray-100 text-gray-600 border-2 border-transparent"
-            }`}
-          >
-            이용 임박순
           </button>
         </div>
 

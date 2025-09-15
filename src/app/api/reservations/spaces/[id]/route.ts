@@ -24,7 +24,63 @@ function getUserIdFromToken(request: NextRequest): string | null {
   }
 }
 
-// 공간 삭제 (하드 삭제)
+// 공간 정보 수정
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userId = getUserIdFromToken(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const spaceId = parseInt(params.id);
+    if (isNaN(spaceId)) {
+      return NextResponse.json({ error: "Invalid space ID" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { name } = body;
+
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: "Space name is required" }, { status: 400 });
+    }
+
+    // 먼저 공간의 존재 여부와 소유권 확인
+    const { data: space } = await supabase
+      .from("spaces")
+      .select("id")
+      .eq("id", spaceId)
+      .eq("user_id", userId)
+      .single();
+
+    if (!space) {
+      return NextResponse.json({ error: "Space not found" }, { status: 404 });
+    }
+
+    // 공간 이름 업데이트
+    const { data, error } = await supabase
+      .from("spaces")
+      .update({ name: name.trim() })
+      .eq("id", spaceId)
+      .eq("user_id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating space:", error);
+      return NextResponse.json({ error: "Failed to update space" }, { status: 500 });
+    }
+
+    return NextResponse.json({ space: data });
+  } catch (error) {
+    console.error("Error in PUT /api/reservations/spaces/[id]:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// 공간 삭제 (예약도 함께 삭제)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -52,41 +108,31 @@ export async function DELETE(
       return NextResponse.json({ error: "Space not found" }, { status: 404 });
     }
 
-    // 해당 공간에 예약이 있는지 확인
-    const { data: reservations, error: reservationError } = await supabase
+    // 먼저 해당 공간의 모든 예약 삭제
+    const { error: reservationDeleteError } = await supabase
       .from("reservations")
-      .select("id")
+      .delete()
       .eq("space_id", spaceId)
       .eq("user_id", userId);
 
-    if (reservationError) {
-      console.error("Error checking reservations:", reservationError);
-      return NextResponse.json({ error: "Failed to check reservations" }, { status: 500 });
+    if (reservationDeleteError) {
+      console.error("Error deleting reservations:", reservationDeleteError);
+      return NextResponse.json({ error: "Failed to delete related reservations" }, { status: 500 });
     }
 
-    if (reservations && reservations.length > 0) {
-      return NextResponse.json(
-        { 
-          error: "Cannot delete space with existing reservations",
-          reservationCount: reservations.length 
-        },
-        { status: 409 }
-      );
-    }
-
-    // 예약이 없으면 공간 삭제
-    const { error: deleteError } = await supabase
+    // 그 다음 공간 삭제
+    const { error: spaceDeleteError } = await supabase
       .from("spaces")
       .delete()
       .eq("id", spaceId)
       .eq("user_id", userId);
 
-    if (deleteError) {
-      console.error("Error deleting space:", deleteError);
+    if (spaceDeleteError) {
+      console.error("Error deleting space:", spaceDeleteError);
       return NextResponse.json({ error: "Failed to delete space" }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Space deleted successfully" });
+    return NextResponse.json({ message: "Space and related reservations deleted successfully" });
   } catch (error) {
     console.error("Error in DELETE /api/reservations/spaces/[id]:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

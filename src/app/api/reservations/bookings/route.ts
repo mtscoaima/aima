@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
       total_amount,
       deposit_amount,
       special_requirements,
-      booking_type
+      booking_type,
+      booking_channel
     } = body;
 
     // 필수 필드 검증
@@ -133,18 +134,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "End time must be after start time" }, { status: 400 });
     }
 
-    // 예약 시간 중복 검사
-    const { data: conflictingReservations } = await supabase
+    // 예약 시간 중복 검사 (날짜와 시간 모두 고려)
+    // 겹치는 조건: (기존 시작 < 새로운 끝) AND (기존 끝 > 새로운 시작)
+    const { data: conflictingReservations, error: conflictError } = await supabase
       .from("reservations")
-      .select("id")
+      .select("id, start_datetime, end_datetime")
       .eq("space_id", space_id)
       .eq("user_id", userId)
       .neq("status", "cancelled")
-      .or(`start_datetime.lt.${end_datetime},end_datetime.gt.${start_datetime}`);
+      .lt("start_datetime", end_datetime)
+      .gt("end_datetime", start_datetime);
+
+    if (conflictError) {
+      console.error("Error checking reservation conflicts:", conflictError);
+      return NextResponse.json({ error: "Failed to check reservation conflicts" }, { status: 500 });
+    }
 
     if (conflictingReservations && conflictingReservations.length > 0) {
+      console.log("=== RESERVATION CONFLICT DETECTED ===");
+      console.log("New reservation attempt:");
+      console.log("  Start:", start_datetime);
+      console.log("  End:", end_datetime);
+      console.log("Conflicting existing reservations:");
+      conflictingReservations.forEach((res, index) => {
+        console.log(`  ${index + 1}. ID: ${res.id}, Start: ${res.start_datetime}, End: ${res.end_datetime}`);
+      });
+      console.log("=====================================");
+      
       return NextResponse.json(
-        { error: "Time slot conflicts with existing reservation" },
+        { 
+          error: "Time slot conflicts with existing reservation",
+          conflictingReservations: conflictingReservations.map(res => ({
+            id: res.id,
+            start_datetime: res.start_datetime,
+            end_datetime: res.end_datetime
+          }))
+        },
         { status: 409 }
       );
     }
@@ -165,7 +190,7 @@ export async function POST(request: NextRequest) {
       booking_type: booking_type || "hourly",
       status: "confirmed",
       payment_status: "pending",
-      booking_channel: "manual"
+      booking_channel: booking_channel || "manual"
     };
 
     const { data, error } = await supabase

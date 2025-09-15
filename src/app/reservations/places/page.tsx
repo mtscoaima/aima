@@ -20,6 +20,9 @@ export default function ReservationPlacesPage() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  const [isRenaming, setIsRenaming] = useState<number | null>(null);
+  const [newSpaceName, setNewSpaceName] = useState("");
 
   // 공간 목록 가져오기
   const fetchSpaces = useCallback(async () => {
@@ -55,11 +58,61 @@ export default function ReservationPlacesPage() {
     }
   }, []); // 의존성 배열에서 getAccessToken 제거
 
-  // 공간 삭제
-  const handleDeleteSpace = async (spaceId: number, spaceName: string) => {
-    if (!confirm(`"${spaceName}" 공간을 정말 삭제하시겠습니까?\n\n⚠️ 이 공간에 예약이 있는 경우 삭제할 수 없습니다.`)) {
+  // 공간 이름 변경
+  const handleRenameSpace = async (spaceId: number, currentName: string) => {
+    setIsRenaming(spaceId);
+    setNewSpaceName(currentName);
+    setOpenDropdownId(null);
+  };
+
+  const handleSaveRename = async (spaceId: number) => {
+    if (!newSpaceName.trim()) {
+      alert('공간 이름을 입력해주세요.');
       return;
     }
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        alert('인증이 필요합니다.');
+        return;
+      }
+
+      const response = await fetch(`/api/reservations/spaces/${spaceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newSpaceName.trim() }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '공간 이름 변경에 실패했습니다.');
+      }
+
+      alert('공간 이름이 성공적으로 변경되었습니다.');
+      setIsRenaming(null);
+      setNewSpaceName("");
+      await fetchSpaces(); // 목록 새로고침
+    } catch (err) {
+      console.error('Error renaming space:', err);
+      alert(err instanceof Error ? err.message : '공간 이름 변경에 실패했습니다.');
+    }
+  };
+
+  const handleCancelRename = () => {
+    setIsRenaming(null);
+    setNewSpaceName("");
+  };
+
+  // 공간 삭제 (예약도 함께 삭제)
+  const handleDeleteSpace = async (spaceId: number, spaceName: string) => {
+    if (!confirm(`"${spaceName}" 공간을 정말 삭제하시겠습니까?\n\n⚠️ 이 공간의 모든 예약도 함께 삭제됩니다.`)) {
+      return;
+    }
+    setOpenDropdownId(null);
 
     try {
       const token = await getAccessToken();
@@ -78,12 +131,7 @@ export default function ReservationPlacesPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 409) {
-          alert(`삭제할 수 없습니다.\n\n이 공간에 ${errorData.reservationCount}개의 예약이 있습니다.\n먼저 예약을 정리한 후 삭제해주세요.`);
-        } else {
-          throw new Error(errorData.error || '공간 삭제에 실패했습니다.');
-        }
-        return;
+        throw new Error(errorData.error || '공간 삭제에 실패했습니다.');
       }
 
       alert('공간이 성공적으로 삭제되었습니다.');
@@ -97,6 +145,23 @@ export default function ReservationPlacesPage() {
   useEffect(() => {
     fetchSpaces();
   }, [fetchSpaces]);
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.relative')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    if (openDropdownId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [openDropdownId]);
 
   return (
     <RoleGuard allowedRoles={["USER"]}>
@@ -182,21 +247,84 @@ export default function ReservationPlacesPage() {
                         {space.icon_text}
                       </div>
                       <div>
-                        <span className="text-gray-900 font-medium">{space.name}</span>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {new Date(space.created_at).toLocaleDateString('ko-KR')}
-                        </p>
+                        {isRenaming === space.id ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={newSpaceName}
+                              onChange={(e) => setNewSpaceName(e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveRename(space.id);
+                                } else if (e.key === 'Escape') {
+                                  handleCancelRename();
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveRename(space.id)}
+                              className="text-green-600 hover:text-green-800 p-1"
+                              title="저장"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={handleCancelRename}
+                              className="text-gray-600 hover:text-gray-800 p-1"
+                              title="취소"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-gray-900 font-medium">{space.name}</span>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {new Date(space.created_at).toLocaleDateString('ko-KR')}
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteSpace(space.id, space.name)}
-                      className="text-red-600 hover:text-red-800 p-2"
-                      title="공간 삭제"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    
+                    {/* 더보기 버튼 */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setOpenDropdownId(openDropdownId === space.id ? null : space.id)}
+                        className="text-gray-600 hover:text-gray-800 p-2"
+                        title="더보기"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+                      
+                      {/* 드롭다운 메뉴 */}
+                      {openDropdownId === space.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                          <div className="py-1">
+                            <button
+                              onClick={() => handleRenameSpace(space.id, space.name)}
+                              className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              공간 이름 바꾸기
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSpace(space.id, space.name)}
+                              className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
+                            >
+                              삭제하기
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

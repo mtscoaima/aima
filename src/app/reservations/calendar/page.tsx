@@ -1,8 +1,38 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
+
+interface Space {
+  id: number;
+  name: string;
+  icon_text: string;
+  icon_color: string;
+}
+
+interface Reservation {
+  id: number;
+  user_id: number;
+  space_id: number;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  start_datetime: string;
+  end_datetime: string;
+  guest_count: number;
+  total_amount: number;
+  deposit_amount: number;
+  special_requirements?: string;
+  booking_type: string;
+  status: string;
+  payment_status: string;
+  booking_channel: string;
+  created_at: string;
+  updated_at: string;
+  spaces?: Space;
+}
 
 type ViewSettings = {
   spaces: { [key: string]: boolean };
@@ -13,16 +43,184 @@ type ViewSettings = {
 
 export default function ReservationCalendarPage() {
   const router = useRouter();
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 8)); // 2025년 9월
+  const { getAccessToken } = useAuth();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showViewModal, setShowViewModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [statsMonth, setStatsMonth] = useState(new Date(2025, 8)); // 통계 모달용 월
+  const [statsMonth, setStatsMonth] = useState(new Date());
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewSettings, setViewSettings] = useState<ViewSettings>({
-    spaces: { 내공간: true },
+    spaces: {},
     sortBy: "시간순",
     displayInfo: { 시간: true, 예약자명: true, 총금액: false, 예약채널: false },
-    options: { 입실날짜만예약표시하기: false }
+    options: { 입실날짜만예약표시하기: true }
   });
+
+  // 공간 목록 가져오기
+  const fetchSpaces = useCallback(async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const response = await fetch('/api/reservations/spaces', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const spacesList = data.spaces || [];
+        setSpaces(spacesList);
+        
+        // 공간 목록으로 viewSettings 초기화
+        const spacesSettings: { [key: string]: boolean } = {};
+        spacesList.forEach((space: Space) => {
+          spacesSettings[space.name] = true;
+        });
+        setViewSettings(prev => ({ ...prev, spaces: spacesSettings }));
+      }
+    } catch (error) {
+      console.error('Error fetching spaces:', error);
+    }
+  }, []); // getAccessToken 의존성 제거
+
+  // 예약 목록 가져오기
+  const fetchReservations = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = await getAccessToken();
+      if (!token) {
+        setError('인증이 필요합니다.');
+        return;
+      }
+
+      // 현재 월의 시작과 끝 날짜 계산
+      const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      
+      const params = new URLSearchParams({
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0]
+      });
+
+      const response = await fetch(`/api/reservations/bookings?${params}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('예약 목록을 불러오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setReservations(data.reservations || []);
+    } catch (err) {
+      console.error('Error fetching reservations:', err);
+      setError(err instanceof Error ? err.message : '예약 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentMonth]); // getAccessToken 의존성 제거
+
+  // 예약의 날짜 위치 정보 계산 (시작/중간/끝)
+  const getReservationDatePosition = (reservation: Reservation, currentDate: Date) => {
+    const startDate = new Date(reservation.start_datetime);
+    const endDate = new Date(reservation.end_datetime);
+    
+    // 날짜만 비교하기 위해 시간 제거
+    const currentDateOnly = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+    const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    
+    const isStart = currentDateOnly.getTime() === startDateOnly.getTime();
+    const isEnd = currentDateOnly.getTime() === endDateOnly.getTime();
+    const isMiddle = currentDateOnly > startDateOnly && currentDateOnly < endDateOnly;
+    
+    return {
+      isStart,
+      isEnd, 
+      isMiddle,
+      isSingleDay: isStart && isEnd
+    };
+  };
+
+  // 특정 날짜의 예약 찾기
+  const getReservationsForDate = (date: Date) => {
+    // 캘린더 날짜를 YYYY-MM-DD 형식으로 변환 (로컬 시간 기준)
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    const filteredReservations = reservations.filter(reservation => {
+      // 예약 시작/종료 날짜를 로컬 시간 기준으로 추출
+      const startDate = new Date(reservation.start_datetime);
+      const endDate = new Date(reservation.end_datetime);
+      
+      const startYear = startDate.getFullYear();
+      const startMonth = (startDate.getMonth() + 1).toString().padStart(2, '0');
+      const startDay = startDate.getDate().toString().padStart(2, '0');
+      const startDateStr = `${startYear}-${startMonth}-${startDay}`;
+      
+      const endYear = endDate.getFullYear();
+      const endMonth = (endDate.getMonth() + 1).toString().padStart(2, '0');
+      const endDayNum = endDate.getDate();
+      const endDayStr = `${endYear}-${endMonth}-${endDayNum.toString().padStart(2, '0')}`;
+      
+      // 입실 날짜만 표시하기 옵션이 켜져 있으면 시작 날짜만 확인
+      if (viewSettings.options.입실날짜만예약표시하기) {
+        return startDateStr === dateStr;
+      }
+      
+      // 그렇지 않으면 예약 기간에 포함되는지 확인 (퇴실 시간이 다음날이면 다음날까지 표시)
+      return startDateStr <= dateStr && endDayStr >= dateStr;
+    }).filter(reservation => {
+      // 선택된 공간만 표시
+      return viewSettings.spaces[reservation.spaces?.name || ''] !== false;
+    }).sort((a, b) => {
+      // 정렬 옵션에 따라 정렬
+      if (viewSettings.sortBy === "시간순") {
+        // 시작 시간 기준으로 오름차순 정렬
+        return new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime();
+      } else if (viewSettings.sortBy === "공간순") {
+        // 공간명 기준으로 정렬
+        const spaceA = a.spaces?.name || '';
+        const spaceB = b.spaces?.name || '';
+        return spaceA.localeCompare(spaceB);
+      }
+      return 0;
+    });
+    
+    return filteredReservations;
+  };
+
+  // 예약 시간 포맷팅
+  const formatReservationTime = (reservation: Reservation) => {
+    const startTime = new Date(reservation.start_datetime);
+    const endTime = new Date(reservation.end_datetime);
+    const startHour = startTime.getHours();
+    const endHour = endTime.getHours();
+    const startMin = startTime.getMinutes();
+    const endMin = endTime.getMinutes();
+    
+    const formatTime = (hour: number, min: number) => {
+      if (min === 0) return `${hour}`;
+      return `${hour}:${min.toString().padStart(2, '0')}`;
+    };
+    
+    return `${formatTime(startHour, startMin)}~${formatTime(endHour, endMin)}`;
+  };
 
   const handleBackClick = () => {
     router.back();
@@ -35,6 +233,15 @@ export default function ReservationCalendarPage() {
   const handleNextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
   };
+
+  // 데이터 로딩
+  useEffect(() => {
+    fetchSpaces();
+  }, []); // 빈 의존성 배열로 한 번만 실행
+
+  useEffect(() => {
+    fetchReservations();
+  }, [currentMonth]); // currentMonth 변경 시에만 실행
 
   const handleShareCalendar = () => {
     router.push('/reservations/calendar/shared');
@@ -197,8 +404,12 @@ export default function ReservationCalendarPage() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button 
+                onClick={() => router.push('/reservations/list')}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                title="리스트 보기"
+              >
+                <svg className="w-9 h-9 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
               </button>
@@ -226,7 +437,8 @@ export default function ReservationCalendarPage() {
                 const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
                 const isToday = day.toDateString() === new Date().toDateString();
                 const dayOfWeek = day.getDay();
-                const hasReservation = day.getDate() === 11 && isCurrentMonth; // 11일에 예약이 있다고 가정
+                const dayReservations = isCurrentMonth ? getReservationsForDate(day) : [];
+                const hasReservation = dayReservations.length > 0;
 
                 return (
                   <div
@@ -246,8 +458,89 @@ export default function ReservationCalendarPage() {
                     </div>
                     
                     {hasReservation && (
-                      <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                        17~19, [샵플] 간이식
+                      <div className="space-y-1">
+                        {dayReservations.slice(0, 2).map((reservation, index) => {
+                          const timeStr = formatReservationTime(reservation);
+                          const displayParts = [];
+                          const position = getReservationDatePosition(reservation, day);
+                          
+                          // 시간 표시 로직 - 시작일과 끝일에만 시간 표시
+                          if (viewSettings.displayInfo.시간) {
+                            if (position.isSingleDay) {
+                              displayParts.push(timeStr); // 하루 예약은 전체 시간
+                            } else if (position.isStart) {
+                              const startTime = new Date(reservation.start_datetime);
+                              displayParts.push(`${startTime.getHours()}시~`); // 시작일은 시작 시간만
+                            } else if (position.isEnd) {
+                              const endTime = new Date(reservation.end_datetime);
+                              displayParts.push(`~${endTime.getHours()}시`); // 끝일은 끝 시간만
+                            }
+                            // 중간일은 시간 표시 안함
+                          }
+                          
+                          if (viewSettings.displayInfo.예약자명) displayParts.push(reservation.customer_name);
+                          if (viewSettings.displayInfo.총금액 && reservation.total_amount > 0) {
+                            displayParts.push(`${reservation.total_amount.toLocaleString()}원`);
+                          }
+                          if (viewSettings.displayInfo.예약채널) {
+                            let channelDisplay = '';
+                            switch (reservation.booking_channel) {
+                              case 'manual':
+                                channelDisplay = '[직접입력]';
+                                break;
+                              case '선택안함':
+                                channelDisplay = '[직접입력]';
+                                break;
+                              default:
+                                channelDisplay = `[${reservation.booking_channel}]`;
+                                break;
+                            }
+                            displayParts.push(channelDisplay);
+                          }
+                          
+                          // 연결된 예약 스타일 적용
+                          let borderRadius = 'rounded-md';
+                          if (!position.isSingleDay) {
+                            if (position.isStart) {
+                              borderRadius = 'rounded-l-md rounded-r-none'; // 시작: 왼쪽만 둥글게
+                            } else if (position.isMiddle) {
+                              borderRadius = 'rounded-none'; // 중간: 직각
+                            } else if (position.isEnd) {
+                              borderRadius = 'rounded-l-none rounded-r-md'; // 끝: 오른쪽만 둥글게
+                            }
+                          }
+                          
+                          return (
+                            <div 
+                              key={reservation.id}
+                              className={`text-xs px-1 py-1 ${borderRadius} truncate flex items-center space-x-1 ${
+                                reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                reservation.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                reservation.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}
+                              title={`${reservation.spaces?.name || ''} - ${reservation.customer_name} (${timeStr})`}
+                            >
+                              {/* 공간 아이콘 */}
+                              <div 
+                                className="w-3 h-3 rounded-sm flex items-center justify-center text-white font-bold text-[8px] flex-shrink-0"
+                                style={{ backgroundColor: reservation.spaces?.icon_color || '#8BC34A' }}
+                              >
+                                {reservation.spaces?.icon_text || reservation.spaces?.name?.substring(0, 1) || '공'}
+                              </div>
+                              
+                              {/* 예약 정보 텍스트 */}
+                              <span className="truncate">
+                                {displayParts.join(', ')}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {dayReservations.length > 2 && (
+                          <div className="text-xs text-gray-500 px-2">
+                            +{dayReservations.length - 2}개 더
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -277,18 +570,28 @@ export default function ReservationCalendarPage() {
                   <div className="p-6 space-y-8">
                     {/* 공간 선택 */}
                     <div>
-                      <div className="flex items-center space-x-3 mb-4">
-                        <input
-                          type="checkbox"
-                          id="space-naegong"
-                          checked={viewSettings.spaces.내공간}
-                          onChange={(e) => handleViewSettingChange('spaces', '내공간', e.target.checked)}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <div className="flex items-center space-x-2">
-                          <span className="px-2 py-1 bg-green-500 text-white text-xs rounded font-medium">내공간</span>
-                          <span className="text-gray-700">내공간</span>
-                        </div>
+                      <h4 className="text-gray-900 font-medium mb-4">공간 선택</h4>
+                      <div className="space-y-3">
+                        {spaces.map((space) => (
+                          <div key={space.id} className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              id={`space-${space.id}`}
+                              checked={viewSettings.spaces[space.name] !== false}
+                              onChange={(e) => handleViewSettingChange('spaces', space.name, e.target.checked)}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex items-center space-x-2">
+                              <span 
+                                className="px-2 py-1 text-white text-xs rounded font-medium"
+                                style={{ backgroundColor: space.icon_color }}
+                              >
+                                {space.icon_text}
+                              </span>
+                              <span className="text-gray-700">{space.name}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
@@ -430,8 +733,9 @@ export default function ReservationCalendarPage() {
                   <div className="relative mb-6">
                     <select className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                       <option value="all">전체 공간</option>
-                      <option value="space1">공간 1</option>
-                      <option value="space2">공간 2</option>
+                      {spaces.map((space) => (
+                        <option key={space.id} value={space.id}>{space.name}</option>
+                      ))}
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,18 +746,32 @@ export default function ReservationCalendarPage() {
 
                   {/* 통계 데이터 */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">• 총 매출</span>
-                      <span className="font-semibold text-gray-900">100,000원</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">• 총 예약 건수</span>
-                      <span className="font-semibold text-gray-900">1건</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">• 총 이용 인원</span>
-                      <span className="font-semibold text-gray-900">10명</span>
-                    </div>
+                    {(() => {
+                      const monthReservations = reservations.filter(res => {
+                        const resDate = new Date(res.start_datetime);
+                        return resDate.getMonth() === statsMonth.getMonth() && 
+                               resDate.getFullYear() === statsMonth.getFullYear();
+                      });
+                      const totalRevenue = monthReservations.reduce((sum, res) => sum + res.total_amount, 0);
+                      const totalGuests = monthReservations.reduce((sum, res) => sum + res.guest_count, 0);
+                      
+                      return (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700">• 총 매출</span>
+                            <span className="font-semibold text-gray-900">{totalRevenue.toLocaleString()}원</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700">• 총 예약 건수</span>
+                            <span className="font-semibold text-gray-900">{monthReservations.length}건</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700">• 총 이용 인원</span>
+                            <span className="font-semibold text-gray-900">{totalGuests}명</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* 모달 버튼 */}

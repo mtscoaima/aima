@@ -275,14 +275,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      // 토큰이 만료되었는지 확인하고 필요시 갱신
-      const isRefreshed = await refreshAccessToken();
-      if (!isRefreshed) {
-        return null;
+      // 토큰이 만료되었는지 확인하고 필요시에만 갱신
+      if (tokenManager.isTokenExpired(token)) {
+        const isRefreshed = await refreshAccessToken();
+        if (!isRefreshed) {
+          return null;
+        }
+        // 갱신된 토큰 반환
+        return tokenManager.getAccessToken();
       }
 
-      // 갱신된 토큰 반환
-      return tokenManager.getAccessToken();
+      // 토큰이 유효하면 그대로 반환
+      return token;
     } catch (error) {
       console.error("Error getting access token:", error);
       return null;
