@@ -69,9 +69,10 @@ const KakaoMessageContent = () => {
         <button
           className={`px-4 py-2 rounded-lg text-sm font-medium ${
             activeKakaoTab === "alimtalk"
-              ? "bg-yellow-100 text-yellow-700 border border-yellow-300"
+              ? "border border-[#795548]"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
+          style={activeKakaoTab === "alimtalk" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
           onClick={() => setActiveKakaoTab("alimtalk")}
         >
           알림톡
@@ -79,9 +80,10 @@ const KakaoMessageContent = () => {
         <button
           className={`px-4 py-2 rounded-lg text-sm font-medium ${
             activeKakaoTab === "friendtalk"
-              ? "bg-yellow-100 text-yellow-700 border border-yellow-300"
+              ? "border border-[#795548]"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
+          style={activeKakaoTab === "friendtalk" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
           onClick={() => setActiveKakaoTab("friendtalk")}
         >
           친구톡
@@ -89,9 +91,10 @@ const KakaoMessageContent = () => {
         <button
           className={`px-4 py-2 rounded-lg text-sm font-medium ${
             activeKakaoTab === "brand"
-              ? "bg-yellow-100 text-yellow-700 border border-yellow-300"
+              ? "border border-[#795548]"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
+          style={activeKakaoTab === "brand" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
           onClick={() => setActiveKakaoTab("brand")}
         >
           브랜드 메시지
@@ -111,7 +114,7 @@ const KakaoMessageContent = () => {
                   <div className="text-gray-500 text-sm">
                     연동된 채널이 없습니다.
                   </div>
-                  <button className="bg-amber-700 text-white px-4 py-2 rounded text-sm hover:bg-amber-800 font-medium">
+                  <button className="px-4 py-2 rounded text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: "#795548" }}>
                     채널 연동하기 ＞
                   </button>
                 </div>
@@ -142,7 +145,7 @@ const KakaoMessageContent = () => {
                 <div className="text-gray-500 text-sm">
                   연동된 채널이 없습니다.
                 </div>
-                <button className="bg-amber-700 text-white px-4 py-2 rounded text-sm hover:bg-amber-800 font-medium">
+                <button className="px-4 py-2 rounded text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: "#795548" }}>
                   채널 연동하기 ＞
                 </button>
               </div>
@@ -159,7 +162,7 @@ const KakaoMessageContent = () => {
                   <div className="text-gray-500 text-sm">
                     연동된 채널이 없습니다.
                   </div>
-                  <button className="bg-amber-700 text-white px-4 py-2 rounded text-sm hover:bg-amber-800 font-medium">
+                  <button className="px-4 py-2 rounded text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: "#795548" }}>
                     채널 연동하기 ＞
                   </button>
                 </div>
@@ -316,7 +319,7 @@ const KakaoMessageContent = () => {
           <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-gray-700">템플릿 미리보기</h3>
-              <button className="bg-amber-700 text-white px-4 py-2 rounded text-sm hover:bg-amber-800 font-medium">
+              <button className="px-4 py-2 rounded text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: "#795548" }}>
                 템플릿 등록하기 ＞
               </button>
             </div>
@@ -329,9 +332,10 @@ const KakaoMessageContent = () => {
               <button
                 className={`flex items-center gap-2 px-3 py-2 border rounded text-sm ${
                   selectedTemplate === "text"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#795548]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedTemplate === "text" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
                 onClick={() => setSelectedTemplate("text" as keyof typeof templateTypes)}
               >
                 📄 텍스트형
@@ -339,9 +343,10 @@ const KakaoMessageContent = () => {
               <button
                 className={`flex items-center gap-2 px-3 py-2 border rounded text-sm ${
                   selectedTemplate === "image"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#795548]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedTemplate === "image" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
                 onClick={() => setSelectedTemplate("image" as keyof typeof templateTypes)}
               >
                 🖼️ 이미지형
@@ -349,9 +354,10 @@ const KakaoMessageContent = () => {
               <button
                 className={`flex items-center gap-2 px-3 py-2 border rounded text-sm ${
                   selectedTemplate === "wide"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#795548]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedTemplate === "wide" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
                 onClick={() => setSelectedTemplate("wide" as keyof typeof templateTypes)}
               >
                 📊 와이드형
@@ -359,9 +365,10 @@ const KakaoMessageContent = () => {
               <button
                 className={`flex items-center gap-2 px-3 py-2 border rounded text-sm ${
                   selectedTemplate === "widelist"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#795548]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedTemplate === "widelist" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
                 onClick={() => setSelectedTemplate("widelist" as keyof typeof templateTypes)}
               >
                 📱 와이드리스트형
@@ -371,9 +378,10 @@ const KakaoMessageContent = () => {
               <button
                 className={`flex items-center gap-2 px-3 py-2 border rounded text-sm ${
                   selectedTemplate === "carousel"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#795548]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedTemplate === "carousel" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
                 onClick={() => setSelectedTemplate("carousel" as keyof typeof templateTypes)}
               >
                 🔍 캐러셀피드형
@@ -381,9 +389,10 @@ const KakaoMessageContent = () => {
               <button
                 className={`flex items-center gap-2 px-3 py-2 border rounded text-sm ${
                   selectedTemplate === "commerce"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#795548]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedTemplate === "commerce" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
                 onClick={() => setSelectedTemplate("commerce" as keyof typeof templateTypes)}
               >
                 💬 커머스형
@@ -391,9 +400,10 @@ const KakaoMessageContent = () => {
               <button
                 className={`flex items-center gap-2 px-3 py-2 border rounded text-sm ${
                   selectedTemplate === "carouselcommerce"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#795548]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedTemplate === "carouselcommerce" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
                 onClick={() => setSelectedTemplate("carouselcommerce" as keyof typeof templateTypes)}
               >
                 📅 캐러셀커머스형

@@ -28,7 +28,7 @@ const RcsMessageContent = () => {
               <div className="text-gray-500 text-sm">
                 RCS 브랜드를 선택하세요
               </div>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium">
+              <button className="px-4 py-2 rounded text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: "#2c398a" }}>
                 연동하기 ＞
               </button>
             </div>
@@ -43,7 +43,7 @@ const RcsMessageContent = () => {
               <div className="text-gray-500 text-sm">
                 RCS 템플릿 없음 (내용 직접 입력)
               </div>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium">
+              <button className="px-4 py-2 rounded text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: "#2c398a" }}>
                 등록 ＞
               </button>
             </div>
@@ -130,9 +130,10 @@ const RcsMessageContent = () => {
               <button
                 className={`px-3 py-1 text-xs border rounded ${
                   selectedSlideType === "none"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#2c398a]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedSlideType === "none" ? { backgroundColor: "#2c398a20", color: "#2c398a" } : {}}
                 onClick={() => setSelectedSlideType("none")}
               >
                 사용안함
@@ -140,9 +141,10 @@ const RcsMessageContent = () => {
               <button
                 className={`px-3 py-1 text-xs border rounded ${
                   selectedSlideType === "narrow"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#2c398a]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedSlideType === "narrow" ? { backgroundColor: "#2c398a20", color: "#2c398a" } : {}}
                 onClick={() => setSelectedSlideType("narrow")}
               >
                 🏷️ 좁게
@@ -150,9 +152,10 @@ const RcsMessageContent = () => {
               <button
                 className={`px-3 py-1 text-xs border rounded ${
                   selectedSlideType === "wide"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[#2c398a]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
+                style={selectedSlideType === "wide" ? { backgroundColor: "#2c398a20", color: "#2c398a" } : {}}
                 onClick={() => setSelectedSlideType("wide")}
               >
                 📄 넓게

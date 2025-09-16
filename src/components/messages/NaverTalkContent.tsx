@@ -24,7 +24,7 @@ const NaverTalkContent = () => {
         {/* 좌측: 네이버톡 선택 */}
         <div className="flex-1">
           <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="text-green-600 font-medium mb-3">네이버톡 선택</h3>
+            <h3 className="font-medium mb-3" style={{ color: "#00a732" }}>네이버톡 선택</h3>
             <div className="relative">
               <select className="w-full px-3 py-2 border border-gray-300 rounded text-sm appearance-none bg-white">
                 <option value="">네이버톡 선택</option>
@@ -37,7 +37,7 @@ const NaverTalkContent = () => {
         {/* 우측: 템플릿 선택 */}
         <div className="flex-1">
           <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="text-green-600 font-medium mb-3">템플릿 선택</h3>
+            <h3 className="font-medium mb-3" style={{ color: "#00a732" }}>템플릿 선택</h3>
             <div className="relative">
               <select className="w-full px-3 py-2 border border-gray-300 rounded text-sm appearance-none bg-white">
                 <option value="">템플릿 선택</option>
@@ -50,7 +50,7 @@ const NaverTalkContent = () => {
 
       {/* 템플릿 내용 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <h3 className="text-green-600 font-medium mb-3">템플릿 내용</h3>
+        <h3 className="font-medium mb-3" style={{ color: "#00a732" }}>템플릿 내용</h3>
         <div className="bg-gray-50 border border-gray-200 rounded p-4 min-h-[300px]">
           <textarea
             placeholder="사용할 템플릿을 선택하면, 이곳에 템플릿 내용이 표시됩니다. (내용수정불가)"
