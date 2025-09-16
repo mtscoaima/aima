@@ -240,12 +240,12 @@ const MessageSendTab = () => {
         {/* 전송/예약 준비 버튼 */}
         <div className="mt-6">
           <button
-            className="w-full text-white py-4 rounded-lg text-lg font-semibold hover:opacity-90 transition-opacity"
+            className="w-full text-white py-2 rounded-lg text-lg font-semibold hover:opacity-90 transition-opacity"
             style={{ backgroundColor: getThemeColor(activeMessageTab) }}
           >
             전송/예약 준비
           </button>
-          <div className="text-center mt-2 text-sm text-gray-600">
+          <div className="text-center font-semibold mt-2 text-sm text-gray-600">
             &quot;전송 준비&quot;는 잔액이 차감되지 않습니다.
           </div>
           <div className="text-center text-sm text-gray-600">
