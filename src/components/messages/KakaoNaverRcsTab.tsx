@@ -15,14 +15,14 @@ const KakaoNaverRcsTab = () => {
   const [activeRcsSubTab, setActiveRcsSubTab] = useState("template");
   const [activeNaverSubTab, setActiveNaverSubTab] = useState("template");
 
-  const getTabThemeColor = (tab: string) => {
-    switch (tab) {
-      case "kakao": return "#795548";
-      case "rcs": return "#2c398a";
-      case "naver": return "#00a732";
-      default: return "#795548";
-    }
-  };
+  // const getTabThemeColor = (tab: string) => {
+  //   switch (tab) {
+  //     case "kakao": return "#795548";
+  //     case "rcs": return "#2c398a";
+  //     case "naver": return "#00a732";
+  //     default: return "#795548";
+  //   }
+  // };
 
   const renderSubTabs = () => {
     switch (activeMainTab) {

@@ -1,15 +1,15 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 
 export default function ReservationsPage() {
-  const router = useRouter();
+  // const router = useRouter();
 
-  const handleMenuClick = (path: string) => {
-    // 모든 클릭 이벤트를 무시
-    return;
-  };
+  // const handleMenuClick = (path: string) => {
+  //   // 모든 클릭 이벤트를 무시
+  //   return;
+  // };
 
   return (
     <div className="page-disabled-overlay">

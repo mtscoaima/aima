@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search, Plus, ChevronDown, HelpCircle } from "lucide-react";
+import { Search, Plus, ChevronDown } from "lucide-react";
 
 const KakaoAlimtalkTab = () => {
   return (
