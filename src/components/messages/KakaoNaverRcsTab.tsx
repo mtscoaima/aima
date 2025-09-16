@@ -28,36 +28,44 @@ const KakaoNaverRcsTab = () => {
     switch (activeMainTab) {
       case "kakao":
         return (
-          <div className="flex gap-2 mb-6">
-            <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeKakaoSubTab === "channel"
-                  ? "bg-[#79554820] text-[#795548] border border-[#795548]"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              onClick={() => setActiveKakaoSubTab("channel")}
-            >
-              채널/그룹
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeKakaoSubTab === "alimtalk"
-                  ? "bg-[#79554820] text-[#795548] border border-[#795548]"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              onClick={() => setActiveKakaoSubTab("alimtalk")}
-            >
-              알림톡 템플릿
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeKakaoSubTab === "brand"
-                  ? "bg-[#79554820] text-[#795548] border border-[#795548]"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              onClick={() => setActiveKakaoSubTab("brand")}
-            >
-              브랜드 템플릿
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex gap-2">
+              <button
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  activeKakaoSubTab === "channel"
+                    ? "bg-[#79554820] text-[#795548] border border-[#795548]"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+                onClick={() => setActiveKakaoSubTab("channel")}
+              >
+                채널/그룹
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  activeKakaoSubTab === "alimtalk"
+                    ? "bg-[#79554820] text-[#795548] border border-[#795548]"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+                onClick={() => setActiveKakaoSubTab("alimtalk")}
+              >
+                알림톡 템플릿
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  activeKakaoSubTab === "brand"
+                    ? "bg-[#79554820] text-[#795548] border border-[#795548]"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+                onClick={() => setActiveKakaoSubTab("brand")}
+              >
+                브랜드 템플릿
+              </button>
+            </div>
+            <button className="flex items-center gap-2 text-gray-600 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              카카오톡 발송이 처음이신가요?
             </button>
           </div>
         );
