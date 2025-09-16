@@ -1,20 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Search, Headset, FileText, Clock } from "lucide-react";
 
 interface LoadContentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialActiveTab?: string;
 }
 
 const LoadContentModal: React.FC<LoadContentModalProps> = ({
   isOpen,
   onClose,
+  initialActiveTab = "saved",
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("saved");
+  const [activeTab, setActiveTab] = useState(initialActiveTab);
   const [onlyMine, setOnlyMine] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialActiveTab);
+    }
+  }, [isOpen, initialActiveTab]);
 
   if (!isOpen) return null;
 
