@@ -1,0 +1,251 @@
+# 이용약관 시스템 구현 계획 (업데이트됨)
+
+## 📋 현재 상황 파악
+1. **이용약관**: `/이용약관.txt` 파일 존재 (version 1.0)
+2. **개인정보처리방침**: `/개인정보 처리방침` 파일 존재 (version 1.0)
+3. **마케팅 동의**: 현재 DB에 이미 존재
+4. **하드코딩**: TermsModal.tsx에 긴 약관 내용 하드코딩됨 (삭제 예정)
+
+## 🚀 구현 순서 (우선순위별)
+
+### 1단계: DB 초기 데이터 준비 (최우선)
+**목표**: 제공된 파일들을 DB에 저장
+
+**작업 내용**:
+- 이용약관.txt → SERVICE_TERMS (version 1.0)
+- 개인정보 처리방침 → PRIVACY_POLICY (version 1.0)
+- 마케팅 동의는 기존 DB 데이터 유지
+
+**SQL 스크립트 생성**:
+```sql
+-- 기존 약관 비활성화
+UPDATE terms_agreements SET is_active = false;
+
+-- 새 약관 데이터 삽입
+INSERT INTO terms_agreements (term_type, title, content, version, is_active, created_at, updated_at)
+VALUES
+('SERVICE_TERMS', '서비스 이용약관', '제1조 목적...', '1.0', true, NOW(), NOW()),
+('PRIVACY_POLICY', '개인정보처리방침', '㈜엠티에스컴퍼니...', '1.0', true, NOW(), NOW());
+```
+
+### 2단계: 약관 페이지 UI 구현
+**생성할 파일**:
+- `/src/app/terms/page.tsx` - 서비스 이용약관
+- `/src/app/privacy/page.tsx` - 개인정보처리방침
+- `/src/app/marketing/page.tsx` - 마케팅 동의서
+
+**공통 레이아웃**:
+```typescript
+// /src/components/terms/TermsLayout.tsx
+- 반응형 디자인
+- 인쇄 친화적 스타일
+- 브레드크럼 네비게이션
+- 로딩/에러 상태 처리
+```
+
+### 3단계: 사용자용 약관 조회 API 구현
+**새 API 엔드포인트**:
+- `GET /api/terms?type=SERVICE_TERMS` - 특정 약관 조회
+- `GET /api/terms?type=PRIVACY_POLICY` - 개인정보처리방침 조회
+- `GET /api/terms?type=MARKETING_AGREEMENT` - 마케팅 동의 조회
+
+**특징**:
+- 관리자 권한 불필요 (공개 API)
+- 활성화된 약관만 반환 (is_active = true)
+- 캐싱 헤더 추가
+
+### 4단계: TermsModal 컴포넌트 DB 연동
+**수정사항**:
+- 하드코딩된 getTermsContent() 함수 완전 제거
+- DB에서 동적으로 약관 내용 로딩
+- 로딩 스피너 및 에러 처리 추가
+- React Query 또는 SWR로 캐싱 구현
+
+**새로운 구조**:
+```typescript
+const TermsModal = ({ type, isOpen, onClose }) => {
+  const { data: terms, loading, error } = useTermsContent(type);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage />;
+
+  return <Modal>{terms.content}</Modal>;
+}
+```
+
+### 5단계: Footer 링크 연결
+**수정사항**:
+- `href="#"` → `/terms`, `/privacy`, `/marketing`
+- 새 탭에서 열기 옵션 추가
+- 접근성 개선 (aria-label 등)
+
+### 6단계: 관리자 시스템 설정 확장
+**현재 상태**: "이용약관 설정" 탭만 존재
+**추가할 탭**:
+- "개인정보처리방침 설정"
+- "마케팅 동의 설정"
+
+**각 탭 기능**:
+- 독립적인 약관 관리 (CRUD)
+- 버전 관리 (이전 버전 is_active = false)
+- 실시간 미리보기
+- 저장 시 즉시 반영
+
+## 📂 파일 구조
+
+### 새로 생성할 파일들
+```
+/src/app/terms/page.tsx                    # 이용약관 페이지
+/src/app/privacy/page.tsx                  # 개인정보처리방침 페이지
+/src/app/marketing/page.tsx                # 마케팅 동의 페이지
+/src/components/terms/TermsLayout.tsx      # 약관 공통 레이아웃
+/src/lib/termsService.ts                   # 약관 조회 서비스
+/src/hooks/useTermsContent.ts              # 약관 조회 React Hook
+/src/app/api/terms/route.ts                # 사용자용 약관 조회 API
+/migrations/update_terms_initial_data.sql  # DB 초기 데이터
+```
+
+### 수정할 파일들
+```
+/src/components/TermsModal.tsx             # 하드코딩 제거, DB 연동
+/src/components/Footer.tsx                 # 링크 연결
+/src/app/admin/system-settings/page.tsx    # 탭 추가
+/src/app/api/admin/terms/route.ts          # API 개선 (선택사항)
+```
+
+## 💾 데이터베이스 스키마
+
+### terms_agreements 테이블 구조 확인
+```sql
+-- 필요한 컬럼들이 있는지 확인
+id, term_type, title, content, version, is_active, created_at, updated_at, description, required
+```
+
+### term_type 값 정의
+- `SERVICE_TERMS`: 서비스 이용약관
+- `PRIVACY_POLICY`: 개인정보처리방침
+- `MARKETING_AGREEMENT`: 마케팅 정보 수집 및 활용 동의서
+
+## 🔧 기술적 구현 세부사항
+
+### 1. API 응답 형식
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "term_type": "SERVICE_TERMS",
+    "title": "서비스 이용약관",
+    "content": "제1조 목적\n\n이 약관은...",
+    "version": "1.0",
+    "created_at": "2025-01-15T...",
+    "is_active": true
+  }
+}
+```
+
+### 2. 약관 내용 포맷팅
+- Markdown 형식으로 저장
+- 프론트엔드에서 HTML 변환
+- XSS 방지를 위한 sanitization
+
+### 3. 캐싱 전략
+- API 레벨: HTTP 캐시 헤더 (24시간)
+- 클라이언트: React Query/SWR (5분)
+- 관리자 수정 시 캐시 무효화
+
+### 4. 반응형 디자인
+```css
+/* 약관 페이지 스타일링 */
+.terms-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+@media (max-width: 768px) {
+  .terms-container {
+    padding: 1rem 0.5rem;
+  }
+}
+
+/* 인쇄 친화적 스타일 */
+@media print {
+  .terms-container {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+```
+
+## 📅 구체적인 구현 일정
+
+### Day 1: DB 준비 및 API 구현
+- [x] 제공된 파일 내용 확인
+- [ ] SQL 스크립트 작성 및 실행
+- [ ] 사용자용 약관 조회 API 구현
+- [ ] API 테스트
+
+### Day 2: 약관 페이지 UI 구현
+- [ ] TermsLayout 컴포넌트 생성
+- [ ] /terms, /privacy, /marketing 페이지 생성
+- [ ] 반응형 스타일링
+- [ ] 페이지 테스트
+
+### Day 3: TermsModal DB 연동
+- [ ] 하드코딩 제거
+- [ ] useTermsContent Hook 구현
+- [ ] 로딩/에러 처리 구현
+- [ ] 기존 기능 테스트
+
+### Day 4: Footer 연결 및 관리자 기능
+- [ ] Footer 링크 수정
+- [ ] 관리자 탭 추가 (개인정보처리방침, 마케팅)
+- [ ] 전체 기능 통합 테스트
+
+## ⚠️ 주의사항
+
+### 1. 데이터 무결성
+- 기존 마케팅 동의 데이터 보존
+- 약관 변경 시 이전 버전 유지
+- 트랜잭션 처리로 데이터 일관성 보장
+
+### 2. 보안
+- 사용자 입력 Sanitization
+- XSS 방지
+- 관리자 권한 검증
+
+### 3. 성능
+- 약관 내용 캐싱
+- 이미지 최적화 (필요시)
+- Lazy Loading
+
+### 4. 접근성
+- 스크린 리더 지원
+- 키보드 네비게이션
+- 고대비 모드
+
+## 🎯 완료 기준
+
+### 사용자 관점
+- [ ] Footer에서 약관 링크 클릭 시 해당 페이지로 이동
+- [ ] 회원가입 시 모달에서 실제 약관 내용 확인 가능
+- [ ] 모든 디바이스에서 약관 내용 정상 표시
+- [ ] 약관 페이지 인쇄 가능
+
+### 관리자 관점
+- [ ] 각 약관별 독립적 수정 가능
+- [ ] 수정 시 즉시 사용자에게 반영
+- [ ] 버전 관리 정상 동작
+- [ ] 이전 버전 조회 가능
+
+### 개발자 관점
+- [ ] 하드코딩 완전 제거
+- [ ] API 문서화 완료
+- [ ] 에러 처리 완비
+- [ ] 테스트 케이스 작성
+
+이 계획대로 진행하면 **4일 내에** 완전한 약관 관리 시스템을 구축할 수 있습니다.
+
+**첫 번째 작업인 DB 초기 데이터 스크립트 작성부터 시작할까요?**
