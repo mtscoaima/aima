@@ -500,7 +500,6 @@ export const useTargetOptions = () => {
 export const useCalculations = () => {
   // 단가 계산: 선택된 타겟 조건에 따라 차등가 적용
   const calculateUnitCost = useCallback((params: {
-    adMedium: "naver_talktalk" | "sms";
     gender: string; // 'all' | 'male' | 'female'
     ages: string[]; // 포함 시 50원
     hasLocationFilter: boolean; // true면 위치 차등가 적용
@@ -517,7 +516,7 @@ export const useCalculations = () => {
     }
     if (params.hasAmountFilter) unit += PRICING_STEPS.increments.amount;
     if (params.hasIndustryFilter) unit += PRICING_STEPS.increments.industry;
-    if (params.adMedium === "naver_talktalk" && params.carouselFirst) unit += PRICING_STEPS.increments.carouselFirst;
+    if (params.carouselFirst) unit += PRICING_STEPS.increments.carouselFirst;
 
     return unit;
   }, []);

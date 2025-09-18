@@ -206,8 +206,6 @@ function TargetMarketingDetailContent({
   // 기본값을 '캠페인01'로 설정
   const [campaignName, setCampaignName] = useState("캠페인01");
 
-  // 광고매체 상태 (naver_talktalk 또는 sms)
-  const [adMedium, setAdMedium] = useState<"naver_talktalk" | "sms">("naver_talktalk");
 
   // 기존 템플릿 ID 상태 (템플릿 사용하기로 온 경우)
   const [existingTemplateId, setExistingTemplateId] = useState<number | null>(
@@ -585,7 +583,6 @@ function TargetMarketingDetailContent({
       
       // 캠페인 설정
       campaignName,
-      adMedium,
       sendPolicy,
       validityStartDate,
       validityEndDate,
@@ -628,7 +625,7 @@ function TargetMarketingDetailContent({
   }, [
     messages, isFirstChat, hasShownFirstQuestion, currentQuestionIndex, userAnswers,
     templateTitle, smsTextContent, currentGeneratedImage, dynamicButtons, structuredRecommendation,
-    campaignName, adMedium, sendPolicy, validityStartDate, validityEndDate, maxRecipients, selectedPeriod,
+    campaignName, sendPolicy, validityStartDate, validityEndDate, maxRecipients, selectedPeriod,
     targetGender, targetAge, targetCity, targetDistrict, selectedLocations,
     cardAmount, customAmount, cardAmountInput, cardStartTime, cardEndTime, selectedAmountButton, cardAmountInputValue, selectedTimeButton,
     batchSendDate, batchSendTime, targetCount, adRecipientCount, femaleRatio, maleRatio, desiredRecipients,
@@ -674,7 +671,6 @@ function TargetMarketingDetailContent({
       
       // 캠페인 설정 복원
       setCampaignName((state.campaignName as string) || "캠페인01");
-      setAdMedium((state.adMedium as "naver_talktalk" | "sms") || "naver_talktalk");
       setSendPolicy((state.sendPolicy as "realtime" | "batch") || "realtime");
       setValidityStartDate((state.validityStartDate as string) || validityStartDate);
       setValidityEndDate((state.validityEndDate as string) || validityEndDate);
@@ -733,7 +729,7 @@ function TargetMarketingDetailContent({
     }
   }, [
     isInitialized, smsTextContent, messages, campaignName, 
-    adMedium, targetGender, targetAge, selectedLocations, dynamicButtons,
+    targetGender, targetAge, selectedLocations, dynamicButtons,
     validityStartDate, validityEndDate, sendPolicy, maxRecipients, saveState
   ]);
 
@@ -2573,7 +2569,6 @@ function TargetMarketingDetailContent({
         title: campaignName || templateTitle,
         content: smsTextContent,
         imageUrl: currentGeneratedImage,
-        adMedium: adMedium,
         sendPolicy: sendPolicy,
         validityStartDate: sendPolicy === "realtime" ? validityStartDate : null,
         validityEndDate: sendPolicy === "realtime" ? validityEndDate : null,
@@ -2645,7 +2640,6 @@ function TargetMarketingDetailContent({
 
   const unitCost = React.useMemo(() => {
     return calculateUnitCost({
-      adMedium,
       gender: targetGender,
       ages: targetAge,
       hasLocationFilter,
@@ -2653,7 +2647,7 @@ function TargetMarketingDetailContent({
       hasAmountFilter,
       carouselFirst: false, // UI 미지원, 필요 시 true 처리
     });
-  }, [adMedium, targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, calculateUnitCost]);
+  }, [targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, calculateUnitCost]);
 
   // 마지막 어시스턴트 메시지 인덱스 (표는 마지막 답변에만 표시)
   const lastAssistantIndex = React.useMemo(() => {
@@ -2966,33 +2960,6 @@ function TargetMarketingDetailContent({
               
               {/* 공고제목 섹션 */}
               <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-sm font-medium text-gray-700">광고매체</label>
-                                  <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="adMedium" 
-                      value="naver_talktalk" 
-                      checked={adMedium === "naver_talktalk"} 
-                      onChange={(e) => setAdMedium(e.target.value as "naver_talktalk")}
-                      className="text-blue-600" 
-                    />
-                    <span className={`text-xs ${adMedium === "naver_talktalk" ? "text-blue-600" : "text-gray-600"}`}>네이버톡톡</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="adMedium" 
-                      value="sms" 
-                      checked={adMedium === "sms"} 
-                      onChange={(e) => setAdMedium(e.target.value as "sms")}
-                      className="text-blue-600" 
-                    />
-                    <span className={`text-xs ${adMedium === "sms" ? "text-blue-600" : "text-gray-600"}`}>문자메세지</span>
-                  </label>
-                </div>
-                </div>
                 <div className="relative flex items-center">
                   <label className="text-sm font-medium text-gray-700 mr-2 flex-shrink-0">캠페인 이름</label>
                   <input
