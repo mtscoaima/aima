@@ -17,9 +17,9 @@ interface UseMultipleTermsResult {
   refetch: () => Promise<void>;
 }
 
-// 간단한 메모리 캐시
+// 간단한 메모리 캐시 (개발 중에는 비활성화)
 const cache = new Map<string, { data: TermsData; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5분
+const CACHE_DURATION = 0; // 캐시 비활성화 (개발용)
 
 /**
  * 단일 약관 조회 훅
@@ -97,7 +97,7 @@ export function useMultipleTermsContent(types: TermType[]): UseMultipleTermsResu
     if (types.length > 0) {
       fetchMultipleTerms();
     }
-  }, [fetchMultipleTerms]);
+  }, [fetchMultipleTerms, types.length]);
 
   return {
     data,
@@ -116,6 +116,11 @@ export function invalidateTermsCache(type?: TermType) {
   } else {
     cache.clear();
   }
+}
+
+// 페이지 로드 시 자동 캐시 무효화
+if (typeof window !== 'undefined') {
+  cache.clear();
 }
 
 /**

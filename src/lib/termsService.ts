@@ -45,13 +45,18 @@ export const TERM_TYPE_URLS: Record<TermType, string> = {
  */
 export async function getTermsContent(type: TermType): Promise<TermsData> {
   try {
-    const response = await fetch(`/api/terms?type=${type}`, {
+    // 강력한 캐시 무효화를 위한 무작위 쿼리 파라미터
+    const cacheBuster = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const response = await fetch(`/api/terms?type=${type}&_cb=${cacheBuster}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
-      // 캐싱 설정 (5분)
-      next: { revalidate: 300 }
+      // 캐싱 완전 비활성화
+      cache: 'no-store'
     });
 
     const result: TermsResponse = await response.json();
@@ -76,14 +81,15 @@ export async function getTermsContent(type: TermType): Promise<TermsData> {
  */
 export async function getMultipleTermsContent(types: TermType[]): Promise<TermsData[]> {
   try {
-    const response = await fetch('/api/terms', {
+    const response = await fetch(`/api/terms?_t=${Date.now()}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
       },
       body: JSON.stringify({ types }),
-      // 캐싱 설정
-      next: { revalidate: 300 }
+      // 캐싱 비활성화
+      cache: 'no-store'
     });
 
     const result: MultipleTermsResponse = await response.json();
@@ -104,14 +110,15 @@ export async function getMultipleTermsContent(types: TermType[]): Promise<TermsD
  */
 export async function getAllActiveTerms(): Promise<TermsData[]> {
   try {
-    const response = await fetch('/api/terms', {
+    const response = await fetch(`/api/terms?_t=${Date.now()}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
       },
       body: JSON.stringify({}),
-      // 캐싱 설정
-      next: { revalidate: 300 }
+      // 캐싱 비활성화
+      cache: 'no-store'
     });
 
     const result: MultipleTermsResponse = await response.json();

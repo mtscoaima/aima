@@ -94,15 +94,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 캐시 헤더 설정 (24시간)
+    // 캐시 비활성화 (개발용)
     const response = NextResponse.json({
       success: true,
       data: data as TermsData
     });
 
-    // 캐시 설정: 24시간 캐싱, 재검증은 1시간마다
-    response.headers.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600');
-    response.headers.set('CDN-Cache-Control', 'public, max-age=86400');
+    // 캐시 비활성화
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
 
     return response;
 
@@ -162,8 +163,10 @@ export async function POST(request: NextRequest) {
         data: data as TermsData[]
       });
 
-      // 캐시 설정
-      response.headers.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600');
+      // 캐시 비활성화
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
 
       return response;
     }
@@ -191,8 +194,10 @@ export async function POST(request: NextRequest) {
       data: data as TermsData[]
     });
 
-    // 캐시 설정
-    response.headers.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600');
+    // 캐시 비활성화
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
 
     return response;
 
