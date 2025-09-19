@@ -102,7 +102,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, type }) => {
                 // 빈 셀은 건너뛰기
                 if (!cellValue || cellValue.trim() === '') continue;
 
-                let cellClass = "border border-gray-300 p-3 text-left";
+                const cellClass = "border border-gray-300 p-3 text-left";
 
                 // colspan 계산 - 마지막 셀은 남은 공간을 모두 차지
                 let cellColspan = baseColspan;
@@ -157,7 +157,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, type }) => {
       return formattedSection;
     });
 
-    let formattedContent = processedSections.join('</p><p class="mb-2 text-gray-700 leading-relaxed">');
+    const formattedContent = processedSections.join('</p><p class="mb-2 text-gray-700 leading-relaxed">');
 
     return `<div class="prose max-w-none">
               <p class="mb-2 text-gray-700 leading-relaxed">${formattedContent}</p>
