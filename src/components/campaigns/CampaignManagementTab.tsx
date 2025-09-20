@@ -29,7 +29,6 @@ interface RealCampaign {
   updated_at?: string;
   rejection_reason?: string;
   buttons?: DynamicButton[];
-  ad_medium?: "naver_talktalk" | "sms";
   desired_recipients?: string | null;
   // 새로운 개별 컬럼들
   target_age_groups?: string[];

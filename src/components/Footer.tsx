@@ -17,11 +17,11 @@ export default function Footer() {
             className="footer-landing-logo-img"
           />
           <div className="footer-landing-links">
-            <Link href="#" className="footer-landing-terms">
+            <Link href="/terms" className="footer-landing-terms">
               서비스 이용약관
             </Link>
             <span className="footer-landing-divider">|</span>
-            <Link href="#" className="footer-landing-privacy">
+            <Link href="/privacy" className="footer-landing-privacy">
               개인정보처리방침
             </Link>
           </div>

@@ -22,7 +22,6 @@ export interface CreateCampaignRequest {
   title: string;
   content: string;
   imageUrl?: string | null;
-  adMedium: "naver_talktalk" | "sms";
   sendPolicy: "realtime" | "batch";
   validityStartDate?: string | null;
   validityEndDate?: string | null;

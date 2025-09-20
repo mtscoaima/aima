@@ -24,7 +24,6 @@ interface RealCampaign {
   updated_at?: string;
   rejection_reason?: string;
   buttons?: DynamicButton[];
-  ad_medium?: "naver_talktalk" | "sms";
   desired_recipients?: string | null;
   // 새로운 개별 컬럼들
   target_age_groups?: string[];
@@ -466,20 +465,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                         <span className="text-sm text-gray-900">{formatDate(campaign.created_at)}</span>
                       </div>
 
-                                             {/* 광고매체 */}
-                       <div className="flex items-center justify-between">
-                         <span className="text-sm font-medium text-gray-700">광고매체</span>
-                         <span className="text-sm text-gray-900">
-                           {(() => {
-                             const adMedium = campaign.ad_medium;
-                             if (adMedium === 'naver_talktalk') return '네이버톡톡';
-                             if (adMedium === 'sms') return '문자메시지';
-                             return '네이버톡톡'; // 기본값
-                           })()}
-                         </span>
-                       </div>
-
-                                             {/* 성별 */}
+                       {/* 성별 */}
                        <div className="flex items-center justify-between">
                          <span className="text-sm font-medium text-gray-700">성별</span>
                          <span className="text-sm text-gray-900">

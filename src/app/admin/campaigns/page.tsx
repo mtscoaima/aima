@@ -37,7 +37,6 @@ interface Campaign {
   schedule_days_of_week: number[];
   template_id?: number;
   buttons?: DynamicButton[];
-  ad_medium?: "naver_talktalk" | "sms";
   desired_recipients?: string;
   // 새로운 개별 컬럼들
   target_age_groups?: string[];
@@ -429,7 +428,6 @@ export default function CampaignsPage() {
       updated_at: campaign.updated_at,
       rejection_reason: campaign.rejection_reason,
       buttons: campaign.buttons,
-      ad_medium: campaign.ad_medium,
       desired_recipients: campaign.desired_recipients,
       // 새로운 개별 컬럼들
       target_age_groups: campaign.target_age_groups,

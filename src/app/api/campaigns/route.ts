@@ -29,7 +29,6 @@ interface CreateCampaignRequest {
   title?: string;
   content: string;
   imageUrl: string;
-  adMedium: "naver_talktalk" | "sms";
   sendPolicy: "realtime" | "batch";
   validityStartDate?: string;
   validityEndDate?: string;
@@ -123,8 +122,7 @@ export async function POST(request: NextRequest) {
     if (
       !campaignData.content ||
       !campaignData.imageUrl ||
-      !campaignData.sendPolicy ||
-      !campaignData.adMedium
+      !campaignData.sendPolicy
     ) {
       return NextResponse.json(
         { success: false, message: "필수 정보가 누락되었습니다." },
@@ -306,16 +304,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 생성된 템플릿의 template_code 업데이트
-      // ad_medium을 기반으로 적절한 템플릿 코드 생성
-      const adMediumMapping: { [key: string]: string } = {
-        'naver_talktalk': '결합메시지',
-        'sms': '문자메시지',
-        'kakao': '카카오메시지',
-        'email': '이메일'
-      };
-      
-      const templateCodePrefix = adMediumMapping[campaignData.adMedium] || '결합메시지';
-      const templateCode = `${templateCodePrefix}-${newTemplate.id}`;
+      const templateCode = `결합메시지-${newTemplate.id}`;
 
       // template_code 업데이트
       const { error: updateError } = await supabase
@@ -401,7 +390,6 @@ export async function POST(request: NextRequest) {
         campaignData.sendPolicy === "batch" && campaignData.scheduledSendTime
           ? campaignData.scheduledSendTime + ":00"
           : cardTimeEnd ? cardTimeEnd + ":00" : null,
-      ad_medium: campaignData.adMedium,
       // 새로운 데이터베이스 컬럼들
       send_policy_type: campaignData.sendPolicy,
       validity_start_date: campaignData.validityStartDate ? new Date(campaignData.validityStartDate).toISOString().split('T')[0] : null,

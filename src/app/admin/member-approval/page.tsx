@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import "./styles.css";
+import Pagination from "@/components/Pagination";
 
 interface DocumentInfo {
   fileName: string;
@@ -88,6 +88,10 @@ export default function MemberApprovalPage() {
   const [selectedCompany, setSelectedCompany] = useState<string>("전체");
   const [selectedStatus, setSelectedStatus] = useState<string>("전체");
   const [availableCompanies, setAvailableCompanies] = useState<string[]>([]);
+
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 15;
   
   // 상세보기 모달 상태
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -283,7 +287,18 @@ export default function MemberApprovalPage() {
     }
 
     setFilteredUsers(filtered);
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 리셋
   }, [users, selectedCompany, selectedStatus]);
+
+  // 페이지네이션 데이터
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPageUsers = filteredUsers.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -768,29 +783,17 @@ export default function MemberApprovalPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "status-pending";
-      case "APPROVED":
-        return "status-approved";
-      case "REJECTED":
-        return "status-rejected";
-      default:
-        return "status-pending";
-    }
-  };
 
   return (
     <AdminGuard>
       <AdminHeader onToggleSidebar={toggleSidebar} />
       <AdminSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-      <div className="admin-dashboard">
-        <div className="admin-main">
-          <div className="admin-header">
-            <h1>기업정보 관리</h1>
-            <div className="admin-actions">
-              <button className="btn-secondary">
+      <div className="flex min-h-[calc(100vh-64px)] mt-16 bg-gray-50 text-gray-900">
+        <div className="flex-1 ml-[250px] p-6 bg-gray-50 transition-all duration-300 ease-in-out">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900">기업정보 관리</h1>
+            <div className="flex gap-3">
+              <button className="bg-amber-500 text-white border-none px-6 py-3 rounded-lg font-medium cursor-pointer transition-colors duration-200 hover:bg-amber-600">
                 승인 대기:{" "}
                 {
                   users.filter((user) => user.approval_status === "PENDING")
@@ -802,20 +805,14 @@ export default function MemberApprovalPage() {
           </div>
 
           {/* 검색/필터 섹션 */}
-          <div className="search-filter-section" style={{ marginBottom: "20px", padding: "20px", backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #dee2e6" }}>
-            <div className="filter-row" style={{ display: "flex", gap: "15px", alignItems: "center", flexWrap: "wrap" }}>
-              <div className="filter-group">
-                <label style={{ fontSize: "14px", fontWeight: "500", marginRight: "8px" }}>기업명:</label>
+          <div className="mb-5 p-5 bg-gray-50 rounded-lg border border-gray-300">
+            <div className="flex gap-4 items-center flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">기업명:</label>
                 <select
                   value={selectedCompany}
                   onChange={(e) => setSelectedCompany(e.target.value)}
-                  style={{
-                    padding: "6px 12px",
-                    border: "1px solid #ced4da",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                    backgroundColor: "white"
-                  }}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500"
                 >
                   <option value="전체">전체</option>
                   {availableCompanies.map((company) => (
@@ -826,18 +823,12 @@ export default function MemberApprovalPage() {
                 </select>
               </div>
               
-              <div className="filter-group">
-                <label style={{ fontSize: "14px", fontWeight: "500", marginRight: "8px" }}>검수상태:</label>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">검수상태:</label>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  style={{
-                    padding: "6px 12px",
-                    border: "1px solid #ced4da",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                    backgroundColor: "white"
-                  }}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:border-blue-500"
                 >
                   <option value="전체">전체</option>
                   <option value="등록">등록 (대기)</option>
@@ -846,38 +837,39 @@ export default function MemberApprovalPage() {
                 </select>
               </div>
               
-              <div className="filter-results" style={{ marginLeft: "auto", fontSize: "14px", color: "#6c757d" }}>
+              <div className="ml-auto text-sm text-gray-600">
                 {filteredUsers.length}건 / 전체 {users.length}건
               </div>
             </div>
           </div>
 
           {/* Member Approval Section */}
-          <div className="user-management-section">
-            <div className="section-header">
-              <h2>회원 목록</h2>
-              <p>일반회원의 승인 상태를 관리합니다.</p>
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">회원 목록</h2>
+              <p className="text-gray-600 text-sm leading-relaxed">일반회원의 승인 상태를 관리합니다.</p>
             </div>
 
-            <div className="user-table-container">
-              <table className="user-table">
-                <thead>
+            <div className="overflow-x-auto rounded-lg border border-gray-200 mb-4">
+              <table className="w-full border-collapse bg-white table-fixed">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th>이름</th>
-                    <th>이메일</th>
-                    <th>회사명</th>
-                    <th>승인일자</th>
-                    <th>승인자</th>
-                    <th>상태</th>
-                    <th>관리</th>
+                    <th className="w-[20%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">회사명</th>
+                    <th className="w-[12%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">이름</th>
+                    <th className="w-[8%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">사용자 ID</th>
+                    <th className="w-[22%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">이메일</th>
+                    <th className="w-[12%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">승인일자</th>
+                    <th className="w-[10%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">승인자</th>
+                    <th className="w-[8%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">상태</th>
+                    <th className="w-[8%] px-3 py-4 text-left font-semibold text-sm text-gray-900 border-b border-gray-200 whitespace-nowrap">관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
                       <td
-                        colSpan={7}
-                        style={{ textAlign: "center", padding: "20px" }}
+                        colSpan={8}
+                        className="text-center py-5"
                       >
                         로딩 중...
                       </td>
@@ -885,34 +877,37 @@ export default function MemberApprovalPage() {
                   ) : filteredUsers.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={7}
-                        style={{ textAlign: "center", padding: "20px" }}
+                        colSpan={8}
+                        className="text-center py-5"
                       >
                         조건에 맞는 회원이 없습니다.
                       </td>
                     </tr>
                   ) : (
-                    filteredUsers.map((user) => (
-                      <tr key={user.id}>
-                        <td>{user.name}</td>
-                        <td>{user.email}</td>
-                        <td>{user.company_info?.companyName || "-"}</td>
-                        <td>{user.approvalDate || "-"}</td>
-                        <td>{user.approver || "-"}</td>
-                        <td>
+                    currentPageUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.company_info?.companyName || "-"}</td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.name}</td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.id}</td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.email}</td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.approvalDate || "-"}</td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.approver || "-"}</td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">
                           <span
-                            className={`status-badge ${getStatusBadge(
-                              user.approval_status
-                            )}`}
+                            className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium border whitespace-nowrap ${
+                              user.approval_status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              user.approval_status === 'APPROVED' ? 'bg-green-50 text-green-700 border-green-200' :
+                              user.approval_status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}
                           >
                             {getStatusText(user.approval_status)}
                           </span>
                         </td>
-                        <td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">
                           <button
-                            className="btn-edit"
+                            className="bg-blue-600 text-white border-none px-3 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200 whitespace-nowrap w-full max-w-[90px]"
                             onClick={() => handleDetailClick(user)}
-                            style={{ fontSize: "12px", padding: "4px 8px" }}
                           >
                             상세
                           </button>
@@ -924,8 +919,21 @@ export default function MemberApprovalPage() {
               </table>
             </div>
 
-            <div className="table-footer">
-              <p>
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex justify-center">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredUsers.length}
+                  onPageChange={handlePageChange}
+                  className="member-approval-pagination"
+                />
+              </div>
+            )}
+
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-600 italic">
                 * 일반회원 승인은 관리자 권한이 필요합니다. 승인 후 해당 회원은
                 시스템을 이용할 수 있습니다.
               </p>
@@ -936,65 +944,65 @@ export default function MemberApprovalPage() {
 
       {/* 상세보기 모달 */}
       {showDetailModal && selectedUser && (
-        <div className="modal-overlay" onClick={closeDetailModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[9999]" onClick={closeDetailModal}>
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-[90%] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* 모달 헤더 */}
-            <div className="modal-header">
-              <h2>사업자 정보 상세</h2>
+            <div className="px-6 py-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+              <h2 className="text-xl font-semibold text-gray-900">사업자 정보 상세</h2>
               <button
                 onClick={closeDetailModal}
-                className="modal-close"
+                className="bg-transparent border-none text-2xl font-bold text-gray-600 cursor-pointer p-0 w-8 h-8 flex items-center justify-center rounded transition-all duration-200 hover:text-gray-900 hover:bg-gray-200"
               >
                 ×
               </button>
             </div>
 
             {/* 모달 내용 */}
-            <div className="modal-body">
+            <div className="p-6">
               {/* 신청자 정보 */}
-              <div className="modal-section applicant-info">
-                <h3>신청자 정보</h3>
-                <div className="modal-grid">
-                  <div className="modal-field">
-                    <label>이름</label>
-                    <div className="value">{selectedUser.name}</div>
+              <div className="mb-6 p-4 rounded-lg border border-gray-200 bg-gray-50">
+                <h3 className="text-base font-semibold text-gray-900 mb-4">신청자 정보</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">이름</label>
+                    <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.name}</div>
                   </div>
-                  <div className="modal-field">
-                    <label>이메일</label>
-                    <div className="value">{selectedUser.email}</div>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">이메일</label>
+                    <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.email}</div>
                   </div>
-                  <div className="modal-field">
-                    <label>연락처</label>
-                    <div className="value">{formatPhoneNumber(selectedUser.phone_number || "")}</div>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">연락처</label>
+                    <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{formatPhoneNumber(selectedUser.phone_number || "")}</div>
                   </div>
-                  <div className="modal-field">
-                    <label>가입일</label>
-                    <div className="value">{formatDate(selectedUser.created_at)}</div>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">가입일</label>
+                    <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{formatDate(selectedUser.created_at)}</div>
                   </div>
                 </div>
               </div>
 
               {/* 사업자 정보 */}
-              <div className="modal-section business-info">
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <h3>사업자 정보</h3>
-                  <div className="edit-actions">
+              <div className="mb-6 p-4 rounded-lg border border-gray-200 bg-blue-50">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">사업자 정보</h3>
+                  <div className="flex gap-2 items-center">
                     {!editMode ? (
-                      <button className="btn-outline" onClick={() => setEditMode(true)}>정보 수정</button>
+                      <button className="bg-white text-gray-700 border border-gray-300 px-3 py-2 rounded-md text-xs cursor-pointer hover:bg-gray-50" onClick={() => setEditMode(true)}>정보 수정</button>
                     ) : (
                       <>
-                        <button className="btn-outline" onClick={() => { setEditMode(false); setEditedCompanyInfo(selectedUser?.company_info || { companyName: "" }); setEditedTaxInfo(selectedUser?.tax_invoice_info || {}); }}>취소</button>
-                        <button className="btn-primary" style={{padding:'8px 12px', fontSize:12}} onClick={handleSaveCompanyEdits}>저장</button>
+                        <button className="bg-white text-gray-700 border border-gray-300 px-3 py-2 rounded-md text-xs cursor-pointer hover:bg-gray-50" onClick={() => { setEditMode(false); setEditedCompanyInfo(selectedUser?.company_info || { companyName: "" }); setEditedTaxInfo(selectedUser?.tax_invoice_info || {}); }}>취소</button>
+                        <button className="bg-blue-600 text-white border-none px-3 py-2 rounded-md text-xs cursor-pointer hover:bg-blue-700" onClick={handleSaveCompanyEdits}>저장</button>
                       </>
                     )}
                   </div>
                 </div>
-                <div className="modal-grid">
-                  <div className="modal-field">
-                    <label>기업유형</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">기업유형</label>
                     {editMode ? (
                       <select
-                        className="modal-input"
+                        className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500"
                         value={editedCompanyInfo?.businessType || "corporate"}
                         onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessType: e.target.value }))}
                       >
@@ -1002,109 +1010,109 @@ export default function MemberApprovalPage() {
                         <option value="corporate">법인사업자</option>
                       </select>
                     ) : (
-                      <div className="value">
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">
                         {selectedUser.company_info?.businessType === "individual" ? "개인사업자" : "법인사업자"}
                       </div>
                     )}
                   </div>
-                  <div className="modal-field">
-                    <label>사업자명</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">사업자명</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedCompanyInfo?.companyName || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), companyName: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedCompanyInfo?.companyName || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), companyName: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.company_info?.companyName || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.company_info?.companyName || "-"}</div>
                     )}
                   </div>
-                  <div className="modal-field">
-                    <label>대표자명</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">대표자명</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedCompanyInfo?.ceoName || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), ceoName: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedCompanyInfo?.ceoName || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), ceoName: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.company_info?.ceoName || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.company_info?.ceoName || "-"}</div>
                     )}
                   </div>
-                  <div className="modal-field">
-                    <label>사업자등록번호</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">사업자등록번호</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedCompanyInfo?.businessNumber || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessNumber: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedCompanyInfo?.businessNumber || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessNumber: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.company_info?.businessNumber || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.company_info?.businessNumber || "-"}</div>
                     )}
                   </div>
-                   <div className="modal-field full-width">
-                     <label>주소</label>
+                   <div className="mb-3 col-span-full">
+                     <label className="block text-xs font-medium text-gray-600 mb-1">주소</label>
                      {editMode ? (
-                       <div style={{ display: 'flex', gap: 8 }}>
-                         <input className="modal-input" style={{ flex: 1 }} value={editedCompanyInfo?.companyAddress || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), companyAddress: e.target.value }))} />
-                         <button type="button" className="btn-outline" onClick={handleSearchAddress}>주소검색</button>
+                       <div className="flex gap-2">
+                         <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500 flex-1" value={editedCompanyInfo?.companyAddress || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), companyAddress: e.target.value }))} />
+                         <button type="button" className="bg-white text-gray-700 border border-gray-300 px-3 py-2 rounded-md text-xs cursor-pointer hover:bg-gray-50" onClick={handleSearchAddress}>주소검색</button>
                        </div>
                      ) : (
-                       <div className="value">{selectedUser.company_info?.companyAddress || "-"}</div>
+                       <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.company_info?.companyAddress || "-"}</div>
                      )}
                    </div>
-                  <div className="modal-field">
-                    <label>업태</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">업태</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedCompanyInfo?.businessCategory || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessCategory: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedCompanyInfo?.businessCategory || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessCategory: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.company_info?.businessCategory || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.company_info?.businessCategory || "-"}</div>
                     )}
                   </div>
-                  <div className="modal-field">
-                    <label>업종</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">업종</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedCompanyInfo?.businessType2 || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessType2: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedCompanyInfo?.businessType2 || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), businessType2: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.company_info?.businessType2 || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.company_info?.businessType2 || "-"}</div>
                     )}
                   </div>
-                  <div className="modal-field full-width">
-                    <label>홈페이지</label>
+                  <div className="mb-3 col-span-full">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">홈페이지</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedCompanyInfo?.homepage || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), homepage: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedCompanyInfo?.homepage || ""} onChange={(e) => setEditedCompanyInfo(prev => ({ ...(prev || { companyName: "" }), homepage: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.company_info?.homepage || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.company_info?.homepage || "-"}</div>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* 세금계산서 담당자 정보 */}
-              <div className="modal-section tax-info">
-                <h3>세금계산서 담당자 정보</h3>
-                <div className="modal-grid">
-                  <div className="modal-field">
-                    <label>담당자명</label>
+              <div className="mb-6 p-4 rounded-lg border border-gray-200 bg-green-50">
+                <h3 className="text-base font-semibold text-gray-900 mb-4">세금계산서 담당자 정보</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">담당자명</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedTaxInfo?.manager || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), manager: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedTaxInfo?.manager || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), manager: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.tax_invoice_info?.manager || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.tax_invoice_info?.manager || "-"}</div>
                     )}
                   </div>
-                  <div className="modal-field">
-                    <label>연락처</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">연락처</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedTaxInfo?.contact || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), contact: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedTaxInfo?.contact || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), contact: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.tax_invoice_info?.contact || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.tax_invoice_info?.contact || "-"}</div>
                     )}
                   </div>
-                  <div className="modal-field">
-                    <label>이메일</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">이메일</label>
                     {editMode ? (
-                      <input className="modal-input" value={editedTaxInfo?.email || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), email: e.target.value }))} />
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:border-blue-500" value={editedTaxInfo?.email || ""} onChange={(e) => setEditedTaxInfo(prev => ({ ...(prev || {}), email: e.target.value }))} />
                     ) : (
-                      <div className="value">{selectedUser.tax_invoice_info?.email || "-"}</div>
+                      <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">{selectedUser.tax_invoice_info?.email || "-"}</div>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* 첨부 문서 */}
-              <div className="modal-section documents-info">
-                <h3>첨부 문서</h3>
-                <div className="modal-grid">
-                  <div className="modal-field full-width">
+              <div className="mb-6 p-4 rounded-lg border border-gray-200 bg-amber-50">
+                <h3 className="text-base font-semibold text-gray-900 mb-4">첨부 문서</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="mb-3 col-span-full">
                     {selectedUser.documents && renderDocuments(selectedUser.documents)}
                   </div>
                 </div>
@@ -1112,10 +1120,10 @@ export default function MemberApprovalPage() {
 
               {/* 반려사유 (반려 상태인 경우에만 표시) */}
               {selectedUser.approval_status === "REJECTED" && (
-                <div className="modal-section rejection-info">
-                  <h3>반려사유</h3>
-                  <div className="modal-field full-width">
-                    <div className="value">
+                <div className="mb-6 p-4 rounded-lg border border-gray-200 bg-red-50">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">반려사유</h3>
+                  <div className="mb-3 col-span-full">
+                    <div className="text-sm text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded min-h-[20px]">
                       {selectedUser.rejectionReason || "반려사유가 기록되지 않았습니다."}
                     </div>
                   </div>
@@ -1123,47 +1131,56 @@ export default function MemberApprovalPage() {
               )}
 
               {/* 승인/반려 액션 */}
-              <div className="modal-section admin-actions">
-                <h3>관리자 액션</h3>
-                <div className="admin-action-container">
+              <div className="mb-6 p-4 rounded-lg border-2 border-gray-300 bg-gray-50 flex flex-col">
+                <h3 className="text-base font-semibold text-gray-900 mb-4">관리자 액션</h3>
+                <div className="flex flex-col gap-6 w-full">
                   {/* 현재 상태 표시 */}
-                  <div className="modal-field">
-                    <label>현재 상태</label>
-                    <div className="value">
-                      <span className={`status-badge ${getStatusBadge(selectedUser.approval_status)}`}>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">현재 상태</label>
+                    <div className="flex items-center w-full px-3 py-2">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium border whitespace-nowrap ${
+                        selectedUser.approval_status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                        selectedUser.approval_status === 'APPROVED' ? 'bg-green-50 text-green-700 border-green-200' :
+                        selectedUser.approval_status === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200' :
+                        'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
                         {getStatusText(selectedUser.approval_status)}
                       </span>
                     </div>
                   </div>
 
                   {/* 반려사유 입력 */}
-                  <div className="admin-field-group">
-                    <label className="admin-field-label" htmlFor="rejection-reason">반려사유 <span className="required">*</span></label>
+                  <div className="flex flex-col gap-3 w-full">
+                    <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="rejection-reason">반려사유 <span className="text-red-500 text-xs">*</span></label>
                     <textarea
                       id="rejection-reason"
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      className="modal-textarea"
+                      className="w-full px-3 py-3 border border-gray-200 rounded text-sm resize-vertical min-h-[80px] focus:outline-none focus:border-blue-500"
                       rows={4}
                       placeholder="반려 시 반드시 사유를 입력해주세요..."
                     />
-                    <small className="help-text">승인 처리 시에는 반려사유가 필요하지 않습니다.</small>
+                    <small className="text-xs text-gray-600 italic mt-1">승인 처리 시에는 반려사유가 필요하지 않습니다.</small>
                   </div>
 
                   {/* 액션 버튼들 */}
-                  <div className="admin-field-group">
-                    <label className="admin-field-label">액션</label>
-                    <div className="action-buttons-container">
-                      <div className="primary-actions">
+                  <div className="flex flex-col gap-3 w-full">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">액션</label>
+                    <div className="flex flex-col gap-3 w-full">
+                      <div className="flex gap-3 w-full">
                         <button
                           onClick={() => {
                             handleStatusChangeWithReason(selectedUser.id, "APPROVED");
                             closeDetailModal();
                           }}
                           disabled={selectedUser.approval_status === "APPROVED"}
-                          className={`action-btn approve-btn ${selectedUser.approval_status === "APPROVED" ? "disabled" : ""}`}
+                          className={`flex items-center justify-center gap-2 px-6 py-3 border-none rounded-lg text-sm font-semibold cursor-pointer transition-all duration-200 flex-1 relative ${
+                            selectedUser.approval_status === "APPROVED"
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed shadow-none transform-none"
+                              : "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md hover:from-green-600 hover:to-green-700 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-200"
+                          }`}
                         >
-                          <span className="btn-icon">✓</span>
+                          <span className="text-base font-bold">✓</span>
                           승인
                         </button>
                         <button
@@ -1176,16 +1193,20 @@ export default function MemberApprovalPage() {
                             closeDetailModal();
                           }}
                           disabled={selectedUser.approval_status === "REJECTED"}
-                          className={`action-btn reject-btn ${selectedUser.approval_status === "REJECTED" ? "disabled" : ""}`}
+                          className={`flex items-center justify-center gap-2 px-6 py-3 border-none rounded-lg text-sm font-semibold cursor-pointer transition-all duration-200 flex-1 relative ${
+                            selectedUser.approval_status === "REJECTED"
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed shadow-none transform-none"
+                              : "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md hover:from-red-600 hover:to-red-700 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-200"
+                          }`}
                         >
-                          <span className="btn-icon">✕</span>
+                          <span className="text-base font-bold">✕</span>
                           반려
                         </button>
                       </div>
-                      <div className="secondary-actions">
+                      <div className="flex justify-center w-full">
                         <button
                           onClick={closeDetailModal}
-                          className="action-btn close-btn"
+                          className="bg-gray-600 text-white border border-gray-600 px-6 py-3 rounded-lg text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-700 hover:-translate-y-0.5"
                         >
                           닫기
                         </button>
