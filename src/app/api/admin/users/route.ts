@@ -624,16 +624,14 @@ export async function DELETE(request: NextRequest) {
     // 관련된 데이터 먼저 삭제 또는 처리
     try {
       // 1. referrals 테이블에서 해당 사용자와 관련된 레코드 확인 및 삭제
-      const { data: referralsData, error: referralsCheckError } = await supabase
+      const { error: referralsCheckError } = await supabase
         .from("referrals")
         .select("id, referrer_id, referred_user_id")
         .or(`referrer_id.eq.${userId},referred_user_id.eq.${userId}`);
 
       if (referralsCheckError) {
         console.error("Error checking referrals:", referralsCheckError);
-      } else {
-        console.log(`Found ${referralsData?.length || 0} referral records for user ${userId}:`, referralsData);
-      }
+      } 
 
       // referrer_id로 참조하는 레코드 삭제
       const { error: deleteReferrerError } = await supabase

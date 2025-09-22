@@ -42,7 +42,7 @@ export default function SystemSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"general" | "menu" | "terms" | "privacy">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "menu" | "terms" | "privacy" | "marketing">("general");
 
   // 설정 상태 관리
   const [settings, setSettings] = useState({
@@ -81,11 +81,18 @@ export default function SystemSettingsPage() {
     version: "1.0"
   });
 
+  const [marketingData, setMarketingData] = useState<TermsData>({
+    title: "마케팅 정보 수신 동의",
+    content: "",
+    version: "1.0"
+  });
+
   // 컴포넌트 마운트 시 시스템 설정 로드
   useEffect(() => {
     loadSystemSettings();
     loadTermsData();
     loadPrivacyData();
+    loadMarketingData();
   }, []);
 
   const loadSystemSettings = async () => {
@@ -217,6 +224,36 @@ export default function SystemSettingsPage() {
     }
   };
 
+  // 마케팅 동의 데이터 로드
+  const loadMarketingData = async () => {
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) return;
+
+      const response = await fetch("/api/admin/terms?type=MARKETING_CONSENT", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setMarketingData({
+            id: result.data.id,
+            title: result.data.title,
+            content: result.data.content,
+            version: result.data.version
+          });
+        }
+      }
+    } catch (error) {
+      console.error("마케팅 동의 데이터 로드 오류:", error);
+    }
+  };
+
   const handleSaveSettings = async () => {
     try {
       setIsSaving(true);
@@ -330,6 +367,42 @@ export default function SystemSettingsPage() {
     }
   };
 
+  // 마케팅 동의 저장
+  const handleSaveMarketing = async () => {
+    try {
+      setIsSaving(true);
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      const response = await fetch("/api/admin/terms", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "MARKETING_CONSENT",
+          ...marketingData
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "마케팅 동의서 저장에 실패했습니다.");
+      }
+
+      alert("마케팅 동의서가 성공적으로 저장되었습니다.");
+    } catch (error) {
+      console.error("마케팅 동의서 저장 오류:", error);
+      alert(error instanceof Error ? error.message : "마케팅 동의서 저장에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleGenerateApiKey = () => {
     // TODO: 새 API 키 생성 로직
     const newApiKey =
@@ -375,6 +448,12 @@ export default function SystemSettingsPage() {
               onClick={() => setActiveTab("privacy")}
             >
               개인정보처리방침
+            </button>
+            <button
+              className={`tm-tab-btn ${activeTab === "marketing" ? "active" : ""}`}
+              onClick={() => setActiveTab("marketing")}
+            >
+              마케팅 동의
             </button>
           </div>
 
@@ -888,6 +967,59 @@ export default function SystemSettingsPage() {
                       disabled={isSaving}
                     >
                       {isSaving ? "저장 중..." : "개인정보처리방침 저장"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 마케팅 동의 설정 탭 */}
+            {activeTab === "marketing" && (
+              <div className="tab-content">
+                <div className="settings-section">
+                  <div className="section-header">
+                    <h2>마케팅 동의 설정</h2>
+                    <p>마케팅 정보 수신 동의서를 관리합니다.</p>
+                  </div>
+
+                  <div className="setting-item">
+                    <label className="setting-label">동의서 제목</label>
+                    <input
+                      type="text"
+                      className="setting-input"
+                      value={marketingData.title}
+                      onChange={(e) => setMarketingData({...marketingData, title: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="setting-item">
+                    <label className="setting-label">버전</label>
+                    <input
+                      type="text"
+                      className="setting-input"
+                      value={marketingData.version}
+                      onChange={(e) => setMarketingData({...marketingData, version: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="setting-item">
+                    <label className="setting-label">동의서 내용</label>
+                    <textarea
+                      className="setting-textarea"
+                      rows={15}
+                      value={marketingData.content}
+                      onChange={(e) => setMarketingData({...marketingData, content: e.target.value})}
+                      placeholder="마케팅 정보 수신 동의서 내용을 입력하세요..."
+                    />
+                  </div>
+
+                  <div className="settings-actions">
+                    <button
+                      className="btn-save-settings"
+                      onClick={handleSaveMarketing}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "저장 중..." : "마케팅 동의서 저장"}
                     </button>
                   </div>
                 </div>

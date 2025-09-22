@@ -42,7 +42,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, type }) => {
 
       // 제목 처리를 먼저 수행 (테이블 처리 전에)
       formattedSection = formattedSection
-        .replace(/^###\s*(\d+)\.\s*(.+)$/gm, '<h3 class="text-lg font-semibold mb-3 mt-12 text-blue-700">$1. $2</h3>')
+        .replace(/^###\s*(.+)$/gm, '<h3 class="text-lg font-semibold mb-3 mt-12 text-blue-700">$1</h3>')
         .replace(/^#\s+(.+)$/gm, '<h1 class="text-2xl font-bold mb-6 mt-8 first:mt-0 text-gray-900">$1</h1>')
         .replace(/^##\s+(.+)$/gm, '<h2 class="text-xl font-bold mb-2 mt-6 text-gray-800">$1</h2>');
 
