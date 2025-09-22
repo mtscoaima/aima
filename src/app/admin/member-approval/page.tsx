@@ -28,6 +28,7 @@ interface UserDocuments {
 
 interface User {
   id: string;
+  userId: string;
   name: string;
   email: string;
   phone_number: string;
@@ -219,6 +220,7 @@ export default function MemberApprovalPage() {
         const processedUsers: User[] = (result.users || []).map(
           (user: Record<string, unknown>) => ({
               id: (user.id as number).toString(),
+              userId: (user.userId as string) || "",
               name: (user.name as string) || "",
               email: (user.email as string) || "",
               phone_number: (user.phone_number as string) || "",
@@ -888,7 +890,7 @@ export default function MemberApprovalPage() {
                       <tr key={user.id} className="hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
                         <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.company_info?.companyName || "-"}</td>
                         <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.name}</td>
-                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.id}</td>
+                        <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.userId}</td>
                         <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.email}</td>
                         <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.approvalDate || "-"}</td>
                         <td className="px-3 py-4 text-sm text-gray-900 border-b border-gray-50 align-middle overflow-hidden text-ellipsis">{user.approver || "-"}</td>
