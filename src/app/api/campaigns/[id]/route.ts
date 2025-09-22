@@ -230,7 +230,7 @@ export async function PATCH(
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { name, requestApproval, cancelApprovalRequest, updateTargetCriteria, status } = body;
+    const { name, requestApproval, cancelApprovalRequest, updateTargetCriteria, status, ...updateData } = body;
 
     // 승인 요청인 경우, 승인 요청 취소인 경우, 타깃 조건 수정인 경우, 이름 수정인 경우 구분
     if (requestApproval) {
@@ -461,63 +461,93 @@ export async function PATCH(
       });
     }
 
-    // 이름 수정 처리
-    // 입력 검증
-    if (!name || typeof name !== "string" || !name.trim()) {
-      return NextResponse.json(
-        { success: false, message: "캠페인 이름을 입력해주세요." },
-        { status: 400 }
-      );
-    }
+    // 일반 필드 수정 처리 (name 포함 모든 캠페인 정보)
+    if (Object.keys(updateData).length > 0 || name) {
+      // 캠페인 존재 확인 및 소유자 확인
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("id", campaignId)
+        .eq("user_id", userId) // 본인의 캠페인만 수정 가능
+        .single();
 
-    if (name.trim().length > 100) {
-      return NextResponse.json(
-        { success: false, message: "캠페인 이름은 100자를 초과할 수 없습니다." },
-        { status: 400 }
-      );
-    }
-
-    // 캠페인 존재 확인 및 소유자 확인
-    const { data: campaign, error: campaignError } = await supabase
-      .from("campaigns")
-      .select("id, name, user_id")
-      .eq("id", campaignId)
-      .eq("user_id", userId) // 본인의 캠페인만 수정 가능
-      .single();
-
-    if (campaignError || !campaign) {
-      return NextResponse.json(
-        { success: false, message: "캠페인을 찾을 수 없거나 수정 권한이 없습니다." },
-        { status: 404 }
-      );
-    }
-
-    // 캠페인 이름 업데이트
-    const { error: updateError } = await supabase
-      .from("campaigns")
-      .update({ 
-        name: name.trim(),
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", campaignId)
-      .eq("user_id", userId); // 추가 보안 확인
-
-    if (updateError) {
-      console.error("캠페인 이름 수정 오류:", updateError);
-      return NextResponse.json(
-        { success: false, message: "캠페인 이름 수정에 실패했습니다." },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "캠페인 이름이 성공적으로 수정되었습니다.",
-      data: {
-        id: campaignId,
-        name: name.trim(),
+      if (campaignError || !campaign) {
+        return NextResponse.json(
+          { success: false, message: "캠페인을 찾을 수 없거나 수정 권한이 없습니다." },
+          { status: 404 }
+        );
       }
-    });
+
+      // 승인 완료된 캠페인은 수정 불가
+      if (campaign.status === "APPROVED") {
+        return NextResponse.json(
+          { success: false, message: "승인 완료된 캠페인은 수정할 수 없습니다." },
+          { status: 403 }
+        );
+      }
+
+      // 업데이트할 데이터 준비
+      const finalUpdateData: any = { ...updateData };
+
+      // 이름 처리
+      if (name) {
+        if (typeof name !== "string" || !name.trim()) {
+          return NextResponse.json(
+            { success: false, message: "캠페인 이름을 입력해주세요." },
+            { status: 400 }
+          );
+        }
+
+        if (name.trim().length > 100) {
+          return NextResponse.json(
+            { success: false, message: "캠페인 이름은 100자를 초과할 수 없습니다." },
+            { status: 400 }
+          );
+        }
+
+        finalUpdateData.name = name.trim();
+      }
+
+      // 캠페인 단가 자동 계산
+      const newBudget = finalUpdateData.budget || campaign.budget;
+      const newTotalRecipients = finalUpdateData.total_recipients || campaign.total_recipients;
+
+      if (newBudget && newTotalRecipients) {
+        finalUpdateData.unit_cost = Math.ceil(newBudget / newTotalRecipients);
+      }
+
+      // 업데이트 시간 설정
+      finalUpdateData.updated_at = new Date().toISOString();
+
+      // 캠페인 업데이트
+      const { data: updatedCampaign, error: updateError } = await supabase
+        .from("campaigns")
+        .update(finalUpdateData)
+        .eq("id", campaignId)
+        .eq("user_id", userId) // 추가 보안 확인
+        .select("*")
+        .single();
+
+      if (updateError) {
+        console.error("캠페인 수정 오류:", updateError);
+        return NextResponse.json(
+          { success: false, message: "캠페인 수정에 실패했습니다." },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "캠페인이 성공적으로 수정되었습니다.",
+        campaign: updatedCampaign
+      });
+    }
+
+    // 아무것도 수정할 것이 없는 경우
+    return NextResponse.json(
+      { success: false, message: "수정할 데이터가 없습니다." },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("캠페인 수정 API 오류:", error);
     return NextResponse.json(
@@ -579,7 +609,8 @@ export async function GET(
           content,
           image_url,
           category,
-          template_code
+          template_code,
+          buttons
         )
       `)
       .eq("id", campaignId)
