@@ -195,7 +195,9 @@ export async function PUT(request: NextRequest) {
         title: title,
         content: content,
         version: finalVersion,
-        description: type === 'SERVICE_TERMS' ? '서비스 이용약관' : '개인정보처리방침',
+        description: type === 'SERVICE_TERMS' ? '서비스 이용약관' :
+                     type === 'PRIVACY_POLICY' ? '개인정보처리방침' :
+                     '이벤트 및 광고를 위한 개인정보 추가 수집 및 이용 동의',
         is_active: true,
         required: true,
         created_at: new Date().toISOString(),
