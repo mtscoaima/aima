@@ -128,6 +128,59 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // 기존 활성 약관 확인
+    const { data: existingTerm } = await supabase
+      .from("terms_agreements")
+      .select("id, version, content")
+      .eq("term_type", type)
+      .eq("is_active", true)
+      .single();
+
+    // 버전과 내용이 모두 같은지 확인
+    if (existingTerm) {
+      const currentVersion = version || "1.0";
+      if (existingTerm.version === currentVersion && existingTerm.content === content) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "동일한 버전과 내용으로는 수정할 수 없습니다. 버전을 변경하거나 내용을 수정해주세요."
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 자동 버전 생성: 동일한 버전이 있으면 다음 버전으로 자동 증가
+    let finalVersion = version || "1.0";
+
+    // 기존 버전들 조회하여 다음 버전 번호 계산
+    const { data: allVersions } = await supabase
+      .from("terms_agreements")
+      .select("version")
+      .eq("term_type", type)
+      .order("version", { ascending: false });
+
+    if (allVersions && allVersions.length > 0) {
+      // 버전이 이미 존재하는지 확인
+      const versionExists = allVersions.some(v => v.version === finalVersion);
+
+      if (versionExists) {
+        // 숫자 버전인 경우 자동 증가
+        const versionNumbers = allVersions
+          .map(v => parseFloat(v.version))
+          .filter(v => !isNaN(v))
+          .sort((a, b) => b - a);
+
+        if (versionNumbers.length > 0) {
+          const maxVersion = versionNumbers[0];
+          finalVersion = (maxVersion + 0.1).toFixed(1);
+        } else {
+          // 숫자가 아닌 버전인 경우 타임스탬프 추가
+          finalVersion = `${finalVersion}-${Date.now()}`;
+        }
+      }
+    }
+
     // 기존 약관 비활성화
     await supabase
       .from("terms_agreements")
@@ -141,8 +194,10 @@ export async function PUT(request: NextRequest) {
         term_type: type,
         title: title,
         content: content,
-        version: version || "1.0",
-        description: type === 'SERVICE_TERMS' ? '서비스 이용약관' : '개인정보처리방침',
+        version: finalVersion,
+        description: type === 'SERVICE_TERMS' ? '서비스 이용약관' :
+                     type === 'PRIVACY_POLICY' ? '개인정보처리방침' :
+                     '이벤트 및 광고를 위한 개인정보 추가 수집 및 이용 동의',
         is_active: true,
         required: true,
         created_at: new Date().toISOString(),

@@ -201,7 +201,7 @@ const TermsLayout: React.FC<TermsLayoutProps> = ({ type, data, loading, error })
     <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 브레드크럼 네비게이션 */}
-        <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-8">
+        <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-8 print:hidden">
           <Link href="/" className="hover:text-blue-600 transition-colors">
             홈
           </Link>
@@ -233,7 +233,7 @@ const TermsLayout: React.FC<TermsLayoutProps> = ({ type, data, loading, error })
         </main>
 
         {/* 관련 약관 링크 */}
-        <div className="mb-8 p-6 bg-gray-50 rounded-lg">
+        <div className="mb-8 p-6 bg-gray-50 rounded-lg print:hidden">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">관련 약관</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {type !== 'SERVICE_TERMS' && (
@@ -256,7 +256,7 @@ const TermsLayout: React.FC<TermsLayoutProps> = ({ type, data, loading, error })
         </div>
 
         {/* 문의 정보 */}
-        <div className="p-6 bg-blue-50 rounded-lg mb-8">
+        <div className="p-6 bg-blue-50 rounded-lg mb-8 print:hidden">
           <p className="text-gray-900 font-medium mb-3">이 약관에 대한 문의가 있으시면 고객센터로 연락해 주세요.</p>
           <div className="flex flex-wrap gap-4 text-sm">
             <span className="flex items-center gap-2 text-gray-700">

@@ -407,7 +407,6 @@ export async function POST(request: NextRequest) {
       estimated_total_cost: campaignData.estimatedTotalCost || campaignData.estimatedCost || 0,
       expert_review_requested: campaignData.expertReviewRequested || false,
       expert_review_notes: campaignData.expertReviewNotes,
-      buttons: campaignData.buttons || [],
       gender_ratio: campaignData.genderRatio || {},
       desired_recipients: campaignData.desiredRecipients,
       created_at: kstTime,
@@ -562,7 +561,8 @@ export async function GET(request: NextRequest) {
           content,
           image_url,
           category,
-          template_code
+          template_code,
+          buttons
         )
       `
       )

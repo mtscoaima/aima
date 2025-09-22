@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         const { data: template } = campaign.template_id
           ? await supabase
               .from("message_templates")
-              .select("name, content, image_url")
+              .select("name, content, image_url, buttons")
               .eq("id", campaign.template_id)
               .single()
           : { data: null };

@@ -36,7 +36,6 @@ interface Campaign {
   schedule_timezone: string;
   schedule_days_of_week: number[];
   template_id?: number;
-  buttons?: DynamicButton[];
   desired_recipients?: string;
   // 새로운 개별 컬럼들
   target_age_groups?: string[];
@@ -68,6 +67,7 @@ interface Campaign {
     content?: string;
     image_url?: string;
     category?: string;
+    buttons?: DynamicButton[];
   };
 }
 
@@ -427,7 +427,7 @@ export default function CampaignsPage() {
       created_at: campaign.created_at,
       updated_at: campaign.updated_at,
       rejection_reason: campaign.rejection_reason,
-      buttons: campaign.buttons,
+      buttons: campaign.message_templates?.buttons,
       desired_recipients: campaign.desired_recipients,
       // 새로운 개별 컬럼들
       target_age_groups: campaign.target_age_groups,
