@@ -487,7 +487,32 @@ export async function PATCH(
       }
 
       // 업데이트할 데이터 준비
-      const finalUpdateData: any = { ...updateData };
+      interface CampaignUpdateData {
+        name?: string;
+        description?: string;
+        budget?: number;
+        total_recipients?: number;
+        schedule_start_date?: string;
+        schedule_end_date?: string;
+        desired_recipients?: string;
+        target_age_groups?: string[];
+        target_locations_detailed?: Array<{ city: string; districts: string[] } | string>;
+        gender_ratio?: { male: number; female: number };
+        card_amount_max?: number;
+        card_time_start?: string;
+        card_time_end?: string;
+        target_industry_top_level?: string;
+        target_industry_specific?: string;
+        unit_cost?: number;
+        estimated_total_cost?: number;
+        expert_review_requested?: boolean;
+        expert_review_notes?: string;
+        template_id?: number | null;
+        updated_at?: string;
+        [key: string]: unknown; // 추가 필드 허용
+      }
+
+      const finalUpdateData: CampaignUpdateData = { ...updateData };
 
       // 이름 처리
       if (name) {
