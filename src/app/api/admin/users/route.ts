@@ -621,6 +621,55 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // 관련된 데이터 먼저 삭제 또는 처리
+    try {
+      // 1. referrals 테이블에서 해당 사용자와 관련된 레코드 확인 및 삭제
+      const { data: referralsData, error: referralsCheckError } = await supabase
+        .from("referrals")
+        .select("id, referrer_id, referred_user_id")
+        .or(`referrer_id.eq.${userId},referred_user_id.eq.${userId}`);
+
+      if (referralsCheckError) {
+        console.error("Error checking referrals:", referralsCheckError);
+      } else {
+        console.log(`Found ${referralsData?.length || 0} referral records for user ${userId}:`, referralsData);
+      }
+
+      // referrer_id로 참조하는 레코드 삭제
+      const { error: deleteReferrerError } = await supabase
+        .from("referrals")
+        .delete()
+        .eq("referrer_id", userId);
+
+      if (deleteReferrerError) {
+        console.error("Error deleting referrer records:", deleteReferrerError);
+      }
+
+      // referred_user_id로 참조하는 레코드 삭제
+      const { error: deleteReferredError } = await supabase
+        .from("referrals")
+        .delete()
+        .eq("referred_user_id", userId);
+
+      if (deleteReferredError) {
+        console.error("Error deleting referred records:", deleteReferredError);
+      }
+
+      // 2. rewards 테이블에서 해당 사용자와 관련된 레코드 삭제 (있는 경우)
+      await supabase
+        .from("rewards")
+        .delete()
+        .eq("user_id", userId);
+
+      // 3. 기타 관련 테이블들 처리 (필요한 경우)
+      // transactions, notifications 등은 CASCADE DELETE가 설정되어 있거나
+      // 사용자 삭제 시 유지해야 할 수도 있으므로 확인 필요
+
+    } catch (relationError) {
+      console.error("Error deleting related records:", relationError);
+      // 관련 레코드 삭제 실패는 경고만 하고 계속 진행
+    }
+
     // 사용자 삭제
     const { error: deleteError } = await supabase
       .from("users")
