@@ -6254,3 +6254,72 @@ body .landing-root .main-content {
   transform: translateY(-10px);
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
+
+/* 인쇄 시 헤더와 푸터 숨기기 */
+@media print {
+  /* 네비게이션 헤더 숨기기 */
+  header,
+  nav[role="navigation"],
+  .navigation,
+  .header,
+  .navbar,
+  .nav-container {
+    display: none !important;
+  }
+
+  /* 푸터 숨기기 */
+  footer,
+  .footer,
+  .footer-container {
+    display: none !important;
+  }
+
+  /* 브레드크럼 네비게이션도 숨기기 (약관 페이지용) */
+  nav.flex.items-center.space-x-2,
+  .breadcrumb {
+    display: none !important;
+  }
+
+  /* 인쇄 버튼 숨기기 (이미 print:hidden 클래스가 있지만 추가 보장) */
+  .print\\:hidden,
+  button[aria-label*="인쇄"],
+  .print-button {
+    display: none !important;
+  }
+
+  /* 페이지 여백 및 크기 설정 */
+  @page {
+    margin: 2cm;
+    size: A4;
+  }
+
+  /* 본문 스타일 조정 */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+
+  /* 링크 색상 조정 */
+  a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+
+  /* 페이지 브레이크 제어 */
+  h1, h2, h3 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  p {
+    page-break-inside: avoid;
+    orphans: 2;
+    widows: 2;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+}
