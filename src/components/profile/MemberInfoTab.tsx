@@ -19,6 +19,13 @@ interface UserProfileData {
   [key: string]: string | boolean | object | undefined;
 }
 
+interface PendingChanges {
+  email?: string;
+  phoneNumber?: string;
+  smsMarketing?: boolean;
+  emailMarketing?: boolean;
+}
+
 interface MemberInfoTabProps {
   userData: UserProfileData;
   onUserDataUpdate: (newUserData: Partial<UserProfileData>) => void;
@@ -38,10 +45,13 @@ export default function MemberInfoTab({
   // 휴대폰 변경 관련 상태 - 부모에서 이동
   const [isPhoneChangeVerificationLoading, setIsPhoneChangeVerificationLoading] = useState(false);
 
-  // 이메일 수정 관련 상태
+  // 수정 관련 상태
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
   const [editingEmail, setEditingEmail] = useState("");
-  const [isEmailSaving, setIsEmailSaving] = useState(false);
-  const [showEmailButtons, setShowEmailButtons] = useState(false);
+  const [editingSmsMarketing, setEditingSmsMarketing] = useState<boolean | undefined>(undefined);
+  const [editingEmailMarketing, setEditingEmailMarketing] = useState<boolean | undefined>(undefined);
+  const [pendingPhoneNumber, setPendingPhoneNumber] = useState<string | null>(null);
+  const [isSavingChanges, setIsSavingChanges] = useState(false);
 
   // 회원탈퇴 관련 상태 - 부모에서 이동
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
@@ -377,28 +387,23 @@ export default function MemberInfoTab({
     }
   };
 
-  // 휴대폰 번호 업데이트 처리 - 부모에서 이동
+  // 휴대폰 번호 업데이트 처리 - 부모에서 이동 (임시 저장으로 변경)
   const handlePhoneUpdate = useCallback(async (newPhoneNumber: string) => {
-    try {
-      // 휴대폰 번호 업데이트
-      await updateUserInfo({
-        phoneNumber: newPhoneNumber,
-      });
-
-      // 로컬 상태 업데이트
-      onUserDataUpdate({
-        phoneNumber: newPhoneNumber,
-      });
-
-      alert("휴대폰 번호가 성공적으로 변경되었습니다.");
-
-      // 로딩 상태 초기화
-      setIsPhoneChangeVerificationLoading(false);
-    } catch (error) {
-      console.error("휴대폰 번호 변경 실패:", error);
-      alert("휴대폰 번호 변경에 실패했습니다. 다시 시도해주세요.");
+    // 현재 휴대폰 번호와 다른 번호인지 확인
+    if (newPhoneNumber === userData.phoneNumber) {
+      alert("현재 휴대폰 번호와 동일합니다. 다른 번호로 인증해주세요.");
+      return;
     }
-  }, [onUserDataUpdate]);
+
+    // 임시 상태에 저장 (수정 버튼 클릭 시 실제 저장)
+    setPendingPhoneNumber(newPhoneNumber);
+    setPendingChanges(prev => ({ ...prev, phoneNumber: newPhoneNumber }));
+
+    alert("휴대폰 번호 인증이 완료되었습니다. 수정 버튼을 눌러 저장해주세요.");
+
+    // 로딩 상태 초기화
+    setIsPhoneChangeVerificationLoading(false);
+  }, [userData.phoneNumber]);
 
   // 본인인증을 통한 휴대폰 변경 - 부모에서 이동
   const handlePhoneChangeClick = async () => {
@@ -512,12 +517,6 @@ export default function MemberInfoTab({
         // 본인인증 성공
         const { userInfo } = event.data;
 
-        // 현재 휴대폰 번호와 다른 번호인지 확인
-        if (userInfo.phoneNumber === userData.phoneNumber) {
-          alert("현재 휴대폰 번호와 동일합니다. 다른 번호로 인증해주세요.");
-          return;
-        }
-
         // 휴대폰 번호 업데이트
         handlePhoneUpdate(userInfo.phoneNumber);
       } else if (event.data.type === "inicis-auth-failed") {
@@ -541,91 +540,135 @@ export default function MemberInfoTab({
     }
   }, [userData]);
 
-  const handleMarketingConsentChange = async (
+  const handleMarketingConsentChange = (
     type: "sms" | "email",
     checked: boolean
   ) => {
-    const fieldName = type === "sms" ? "smsMarketing" : "emailMarketing";
-    const apiFieldName =
-      type === "sms" ? "smsMarketingConsent" : "emailMarketingConsent";
-
-    // 로컬 상태 업데이트
-    onUserDataUpdate({
-      [fieldName]: checked,
-    });
-
-    // API 호출로 즉시 업데이트
-    try {
-      await updateUserInfo({
-        [apiFieldName]: checked,
-      });
-    } catch (error) {
-      console.error(`${type} 마케팅 동의 업데이트 실패:`, error);
-      // 실패 시 이전 상태로 되돌리기
-      onUserDataUpdate({
-        [fieldName]: !checked,
-      });
-      alert(`${type} 마케팅 동의 설정 변경에 실패했습니다.`);
+    // 임시 상태에 저장 (수정 버튼 클릭 시 실제 저장)
+    if (type === "sms") {
+      setEditingSmsMarketing(checked);
+      setPendingChanges(prev => ({ ...prev, smsMarketing: checked }));
+    } else {
+      setEditingEmailMarketing(checked);
+      setPendingChanges(prev => ({ ...prev, emailMarketing: checked }));
     }
   };
 
-  // 컴포넌트 마운트 시 이메일 값 초기화
+  // 컴포넌트 마운트 시 초기화
   useEffect(() => {
     setEditingEmail(userData.email || "");
-  }, [userData.email]);
+    setEditingSmsMarketing(userData.smsMarketing);
+    setEditingEmailMarketing(userData.emailMarketing);
+    setPendingPhoneNumber(null);
+    setPendingChanges({});
+  }, [userData]);
 
-  // 이메일 input 포커스/변경 핸들러
-  const handleEmailFocus = () => {
-    // 포커스 시 특별한 처리가 필요하다면 여기에 추가
-  };
-
+  // 이메일 변경 핸들러
   const handleEmailChange = (value: string) => {
     setEditingEmail(value);
-    // 원래 값과 다르면 버튼 표시
-    if (value !== userData.email) {
-      setShowEmailButtons(true);
-    } else {
-      setShowEmailButtons(false);
+    // 임시 상태에 저장
+    setPendingChanges(prev => ({ ...prev, email: value }));
+  };
+
+  // 변경사항이 있는지 확인
+  const hasChanges = () => {
+    return Object.keys(pendingChanges).length > 0 || pendingPhoneNumber !== null;
+  };
+
+  // 통합 수정 처리
+  const handleSaveChanges = async () => {
+    if (!hasChanges()) {
+      alert("변경된 내용이 없습니다.");
+      return;
     }
-  };
 
-  const handleEmailCancel = () => {
-    setEditingEmail(userData.email || "");
-    setShowEmailButtons(false);
-  };
-
-  const handleEmailSave = async () => {
     // 이메일 유효성 검사
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!editingEmail.trim()) {
-      alert("이메일 주소를 입력해주세요.");
-      return;
-    }
-    if (!emailRegex.test(editingEmail.trim())) {
-      alert("올바른 이메일 형식을 입력해주세요.");
-      return;
+    if (pendingChanges.email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!pendingChanges.email.trim()) {
+        alert("이메일 주소를 입력해주세요.");
+        return;
+      }
+      if (!emailRegex.test(pendingChanges.email.trim())) {
+        alert("올바른 이메일 형식을 입력해주세요.");
+        return;
+      }
     }
 
-    setIsEmailSaving(true);
+    setIsSavingChanges(true);
+
     try {
-      // API 호출로 이메일 업데이트
-      await updateUserInfo({
-        email: editingEmail.trim(),
-      });
+      // API 호출을 위한 데이터 준비
+      const updateData: {
+        email?: string;
+        phoneNumber?: string;
+        smsMarketingConsent?: boolean;
+        emailMarketingConsent?: boolean;
+      } = {};
+
+      if (pendingChanges.email !== undefined) {
+        updateData.email = pendingChanges.email.trim();
+      }
+
+      if (pendingChanges.phoneNumber !== undefined) {
+        updateData.phoneNumber = pendingChanges.phoneNumber;
+      }
+
+      if (pendingChanges.smsMarketing !== undefined) {
+        updateData.smsMarketingConsent = pendingChanges.smsMarketing;
+      }
+
+      if (pendingChanges.emailMarketing !== undefined) {
+        updateData.emailMarketingConsent = pendingChanges.emailMarketing;
+      }
+
+      // API 호출
+      await updateUserInfo(updateData);
 
       // 로컬 상태 업데이트
-      onUserDataUpdate({
-        email: editingEmail.trim(),
-      });
+      const localUpdateData: {
+        email?: string;
+        phoneNumber?: string;
+        smsMarketing?: boolean;
+        emailMarketing?: boolean;
+      } = {};
+      if (pendingChanges.email !== undefined) {
+        localUpdateData.email = pendingChanges.email.trim();
+      }
+      if (pendingChanges.phoneNumber !== undefined) {
+        localUpdateData.phoneNumber = pendingChanges.phoneNumber;
+      }
+      if (pendingChanges.smsMarketing !== undefined) {
+        localUpdateData.smsMarketing = pendingChanges.smsMarketing;
+      }
+      if (pendingChanges.emailMarketing !== undefined) {
+        localUpdateData.emailMarketing = pendingChanges.emailMarketing;
+      }
 
-      setShowEmailButtons(false);
-      alert("이메일 주소가 성공적으로 변경되었습니다.");
+      onUserDataUpdate(localUpdateData);
+
+      // 임시 상태 초기화
+      setPendingChanges({});
+      setPendingPhoneNumber(null);
+      setEditingSmsMarketing(undefined);
+      setEditingEmailMarketing(undefined);
+
+      alert("회원 정보가 성공적으로 업데이트되었습니다.");
     } catch (error) {
-      console.error("이메일 변경 실패:", error);
-      alert("이메일 주소 변경에 실패했습니다. 다시 시도해주세요.");
+      console.error("회원 정보 업데이트 실패:", error);
+      alert("회원 정보 업데이트에 실패했습니다. 다시 시도해주세요.");
     } finally {
-      setIsEmailSaving(false);
+      setIsSavingChanges(false);
     }
+  };
+
+  // 변경사항 취소
+  const handleCancelChanges = () => {
+    setEditingEmail(userData.email || "");
+    setEditingSmsMarketing(userData.smsMarketing);
+    setEditingEmailMarketing(userData.emailMarketing);
+    setPendingChanges({});
+    setPendingPhoneNumber(null);
   };
 
   return (
@@ -668,7 +711,12 @@ export default function MemberInfoTab({
                 <td className="py-4 px-4 text-sm text-gray-900">
                   <div className="flex items-center">
                     <span>
-                      {userData.phoneNumber
+                      {pendingPhoneNumber
+                        ? pendingPhoneNumber.replace(
+                            /(\d{3})(\d{4})(\d{4})/,
+                            "$1-$2-$3"
+                          ) + " (인증 완료)"
+                        : userData.phoneNumber
                         ? userData.phoneNumber.replace(
                             /(\d{3})(\d{4})(\d{4})/,
                             "$1-$2-$3"
@@ -677,7 +725,7 @@ export default function MemberInfoTab({
                     </span>
                     <button
                       onClick={handlePhoneChangeClick}
-                      disabled={isPhoneChangeVerificationLoading}
+                      disabled={isPhoneChangeVerificationLoading || isSavingChanges}
                       className="ml-3 px-3 py-1 bg-gray-500 text-white text-xs rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
                       {isPhoneChangeVerificationLoading
@@ -692,35 +740,14 @@ export default function MemberInfoTab({
                   이메일 주소
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-900">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="email"
-                      value={editingEmail}
-                      onChange={(e) => handleEmailChange(e.target.value)}
-                      onFocus={handleEmailFocus}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      placeholder="이메일 주소를 입력해주세요"
-                      disabled={isEmailSaving}
-                    />
-                    {showEmailButtons && (
-                      <>
-                        <button
-                          onClick={handleEmailSave}
-                          disabled={isEmailSaving}
-                          className="px-3 py-1 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                        >
-                          {isEmailSaving ? "저장 중..." : "저장"}
-                        </button>
-                        <button
-                          onClick={handleEmailCancel}
-                          disabled={isEmailSaving}
-                          className="px-3 py-1 bg-gray-500 text-white text-xs rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                        >
-                          취소
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <input
+                    type="email"
+                    value={editingEmail}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="이메일 주소를 입력해주세요"
+                    disabled={isSavingChanges}
+                  />
                 </td>
               </tr>
               <tr>
@@ -733,10 +760,11 @@ export default function MemberInfoTab({
                       <label className="flex items-center">
                         <input
                           type="checkbox"
-                          checked={userData.smsMarketing || false}
+                          checked={editingSmsMarketing !== undefined ? editingSmsMarketing : userData.smsMarketing || false}
                           onChange={(e) =>
                             handleMarketingConsentChange("sms", e.target.checked)
                           }
+                          disabled={isSavingChanges}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                         <span className="ml-2 text-sm text-gray-700">문자</span>
@@ -744,10 +772,11 @@ export default function MemberInfoTab({
                       <label className="flex items-center">
                         <input
                           type="checkbox"
-                          checked={userData.emailMarketing || false}
+                          checked={editingEmailMarketing !== undefined ? editingEmailMarketing : userData.emailMarketing || false}
                           onChange={(e) =>
                             handleMarketingConsentChange("email", e.target.checked)
                           }
+                          disabled={isSavingChanges}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                         <span className="ml-2 text-sm text-gray-700">
@@ -765,6 +794,26 @@ export default function MemberInfoTab({
             </tbody>
           </table>
         </div>
+
+        {/* 통합 수정 버튼 */}
+        {hasChanges() && (
+          <div className="flex justify-center space-x-3 mt-6 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleCancelChanges}
+              disabled={isSavingChanges}
+              className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSaveChanges}
+              disabled={isSavingChanges}
+              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 disabled:bg-blue-300 disabled:cursor-not-allowed"
+            >
+              {isSavingChanges ? "저장 중..." : "수정 완료"}
+            </button>
+          </div>
+        )}
 
         {/* 회원 탈퇴 링크 */}
         <div className="flex justify-center mt-4">
