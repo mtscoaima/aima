@@ -1,0 +1,214 @@
+# 업종 선택 기능 개선 계획 v2.0
+
+## 두 가지 접근 방법 비교
+
+### 방법 1: 단순 드롭다운 (기존 계획)
+**특징**: 대분류 → 세부업종 2단계 선택
+**장점**:
+- 구현 간단
+- 기존 UI 패턴과 일치
+- 빠른 선택 가능
+
+**단점**:
+- 연도별 데이터 미지원
+- 검색 기능 없음
+- 업종 탐색 기능 제한적
+
+### 방법 2: 업종 탐색기 (연도별 + 검색 + 테이블)
+**특징**: 귀속년도 + 대분류 + 세부업종 + 검색 + 결과 테이블
+**장점**:
+- 연도별 데이터 지원
+- 검색/필터링 기능
+- 상세 정보 확인 가능
+- 업종 코드 직접 확인
+- 향후 확장성 우수
+
+**단점**:
+- 구현 복잡도 높음
+- UI 공간 더 필요
+- 초기 로딩 시간 증가
+
+## 권장 방법: 방법 2 (업종 탐색기)
+
+### 선택 이유
+1. **데이터 정확성**: 연도별 업종 변화 대응 가능
+2. **사용자 경험**: 업종 검색 및 확인 가능
+3. **확장성**: 향후 기능 추가 용이
+4. **완성도**: 실무에 적합한 수준의 기능
+
+## 새로운 구현 계획
+
+### 1단계: 데이터 준비 (연도별 지원)
+
+#### 1-1. 패키지 설치
+```bash
+npm i xlsx
+```
+
+#### 1-2. 데이터 파일 준비
+- 위치: `./data/nts_industry.xlsx`
+- 소스: 홈택스 "업종코드↔표준산업분류 연계표"
+- 필요 열: 귀속년도, 업종코드, 업종명(업태명), 대분류, 중분류, 소분류, 세세분류, 표준산업분류코드
+
+#### 1-3. 변환 스크립트 작성
+- 파일: `scripts/nts-build.mjs`
+- 기능:
+  * 연도별 데이터 구조화
+  * 대분류별 세부업종 그룹핑
+  * 세부업종 라벨: 중분류 > 소분류 > 세세분류
+  * 중복 제거 및 정렬
+- 출력: `./public/data/nts/index.json`
+
+#### 1-4. 스크립트 실행
+```bash
+node scripts/nts-build.mjs
+```
+
+### 2단계: Next.js API 구현
+
+#### 2-1. API 라우트 생성
+- 파일: `src/app/api/nts-industries/route.ts`
+- 기능:
+  * 연도별 데이터 필터링 (?year=2024)
+  * 최신 연도 기본값
+  * 장기 캐시 설정
+
+### 3단계: 업종 탐색기 컴포넌트 구현
+
+#### 3-1. 컴포넌트 생성
+- 파일: `src/components/common/NTSFinder.tsx`
+- 기능:
+  * 귀속년도 선택
+  * 대분류/세부업종 필터링
+  * 결과 테이블 표시
+  * 페이지네이션 (10개씩)
+  * 검색 기능 (옵션)
+
+#### 3-2. UI 구성
+- **상단 필터**: 년도 + 대분류 + 세부업종 드롭다운
+- **결과 테이블**: 업종코드, 업종명, 대분류, 세부업종, 표준산업분류
+- **페이지네이션**: 이전/다음 버튼
+
+### 4단계: 기존 컴포넌트 통합
+
+#### 4-1. 새로운 업종 선택 모달 생성
+- 파일: `src/components/modals/IndustrySelectModal.tsx`
+- 기능:
+  * NTSFinder 컴포넌트 포함
+  * 선택 버튼으로 값 반환
+  * 선택된 업종 미리보기
+
+#### 4-2. TargetMarketingDetail 수정
+- 파일: `src/components/target-marketing/TargetMarketingDetail.tsx`
+- 수정 사항:
+  * 기존 텍스트 입력을 "업종 선택" 버튼으로 교체
+  * IndustrySelectModal 연동
+  * 선택된 업종 표시
+
+#### 4-3. CampaignDetailModal 수정
+- 파일: `src/components/modals/CampaignDetailModal.tsx`
+- 수정 사항:
+  * 편집 모드에서 "업종 선택" 버튼 표시
+  * IndustrySelectModal 연동
+  * 기존 API 호출 로직 유지
+
+## 수정/생성 파일 목록
+
+### 새로 생성할 파일
+1. `scripts/nts-build.mjs` - 연도별 데이터 변환 스크립트
+2. `data/nts_industry.xlsx` - 홈택스 업종 데이터 (연도별)
+3. `src/app/api/nts-industries/route.ts` - 연도별 API 라우트
+4. `src/components/common/NTSFinder.tsx` - 업종 탐색기 컴포넌트
+5. `src/components/modals/IndustrySelectModal.tsx` - 업종 선택 모달
+
+### 수정할 파일
+1. `src/components/target-marketing/TargetMarketingDetail.tsx`
+   - 업종 입력 UI → 업종 선택 버튼 (lines 3483-3508)
+   - IndustrySelectModal 연동
+
+2. `src/components/modals/CampaignDetailModal.tsx`
+   - 편집 모드 업종 UI 교체 (lines 1510-1545)
+   - IndustrySelectModal 연동
+
+### 생성될 파일
+1. `public/data/nts/index.json` - 연도별 업종 데이터
+
+## 구현 순서
+1. 패키지 설치 및 연도별 데이터 준비
+2. nts-build.mjs 스크립트 작성 및 실행
+3. 연도별 API 라우트 구현
+4. NTSFinder 컴포넌트 구현
+5. IndustrySelectModal 구현
+6. TargetMarketingDetail 컴포넌트 수정
+7. CampaignDetailModal 컴포넌트 수정
+8. 테스트 및 검증
+
+## 데이터 구조
+
+### JSON 구조
+```json
+{
+  "years": ["2023", "2024", "2025"],
+  "dataByYear": {
+    "2024": {
+      "year": "2024",
+      "groups": [
+        {
+          "group": "농업·임업 및 어업",
+          "items": [
+            {
+              "code": "011100",
+              "name": "곡물 및 기타 식량작물 재배업",
+              "label": "곡물 및 기타 식량작물 재배업",
+              "ksic": "01110",
+              "upte": "농업"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+### 컴포넌트 Props
+```typescript
+type Item = {
+  code: string;
+  name: string;
+  label?: string;
+  ksic?: string;
+  upte?: string;
+};
+
+type Group = {
+  group: string;
+  items: Item[];
+};
+
+type ApiRes = {
+  years: string[];
+  year: string;
+  groups: Group[];
+};
+```
+
+## 예상 효과
+- **정확성**: 연도별 업종 변화 대응
+- **편의성**: 업종 검색 및 탐색 기능
+- **신뢰성**: 국세청 공식 데이터 활용
+- **확장성**: 검색, 필터링 기능 추가 용이
+- **관리성**: 연 1-2회 데이터 업데이트로 관리
+
+## 주의사항
+- 초기 데이터 크기 고려 (압축/최적화 필요시)
+- 기존 target_industry_top_level, target_industry_specific 필드 호환성 유지
+- 모달 크기 및 반응형 디자인 고려
+- 연도별 업종 코드 변경 히스토리 대응
+
+## 향후 확장 가능 기능
+- 업종별 통계 정보 표시
+- 즐겨찾기 업종 저장
+- 최근 선택 업종 히스토리
+- 업종 추천 시스템
+- 엑셀 내보내기 기능
