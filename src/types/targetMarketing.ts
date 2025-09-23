@@ -47,6 +47,27 @@ export interface TargetMarketingDetailProps {
   shouldRestore?: boolean;
 }
 
+// 위치 관련 새로운 인터페이스
+export interface LocationDistrict {
+  district: string;
+  dongs: string[];
+}
+
+export interface LocationDetail {
+  city: string;
+  districts: LocationDistrict[];
+}
+
+// 단순한 위치 구조 (city, district, dong)
+export interface SimpleLocation {
+  city: string;
+  district: string;
+  dong: string;
+}
+
+// 기존 구조와 새 구조를 모두 지원하는 union 타입
+export type LocationDetailCompatible = LocationDetail | { city: string; districts: string[] } | SimpleLocation | string;
+
 export interface Campaign {
   id: string | number;
   name: string;
@@ -60,7 +81,7 @@ export interface Campaign {
   };
   // 새로운 개별 컬럼들
   target_age_groups?: string[];
-  target_locations_detailed?: Array<{ city: string; districts: string[] } | string>;
+  target_locations_detailed?: LocationDetailCompatible[];
   card_amount_max?: number;
   card_time_start?: string;
   card_time_end?: string;
@@ -98,4 +119,54 @@ export interface Template {
 export interface StructuredRecommendationSection {
   section: string;
   items: string[];
+}
+
+// 타입 가드 함수들
+export function isNewLocationStructure(location: unknown): location is LocationDetail {
+  return location &&
+         typeof location === 'object' &&
+         typeof location.city === 'string' &&
+         Array.isArray(location.districts) &&
+         location.districts.length > 0 &&
+         typeof location.districts[0] === 'object' &&
+         'district' in location.districts[0] &&
+         'dongs' in location.districts[0];
+}
+
+export function isOldLocationStructure(location: unknown): location is { city: string; districts: string[] } {
+  return location &&
+         typeof location === 'object' &&
+         typeof location.city === 'string' &&
+         Array.isArray(location.districts) &&
+         location.districts.length > 0 &&
+         typeof location.districts[0] === 'string';
+}
+
+export function isSimpleLocationStructure(location: unknown): location is SimpleLocation {
+  return location &&
+         typeof location === 'object' &&
+         'city' in location &&
+         'district' in location &&
+         'dong' in location &&
+         typeof location.city === 'string' &&
+         typeof location.district === 'string' &&
+         typeof location.dong === 'string';
+}
+
+// 데이터 변환 함수들
+export function convertToNewLocationStructure(oldLocation: { city: string; districts: string[] }): LocationDetail {
+  return {
+    city: oldLocation.city,
+    districts: oldLocation.districts.map(district => ({
+      district,
+      dongs: ['all'] // 기존 데이터는 동 정보가 없으므로 'all'
+    }))
+  };
+}
+
+export function convertToOldLocationStructure(newLocation: LocationDetail): { city: string; districts: string[] } {
+  return {
+    city: newLocation.city,
+    districts: newLocation.districts.map(d => d.district)
+  };
 }

@@ -13,7 +13,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { saveCampaignDraft, clearCampaignDraft, fileToBase64, type CampaignDraft } from "@/lib/campaignDraft";
 import {
   targetOptions,
-  getDistrictsByCity,
   fetchTopLevelIndustries,
   fetchIndustriesByTopLevel,
 } from "@/lib/targetOptions";
@@ -25,7 +24,9 @@ import {
   DynamicButton,
   TargetMarketingDetailProps,
   Campaign,
-  Template
+  Template,
+  SimpleLocation,
+  isSimpleLocationStructure
 } from "@/types/targetMarketing";
 import {
   useTemplateGeneration,
@@ -118,12 +119,19 @@ function TargetMarketingDetailContent({
   // 타겟 필터 상태들 추가
   const [targetGender, setTargetGender] = useState("all");
   const [targetAge, setTargetAge] = useState<string[]>(["all"]);
-  // 도시/구 선택(추가용)
+  // 도시/구/동 선택(추가용)
   const [targetCity, setTargetCity] = useState("all");
   const [targetDistrict, setTargetDistrict] = useState("all");
-  // 다중 위치 선택 목록
+  const [targetDong, setTargetDong] = useState("all");
+  const [availableCities, setAvailableCities] = useState<Array<{name: string, code: string}>>([]);
+  const [availableDistricts, setAvailableDistricts] = useState<string[]>([]);
+  const [availableDongs, setAvailableDongs] = useState<string[]>([]);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState(false);
+  const [isLoadingDongs, setIsLoadingDongs] = useState(false);
+  // 다중 위치 선택 목록 (동 기준)
   const [selectedLocations, setSelectedLocations] = useState<
-    Array<{ city: string; districts: string[] }>
+    Array<{ city: string; district: string; dong: string }>
   >([]);
   // const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
   // const [targetIndustry, setTargetIndustry] = useState("all");
@@ -266,6 +274,91 @@ function TargetMarketingDetailContent({
     };
   }, [isAgeDropdownOpen]);
 
+  // 동 정보 가져오기 함수
+  const fetchDongs = useCallback(async (city: string, district: string) => {
+    if (!city || !district || city === 'all' || district === 'all') {
+      setAvailableDongs([]);
+      return;
+    }
+
+    setIsLoadingDongs(true);
+    try {
+      const response = await fetch(`/api/locations/dongs?city=${encodeURIComponent(city)}&district=${encodeURIComponent(district)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableDongs(data.dongs || []);
+      } else {
+        setAvailableDongs([]);
+      }
+    } catch (error) {
+      console.error('동 정보 조회 실패:', error);
+      setAvailableDongs([]);
+    } finally {
+      setIsLoadingDongs(false);
+    }
+  }, []);
+
+  // 시/도 목록 로드
+  useEffect(() => {
+    const fetchCities = async () => {
+      setIsLoadingCities(true);
+      try {
+        const response = await fetch('/api/locations/cities');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableCities([{name: '전체', code: 'all'}, ...data.cities]);
+        } else {
+          console.error('시/도 목록 조회 실패:', response.statusText);
+        }
+      } catch (error) {
+        console.error('시/도 목록 조회 실패:', error);
+      } finally {
+        setIsLoadingCities(false);
+      }
+    };
+    fetchCities();
+  }, []);
+
+  // 시/군/구 목록 로드
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (!targetCity || targetCity === 'all') {
+        setAvailableDistricts(['all']);
+        setTargetDistrict('all');
+        return;
+      }
+
+      setIsLoadingDistricts(true);
+      try {
+        const response = await fetch(`/api/locations/districts?city=${encodeURIComponent(targetCity)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableDistricts(['all', ...data.districts]);
+          setTargetDistrict('all');
+        } else {
+          console.error('시/군/구 목록 조회 실패:', response.statusText);
+          setAvailableDistricts(['all']);
+        }
+      } catch (error) {
+        console.error('시/군/구 목록 조회 실패:', error);
+        setAvailableDistricts(['all']);
+      } finally {
+        setIsLoadingDistricts(false);
+      }
+    };
+    fetchDistricts();
+  }, [targetCity]);
+
+  // 구 선택 시 동 정보 로드
+  useEffect(() => {
+    if (targetDistrict && targetDistrict !== 'all') {
+      fetchDongs(targetCity, targetDistrict);
+    } else {
+      setAvailableDongs([]);
+      setTargetDong('all');
+    }
+  }, [targetCity, targetDistrict, fetchDongs]);
+
   // 카드 승인 금액 버튼 클릭 핸들러
   const handleCardAmountButtonClick = (buttonValue: string) => {
     setSelectedAmountButton(buttonValue);
@@ -369,19 +462,6 @@ function TargetMarketingDetailContent({
     }
   }, [cardStartTime, cardEndTime]);
 
-  // 도시 변경시 구/군 옵션 업데이트
-  useEffect(() => {
-    const districts = getDistrictsByCity(targetCity);
-
-    // 현재 선택된 구가 유효한지 확인하고 없으면 첫 번째 옵션으로 설정
-    const validDistrict = districts.find(
-      (option) => option.value === targetDistrict
-    );
-
-    if (!validDistrict && districts.length > 0) {
-      setTargetDistrict(districts[0].value);
-    }
-  }, [targetCity, targetDistrict]);
 
   // 연령 라벨 변환 헬퍼
   const getAgeLabel = (value: string) => {
@@ -391,13 +471,18 @@ function TargetMarketingDetailContent({
 
   // 도시/구 라벨 변환 헬퍼
   const getCityLabel = (value: string) => {
-    const opt = targetOptions.cities.find((c) => c.value === value);
-    return opt ? opt.label : value;
+    const city = availableCities.find((c) => c.code === value);
+    if (!city) return value;
+
+    // 시 제거 (특별시, 광역시, 특별자치시, 특별자치도만 제거, 도는 유지)
+    return city.name
+      .replace(/특별시$/, '')
+      .replace(/광역시$/, '')
+      .replace(/특별자치시$/, '')
+      .replace(/특별자치도$/, '');
   };
   const getDistrictLabel = (city: string, value: string) => {
-    const opts = getDistrictsByCity(city);
-    const opt = opts.find((d) => d.value === value);
-    return opt ? opt.label : value;
+    return value === 'all' ? '전체' : value;
   };
 
   // 연령 추가/삭제
@@ -421,62 +506,43 @@ function TargetMarketingDetailContent({
     setTargetAge((prev) => prev.filter((v) => v !== value));
   };
 
-  // 위치 추가/삭제
-  const MAX_CITIES = 5;
+  // 위치 추가/삭제 (동 기준)
+  const MAX_LOCATIONS = 5;
   const handleAddLocation = () => {
-    if (!targetCity) return;
-    // 전체 도시 선택 시 전역 전체로 대체
+    if (!targetCity || !targetDistrict || !targetDong) return;
+
+    // 전체 선택 시 전역 전체로 대체
     if (targetCity === "all") {
-      setSelectedLocations([{ city: "all", districts: ["all"] }]);
+      setSelectedLocations([{ city: "all", district: "all", dong: "all" }]);
       return;
     }
 
     setSelectedLocations((prev) => {
-      // 기존 도시 엔트리 찾기
-      const idx = prev.findIndex((l) => l.city === targetCity);
-      // 구/군 전체 선택
-      if (targetDistrict === "all") {
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = { city: targetCity, districts: ["all"] };
-          return next;
-        }
-        if (prev.length >= MAX_CITIES) return prev; // 제한
-        return [...prev, { city: targetCity, districts: ["all"] }];
-      }
+      // 최대 개수 제한
+      if (prev.length >= MAX_LOCATIONS) return prev;
 
-      if (idx >= 0) {
-        const entry = prev[idx];
-        // 이미 전체인 경우 유지
-        if (entry.districts.includes("all")) return prev;
-        if (entry.districts.includes(targetDistrict)) return prev;
-        const next = [...prev];
-        next[idx] = { city: targetCity, districts: [...entry.districts, targetDistrict] };
-        return next;
-      }
-      if (prev.length >= MAX_CITIES) return prev; // 제한
-      return [...prev, { city: targetCity, districts: [targetDistrict] }];
+      // 중복 확인
+      const exists = prev.some(loc =>
+        loc.city === targetCity &&
+        loc.district === targetDistrict &&
+        loc.dong === targetDong
+      );
+
+      if (exists) return prev;
+
+      // 새 위치 추가
+      return [...prev, {
+        city: targetCity,
+        district: targetDistrict,
+        dong: targetDong
+      }];
     });
   };
-  const handleRemoveLocation = (city: string, district: string) => {
+  const handleRemoveLocation = (city: string, district: string, dong: string) => {
     setSelectedLocations((prev) => {
-      const idx = prev.findIndex((l) => l.city === city);
-      if (idx < 0) return prev;
-      const entry = prev[idx];
-      // 전체 제거 시 해당 도시 엔트리 삭제
-      if (district === "all") {
-        const next = [...prev];
-        next.splice(idx, 1);
-        return next;
-      }
-      const districts = entry.districts.filter((d) => d !== district);
-      const next = [...prev];
-      if (districts.length === 0) {
-        next.splice(idx, 1);
-      } else {
-        next[idx] = { city, districts };
-      }
-      return next;
+      return prev.filter(loc =>
+        !(loc.city === city && loc.district === district && loc.dong === dong)
+      );
     });
   };
 
@@ -2409,33 +2475,60 @@ function TargetMarketingDetailContent({
       // 위치 정보 설정 (target_locations_detailed에서 첫 번째 항목 사용)
       if (campaignData.target_locations_detailed && campaignData.target_locations_detailed.length > 0) {
         const firstLocation = campaignData.target_locations_detailed[0];
-        
-        // 타입 가드: 객체인지 문자열인지 확인
-        if (typeof firstLocation === 'object' && firstLocation.city) {
+
+        // SimpleLocation 구조 확인 (새로운 구조)
+        if (isSimpleLocationStructure(firstLocation)) {
           setTargetCity(firstLocation.city || "all");
-          setTargetDistrict(firstLocation.districts?.[0] || "all");
+          setTargetDistrict(firstLocation.district || "all");
+          setTargetDong(firstLocation.dong || "all");
+        } else if (typeof firstLocation === 'object' && 'city' in firstLocation) {
+          // 레거시 구조 처리
+          setTargetCity(firstLocation.city || "all");
+          if ('districts' in firstLocation && Array.isArray(firstLocation.districts)) {
+            setTargetDistrict(firstLocation.districts?.[0] || "all");
+          } else {
+            setTargetDistrict("all");
+          }
+          setTargetDong("all");
         } else {
-          // 문자열인 경우 (레거시 데이터)
+          // 문자열인 경우 (가장 오래된 레거시 데이터)
           setTargetCity(typeof firstLocation === 'string' ? firstLocation : "all");
           setTargetDistrict("all");
+          setTargetDong("all");
         }
-        
+
         // target_locations_detailed를 selectedLocations 형식으로 변환
         const convertedLocations = campaignData.target_locations_detailed
           .map(location => {
-            if (typeof location === 'object' && location.city) {
+            if (isSimpleLocationStructure(location)) {
+              // 새로운 SimpleLocation 구조
               return location;
+            } else if (typeof location === 'object' && 'city' in location && 'districts' in location) {
+              // 레거시 구조를 SimpleLocation으로 변환
+              const districts = Array.isArray(location.districts) ? location.districts : ["all"];
+              return districts.map(district => ({
+                city: location.city,
+                district: district,
+                dong: "all"
+              }));
             } else if (typeof location === 'string') {
-              return { city: location, districts: ["all"] };
+              // 가장 오래된 레거시 구조
+              return {
+                city: location,
+                district: "all",
+                dong: "all"
+              };
             }
             return null;
           })
-          .filter(Boolean) as Array<{ city: string; districts: string[] }>;
-        
+          .flat()
+          .filter(Boolean) as Array<{ city: string; district: string; dong: string }>;
+
         setSelectedLocations(convertedLocations);
       } else {
         setTargetCity("all");
         setTargetDistrict("all");
+        setTargetDong("all");
       }
 
       // 업종 정보 설정 (하위 호환성 포함)
@@ -3293,33 +3386,72 @@ function TargetMarketingDetailContent({
                 <div className="flex gap-2 items-center">
                   <div className="flex-1">
                     <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-100"
                       value={targetCity}
-                      onChange={(e) => setTargetCity(e.target.value)}
+                      disabled={isLoadingCities}
+                      onChange={(e) => {
+                        setTargetCity(e.target.value);
+                        setTargetDistrict('all');
+                        setTargetDong('all');
+                      }}
                     >
-                      {targetOptions.cities.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                      {isLoadingCities ? (
+                        <option value="all">로딩 중...</option>
+                      ) : (
+                        availableCities.map((city) => (
+                          <option key={city.code} value={city.code}>
+                            {city.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                   <div className="flex-1">
                     <select
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-100"
                       value={targetDistrict}
-                      onChange={(e) => setTargetDistrict(e.target.value)}
+                      disabled={isLoadingCities || isLoadingDistricts}
+                      onChange={(e) => {
+                        setTargetDistrict(e.target.value);
+                        setTargetDong('all');
+                      }}
                     >
-                      {getDistrictsByCity(targetCity).map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                      {isLoadingDistricts ? (
+                        <option value="all">로딩 중...</option>
+                      ) : (
+                        availableDistricts.map((district) => (
+                          <option key={district} value={district}>
+                            {district === 'all' ? '전체' : district}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
+                  {/* 동 선택 드롭다운 */}
+                  {targetDistrict !== 'all' && (
+                    <div className="flex-1">
+                      <select
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-100"
+                        value={targetDong}
+                        onChange={(e) => setTargetDong(e.target.value)}
+                        disabled={isLoadingDongs}
+                      >
+                        {isLoadingDongs ? (
+                          <option value="all">로딩 중...</option>
+                        ) : (
+                          availableDongs.map((dong) => (
+                            <option key={dong} value={dong}>
+                              {dong === 'all' ? '전체' : dong}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  )}
                   <button
                     type="button"
-                    className="px-3 py-2 rounded-md bg-white text-blue-600 border border-blue-600 text-sm font-medium cursor-pointer hover:bg-blue-50"
+                    disabled={!targetCity || !targetDistrict || !targetDong || selectedLocations.length >= MAX_LOCATIONS}
+                    className="px-3 py-2 rounded-md bg-white text-blue-600 border border-blue-600 text-sm font-medium cursor-pointer hover:bg-blue-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed"
                     onClick={handleAddLocation}
                   >
                     + 추가
@@ -3327,29 +3459,25 @@ function TargetMarketingDetailContent({
                 </div>
                 {selectedLocations.length > 0 && (
                   <div className="mt-2 flex gap-2 flex-wrap">
-                    {selectedLocations.map((loc) => (
-                      <div key={loc.city} className="flex items-center gap-2">
-                        {loc.districts.map((d) => (
-                          <span
-                            key={`${loc.city}-${d}`}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs border border-green-200"
-                          >
-                            {getCityLabel(loc.city)} / {getDistrictLabel(loc.city, d)}
-                            <button
-                              type="button"
-                              className="ml-1 text-green-600 hover:text-green-800"
-                              onClick={() => handleRemoveLocation(loc.city, d)}
-                              aria-label={`${getCityLabel(loc.city)} ${getDistrictLabel(loc.city, d)} 제거`}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
+                    {selectedLocations.map((loc, index) => (
+                      <span
+                        key={`${loc.city}-${loc.district}-${loc.dong}-${index}`}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs border border-green-200 whitespace-nowrap"
+                      >
+                        {getCityLabel(loc.city)}/{getDistrictLabel(loc.city, loc.district)}/{loc.dong === 'all' ? '전체' : loc.dong}
+                        <button
+                          type="button"
+                          className="ml-1 text-green-600 hover:text-green-800"
+                          onClick={() => handleRemoveLocation(loc.city, loc.district, loc.dong)}
+                          aria-label={`${getCityLabel(loc.city)} ${getDistrictLabel(loc.city, loc.district)} ${loc.dong === 'all' ? '전체' : loc.dong} 제거`}
+                        >
+                          ×
+                        </button>
+                      </span>
                     ))}
                   </div>
                 )}
-                <div className="mt-1 text-xs text-gray-500">도시는 최대 5곳까지 추가 가능. 도시=전체 선택 시 전국 적용</div>
+                <div className="mt-1 text-xs text-gray-500">위치는 동 기준으로 최대 5곳까지 추가 가능. 시=전체 선택 시 전국 적용</div>
               </div>
 
                              {/* 타겟 업종 */}

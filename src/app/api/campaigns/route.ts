@@ -38,7 +38,7 @@ interface CreateCampaignRequest {
   existingTemplateId?: number;
   // 새로운 데이터베이스 컬럼들
   targetAgeGroups: string[];
-  targetLocationsDetailed?: Array<{ city: string; districts: string[] } | string>;
+  targetLocationsDetailed?: Array<{ city: string; district: string; dong: string } | { city: string; districts: string[] } | string>;
   cardAmountMax?: number | null;
   cardTimeStart?: string | null;
   cardTimeEnd?: string | null;
