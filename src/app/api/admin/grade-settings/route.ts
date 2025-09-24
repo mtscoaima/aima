@@ -25,7 +25,7 @@ async function verifyAdminToken(request: NextRequest): Promise<{
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return { isValid: false, error: "Authorization 헤더가 없습니다." };
+      return { isValid: false, error: "로그인이 필요합니다. 다시 로그인해주세요." };
     }
 
     const token = authHeader.substring(7);
@@ -38,12 +38,12 @@ async function verifyAdminToken(request: NextRequest): Promise<{
       .single();
 
     if (!user || user.role !== "ADMIN") {
-      return { isValid: false, error: "관리자 권한이 필요합니다." };
+      return { isValid: false, error: "접근 권한이 없습니다." };
     }
 
     return { isValid: true, userId: decoded.userId };
   } catch {
-    return { isValid: false, error: "권한 확인 중 오류가 발생했습니다." };
+    return { isValid: false, error: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
   }
 }
 

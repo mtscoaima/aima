@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -147,10 +147,8 @@ export async function POST(request: NextRequest) {
       buttons?: Array<{
         id: string;
         text: string;
-        linkType: 'web' | 'app';
+        linkType: 'web';
         url?: string;
-        iosUrl?: string;
-        androidUrl?: string;
       }>;
     } = {
       name,
@@ -213,7 +211,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }

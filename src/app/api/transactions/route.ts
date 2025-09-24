@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import jwt from "jsonwebtoken";
+import { getUserInfoFromToken } from "@/utils/authUtils";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
@@ -227,22 +226,6 @@ async function processReferralRewards(
   }
 }
 
-// JWT 토큰에서 사용자 정보 추출
-function getUserInfoFromToken(request: NextRequest): { userId: number; role: string } | null {
-  try {
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return null;
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
-    return { userId: decoded.userId, role: decoded.role };
-  } catch (error) {
-    console.error("JWT 토큰 검증 실패:", error);
-    return null;
-  }
-}
 
 // 예약 크레딧 계산 함수
 async function getReservedAmount(userId: number): Promise<number> {
@@ -359,8 +342,9 @@ export async function GET(request: NextRequest) {
     // JWT 토큰에서 사용자 정보 추출
     const userInfo = getUserInfoFromToken(request);
     if (!userInfo) {
+      console.error("인증 실패: JWT 토큰이 없거나 유효하지 않음");
       return NextResponse.json(
-        { error: "인증 토큰이 필요합니다." },
+        { error: "로그인이 필요합니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }
@@ -432,8 +416,9 @@ export async function POST(request: NextRequest) {
     const userInfo = getUserInfoFromToken(request);
 
     if (!userInfo) {
+      console.error("인증 실패: JWT 토큰이 없거나 유효하지 않음");
       return NextResponse.json(
-        { error: "인증 토큰이 필요합니다." },
+        { error: "로그인이 필요합니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }

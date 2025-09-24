@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import jwt from "jsonwebtoken";
+import { validateAuthWithSuccess } from "@/utils/authUtils";
 
 // Supabase 클라이언트 생성 (서버 사이드용 Service Role Key 사용)
 const supabase = createClient(
@@ -38,7 +38,7 @@ interface CreateCampaignRequest {
   existingTemplateId?: number;
   // 새로운 데이터베이스 컬럼들
   targetAgeGroups: string[];
-  targetLocationsDetailed?: Array<{ city: string; districts: string[] } | string>;
+  targetLocationsDetailed?: Array<{ city: string; district: string; dong: string } | { city: string; districts: string[] } | string>;
   cardAmountMax?: number | null;
   cardTimeStart?: string | null;
   cardTimeEnd?: string | null;
@@ -51,10 +51,8 @@ interface CreateCampaignRequest {
   buttons?: {
     id: string;
     text: string;
-    linkType: 'web' | 'app';
+    linkType: 'web';
     url?: string;
-    iosUrl?: string;
-    androidUrl?: string;
   }[];
   genderRatio?: {
     female: number;
@@ -67,32 +65,13 @@ interface CreateCampaignRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get("authorization");
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(
-        { success: false, message: "인증 토큰이 필요합니다." },
-        { status: 401 }
-      );
+    // 인증 검증
+    const authResult = validateAuthWithSuccess(request);
+    if (!authResult.isValid) {
+      return authResult.errorResponse!;
     }
 
-    const token = authHeader.substring(7);
-
-    // JWT 토큰 검증
-    let decodedToken: { userId: string };
-    try {
-      decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
-        userId: string;
-      };
-    } catch {
-      return NextResponse.json(
-        { success: false, message: "유효하지 않은 토큰입니다." },
-        { status: 401 }
-      );
-    }
-
-    const userId = decodedToken.userId;
+    const userId = authResult.userInfo!.userId;
 
     // 사용자 존재 확인
     const { data: user, error: userError } = await supabase
@@ -102,8 +81,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !user) {
+      console.error("사용자 조회 실패:", userError);
       return NextResponse.json(
-        { success: false, message: "사용자를 찾을 수 없습니다." },
+        { success: false, message: "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요." },
         { status: 404 }
       );
     }
@@ -524,31 +504,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(
-        { success: false, message: "인증 토큰이 필요합니다." },
-        { status: 401 }
-      );
+    // 인증 검증
+    const authResult = validateAuthWithSuccess(request);
+    if (!authResult.isValid) {
+      return authResult.errorResponse!;
     }
 
-    const token = authHeader.substring(7);
-
-    // JWT 토큰 검증
-    let decodedToken: { userId: string };
-    try {
-      decodedToken = jwt.verify(token, process.env.JWT_SECRET!) as {
-        userId: string;
-      };
-    } catch {
-      return NextResponse.json(
-        { success: false, message: "유효하지 않은 토큰입니다." },
-        { status: 401 }
-      );
-    }
-
-    const userId = decodedToken.userId;
+    const userId = authResult.userInfo!.userId;
 
     // 사용자의 캠페인 목록 조회 (템플릿 정보와 함께)
     const { data: campaigns, error: campaignsError } = await supabase

@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // 관리자 권한 확인 (토큰의 role을 우선 확인, 없으면 DB에서 재확인)
     if (user.role !== "ADMIN" && !(await isAdmin(user.userId))) {
       return NextResponse.json(
-        { error: "관리자 권한이 필요합니다." },
+        { error: "접근 권한이 없습니다." },
         { status: 403 }
       );
     }
@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
     // 관리자 권한 확인 (토큰의 role을 우선 확인, 없으면 DB에서 재확인)
     if (user.role !== "ADMIN" && !(await isAdmin(user.userId))) {
       return NextResponse.json(
-        { error: "관리자 권한이 필요합니다." },
+        { error: "접근 권한이 없습니다." },
         { status: 403 }
       );
     }

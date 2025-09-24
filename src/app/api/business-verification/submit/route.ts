@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import jwt from "jsonwebtoken";
+import { validateAuthWithSuccess } from "@/utils/authUtils";
 
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -47,34 +47,16 @@ interface BusinessVerificationData {
 
 export async function POST(request: NextRequest) {
   try {
-    // JWT 토큰에서 사용자 ID 추출
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // 인증 검증
+    const authResult = validateAuthWithSuccess(request);
+    if (!authResult.isValid) {
       return NextResponse.json(
-        { error: "인증 토큰이 필요합니다." },
+        { error: authResult.error || "인증에 실패했습니다." },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7);
-    let userId: string;
-
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-        userId: string;
-        email: string;
-        name: string;
-        phoneNumber: string;
-        role: string;
-      };
-      userId = decoded.userId;
-    } catch (error) {
-      console.error("JWT 검증 실패:", error);
-      return NextResponse.json(
-        { error: "유효하지 않은 토큰입니다." },
-        { status: 401 }
-      );
-    }
+    const userId = authResult.userInfo!.userId.toString();
 
     const data: BusinessVerificationData = await request.json();
 
@@ -207,7 +189,7 @@ export async function POST(request: NextRequest) {
 
     if (!updateResult || updateResult.length === 0) {
       return NextResponse.json(
-        { error: "사용자를 찾을 수 없습니다." },
+        { error: "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요." },
         { status: 404 }
       );
     }

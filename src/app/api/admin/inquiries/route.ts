@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: {
             code: "UNAUTHORIZED",
-            message: "인증이 필요합니다.",
+            message: "로그인이 필요합니다. 다시 로그인해주세요.",
           },
         },
         { status: 401 }
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: {
             code: "INVALID_TOKEN",
-            message: "유효하지 않은 토큰입니다.",
+            message: "세션이 만료되었습니다. 다시 로그인해주세요.",
           },
         },
         { status: 401 }
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: {
             code: "FORBIDDEN",
-            message: "관리자 권한이 필요합니다.",
+            message: "접근 권한이 없습니다.",
           },
         },
         { status: 403 }

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
         {
-          message: "인증되지 않은 사용자",
+          message: "로그인이 필요합니다. 다시 로그인해주세요.",
           error: "Unauthorized",
           status: 401,
           timestamp: getKSTISOString(),
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         {
-          message: "유효하지 않은 토큰",
+          message: "세션이 만료되었습니다. 다시 로그인해주세요.",
           error: "Invalid token",
           status: 401,
           timestamp: getKSTISOString(),

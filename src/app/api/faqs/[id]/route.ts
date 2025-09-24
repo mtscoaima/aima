@@ -17,7 +17,7 @@ export async function PUT(
 
     if (!question || !answer) {
       return NextResponse.json(
-        { error: "Question and answer are required" },
+        { error: "질문과 답변이 필요합니다." },
         { status: 400 }
       );
     }
@@ -35,7 +35,7 @@ export async function PUT(
     }
 
     if (!existingFaq) {
-      return NextResponse.json({ error: "FAQ not found" }, { status: 404 });
+      return NextResponse.json({ error: "FAQ를 찾을 수 없습니다." }, { status: 404 });
     }
 
     const oldOrder = existingFaq.display_order;
@@ -133,7 +133,7 @@ export async function PUT(
     }
 
     if (!data) {
-      return NextResponse.json({ error: "FAQ not found" }, { status: 404 });
+      return NextResponse.json({ error: "FAQ를 찾을 수 없습니다." }, { status: 404 });
     }
 
     // 형식 변환
@@ -152,7 +152,7 @@ export async function PUT(
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -178,7 +178,7 @@ export async function DELETE(
     }
 
     if (!faqToDelete) {
-      return NextResponse.json({ error: "FAQ not found" }, { status: 404 });
+      return NextResponse.json({ error: "FAQ를 찾을 수 없습니다." }, { status: 404 });
     }
 
     const deletedOrder = faqToDelete.display_order;
@@ -227,11 +227,11 @@ export async function DELETE(
       }
     }
 
-    return NextResponse.json({ message: "FAQ deleted successfully" });
+    return NextResponse.json({ message: "FAQ가 성공적으로 삭제되었습니다." });
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -256,7 +256,7 @@ export async function GET(
     }
 
     if (!data) {
-      return NextResponse.json({ error: "FAQ not found" }, { status: 404 });
+      return NextResponse.json({ error: "FAQ를 찾을 수 없습니다." }, { status: 404 });
     }
 
     // 형식 변환
@@ -275,7 +275,7 @@ export async function GET(
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }

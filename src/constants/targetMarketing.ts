@@ -123,7 +123,6 @@ export const ERROR_MESSAGES = {
   UNSUPPORTED_IMAGE_TYPE: "지원하지 않는 파일 형식입니다.\n허용된 형식: JPG, JPEG, PNG, GIF",
   INVALID_URL: "유효하지 않은 URL입니다.",
   WEB_LINK_REQUIRED: "웹링크 주소를 입력해주세요.",
-  APP_LINK_REQUIRED: "iOS 또는 Android 링크 중 하나는 입력해주세요.",
   LOGIN_REQUIRED: "로그인이 필요합니다.",
   INSUFFICIENT_CREDITS: "광고머니가 부족합니다. 광고머니를 충전해주세요.",
   TEMPLATE_CONTENT_REQUIRED: "저장할 템플릿 내용이 없습니다.",
