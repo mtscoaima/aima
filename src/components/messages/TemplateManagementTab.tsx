@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { safelyStoreTemplate } from "@/utils/storageUtils";
 
 // 템플릿 데이터 인터페이스
 interface Template {
@@ -199,32 +200,11 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
             buttons: data.template.buttons || []
           };
 
-          // 선택된 템플릿을 localStorage에 저장 (NaverTalkTalkTab과 동일하게)
-          try {
-            localStorage.setItem("selectedTemplate", JSON.stringify(templateWithDetails));
-          } catch (error) {
-            console.error("localStorage 저장 실패:", error);
-            
-            // LocalStorage가 가득 찬 경우, 기존 데이터 일부 정리 후 재시도
-            if (error instanceof Error && error.name === 'QuotaExceededError') {
-              try {
-                const keysToRemove = [];
-                for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (key && (key.startsWith('temp_') || key.startsWith('cache_'))) {
-                    keysToRemove.push(key);
-                  }
-                }
-                keysToRemove.forEach(key => localStorage.removeItem(key));
-                
-                // 재시도
-                localStorage.setItem("selectedTemplate", JSON.stringify(templateWithDetails));
-              } catch (retryError) {
-                console.error("localStorage 재시도 실패:", retryError);
-                alert("브라우저 저장소가 부족합니다. 브라우저 캐시를 정리해주세요.");
-                return;
-              }
-            }
+          // 선택된 템플릿을 localStorage에 안전하게 저장
+          const result = safelyStoreTemplate(templateWithDetails);
+          if (!result.success) {
+            alert(result.message);
+            return;
           }
 
           // 상세 페이지로 이동 (템플릿 사용)

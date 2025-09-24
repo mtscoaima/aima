@@ -454,3 +454,172 @@ export const cleanupExpiredItems = (): { local: number; session: number } => {
 
   return { local: localCleaned, session: sessionCleaned };
 };
+
+/**
+ * 임시/캐시 데이터 강제 정리
+ */
+export const cleanupTemporaryData = (): { cleaned: number; freedKB: number } => {
+  let cleaned = 0;
+  let freedBytes = 0;
+
+  try {
+    const keysToRemove: string[] = [];
+
+    for (const key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        const value = localStorage.getItem(key);
+        // 임시 데이터, 캐시 데이터, 오래된 템플릿 데이터 등 정리
+        if (key.startsWith('temp_') ||
+            key.startsWith('cache_') ||
+            key.startsWith('old_') ||
+            key.includes('preview_') ||
+            key.includes('draft_')) {
+          keysToRemove.push(key);
+          if (value) {
+            freedBytes += (key.length + value.length) * 2; // UTF-16 문자열 크기 계산
+          }
+        }
+      }
+    }
+
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      cleaned++;
+    });
+
+    // 만료된 항목도 함께 정리
+    const expiredCleanup = cleanupExpiredItems();
+    cleaned += expiredCleanup.local;
+
+    return {
+      cleaned,
+      freedKB: Math.round(freedBytes / 1024)
+    };
+  } catch (error) {
+    console.error("임시 데이터 정리 오류:", error);
+    return { cleaned: 0, freedKB: 0 };
+  }
+};
+
+/**
+ * localStorage 용량 확인 및 공간 확보 (용량이 부족할 때 자동 호출)
+ */
+export const ensureStorageSpace = (requiredKB: number = 100): { success: boolean; message: string } => {
+  try {
+    const currentSizeKB = getLocalStorageSize();
+    const maxSizeKB = 5 * 1024; // 5MB 추정 (브라우저마다 다름)
+    const availableKB = maxSizeKB - currentSizeKB;
+
+    // 공간이 충분한 경우
+    if (availableKB >= requiredKB) {
+      return { success: true, message: "공간 충분" };
+    }
+
+    // 자동 정리 시도
+    const cleanup = cleanupTemporaryData();
+
+    if (cleanup.freedKB >= requiredKB) {
+      return {
+        success: true,
+        message: `${cleanup.cleaned}개 항목 정리 완료 (${cleanup.freedKB}KB 확보)`
+      };
+    }
+
+    // 여전히 공간 부족
+    return {
+      success: false,
+      message: `저장 공간이 부족합니다. ${cleanup.cleaned}개 항목을 정리했지만 ${requiredKB}KB가 더 필요합니다. Ctrl+F5로 강력 새로고침해주세요.`
+    };
+
+  } catch (error) {
+    console.error("저장소 공간 확보 오류:", error);
+    return {
+      success: false,
+      message: "저장소 확인 중 오류가 발생했습니다."
+    };
+  }
+};
+
+/**
+ * 안전한 템플릿 저장 (용량 체크 및 자동 정리 포함)
+ */
+export const safelyStoreTemplate = (templateData: unknown): { success: boolean; message: string } => {
+  try {
+    // 저장할 데이터 크기 추정
+    const jsonString = safeJsonStringify(templateData);
+    if (!jsonString) {
+      return { success: false, message: "템플릿 데이터 처리에 실패했습니다." };
+    }
+
+    const requiredKB = Math.ceil(jsonString.length / 1024);
+
+    // 용량 확보 시도
+    const spaceResult = ensureStorageSpace(requiredKB);
+
+    if (!spaceResult.success) {
+      return {
+        success: false,
+        message: "브라우저 저장 공간이 부족합니다. 키보드의 Ctrl+F5를 눌러 강력 새로고침하시거나, Ctrl+Shift+R을 눌러 캐시를 비우고 새로고침해주세요."
+      };
+    }
+
+    // 실제 저장 시도
+    const stored = setLocalStorageItem("selectedTemplate", templateData, { expirationMinutes: 30 });
+
+    if (stored) {
+      return { success: true, message: "템플릿이 성공적으로 저장되었습니다." };
+    } else {
+      return { success: false, message: "템플릿 저장에 실패했습니다." };
+    }
+
+  } catch (error) {
+    console.error("템플릿 안전 저장 오류:", error);
+
+    if (error instanceof Error && error.name === 'QuotaExceededError') {
+      // 최후 정리 시도
+      const cleanup = cleanupTemporaryData();
+      return {
+        success: false,
+        message: `저장 공간이 부족합니다. ${cleanup.cleaned}개 항목을 정리했지만 공간이 부족합니다. Ctrl+F5로 강력 새로고침하거나 Ctrl+Shift+R로 캐시를 비우고 새로고침해주세요.`
+      };
+    }
+
+    return {
+      success: false,
+      message: "템플릿 저장 중 오류가 발생했습니다."
+    };
+  }
+};
+
+/**
+ * 저장소 상태 모니터링
+ */
+export const getStorageStatus = (): {
+  localSizeKB: number;
+  sessionSizeKB: number;
+  estimatedMaxKB: number;
+  usagePercentage: number;
+  recommendation: string;
+} => {
+  const localSizeKB = getLocalStorageSize();
+  const sessionSizeKB = getSessionStorageSize();
+  const estimatedMaxKB = 5 * 1024; // 5MB 추정
+  const usagePercentage = Math.round((localSizeKB / estimatedMaxKB) * 100);
+
+  let recommendation = "정상";
+  if (usagePercentage > 90) {
+    recommendation = "즉시 정리 필요";
+  } else if (usagePercentage > 70) {
+    recommendation = "정리 권장";
+  } else if (usagePercentage > 50) {
+    recommendation = "주의";
+  }
+
+  return {
+    localSizeKB,
+    sessionSizeKB,
+    estimatedMaxKB,
+    usagePercentage,
+    recommendation
+  };
+};
