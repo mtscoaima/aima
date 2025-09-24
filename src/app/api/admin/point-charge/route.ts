@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const userInfo = getUserInfoFromToken(request);
     if (!userInfo || userInfo.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "관리자 권한이 필요합니다." },
+        { error: "접근 권한이 없습니다." },
         { status: 403 }
       );
     }
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     if (userError || !targetUser) {
       return NextResponse.json(
-        { error: "대상 사용자를 찾을 수 없습니다." },
+        { error: "대상 계정 정보를 찾을 수 없습니다. 다시 로그인해주세요." },
         { status: 404 }
       );
     }

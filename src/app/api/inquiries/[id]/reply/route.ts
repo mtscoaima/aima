@@ -85,12 +85,13 @@ export async function POST(
         role: string;
       };
     } catch {
+      console.error("JWT 토큰 검증 실패: 유효하지 않은 토큰");
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "INVALID_TOKEN",
-            message: "유효하지 않은 토큰입니다.",
+            message: "세션이 만료되었습니다. 다시 로그인해주세요.",
           },
         } as ApiResponse,
         { status: 401 }
@@ -104,7 +105,7 @@ export async function POST(
           success: false,
           error: {
             code: "FORBIDDEN",
-            message: "관리자 권한이 필요합니다.",
+            message: "접근 권한이 없습니다.",
           },
         } as ApiResponse,
         { status: 403 }

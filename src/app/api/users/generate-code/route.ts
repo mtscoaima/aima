@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           message: "인증되지 않은 사용자",
-          error: "Unauthorized",
+          error: "접근 권한이 없습니다.",
           status: 401,
           timestamp: getKSTISOString(),
           path: "/api/users/generate-code",
@@ -97,9 +97,10 @@ export async function POST(request: NextRequest) {
         role: string;
       };
     } catch {
+      console.error("JWT 토큰 검증 실패: 세션이 만료되었습니다. 다시 로그인해주세요.");
       return NextResponse.json(
         {
-          message: "유효하지 않은 토큰",
+          message: "세션이 만료되었습니다. 다시 로그인해주세요.",
           error: "Invalid token",
           status: 401,
           timestamp: getKSTISOString(),
@@ -133,9 +134,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !user) {
+      console.error("사용자 조회 실패:", userError);
       return NextResponse.json(
         {
-          message: "사용자를 찾을 수 없습니다",
+          message: "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
           error: "User not found",
           status: 404,
           timestamp: getKSTISOString(),

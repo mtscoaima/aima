@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     const userInfo = getUserInfoFromToken(request);
     if (!userInfo || userInfo.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "관리자 권한이 필요합니다." },
+        { error: "접근 권한이 없습니다." },
         { status: 403 }
       );
     }

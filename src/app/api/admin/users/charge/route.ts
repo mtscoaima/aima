@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     // JWT 토큰 검증
     const authorization = request.headers.get('authorization');
     if (!authorization?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, message: '인증 토큰이 없습니다.' }, { status: 401 });
+      return NextResponse.json({ success: false, message: '로그인이 필요합니다. 다시 로그인해주세요.' }, { status: 401 });
     }
 
     const token = authorization.substring(7);
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // 관리자 권한 확인
     if (decoded.role !== 'ADMIN') {
-      return NextResponse.json({ success: false, message: '관리자 권한이 필요합니다.' }, { status: 403 });
+      return NextResponse.json({ success: false, message: '접근 권한이 없습니다.' }, { status: 403 });
     }
 
     const { userId, amount } = await request.json();
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !targetUser) {
-      return NextResponse.json({ success: false, message: '사용자를 찾을 수 없습니다.' }, { status: 404 });
+      return NextResponse.json({ success: false, message: '계정 정보를 찾을 수 없습니다. 다시 로그인해주세요.' }, { status: 404 });
     }
 
     // 트랜잭션 생성
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     console.error('관리자 충전 API 오류:', error);
     
     if (error instanceof jwt.JsonWebTokenError) {
-      return NextResponse.json({ success: false, message: '유효하지 않은 토큰입니다.' }, { status: 401 });
+      return NextResponse.json({ success: false, message: '세션이 만료되었습니다. 다시 로그인해주세요.' }, { status: 401 });
     }
 
     return NextResponse.json({ success: false, message: '서버 오류가 발생했습니다.' }, { status: 500 });

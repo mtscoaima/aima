@@ -28,7 +28,7 @@ export async function GET() {
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }

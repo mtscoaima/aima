@@ -57,7 +57,7 @@ export async function GET(
       return NextResponse.json(
         {
           message: "관리자 권한이 필요합니다",
-          error: "Unauthorized",
+          error: "접근 권한이 없습니다.",
           status: 403,
           timestamp: getKSTISOString(),
           path: `/api/admin/tax-invoices/${resolvedParams.id}`,
@@ -197,7 +197,7 @@ export async function PUT(
       return NextResponse.json(
         {
           message: "관리자 권한이 필요합니다",
-          error: "Unauthorized",
+          error: "접근 권한이 없습니다.",
           status: 403,
           timestamp: getKSTISOString(),
           path: `/api/admin/tax-invoices/${resolvedParams.id}`,
@@ -349,7 +349,7 @@ export async function DELETE(
       return NextResponse.json(
         {
           message: "관리자 권한이 필요합니다",
-          error: "Unauthorized",
+          error: "접근 권한이 없습니다.",
           status: 403,
           timestamp: getKSTISOString(),
           path: `/api/admin/tax-invoices/${resolvedParams.id}`,

@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     if (!title || !content) {
       return NextResponse.json(
-        { error: "Title and content are required" },
+        { error: "제목과 내용이 필요합니다." },
         { status: 400 }
       );
     }
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }

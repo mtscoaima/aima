@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const token = request.headers.get("Authorization")?.replace("Bearer ", "");
     if (!token) {
       return NextResponse.json(
-        { error: "인증 토큰이 필요합니다." },
+        { error: "로그인이 필요합니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }
@@ -38,8 +38,9 @@ export async function GET(request: NextRequest) {
         role: string;
       };
     } catch {
+      console.error("JWT 토큰 검증 실패: 유효하지 않은 토큰");
       return NextResponse.json(
-        { error: "유효하지 않은 토큰입니다." },
+        { error: "세션이 만료되었습니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }

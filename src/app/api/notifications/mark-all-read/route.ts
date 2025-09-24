@@ -32,7 +32,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 async function getUserFromToken(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw new Error("인증 토큰이 필요합니다.");
+    throw new Error("로그인이 필요합니다. 다시 로그인해주세요.");
   }
 
   const token = authHeader.substring(7);
@@ -46,7 +46,8 @@ async function getUserFromToken(request: NextRequest) {
     };
     return decoded;
   } catch {
-    throw new Error("유효하지 않은 토큰입니다.");
+      console.error("JWT 토큰 검증 실패: 유효하지 않은 토큰");
+    throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
   }
 }
 

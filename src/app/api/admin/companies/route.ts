@@ -25,7 +25,7 @@ async function verifyAdminToken(request: NextRequest): Promise<{
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return { isValid: false, error: "Authorization 헤더가 없습니다." };
+      return { isValid: false, error: "로그인이 필요합니다. 다시 로그인해주세요." };
     }
 
     const token = authHeader.substring(7);
@@ -38,7 +38,7 @@ async function verifyAdminToken(request: NextRequest): Promise<{
       decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     } catch (jwtError) {
       console.error("JWT verification failed:", jwtError);
-      return { isValid: false, error: "유효하지 않은 토큰입니다." };
+      return { isValid: false, error: "세션이 만료되었습니다. 다시 로그인해주세요." };
     }
 
     if (!decoded.userId) {
@@ -58,21 +58,21 @@ async function verifyAdminToken(request: NextRequest): Promise<{
     }
 
     if (!user) {
-      return { isValid: false, error: "사용자를 찾을 수 없습니다." };
+      return { isValid: false, error: "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요." };
     }
 
     if (!user.is_active) {
-      return { isValid: false, error: "비활성화된 계정입니다." };
+      return { isValid: false, error: "이용이 제한된 계정입니다. 고객센터에 문의해주세요." };
     }
 
     if (user.role !== "ADMIN") {
-      return { isValid: false, error: "관리자 권한이 필요합니다." };
+      return { isValid: false, error: "접근 권한이 없습니다." };
     }
 
     return { isValid: true, userId: decoded.userId };
   } catch (error) {
     console.error("Token verification error:", error);
-    return { isValid: false, error: "권한 확인 중 오류가 발생했습니다." };
+    return { isValid: false, error: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
   }
 }
 
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     const { isValid, error: authError } = await verifyAdminToken(request);
     if (!isValid) {
       return NextResponse.json(
-        { message: authError || "관리자 권한이 필요합니다.", success: false },
+        { message: authError || "접근 권한이 없습니다.", success: false },
         { status: 403 }
       );
     }

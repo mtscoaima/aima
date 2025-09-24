@@ -20,7 +20,7 @@ export async function POST(
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
-        { success: false, message: "인증 토큰이 필요합니다." },
+        { success: false, message: "로그인이 필요합니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }
@@ -34,8 +34,9 @@ export async function POST(
         userId: string;
       };
     } catch {
+      console.error("JWT 토큰 검증 실패: 유효하지 않은 토큰");
       return NextResponse.json(
-        { success: false, message: "유효하지 않은 토큰입니다." },
+        { success: false, message: "세션이 만료되었습니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }
@@ -50,16 +51,18 @@ export async function POST(
       .single();
 
     if (userError || !user) {
+      console.error("사용자 조회 실패:", userError);
       return NextResponse.json(
-        { success: false, message: "사용자를 찾을 수 없습니다." },
+        { success: false, message: "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요." },
         { status: 404 }
       );
     }
 
     // 관리자 권한 확인
     if (user.role !== "ADMIN") {
+      console.error(`관리자 권한 체크 실패: 사용자 ID ${userId}, 역할 ${user.role}`);
       return NextResponse.json(
-        { success: false, message: "관리자 권한이 필요합니다." },
+        { success: false, message: "접근 권한이 없습니다." },
         { status: 403 }
       );
     }

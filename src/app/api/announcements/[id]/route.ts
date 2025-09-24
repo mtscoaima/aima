@@ -16,7 +16,7 @@ export async function PUT(
 
     if (!title || !content) {
       return NextResponse.json(
-        { error: "Title and content are required" },
+        { error: "제목과 내용이 필요합니다." },
         { status: 400 }
       );
     }
@@ -40,7 +40,7 @@ export async function PUT(
 
     if (!data) {
       return NextResponse.json(
-        { error: "Announcement not found" },
+        { error: "공지사항을 찾을 수 없습니다." },
         { status: 404 }
       );
     }
@@ -58,7 +58,7 @@ export async function PUT(
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -81,11 +81,11 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Announcement deleted successfully" });
+    return NextResponse.json({ message: "공지사항이 성공적으로 삭제되었습니다." });
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -111,7 +111,7 @@ export async function GET(
 
     if (!data) {
       return NextResponse.json(
-        { error: "Announcement not found" },
+        { error: "공지사항을 찾을 수 없습니다." },
         { status: 404 }
       );
     }
@@ -129,7 +129,7 @@ export async function GET(
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "서버 내부 오류가 발생했습니다." },
       { status: 500 }
     );
   }

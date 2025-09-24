@@ -47,12 +47,13 @@ export async function GET(request: NextRequest) {
         role: string;
       };
     } catch {
+      console.error("JWT 토큰 검증 실패: 유효하지 않은 토큰");
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "INVALID_TOKEN",
-            message: "유효하지 않은 토큰입니다.",
+            message: "세션이 만료되었습니다. 다시 로그인해주세요.",
           },
         },
         { status: 401 }

@@ -28,7 +28,7 @@ export async function GET(
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
-        { success: false, message: "인증 토큰이 필요합니다." },
+        { success: false, message: "로그인이 필요합니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }
@@ -43,8 +43,9 @@ export async function GET(
         role?: string;
       };
     } catch {
+      console.error("JWT 토큰 검증 실패: 유효하지 않은 토큰");
       return NextResponse.json(
-        { success: false, message: "유효하지 않은 토큰입니다." },
+        { success: false, message: "세션이 만료되었습니다. 다시 로그인해주세요." },
         { status: 401 }
       );
     }

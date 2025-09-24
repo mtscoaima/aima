@@ -356,38 +356,6 @@ const validateUrl = (url: string, type: 'web' | 'ios' | 'android'): { isValid: b
     } catch {
       return { isValid: false, errorMessage: '올바른 웹 URL 형식이 아닙니다. (예: https://example.com)' };
     }
-  } else if (type === 'ios') {
-    // iOS 앱스토어/딥링크 URL 검증
-    const iosPatterns = [
-      /^https:\/\/apps\.apple\.com\/.*$/i,  // 앱스토어 링크
-      /^https:\/\/itunes\.apple\.com\/.*$/i, // iTunes 링크
-      /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.*$/,  // 커스텀 스킴 (딥링크)
-    ];
-    
-    const isValidIos = iosPatterns.some(pattern => pattern.test(trimmedUrl));
-    if (!isValidIos) {
-      return { 
-        isValid: false, 
-        errorMessage: 'iOS URL은 앱스토어 링크 또는 앱 딥링크여야 합니다.\n(예: https://apps.apple.com/... 또는 myapp://...)' 
-      };
-    }
-    return { isValid: true };
-  } else if (type === 'android') {
-    // Android 플레이스토어/딥링크 URL 검증
-    const androidPatterns = [
-      /^https:\/\/play\.google\.com\/store\/apps\/.*$/i, // 플레이스토어 링크
-      /^market:\/\/details\?id=.*$/i,  // Market 링크
-      /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.*$/, // 커스텀 스킴 (딥링크)
-    ];
-    
-    const isValidAndroid = androidPatterns.some(pattern => pattern.test(trimmedUrl));
-    if (!isValidAndroid) {
-      return { 
-        isValid: false, 
-        errorMessage: 'Android URL은 플레이스토어 링크 또는 앱 딥링크여야 합니다.\n(예: https://play.google.com/store/apps/... 또는 myapp://...)' 
-      };
-    }
-    return { isValid: true };
   }
 
   return { isValid: false, errorMessage: '알 수 없는 URL 타입입니다.' };

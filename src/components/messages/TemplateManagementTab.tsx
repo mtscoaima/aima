@@ -48,10 +48,8 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
   const [dynamicButtons, setDynamicButtons] = useState<Array<{
     id: string;
     text: string;
-    linkType: 'web' | 'app';
+    linkType: 'web';
     url?: string;
-    iosUrl?: string;
-    androidUrl?: string;
   }>>([]);
 
   // 템플릿 관리 함수들
@@ -457,8 +455,6 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
         text: "",
         linkType: "web",
         url: "",
-        iosUrl: "",
-        androidUrl: ""
       }]);
     }
   };
@@ -498,20 +494,6 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
       } catch {
         alert('유효하지 않은 URL입니다.');
       }
-    } else if (button.linkType === 'app') {
-      if (!button.iosUrl?.trim() && !button.androidUrl?.trim()) {
-        alert('iOS 또는 Android 링크 중 하나는 입력해주세요.');
-        return;
-      }
-      
-      let message = '앱링크 확인:\n';
-      if (button.iosUrl?.trim()) {
-        message += `iOS: ${button.iosUrl}\n`;
-      }
-      if (button.androidUrl?.trim()) {
-        message += `Android: ${button.androidUrl}`;
-      }
-      alert(message);
     }
   };
 
@@ -895,60 +877,17 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
                             
                             {/* 링크 타입 선택 */}
                             <div className="flex flex-col min-w-[120px]">
-                              <div className="flex gap-3 mb-2">
-                                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name={`linkType-${button.id}`}
-                                    value="web"
-                                    checked={button.linkType === 'web'}
-                                    onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app')}
-                                    className="w-4 h-4 cursor-pointer"
-                                  />
-                                  웹링크
-                                </label>
-                                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name={`linkType-${button.id}`}
-                                    value="app"
-                                    checked={button.linkType === 'app'}
-                                    onChange={(e) => updateDynamicButton(button.id, 'linkType', e.target.value as 'web' | 'app')}
-                                    className="w-4 h-4 cursor-pointer"
-                                  />
-                                  앱링크
-                                </label>
-                              </div>
                             </div>
 
                             {/* 링크 입력창 */}
                             <div className="flex-1 min-w-[200px]">
-                              {button.linkType === 'web' ? (
-                                <input
-                                  type="text"
-                                  placeholder="웹링크 주소"
-                                  value={button.url || ''}
-                                  onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded text-sm mb-2"
-                                />
-                              ) : (
-                                <div className="flex flex-col gap-2">
-                                  <input
-                                    type="text"
-                                    placeholder="iOS 앱 링크"
-                                    value={button.iosUrl || ''}
-                                    onChange={(e) => updateDynamicButton(button.id, 'iosUrl', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded text-sm"
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="Android 앱 링크"
-                                    value={button.androidUrl || ''}
-                                    onChange={(e) => updateDynamicButton(button.id, 'androidUrl', e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded text-sm"
-                                  />
-                                </div>
-                              )}
+                              <input
+                                type="text"
+                                placeholder="웹링크 주소"
+                                value={button.url || ''}
+                                onChange={(e) => updateDynamicButton(button.id, 'url', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded text-sm mb-2"
+                              />
                             </div>
 
                             <div className="flex flex-col lg:flex-row gap-2 min-w-[80px] items-center">
@@ -1029,18 +968,6 @@ const TemplateManagementTab: React.FC<TemplateManagementTabProps> = ({
                                       validUrl = 'https://' + validUrl;
                                     }
                                     window.open(validUrl, '_blank');
-                                  } else if (button.linkType === 'app') {
-                                    const userAgent = navigator.userAgent;
-                                    if (/iPad|iPhone|iPod/.test(userAgent) && button.iosUrl) {
-                                      window.open(button.iosUrl, '_blank');
-                                    } else if (/Android/.test(userAgent) && button.androidUrl) {
-                                      window.open(button.androidUrl, '_blank');
-                                    } else {
-                                      const linkToOpen = button.iosUrl || button.androidUrl;
-                                      if (linkToOpen) {
-                                        window.open(linkToOpen, '_blank');
-                                      }
-                                    }
                                   }
                                 }}
                               >

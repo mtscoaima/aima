@@ -93,9 +93,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !user) {
+      console.error("사용자 조회 실패:", userError);
       return NextResponse.json(
         {
-          message: "사용자를 찾을 수 없습니다.",
+          message: "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
           error: "User not found",
           status: 404,
           timestamp: getKSTISOString(),
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
     if (!user.is_active) {
       return NextResponse.json(
         {
-          message: "비활성화된 계정입니다.",
+          message: "이용이 제한된 계정입니다. 고객센터에 문의해주세요.",
           error: "Account deactivated",
           status: 401,
           timestamp: getKSTISOString(),
