@@ -10,6 +10,7 @@ import {
   isOldLocationStructure,
   isSimpleLocationStructure
 } from "@/types/targetMarketing";
+import IndustrySelectModal from "@/components/modals/IndustrySelectModal";
 // formatLocations 대신 간단한 함수 사용
 import { BUTTON_CONSTRAINTS } from "@/constants/targetMarketing";
 
@@ -132,6 +133,17 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   const [editedData, setEditedData] = useState<EditableCampaignData>({});
   const [,setEditedName] = useState("");
   const [industryNames, setIndustryNames] = useState<IndustryNames>({topLevel: '', specific: ''});
+  const [isIndustryModalOpen, setIsIndustryModalOpen] = useState(false);
+
+  // 업종 선택 핸들러
+  const handleIndustrySelect = (industry: { topLevel: string; specific: string; code: string; name: string }) => {
+    setIndustryNames({ topLevel: industry.topLevel, specific: industry.specific });
+    setEditedData({
+      ...editedData,
+      target_industry_top_level: industry.topLevel,
+      target_industry_specific: industry.specific
+    });
+  };
 
   // 드롭다운 및 업로드 관련 상태
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
@@ -1511,33 +1523,38 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">결제 업종</span>
                         {isEditMode ? (
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={industryNames.topLevel || ''}
-                              onChange={(e) => {
-                                setIndustryNames({ ...industryNames, topLevel: e.target.value });
-                                setEditedData({
-                                  ...editedData,
-                                  target_industry_top_level: e.target.value
-                                });
-                              }}
-                              className="w-20 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="대분류"
-                            />
-                            <input
-                              type="text"
-                              value={industryNames.specific || ''}
-                              onChange={(e) => {
-                                setIndustryNames({ ...industryNames, specific: e.target.value });
-                                setEditedData({
-                                  ...editedData,
-                                  target_industry_specific: e.target.value
-                                });
-                              }}
-                              className="w-20 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="세부업종"
-                            />
+                          <div className="flex flex-col gap-2 max-w-xs">
+                            {/* 선택된 업종 표시 */}
+                            {(industryNames.topLevel || industryNames.specific) && (
+                              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-blue-900">
+                                    {industryNames.topLevel}
+                                    {industryNames.topLevel && industryNames.specific && ' > '}
+                                    {industryNames.specific}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setIndustryNames({ topLevel: '', specific: '' });
+                                      setEditedData({
+                                        ...editedData,
+                                        target_industry_top_level: '',
+                                        target_industry_specific: ''
+                                      });
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 ml-2"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            <button
+                              onClick={() => setIsIndustryModalOpen(true)}
+                              className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
+                            >
+                              {industryNames.topLevel || industryNames.specific ? '업종 변경' : '업종 선택'}
+                            </button>
                           </div>
                         ) : (
                           <span className="text-sm text-gray-900">{targetInfo.cardUsageIndustry || '-'}</span>
@@ -1754,6 +1771,14 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
         </div>
       </div>
+
+      {/* 업종 선택 모달 */}
+      <IndustrySelectModal
+        isOpen={isIndustryModalOpen}
+        onClose={() => setIsIndustryModalOpen(false)}
+        onSelect={handleIndustrySelect}
+        title="결제 업종 선택"
+      />
     </div>
   );
 };

@@ -16,18 +16,30 @@ export default function NTSFinder({ onSelect }: NTSFinderProps) {
   const [detail, setDetail] = useState<string>(""); // 세부업종 라벨 (""=전체)
   const [searchText, setSearchText] = useState<string>(""); // 검색어
   const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const pageSize = 10;
 
   const load = async (y?: string) => {
     try {
+      setIsLoading(true);
+      setError(null);
       const url = y ? `/api/nts-industries?year=${y}` : `/api/nts-industries`;
       const res = await fetch(url);
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
       const data: ApiRes = await res.json();
       setYears(data.years);
       setYear(data.year);
       setGroups(data.groups);
     } catch (error) {
       console.error('Failed to load industry data:', error);
+      setError(error instanceof Error ? error.message : '업종 데이터 로딩에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -87,6 +99,35 @@ export default function NTSFinder({ onSelect }: NTSFinderProps) {
   const handleSelect = (item: Item, itemGroup: string) => {
     onSelect?.({ ...item, group: itemGroup });
   };
+
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">업종 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => load()}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

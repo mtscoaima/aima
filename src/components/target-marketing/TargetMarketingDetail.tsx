@@ -8,6 +8,7 @@ import SuccessModal from "@/components/SuccessModal";
 import ApprovalRequestComplete from "@/components/approval/ApprovalRequestComplete";
 import { PaymentModal } from "@/components/credit/PaymentModal";
 import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
+import IndustrySelectModal from "@/components/modals/IndustrySelectModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveCampaignDraft, clearCampaignDraft, fileToBase64, type CampaignDraft } from "@/lib/campaignDraft";
@@ -139,6 +140,15 @@ function TargetMarketingDetailContent({
   // 텍스트 입력용 업종 상태
   const [targetTopLevelIndustryText, setTargetTopLevelIndustryText] = useState("");
   const [targetIndustryText, setTargetIndustryText] = useState("");
+
+  // 업종 선택 모달 상태
+  const [isIndustryModalOpen, setIsIndustryModalOpen] = useState(false);
+
+  // 업종 선택 핸들러
+  const handleIndustrySelect = (industry: { topLevel: string; specific: string; code: string; name: string }) => {
+    setTargetTopLevelIndustryText(industry.topLevel);
+    setTargetIndustryText(industry.specific);
+  };
   
   // 동적 업종 데이터 상태 (하위 호환성을 위해 유지)
   const [topLevelIndustries, setTopLevelIndustries] = useState([{ value: "all", label: "전체" }]);
@@ -3483,27 +3493,43 @@ function TargetMarketingDetailContent({
                              {/* 타겟 업종 */}
                <div className="mb-4">
                  <div className="text-sm font-medium text-gray-700 mb-2">결제 업종</div>
-                 <div className="grid grid-cols-2 gap-2">
-                   <div>
-                     <div className="text-xs text-gray-500 mb-1">대분류</div>
-                     <input
-                       type="text"
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={targetTopLevelIndustryText}
-                       onChange={(e) => setTargetTopLevelIndustryText(e.target.value)}
-                       placeholder="예: 음식점업"
-                     />
-                   </div>
-                   <div>
-                     <div className="text-xs text-gray-500 mb-1">세부업종</div>
-                     <input
-                       type="text"
-                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                       value={targetIndustryText}
-                       onChange={(e) => setTargetIndustryText(e.target.value)}
-                       placeholder="예: 한식당"
-                     />
-                   </div>
+                 <div className="space-y-2">
+                   {/* 선택된 업종 표시 */}
+                   {(targetTopLevelIndustryText || targetIndustryText) && (
+                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                       <div className="flex items-center justify-between">
+                         <div>
+                           <span className="text-sm font-medium text-blue-900">
+                             {targetTopLevelIndustryText}
+                           </span>
+                           {targetTopLevelIndustryText && targetIndustryText && (
+                             <span className="text-blue-700 mx-2">></span>
+                           )}
+                           <span className="text-sm text-blue-800">
+                             {targetIndustryText}
+                           </span>
+                         </div>
+                         <button
+                           onClick={() => {
+                             setTargetTopLevelIndustryText("");
+                             setTargetIndustryText("");
+                           }}
+                           className="text-blue-600 hover:text-blue-800 text-sm"
+                         >
+                           제거
+                         </button>
+                       </div>
+                     </div>
+                   )}
+
+                   {/* 업종 선택 버튼 */}
+                   <button
+                     type="button"
+                     onClick={() => setIsIndustryModalOpen(true)}
+                     className="w-full px-4 py-3 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                   >
+                     {targetTopLevelIndustryText || targetIndustryText ? "업종 변경" : "업종 선택"}
+                   </button>
                  </div>
                </div>
 
@@ -4047,6 +4073,14 @@ function TargetMarketingDetailContent({
         smsTextContent={smsTextContent}
         currentGeneratedImage={currentGeneratedImage}
         dynamicButtons={dynamicButtons}
+      />
+
+      {/* 업종 선택 모달 */}
+      <IndustrySelectModal
+        isOpen={isIndustryModalOpen}
+        onClose={() => setIsIndustryModalOpen(false)}
+        onSelect={handleIndustrySelect}
+        title="결제 업종 선택"
       />
     </div>
   );
