@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       dongKey = `${city}_${district}`;
     }
 
-    const dongs = regionsData.dongs[dongKey];
+    let dongs = regionsData.dongs[dongKey];
 
     if (!dongs) {
       // 혹시 다른 키 패턴도 시도해보기

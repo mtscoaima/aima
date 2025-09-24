@@ -69,7 +69,7 @@ export default function NTSFinder({ onSelect }: NTSFinderProps) {
 
   // 테이블 데이터 필터링
   const filtered = useMemo(() => {
-    let rows: Array<{year:string; group:string; item:Item}> = [];
+    const rows: Array<{year:string; group:string; item:Item}> = [];
     for (const g of groups) {
       if (group && g.group !== group) continue;
       for (const it of g.items) {

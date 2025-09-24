@@ -123,34 +123,51 @@ export interface StructuredRecommendationSection {
 
 // 타입 가드 함수들
 export function isNewLocationStructure(location: unknown): location is LocationDetail {
-  return location &&
-         typeof location === 'object' &&
-         typeof location.city === 'string' &&
-         Array.isArray(location.districts) &&
-         location.districts.length > 0 &&
-         typeof location.districts[0] === 'object' &&
-         'district' in location.districts[0] &&
-         'dongs' in location.districts[0];
+  if (location === null || typeof location !== 'object' || !location) {
+    return false;
+  }
+
+  const loc = location as Record<string, unknown>;
+
+  return 'city' in loc &&
+         typeof loc.city === 'string' &&
+         'districts' in loc &&
+         Array.isArray(loc.districts) &&
+         loc.districts.length > 0 &&
+         typeof loc.districts[0] === 'object' &&
+         loc.districts[0] !== null &&
+         'district' in (loc.districts[0] as Record<string, unknown>) &&
+         'dongs' in (loc.districts[0] as Record<string, unknown>);
 }
 
 export function isOldLocationStructure(location: unknown): location is { city: string; districts: string[] } {
-  return location &&
-         typeof location === 'object' &&
-         typeof location.city === 'string' &&
-         Array.isArray(location.districts) &&
-         location.districts.length > 0 &&
-         typeof location.districts[0] === 'string';
+  if (location === null || typeof location !== 'object' || !location) {
+    return false;
+  }
+
+  const loc = location as Record<string, unknown>;
+
+  return 'city' in loc &&
+         typeof loc.city === 'string' &&
+         'districts' in loc &&
+         Array.isArray(loc.districts) &&
+         loc.districts.length > 0 &&
+         typeof loc.districts[0] === 'string';
 }
 
 export function isSimpleLocationStructure(location: unknown): location is SimpleLocation {
-  return location &&
-         typeof location === 'object' &&
-         'city' in location &&
-         'district' in location &&
-         'dong' in location &&
-         typeof location.city === 'string' &&
-         typeof location.district === 'string' &&
-         typeof location.dong === 'string';
+  if (location === null || typeof location !== 'object' || !location) {
+    return false;
+  }
+
+  const loc = location as Record<string, unknown>;
+
+  return 'city' in loc &&
+         'district' in loc &&
+         'dong' in loc &&
+         typeof loc.city === 'string' &&
+         typeof loc.district === 'string' &&
+         typeof loc.dong === 'string';
 }
 
 // 데이터 변환 함수들

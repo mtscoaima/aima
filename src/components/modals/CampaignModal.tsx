@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Campaign } from "@/types/targetMarketing";
+import { Campaign, LocationDetailCompatible } from "@/types/targetMarketing";
 
 interface CampaignModalProps {
   isOpen: boolean;
@@ -154,7 +154,7 @@ const CampaignModal: React.FC<CampaignModalProps> = ({
                                    }).join(',')) : '전체';
                                 
                                 const locationText = campaign.target_locations_detailed && campaign.target_locations_detailed.length > 0 ?
-                                  campaign.target_locations_detailed.map((loc: { city: string; districts: string[] } | string) => {
+                                  campaign.target_locations_detailed.map((loc: LocationDetailCompatible) => {
                                     if (typeof loc === 'object' && loc.city) {
                                       return loc.city;
                                     }

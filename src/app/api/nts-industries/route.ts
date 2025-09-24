@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const payload = JSON.parse(jsonData);
 
     const years = payload.years as string[];
-    const dataByYear = payload.dataByYear as Record<string, any>;
+    const dataByYear = payload.dataByYear as Record<string, { year: string; groups: Array<{ group: string; items: Array<{ code: string; name: string; label?: string; ksic?: string }> }> }>;
 
     // 요청된 연도가 있고 데이터에 존재하면 해당 연도, 없으면 최신 연도 기본
     const year = qYear && dataByYear[qYear] ? qYear : years[years.length - 1];

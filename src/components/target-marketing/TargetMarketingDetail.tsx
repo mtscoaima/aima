@@ -26,7 +26,6 @@ import {
   TargetMarketingDetailProps,
   Campaign,
   Template,
-  SimpleLocation,
   isSimpleLocationStructure
 } from "@/types/targetMarketing";
 import {
@@ -759,7 +758,7 @@ function TargetMarketingDetailContent({
       setTargetCity((state.targetCity as string) || "all");
       setTargetDistrict((state.targetDistrict as string) || "all");
       setSelectedLocations(
-        (state.selectedLocations as Array<{ city: string; districts: string[] }>) || []
+        (state.selectedLocations as Array<{ city: string; district: string; dong: string }>) || []
       );
       // setTargetTopLevelIndustry((state.targetTopLevelIndustry as string) || "all");
       // setTargetIndustry((state.targetIndustry as string) || "all");
@@ -2494,8 +2493,9 @@ function TargetMarketingDetailContent({
         } else if (typeof firstLocation === 'object' && 'city' in firstLocation) {
           // 레거시 구조 처리
           setTargetCity(firstLocation.city || "all");
-          if ('districts' in firstLocation && Array.isArray(firstLocation.districts)) {
-            setTargetDistrict(firstLocation.districts?.[0] || "all");
+          if ('districts' in firstLocation && Array.isArray((firstLocation as Record<string, unknown>).districts)) {
+            const districts = (firstLocation as Record<string, unknown>).districts as string[];
+            setTargetDistrict(districts?.[0] || "all");
           } else {
             setTargetDistrict("all");
           }
@@ -3503,7 +3503,7 @@ function TargetMarketingDetailContent({
                              {targetTopLevelIndustryText}
                            </span>
                            {targetTopLevelIndustryText && targetIndustryText && (
-                             <span className="text-blue-700 mx-2">></span>
+                             <span className="text-blue-700 mx-2">{'>'}</span>
                            )}
                            <span className="text-sm text-blue-800">
                              {targetIndustryText}
