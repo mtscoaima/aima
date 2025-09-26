@@ -92,13 +92,14 @@ export async function PATCH(
     // 요청 본문 파싱
     const updateData = await request.json();
 
-    // 캠페인 단가 자동 계산
-    if (updateData.budget && updateData.total_recipients) {
-      updateData.unit_cost = Math.ceil(updateData.budget / updateData.total_recipients);
-    } else if (updateData.budget && campaign.total_recipients) {
-      updateData.unit_cost = Math.ceil(updateData.budget / campaign.total_recipients);
-    } else if (updateData.total_recipients && campaign.budget) {
-      updateData.unit_cost = Math.ceil(campaign.budget / updateData.total_recipients);
+    // 캠페인 단가 자동 계산 - 새로운 예산 로직 사용
+    const campaignBudget = updateData.campaign_budget || updateData.budget || campaign.campaign_budget || campaign.budget;
+    if (campaignBudget && updateData.total_recipients) {
+      updateData.unit_cost = Math.ceil(campaignBudget / updateData.total_recipients);
+    } else if (campaignBudget && campaign.total_recipients) {
+      updateData.unit_cost = Math.ceil(campaignBudget / campaign.total_recipients);
+    } else if (updateData.total_recipients && campaignBudget) {
+      updateData.unit_cost = Math.ceil(campaignBudget / updateData.total_recipients);
     }
 
     // 업데이트 시간 설정

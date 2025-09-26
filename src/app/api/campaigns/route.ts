@@ -34,7 +34,15 @@ interface CreateCampaignRequest {
   validityEndDate?: string;
   scheduledSendDate?: string;
   scheduledSendTime?: string;
-  maxRecipients: string;
+
+  // ❌ 제거 예정 - 기존 로직
+  maxRecipients?: string;
+
+  // ✅ 새로운 예산 필드들
+  budget?: number;  // 캠페인 전체 예산
+  campaignBudget?: number;  // campaign_budget 필드용
+  dailyAdSpendLimit?: number;  // 일 최대 광고비 제한
+
   existingTemplateId?: number;
   // 새로운 데이터베이스 컬럼들
   targetAgeGroups: string[];
@@ -354,11 +362,13 @@ export async function POST(request: NextRequest) {
       name: campaignData.title || messageTemplate.name,
       template_id: messageTemplate.id,
       status: "PENDING_APPROVAL",
-      total_recipients: parseInt(campaignData.maxRecipients) || 30,
+      total_recipients: 0, // 새로운 로직에서는 예산 기반으로 계산
       sent_count: 0,
       success_count: 0,
       failed_count: 0,
-      budget: campaignData.estimatedCost || 0,
+      budget: campaignData.budget || campaignData.estimatedCost || 0, // 기존 budget 필드 사용
+      campaign_budget: campaignData.campaignBudget || campaignData.budget || campaignData.estimatedCost || 0, // 새로운 campaign_budget 필드
+      daily_ad_spend_limit: campaignData.dailyAdSpendLimit || null, // 일 최대 광고비 제한
       message_template: campaignData.content,
       schedule_start_date: scheduleStartDate,
       schedule_end_date: scheduleEndDate,

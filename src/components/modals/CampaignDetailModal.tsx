@@ -27,6 +27,10 @@ interface RealCampaign {
   budget?: number;
   actual_cost?: number;
   total_recipients?: number;
+
+  // ✅ 새로운 예산 필드들
+  campaign_budget?: number;  // 캠페인 전체 예산
+  daily_ad_spend_limit?: number;  // 일 최대 광고비 제한
   sent_count: number;
   success_count: number;
   failed_count: number;
@@ -65,6 +69,10 @@ interface EditableCampaignData {
   name?: string;
   budget?: number;
   total_recipients?: number;
+
+  // ✅ 새로운 예산 필드들
+  campaign_budget?: number;
+  daily_ad_spend_limit?: number;
   schedule_start_date?: string;
   schedule_end_date?: string;
   desired_recipients?: string;
@@ -181,6 +189,11 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
         name: campaign.name,
         budget: campaign.budget || 0,
         total_recipients: campaign.total_recipients || 0,
+
+        // ✅ 새로운 예산 필드들
+        campaign_budget: campaign.campaign_budget || campaign.budget || 200000,
+        daily_ad_spend_limit: campaign.daily_ad_spend_limit || 50000,
+
         schedule_start_date: campaign.schedule_start_date || defaultStartDate,
         schedule_end_date: campaign.schedule_end_date || defaultEndDateStr,
         desired_recipients: campaign.desired_recipients || '',
@@ -1661,49 +1674,75 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                         )}
                       </div>
 
-                                             {/* 일 최대 건수 */}
+                                             {/* 캠페인 예산 */}
                        <div className="flex items-center justify-between">
-                         <span className="text-sm font-medium text-gray-700">일 최대 건수</span>
+                         <span className="text-sm font-medium text-gray-700">캠페인 예산</span>
                          {isEditMode ? (
                            <input
-                             type="number"
-                             min="1"
-                             value={editedData.total_recipients || ''}
-                             onChange={(e) => setEditedData({...editedData, total_recipients: parseInt(e.target.value) || 0})}
-                             className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                             placeholder="건수"
+                             type="text"
+                             value={editedData.campaign_budget ?
+                               editedData.campaign_budget.toLocaleString() + '원' :
+                               (editedData.budget ? editedData.budget.toLocaleString() + '원' : '200,000원')
+                             }
+                             onChange={(e) => {
+                               const value = e.target.value.replace(/[^0-9]/g, '');
+                               const numValue = parseInt(value) || 200000;
+                               setEditedData({
+                                 ...editedData,
+                                 campaign_budget: numValue >= 200000 ? numValue : 200000
+                               });
+                             }}
+                             className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                             placeholder="200,000원"
                            />
                          ) : (
-                           <span className="text-sm text-gray-900">{campaign.total_recipients?.toLocaleString() || '-'}건</span>
+                           <span className="text-sm text-gray-900">
+                             {(campaign.campaign_budget || campaign.budget)?.toLocaleString() || '-'}원
+                           </span>
                          )}
                        </div>
 
-                      {/* 캠페인 단가 (자동 계산) */}
+                       {/* 일 최대 광고비 제한 */}
+                       <div className="flex items-center justify-between">
+                         <span className="text-sm font-medium text-gray-700">일 최대 광고비 제한</span>
+                         {isEditMode ? (
+                           <input
+                             type="text"
+                             value={editedData.daily_ad_spend_limit ?
+                               editedData.daily_ad_spend_limit.toLocaleString() + '원' : '50,000원'
+                             }
+                             onChange={(e) => {
+                               const value = e.target.value.replace(/[^0-9]/g, '');
+                               const numValue = parseInt(value) || 50000;
+                               setEditedData({
+                                 ...editedData,
+                                 daily_ad_spend_limit: numValue
+                               });
+                             }}
+                             className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                             placeholder="50,000원"
+                           />
+                         ) : (
+                           <span className="text-sm text-gray-900">
+                             {campaign.daily_ad_spend_limit?.toLocaleString() || '-'}원
+                           </span>
+                         )}
+                       </div>
+
+                      {/* 광고 단가 (발송 건 당) */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">캠페인 단가</span>
+                        <span className="text-sm font-medium text-gray-700">광고 단가(발송 건 당)</span>
                         <span className="text-sm text-gray-900">
-                          {isEditMode && editedData.budget && editedData.total_recipients
-                            ? `${Math.ceil(editedData.budget / editedData.total_recipients).toLocaleString()}원`
-                            : campaign.unit_cost ? `${campaign.unit_cost.toLocaleString()}원` : '100원'
-                          }
+                          {campaign.unit_cost ? `${campaign.unit_cost.toLocaleString()}원` : '150원'}
                         </span>
                       </div>
 
-                      {/* 광고 금액 */}
+                      {/* 총 광고 예산 */}
                       <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                        <span className="text-sm font-semibold text-gray-700">광고 금액</span>
-                        {isEditMode ? (
-                          <input
-                            type="number"
-                            min="1"
-                            value={editedData.budget || ''}
-                            onChange={(e) => setEditedData({...editedData, budget: parseInt(e.target.value) || 0})}
-                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
-                            placeholder="금액"
-                          />
-                        ) : (
-                          <span className="text-sm font-semibold text-gray-900">{(Number(campaign.budget) || 0).toLocaleString()}원</span>
-                        )}
+                        <span className="text-sm font-semibold text-gray-700">총 광고 예산</span>
+                        <span className="text-sm font-semibold text-blue-600">
+                          {(campaign.campaign_budget || campaign.budget || 0).toLocaleString()}원
+                        </span>
                       </div>
                     </div>
 

@@ -27,7 +27,15 @@ export interface CreateCampaignRequest {
   validityEndDate?: string | null;
   scheduledSendDate?: string | null;
   scheduledSendTime?: string | null;
-  maxRecipients: string;
+
+  // ❌ 제거 예정 - 기존 로직
+  // maxRecipients: string;
+
+  // ✅ 새로운 예산 필드들
+  budget?: number;  // 캠페인 전체 예산
+  campaignBudget?: number;  // campaign_budget 필드용
+  dailyAdSpendLimit?: number;  // 일 최대 광고비 제한
+
   existingTemplateId?: string | null;
   // 새로운 데이터베이스 컬럼들
   targetAgeGroups: string[];

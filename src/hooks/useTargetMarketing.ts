@@ -489,12 +489,19 @@ export const useCalculations = () => {
     return unit;
   }, []);
 
-  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", maxRecipients: string, adRecipientCount: number, unitCost?: number) => {
-    // 발송 정책에 따라 다른 수신자 수 사용
-    const actualRecipients = sendPolicy === "batch" 
-      ? adRecipientCount  // 일괄 발송: 광고 수신자 수 사용
-      : parseInt(maxRecipients) || 0;  // 실시간 발송: 최대 수신자 수 사용
-    
+  // ✅ 새로운 계산 로직: 캠페인 전체 예산 기준
+  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", campaignBudget: string | number, dailyAdSpendLimit?: string | number, unitCost?: number) => {
+    // 캠페인 전체 예산 반환 (승인 시 차감되는 금액)
+    const budget = typeof campaignBudget === 'string' ? parseInt(campaignBudget) || 0 : campaignBudget;
+    return budget;
+  }, []);
+
+  // ❌ 기존 계산 로직 (하위 호환용)
+  const calculateTotalCostLegacy = useCallback((sendPolicy: "realtime" | "batch", maxRecipients: string, adRecipientCount: number, unitCost?: number) => {
+    const actualRecipients = sendPolicy === "batch"
+      ? adRecipientCount
+      : parseInt(maxRecipients) || 0;
+
     const perItem = unitCost ?? CAMPAIGN_CONSTANTS.COST_PER_ITEM;
     return perItem * actualRecipients;
   }, []);
@@ -504,5 +511,5 @@ export const useCalculations = () => {
     return shortage > 0 ? shortage : 0;
   }, []);
 
-  return { calculateUnitCost, calculateTotalCost, calculateRequiredCredits };
+  return { calculateUnitCost, calculateTotalCost, calculateTotalCostLegacy, calculateRequiredCredits };
 };
