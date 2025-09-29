@@ -15,6 +15,53 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
+// 광고머니 잔액 계산 함수 (transaction 기반)
+async function calculateCreditBalance(userId: number): Promise<number> {
+  try {
+    const { data: transactions, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("트랜잭션 조회 오류:", error);
+      return 0;
+    }
+
+    let balance = 0;
+
+    for (const transaction of transactions || []) {
+      const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
+
+      if (transaction.type === "charge") {
+        // 광고머니 충전만 계산 (포인트 제외)
+        if (!metadata?.isReward) {
+          balance += transaction.amount;
+        }
+      } else if (transaction.type === "usage") {
+        // 광고머니 사용만 계산 (포인트 사용 제외)
+        if (metadata?.transactionType !== "point") {
+          balance -= transaction.amount;
+        }
+      } else if (transaction.type === "refund") {
+        balance += transaction.amount;
+      } else if (transaction.type === "penalty") {
+        balance -= transaction.amount;
+      }
+      // reserve/unreserve는 잔액에 영향 없음 (예약만)
+    }
+
+    return Math.max(0, balance);
+  } catch (error) {
+    console.error("광고머니 잔액 계산 중 오류:", error);
+    return 0;
+  }
+}
+
+
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -193,14 +240,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 3. user_balances 테이블 확인
-      const { error: balancesTestError } = await supabase
-        .from("user_balances")
-        .select("count", { count: "exact", head: true });
-
-      if (balancesTestError) {
-        console.error(balancesTestError);
-      }
+      // 3. user_balances 테이블 확인은 더 이상 필요 없음 (transaction 기반으로 변경)
+      // const { error: balancesTestError } = await supabase
+      //   .from("user_balances")
+      //   .select("count", { count: "exact", head: true });
+      // if (balancesTestError) {
+      //   console.error(balancesTestError);
+      // }
 
       // 이미 처리된 결제인지 확인 (중복 트랜잭션 방지)
       const { data: existingTransaction, error: existingError } = await supabase
@@ -216,14 +262,8 @@ export async function POST(request: NextRequest) {
       if (existingTransaction && !existingError) {
         transaction = existingTransaction;
 
-        // 이미 처리된 경우, 현재 잔액만 조회해서 반환
-        const { data: currentBalance } = await supabase
-          .from("user_balances")
-          .select("current_balance")
-          .eq("user_id", userId)
-          .single();
-
-        const newBalance = currentBalance?.current_balance || 0;
+        // 이미 처리된 경우, 현재 잔액만 조회해서 반환 (transaction 기반)
+        const newBalance = await calculateCreditBalance(userId);
 
         return NextResponse.json({
           success: true,
@@ -273,18 +313,8 @@ export async function POST(request: NextRequest) {
         transaction = newTransaction;
       }
 
-      // 최종 잔액 조회
-      const { data: finalBalance, error: balanceError } = await supabase
-        .from("user_balances")
-        .select("current_balance")
-        .eq("user_id", userId)
-        .single();
-
-      if (balanceError) {
-        console.error(balanceError);
-      }
-
-      const newBalance = finalBalance?.current_balance || 0;
+      // 최종 잔액 조회 (transaction 기반)
+      const newBalance = await calculateCreditBalance(userId);
 
       const responseData = {
         success: true,
