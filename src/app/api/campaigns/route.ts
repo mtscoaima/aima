@@ -80,8 +80,6 @@ interface CreateCampaignRequest {
   scheduledSendDate?: string;
   scheduledSendTime?: string;
 
-  // ❌ 제거 예정 - 기존 로직
-  maxRecipients?: string;
 
   // ✅ 새로운 예산 필드들
   budget?: number;  // 캠페인 전체 예산
@@ -207,16 +205,6 @@ export async function POST(request: NextRequest) {
 
     // 사용 가능한 크레딧 확인 (transaction 기반)
     const currentBalance = await calculateCreditBalance(userId);
-
-    if (balanceError) {
-      console.error("잔액 조회 오류:", balanceError);
-      return NextResponse.json(
-        { success: false, message: "잔액 조회에 실패했습니다." },
-        { status: 500 }
-      );
-    }
-
-    // currentBalance는 이미 위에서 계산됨
 
     // 예약 크레딧 계산
     const { data: reserveData, error: reserveError } = await supabase

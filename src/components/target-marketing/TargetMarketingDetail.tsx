@@ -112,8 +112,6 @@ function TargetMarketingDetailContent({
   const [validityStartDate, setValidityStartDate] = useState(dateUtils.getTodayString());
   const [validityEndDate, setValidityEndDate] = useState(dateUtils.getDateAfterWeek());
 
-  // ❌ 기존 필드 (제거 예정)
-  const [maxRecipients, setMaxRecipients] = useState(CAMPAIGN_CONSTANTS.DEFAULT_MAX_RECIPIENTS);
 
   // 📡 사이트 설정값
   const [siteSettings, setSiteSettings] = useState({
@@ -277,7 +275,7 @@ function TargetMarketingDetailContent({
   const { addDynamicButton, removeDynamicButton, updateDynamicButton, handleLinkCheck, validateAllButtonUrls } = useDynamicButtons();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { getAllTimeOptions, getSelectedAgeDisplay } = useTargetOptions();
-  const { calculateUnitCost, calculateTotalCost, calculateTotalCostLegacy, calculateRequiredCredits } = useCalculations();
+  const { calculateUnitCost, calculateTotalCost, calculateRequiredCredits } = useCalculations();
 
   // 📡 사이트 설정 로드
   useEffect(() => {
@@ -650,7 +648,7 @@ function TargetMarketingDetailContent({
   //     saveCurrentState();
       
   //     // 필요한 크레딧 계산
-  //     const totalCostForPackage = calculateTotalCost(sendPolicy, campaignBudget, dailyAdSpendLimit);
+  //     const totalCostForPackage = calculateTotalCost(sendPolicy, campaignBudget);
       
   //     const requiredCredits = calculateRequiredCredits(totalCostForPackage, userCredits);
 
@@ -696,7 +694,6 @@ function TargetMarketingDetailContent({
       sendPolicy,
       validityStartDate,
       validityEndDate,
-      maxRecipients,
       selectedPeriod,
       
       // 타겟 필터
@@ -735,7 +732,7 @@ function TargetMarketingDetailContent({
   }, [
     messages, isFirstChat, hasShownFirstQuestion, currentQuestionIndex, userAnswers,
     templateTitle, smsTextContent, currentGeneratedImage, dynamicButtons, structuredRecommendation,
-    campaignName, sendPolicy, validityStartDate, validityEndDate, campaignBudget, dailyAdSpendLimit, selectedPeriod,
+    campaignName, sendPolicy, validityStartDate, validityEndDate, selectedPeriod,
     targetGender, targetAge, targetCity, targetDistrict, selectedLocations,
     cardAmount, customAmount, cardAmountInput, cardStartTime, cardEndTime, selectedAmountButton, cardAmountInputValue, selectedTimeButton,
     batchSendDate, batchSendTime, targetCount, adRecipientCount, femaleRatio, maleRatio, desiredRecipients,
@@ -784,8 +781,6 @@ function TargetMarketingDetailContent({
       setSendPolicy((state.sendPolicy as "realtime" | "batch") || "realtime");
       setValidityStartDate((state.validityStartDate as string) || validityStartDate);
       setValidityEndDate((state.validityEndDate as string) || validityEndDate);
-      // ❌ 기존 필드 복원 (제거 예정)
-      // setMaxRecipients((state.maxRecipients as string) || "30");
 
       // ✅ 새로운 예산 필드들 복원
       setCampaignBudget((state.campaignBudget as string) || siteSettings.minimum_campaign_price);
@@ -831,7 +826,7 @@ function TargetMarketingDetailContent({
       storageUtils.clearTargetMarketingState();
       return false;
     }
-  }, [validityStartDate, validityEndDate]);
+  }, [validityStartDate, validityEndDate, siteSettings.default_daily_limit, siteSettings.minimum_campaign_price]);
 
 
   // 상태 변경 시 자동 저장 (debounced)
@@ -887,12 +882,10 @@ function TargetMarketingDetailContent({
           duplicateCheck: true,
           skipWeekend: false,
         },
-        // ❌ 기존 필드 (제거 예정)
-        // maxRecipients: parseInt(maxRecipients) || 30,
 
         // ✅ 새로운 예산 필드들
-        campaignBudget: campaignBudget,
-        dailyAdSpendLimit: dailyAdSpendLimit,
+        campaignBudget: parseInt(campaignBudget) || 0,
+        dailyAdSpendLimit: parseInt(dailyAdSpendLimit) || 0,
         adRecipientCount: parseInt(desiredRecipients) || 0,
         selectedTemplate: templateId ? {
           id: templateId,
@@ -2673,7 +2666,7 @@ function TargetMarketingDetailContent({
     }
 
     // 크레딧 잔액 확인
-    const totalCost = calculateTotalCost(sendPolicy, campaignBudget, dailyAdSpendLimit, unitCost);
+    const totalCost = calculateTotalCost(sendPolicy, campaignBudget);
     const requiredCredits = calculateRequiredCredits(totalCost, userCredits);
 
     if (requiredCredits > 0) {
@@ -2691,9 +2684,7 @@ function TargetMarketingDetailContent({
       }
 
       // 실제 계산된 비용 사용
-      const totalCost = calculateTotalCost(sendPolicy, campaignBudget, dailyAdSpendLimit, unitCost);
-      // ❌ 기존 로직 (제거 예정)
-      // const actualMaxRecipients = sendPolicy === "batch" ? adRecipientCount : parseInt(maxRecipients);
+      const totalCost = calculateTotalCost(sendPolicy, campaignBudget);
 
       // 일괄 발송의 경우 발송 예정 날짜 계산
       let scheduledDate = null;
@@ -2725,8 +2716,6 @@ function TargetMarketingDetailContent({
             ? scheduledDate?.toISOString().split("T")[0]
             : null,
         scheduledSendTime: sendPolicy === "batch" ? batchSendTime : null,
-        // ❌ 제거 예정 - 기존 로직
-        // maxRecipients: actualMaxRecipients.toString(),
 
         // ✅ 새로운 예산 필드들
         budget: parseInt(campaignBudget) || parseInt(siteSettings.minimum_campaign_price),
@@ -3998,7 +3987,7 @@ function TargetMarketingDetailContent({
                 <div className="flex justify-between items-center border-t border-gray-200 pt-2">
                   <span className="text-base font-semibold text-gray-900">합계</span>
                   <span className="text-base font-semibold text-blue-600">
-                    {calculateTotalCost(sendPolicy, campaignBudget, dailyAdSpendLimit, unitCost).toLocaleString()}원
+                    {calculateTotalCost(sendPolicy, campaignBudget).toLocaleString()}원
                   </span>
                     </div>
                 <div className="flex justify-between items-center">
@@ -4019,7 +4008,7 @@ function TargetMarketingDetailContent({
                    
                   </div>
                 </div>
-                                {calculateRequiredCredits(calculateTotalCost(sendPolicy, campaignBudget, dailyAdSpendLimit, unitCost), userCredits) > 0 && (
+                                {calculateRequiredCredits(calculateTotalCost(sendPolicy, campaignBudget), userCredits) > 0 && (
                   <div className="flex flex-col w-fit ml-auto">
                    <button
                       className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded cursor-pointer transition-colors hover:bg-blue-700"

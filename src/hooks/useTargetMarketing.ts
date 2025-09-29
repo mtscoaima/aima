@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { DynamicButton } from "@/types/targetMarketing";
 import { targetOptions } from "@/lib/targetOptions";
-import { 
-  CAMPAIGN_CONSTANTS, 
+import {
   ERROR_MESSAGES,
   TIME_CONSTANTS,
   BUTTON_CONSTRAINTS,
@@ -490,26 +489,17 @@ export const useCalculations = () => {
   }, []);
 
   // ✅ 새로운 계산 로직: 캠페인 전체 예산 기준
-  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", campaignBudget: string | number, dailyAdSpendLimit?: string | number, unitCost?: number) => {
+  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", campaignBudget: string | number) => {
     // 캠페인 전체 예산 반환 (승인 시 차감되는 금액)
     const budget = typeof campaignBudget === 'string' ? parseInt(campaignBudget) || 0 : campaignBudget;
     return budget;
   }, []);
 
-  // ❌ 기존 계산 로직 (하위 호환용)
-  const calculateTotalCostLegacy = useCallback((sendPolicy: "realtime" | "batch", maxRecipients: string, adRecipientCount: number, unitCost?: number) => {
-    const actualRecipients = sendPolicy === "batch"
-      ? adRecipientCount
-      : parseInt(maxRecipients) || 0;
-
-    const perItem = unitCost ?? CAMPAIGN_CONSTANTS.COST_PER_ITEM;
-    return perItem * actualRecipients;
-  }, []);
 
   const calculateRequiredCredits = useCallback((totalCost: number, userCredits: number) => {
     const shortage = totalCost - userCredits;
     return shortage > 0 ? shortage : 0;
   }, []);
 
-  return { calculateUnitCost, calculateTotalCost, calculateTotalCostLegacy, calculateRequiredCredits };
+  return { calculateUnitCost, calculateTotalCost, calculateRequiredCredits };
 };

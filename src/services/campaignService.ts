@@ -28,8 +28,6 @@ export interface CreateCampaignRequest {
   scheduledSendDate?: string | null;
   scheduledSendTime?: string | null;
 
-  // ❌ 제거 예정 - 기존 로직
-  // maxRecipients: string;
 
   // ✅ 새로운 예산 필드들
   budget?: number;  // 캠페인 전체 예산
