@@ -102,9 +102,6 @@ export interface Campaign {
   budget?: number;  // 캠페인 전체 예산 (DB의 기존 budget 필드 사용)
   campaign_budget?: number;  // 캠페인 예산 (DB에 추가된 campaign_budget 필드)
   daily_ad_spend_limit?: number;  // 일 최대 광고비 제한
-
-  // ❌ 제거 예정 필드 (기존 로직)
-  // max_recipients는 더 이상 사용하지 않음
 }
 
 export interface Template {

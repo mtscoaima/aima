@@ -1294,32 +1294,34 @@ function TargetMarketingDetailContent({
     if (!isInitialized) return;
 
     if (useTemplate && templateId) {
-      const savedTemplate = localStorage.getItem("selectedTemplate");
-      if (savedTemplate) {
-        try {
-          const templateData = JSON.parse(savedTemplate);
+      // getLocalStorageItem을 사용하여 올바른 형식으로 데이터 가져오기
+      interface StoredTemplateData {
+        id?: number;
+        name?: string;
+        title?: string;
+        content?: string;
+        image_url?: string;
+      }
+      const templateData = storageUtils.getLocalStorageItem<StoredTemplateData | null>("selectedTemplate", null);
+      if (templateData) {
+        // 우측 MMS 전송 섹션에 템플릿 데이터 설정
+        setSmsTextContent(templateData.content || "");
+        setCurrentGeneratedImage(templateData.image_url || null);
+        setTemplateTitle(
+          templateData.name || templateData.title || "템플릿에서 불러온 내용"
+        );
 
-          // 우측 MMS 전송 섹션에 템플릿 데이터 설정
-          setSmsTextContent(templateData.content);
-          setCurrentGeneratedImage(templateData.image_url);
-          setTemplateTitle(
-            templateData.name || templateData.title || "템플릿에서 불러온 내용"
-          );
-
-          // 기존 템플릿 ID 설정
-          if (templateData.id) {
-            setExistingTemplateId(templateData.id);
-          }
-
-          // localStorage에서 템플릿 데이터 제거
-          localStorage.removeItem("selectedTemplate");
-          
-          // 템플릿을 사용하는 경우 첫 채팅 모드 비활성화
-          setIsFirstChat(false);
-          setHasShownFirstQuestion(false);
-        } catch (error) {
-          console.error("템플릿 데이터 파싱 오류:", error);
+        // 기존 템플릿 ID 설정
+        if (templateData.id) {
+          setExistingTemplateId(templateData.id);
         }
+
+        // localStorage에서 템플릿 데이터 제거
+        storageUtils.removeLocalStorageItem("selectedTemplate");
+
+        // 템플릿을 사용하는 경우 첫 채팅 모드 비활성화
+        setIsFirstChat(false);
+        setHasShownFirstQuestion(false);
       }
     }
   }, [useTemplate, templateId, isInitialized]);
