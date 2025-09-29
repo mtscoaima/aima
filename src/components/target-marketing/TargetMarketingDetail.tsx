@@ -115,9 +115,15 @@ function TargetMarketingDetailContent({
   // ❌ 기존 필드 (제거 예정)
   const [maxRecipients, setMaxRecipients] = useState(CAMPAIGN_CONSTANTS.DEFAULT_MAX_RECIPIENTS);
 
-  // ✅ 새로운 예산 필드들
-  const [campaignBudget, setCampaignBudget] = useState("200000"); // 캠페인 전체 예산
-  const [dailyAdSpendLimit, setDailyAdSpendLimit] = useState("50000"); // 일 최대 광고비 제한
+  // 📡 사이트 설정값
+  const [siteSettings, setSiteSettings] = useState({
+    minimum_campaign_price: "200000",
+    default_daily_limit: "50000"
+  });
+
+  // ✅ 새로운 예산 필드들 (초기값은 사이트 설정에서 가져옴)
+  const [campaignBudget, setCampaignBudget] = useState(siteSettings.minimum_campaign_price); // 캠페인 전체 예산
+  const [dailyAdSpendLimit, setDailyAdSpendLimit] = useState(siteSettings.default_daily_limit); // 일 최대 광고비 제한
 
   const [selectedPeriod, setSelectedPeriod] = useState<
     "week" | "month" | "year"
@@ -272,6 +278,28 @@ function TargetMarketingDetailContent({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { getAllTimeOptions, getSelectedAgeDisplay } = useTargetOptions();
   const { calculateUnitCost, calculateTotalCost, calculateTotalCostLegacy, calculateRequiredCredits } = useCalculations();
+
+  // 📡 사이트 설정 로드
+  useEffect(() => {
+    const fetchSiteSettings = async () => {
+      try {
+        const response = await fetch('/api/site-settings');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setSiteSettings(result.data);
+            // 기본값 업데이트
+            setCampaignBudget(result.data.minimum_campaign_price);
+            setDailyAdSpendLimit(result.data.default_daily_limit);
+          }
+        }
+      } catch (error) {
+        console.error('사이트 설정 로드 실패:', error);
+      }
+    };
+
+    fetchSiteSettings();
+  }, []);
 
   // 드롭다운 외부 클릭 감지
   useEffect(() => {
@@ -760,8 +788,8 @@ function TargetMarketingDetailContent({
       // setMaxRecipients((state.maxRecipients as string) || "30");
 
       // ✅ 새로운 예산 필드들 복원
-      setCampaignBudget((state.campaignBudget as string) || "200000");
-      setDailyAdSpendLimit((state.dailyAdSpendLimit as string) || "50000");
+      setCampaignBudget((state.campaignBudget as string) || siteSettings.minimum_campaign_price);
+      setDailyAdSpendLimit((state.dailyAdSpendLimit as string) || siteSettings.default_daily_limit);
       setSelectedPeriod((state.selectedPeriod as "week" | "month" | "year") || "week");
       
       // 타겟 필터 복원
@@ -2701,9 +2729,9 @@ function TargetMarketingDetailContent({
         // maxRecipients: actualMaxRecipients.toString(),
 
         // ✅ 새로운 예산 필드들
-        budget: parseInt(campaignBudget) || 200000,
-        campaignBudget: parseInt(campaignBudget) || 200000,
-        dailyAdSpendLimit: parseInt(dailyAdSpendLimit) || 50000,
+        budget: parseInt(campaignBudget) || parseInt(siteSettings.minimum_campaign_price),
+        campaignBudget: parseInt(campaignBudget) || parseInt(siteSettings.minimum_campaign_price),
+        dailyAdSpendLimit: parseInt(dailyAdSpendLimit) || parseInt(siteSettings.default_daily_limit),
         existingTemplateId: existingTemplateId,
         // 새로운 데이터베이스 컬럼들 직접 사용
         targetAgeGroups: targetAge && targetAge.length > 0 ? targetAge : ["all"],
@@ -3806,38 +3834,57 @@ function TargetMarketingDetailContent({
                                   {/* 캠페인 예산 */}
                   <div className="mb-4">
                     <div className="text-xs text-gray-600 mb-2">캠페인 예산</div>
-                    <input
-                      type="text"
-                      value={campaignBudget.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + "원"}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^0-9]/g, '');
-                        // 최소값 200000원 자동 적용
-                        if (value && parseInt(value) < 200000) {
-                          setCampaignBudget("200000");
-                        } else {
-                          setCampaignBudget(value || "200000");
-                        }
-                      }}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                      placeholder="200,000원"
-                    />
-                    <div className="text-xs text-gray-500 mt-1">최소 200,000원 이상</div>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        value={campaignBudget.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          setCampaignBudget(value || "0");
+                        }}
+                        className={`w-full px-3 py-2 pr-8 text-sm border rounded focus:outline-none bg-white text-right ${
+                          parseInt(campaignBudget) < parseInt(siteSettings.minimum_campaign_price) ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder={parseInt(siteSettings.minimum_campaign_price).toLocaleString()}
+                      />
+                      <span className="absolute right-3 text-sm text-gray-600">원</span>
+                    </div>
+                    {parseInt(campaignBudget) < parseInt(siteSettings.minimum_campaign_price) ? (
+                      <div className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>캠페인 예산은 최소 {parseInt(siteSettings.minimum_campaign_price).toLocaleString()}원 이상이어야 합니다</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500 mt-1">최소 {parseInt(siteSettings.minimum_campaign_price).toLocaleString()}원 이상</div>
+                    )}
                   </div>
 
                   {/* 일 최대 광고비 제한 */}
                   <div className="mb-4">
                     <div className="text-xs text-gray-600 mb-2">일 최대 광고비 제한</div>
-                    <input
-                      type="text"
-                      value={dailyAdSpendLimit.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + "원"}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^0-9]/g, '');
-                        setDailyAdSpendLimit(value || "50000");
-                      }}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-                      placeholder="50,000원"
-                    />
-                    <div className="text-xs text-gray-500 mt-1">하루에 사용할 최대 광고비</div>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        value={dailyAdSpendLimit.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          setDailyAdSpendLimit(value || "0");
+                        }}
+                        className={`w-full px-3 py-2 pr-8 text-sm border rounded focus:outline-none bg-white text-right ${
+                          parseInt(dailyAdSpendLimit) < parseInt(siteSettings.default_daily_limit) ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                        placeholder={parseInt(siteSettings.default_daily_limit).toLocaleString()}
+                      />
+                      <span className="absolute right-3 text-sm text-gray-600">원</span>
+                    </div>
+                    {parseInt(dailyAdSpendLimit) < parseInt(siteSettings.default_daily_limit) ? (
+                      <div className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>일 최대 광고비는 최소 {parseInt(siteSettings.default_daily_limit).toLocaleString()}원 이상이어야 합니다</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500 mt-1">하루에 사용할 최대 광고비</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -3992,7 +4039,7 @@ function TargetMarketingDetailContent({
               <button
                   className="w-full px-6 py-3 bg-blue-600 text-white border-none rounded-lg text-base font-medium cursor-pointer transition-colors hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 onClick={handleApprovalSubmit}
-                disabled={isSubmittingApproval}
+                disabled={isSubmittingApproval || parseInt(campaignBudget) < parseInt(siteSettings.minimum_campaign_price) || parseInt(dailyAdSpendLimit) < parseInt(siteSettings.default_daily_limit)}
               >
                 {isSubmittingApproval ? (
                   <>
@@ -4003,7 +4050,24 @@ function TargetMarketingDetailContent({
                   "승인 신청"
                 )}
               </button>
-              
+
+              {/* 예산 최소값 미달 시 안내 메시지 */}
+              {(parseInt(campaignBudget) < parseInt(siteSettings.minimum_campaign_price) || parseInt(dailyAdSpendLimit) < parseInt(siteSettings.default_daily_limit)) && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 text-sm">⚠️</span>
+                    <div className="text-sm">
+                      <div className="font-medium text-red-800 mb-1">승인 신청이 불가능합니다</div>
+                      <div className="text-red-600 text-xs">
+                        {parseInt(campaignBudget) < parseInt(siteSettings.minimum_campaign_price) && `• 캠페인 예산: 최소 ${parseInt(siteSettings.minimum_campaign_price).toLocaleString()}원 이상 필요`}
+                        {parseInt(campaignBudget) < parseInt(siteSettings.minimum_campaign_price) && parseInt(dailyAdSpendLimit) < parseInt(siteSettings.default_daily_limit) && <br />}
+                        {parseInt(dailyAdSpendLimit) < parseInt(siteSettings.default_daily_limit) && `• 일 최대 광고비: 최소 ${parseInt(siteSettings.default_daily_limit).toLocaleString()}원 이상 필요`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 전문가 검토 요청하기 체크박스 */}
               <div className="flex items-center gap-1 mt-3 ml-2">
                 <input 
