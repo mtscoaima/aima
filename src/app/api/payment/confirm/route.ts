@@ -147,7 +147,6 @@ export async function POST(request: NextRequest) {
 
     try {
       // 결제 정보에서 사용자 정보 추출
-      // 토스페이먼츠 결제 데이터에서 고객 정보 찾기
       let customerEmail = null;
 
       // 다양한 경로에서 이메일 추출 시도 (paymentData 안전성 체크)
