@@ -67,47 +67,51 @@ export async function GET(request: NextRequest) {
     const previous7DaysStartStr = previous7DaysStart.toISOString().split('T')[0] + 'T00:00:00.000Z';
     const previous7DaysEndStr = previous7DaysEnd.toISOString().split('T')[0] + 'T23:59:59.999Z';
 
-    // 최근 7일 광고비 합계 조회
-    const { data: recentCampaigns, error: recentError } = await supabase
-      .from("campaigns")
-      .select("budget")
+    // 최근 7일 실제 사용된 광고비 조회 (transactions 테이블에서 usage 타입)
+    const { data: recentTransactions, error: recentError } = await supabase
+      .from("transactions")
+      .select("amount, metadata")
       .eq("user_id", userId)
+      .eq("type", "usage")
+      .eq("status", "completed")
       .gte("created_at", recent7DaysStartStr)
       .lte("created_at", recent7DaysEndStr);
 
     if (recentError) {
-      console.error("최근 7일 캠페인 조회 오류:", recentError);
+      console.error("최근 7일 광고비 트랜잭션 조회 오류:", recentError);
       return NextResponse.json(
         { success: false, message: "최근 광고비 조회에 실패했습니다." },
         { status: 500 }
       );
     }
 
-    // 이전 7일 광고비 합계 조회
-    const { data: previousCampaigns, error: previousError } = await supabase
-      .from("campaigns")
-      .select("budget")
+    // 이전 7일 실제 사용된 광고비 조회 (transactions 테이블에서 usage 타입)
+    const { data: previousTransactions, error: previousError } = await supabase
+      .from("transactions")
+      .select("amount, metadata")
       .eq("user_id", userId)
+      .eq("type", "usage")
+      .eq("status", "completed")
       .gte("created_at", previous7DaysStartStr)
       .lte("created_at", previous7DaysEndStr);
 
     if (previousError) {
-      console.error("이전 7일 캠페인 조회 오류:", previousError);
+      console.error("이전 7일 광고비 트랜잭션 조회 오류:", previousError);
       return NextResponse.json(
         { success: false, message: "이전 광고비 조회에 실패했습니다." },
         { status: 500 }
       );
     }
 
-    // 광고비 합계 계산 (budget 사용)
-    const recentTotal = recentCampaigns?.reduce((sum, campaign) => {
-      const cost = campaign.budget ?? 0;
-      return sum + cost;
+    // 실제 사용된 광고비 합계 계산 (포인트 + 광고머니 모두 포함)
+    const recentTotal = recentTransactions?.reduce((sum, transaction) => {
+      // 포인트와 광고머니 사용 모두 광고비로 계산
+      return sum + transaction.amount;
     }, 0) ?? 0;
 
-    const previousTotal = previousCampaigns?.reduce((sum, campaign) => {
-      const cost = campaign.budget ?? 0;
-      return sum + cost;
+    const previousTotal = previousTransactions?.reduce((sum, transaction) => {
+      // 포인트와 광고머니 사용 모두 광고비로 계산
+      return sum + transaction.amount;
     }, 0) ?? 0;
 
     const response: AdCostResponse = {

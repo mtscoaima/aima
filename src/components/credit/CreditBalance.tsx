@@ -53,7 +53,7 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
               {currentBalance.toLocaleString()}원
             </div>
           </div>
-          
+
           {/* 포인트트 */}
           <div className="text-center">
             <div className="text-sm text-gray-600 mb-2">포인트</div>
@@ -62,6 +62,26 @@ export function CreditBalance({ refreshKey }: CreditBalanceProps) {
             </div>
           </div>
         </div>
+
+        {/* 잔액 부족 경고 메시지 */}
+        {(currentBalance + points) < 0 && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <span className="text-red-600 text-lg">⚠️</span>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-red-800 mb-1">
+                  💸 잔액이 부족합니다!
+                </div>
+                <div className="text-sm text-red-600">
+                  현재 총 잔액: <span className="font-semibold">{(currentBalance + points).toLocaleString()}원</span>
+                </div>
+                <div className="text-xs text-red-500 mt-1">
+                  충전 후 원활한 서비스를 이용해주세요
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

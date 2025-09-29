@@ -59,61 +59,88 @@ export async function DELETE(
     }
 
     // 예약금 해제 처리 (PENDING_APPROVAL, REVIEWING, REJECTED 상태의 캠페인)
-    const campaignCost = campaign.budget || 0;
-    if (campaignCost > 0 && (campaign.status === "PENDING_APPROVAL" || campaign.status === "REVIEWING" || campaign.status === "REJECTED")) {
-      // 해당 캠페인에 대한 예약 트랜잭션이 있는지 확인
-      const { data: reserveTransaction, error: reserveCheckError } = await supabase
+    if (campaign.status === "PENDING_APPROVAL" || campaign.status === "REVIEWING" || campaign.status === "REJECTED") {
+      // 해당 캠페인에 대한 모든 예약 트랜잭션들 조회 (포인트, 광고머니 구분)
+      const { data: reserveTransactions, error: reserveError } = await supabase
         .from("transactions")
-        .select("*")
+        .select("amount, metadata, reference_id")
         .eq("user_id", userId)
         .eq("type", "reserve")
-        .eq("reference_id", `campaign_reserve_${campaignId}`)
         .eq("status", "completed")
-        .single();
+        .or(`reference_id.like.%campaign_reserve_${campaignId}%,reference_id.like.%campaign_point_reserve_${campaignId}%`);
 
-      // 예약 트랜잭션이 있고, 아직 해제되지 않은 경우 해제 처리
-      if (reserveTransaction && !reserveCheckError) {
-        // 이미 해제된 예약금인지 확인
-        const { data: unreserveTransaction, error: unreserveCheckError } = await supabase
-          .from("transactions")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("type", "unreserve")
-          .eq("reference_id", `campaign_unreserve_delete_${campaignId}`)
-          .eq("status", "completed")
-          .single();
+      if (reserveError) {
+        console.error("예약 트랜잭션 조회 오류:", reserveError);
+      }
 
-        // 아직 해제되지 않은 경우에만 해제 처리
-        if (!unreserveTransaction || unreserveCheckError) {
-          const unreserveTransactionData = {
-            user_id: parseInt(userId),
-            type: "unreserve",
-            amount: campaignCost,
-            description: `캠페인 삭제로 인한 예약 해제 (${campaign.name})`,
-            reference_id: `campaign_unreserve_delete_${campaignId}`,
-            metadata: {
-              campaign_id: campaignId,
-              campaign_name: campaign.name,
-              unreserve_type: "campaign_deletion",
-              original_reserve_reference: `campaign_reserve_${campaignId}`,
-            },
-            status: "completed",
-          };
+      // 포인트 예약과 광고머니 예약 분리
+      let pointReservedAmount = 0;
+      let creditReservedAmount = 0;
 
-          const { error: unreserveError } = await supabase
-            .from("transactions")
-            .insert(unreserveTransactionData);
-
-          if (unreserveError) {
-            console.error("예약 해제 오류:", unreserveError);
-            return NextResponse.json(
-              { 
-                success: false, 
-                message: "예약금 해제 처리에 실패했습니다. 다시 시도해주세요." 
-              },
-              { status: 500 }
-            );
+      if (reserveTransactions) {
+        for (const transaction of reserveTransactions) {
+          const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
+          if (metadata?.transactionType === "point") {
+            pointReservedAmount += transaction.amount;
+          } else {
+            creditReservedAmount += transaction.amount;
           }
+        }
+      }
+
+      const transactions = [];
+
+      // 1. 포인트 예약 해제 (포인트가 예약되어 있을 경우)
+      if (pointReservedAmount > 0) {
+        transactions.push({
+          user_id: parseInt(userId),
+          type: "unreserve",
+          amount: pointReservedAmount,
+          description: `캠페인 포인트 예약 해제 - 삭제 (${campaign.name})`,
+          reference_id: `campaign_point_unreserve_delete_${campaignId}`,
+          metadata: {
+            campaign_id: campaignId,
+            campaign_name: campaign.name,
+            unreserve_type: "campaign_deletion",
+            transactionType: "point",
+          },
+          status: "completed",
+        });
+      }
+
+      // 2. 광고머니 예약 해제 (광고머니가 예약되어 있을 경우)
+      if (creditReservedAmount > 0) {
+        transactions.push({
+          user_id: parseInt(userId),
+          type: "unreserve",
+          amount: creditReservedAmount,
+          description: `캠페인 광고머니 예약 해제 - 삭제 (${campaign.name})`,
+          reference_id: `campaign_credit_unreserve_delete_${campaignId}`,
+          metadata: {
+            campaign_id: campaignId,
+            campaign_name: campaign.name,
+            unreserve_type: "campaign_deletion",
+            transactionType: "credit",
+          },
+          status: "completed",
+        });
+      }
+
+      // 트랜잭션 실행
+      if (transactions.length > 0) {
+        const { error: transactionError } = await supabase
+          .from("transactions")
+          .insert(transactions);
+
+        if (transactionError) {
+          console.error("예약 해제 트랜잭션 처리 오류:", transactionError);
+          return NextResponse.json(
+            {
+              success: false,
+              message: "예약금 해제 처리에 실패했습니다. 다시 시도해주세요."
+            },
+            { status: 500 }
+          );
         }
       }
     }

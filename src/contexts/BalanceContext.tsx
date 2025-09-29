@@ -300,7 +300,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
         // reserve/unreserve는 잔액에 영향 없음 (예약만)
       }
       
-      return Math.max(0, creditBalance);
+      return creditBalance; // 음수 잔액도 그대로 반환
     } catch {
       return balanceData.balance; // fallback
     }
@@ -328,7 +328,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
         // reserve/unreserve는 잔액에 영향 없음 (예약만)
       }
       
-      return Math.max(0, pointBalance);
+      return pointBalance; // 음수 잔액도 그대로 반환
     } catch {
       return 0;
     }
@@ -358,7 +358,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
   const getAvailableBalance = (): number => {
     const creditBalance = calculateBalance();
     const reservedAmount = getReservedAmount();
-    return Math.max(0, creditBalance - reservedAmount);
+    return creditBalance - reservedAmount; // 음수 잔액도 그대로 반환
   };
 
   const addTransaction = async (

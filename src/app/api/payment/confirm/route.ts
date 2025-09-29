@@ -240,14 +240,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 3. user_balances 테이블 확인은 더 이상 필요 없음 (transaction 기반으로 변경)
-      // const { error: balancesTestError } = await supabase
-      //   .from("user_balances")
-      //   .select("count", { count: "exact", head: true });
-      // if (balancesTestError) {
-      //   console.error(balancesTestError);
-      // }
-
       // 이미 처리된 결제인지 확인 (중복 트랜잭션 방지)
       const { data: existingTransaction, error: existingError } = await supabase
         .from("transactions")

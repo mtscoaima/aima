@@ -385,6 +385,20 @@ export default function AdvertiserDashboard() {
                          <div className="text-xl text-gray-900">{calculatePoints().toLocaleString()} P</div>
                        </div>
                      </div>
+
+                     {/* 잔액 부족 경고 메시지 */}
+                     {(calculateBalance() + calculatePoints()) < 0 && (
+                       <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                         <div className="flex items-center gap-2">
+                           <span className="text-red-600">⚠️</span>
+                           <div className="text-sm">
+                             <div className="font-medium text-red-800">잔액이 부족합니다</div>
+                             <div className="text-red-600">원활한 서비스 이용을 위해 충전해주세요</div>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+
                      <div className="flex justify-center pt-2">
                        <Link href="/credit-management" className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 inline-block">
                          충전하기
