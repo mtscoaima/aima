@@ -306,7 +306,7 @@ async function calculateCreditBalance(userId: number): Promise<number> {
       // reserve/unreserve는 잔액에 영향 없음 (예약만)
     }
 
-    return Math.max(0, balance);
+    return balance; // 음수 잔액도 그대로 반환
   } catch (error) {
     console.error("광고머니 잔액 계산 중 오류:", error);
     return 0;
@@ -328,7 +328,7 @@ async function getAvailableBalance(userId: number): Promise<{
     return {
       totalBalance,
       reservedAmount,
-      availableBalance: Math.max(0, availableBalance),
+      availableBalance, // 음수 잔액도 그대로 반환
     };
   } catch (error) {
     console.error("사용 가능한 크레딧 계산 중 오류:", error);

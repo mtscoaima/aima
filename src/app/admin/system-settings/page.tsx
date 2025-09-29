@@ -5,7 +5,9 @@ import { AdminGuard } from "@/components/RoleGuard";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { tokenManager } from "@/lib/api";
-import "./styles.css";
+import GeneralSettings from "@/components/admin/system-settings/GeneralSettings";
+import MenuSettings from "@/components/admin/system-settings/MenuSettings";
+import DocumentSettings from "@/components/admin/system-settings/DocumentSettings";
 
 interface MenuItem {
   id: string;
@@ -28,6 +30,8 @@ interface SiteSettings {
   footer_text: string;
   maintenance_mode: boolean;
   maintenance_message: string;
+  minimum_campaign_price: string;
+  default_daily_limit: string;
 }
 
 interface TermsData {
@@ -66,7 +70,9 @@ export default function SystemSettingsPage() {
     contact_phone: "1588-0000",
     footer_text: "Copyright © 2024 MTS Message. All rights reserved.",
     maintenance_mode: false,
-    maintenance_message: "시스템 점검 중입니다. 잠시 후 다시 이용해주세요."
+    maintenance_message: "시스템 점검 중입니다. 잠시 후 다시 이용해주세요.",
+    minimum_campaign_price: "200000",
+    default_daily_limit: "50000"
   });
 
   const [termsData, setTermsData] = useState<TermsData>({
@@ -632,973 +638,166 @@ export default function SystemSettingsPage() {
     <AdminGuard>
       <AdminHeader onToggleSidebar={toggleSidebar} />
       <AdminSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-      <div className="admin-dashboard">
-        <div className="admin-main">
-          <div className="admin-header">
-            <h1>시스템 설정 (관리자 전용)</h1>
+      <div className="flex min-h-[calc(100vh-64px)] mt-16 bg-gray-50 text-gray-800">
+        <div className="flex-1 ml-64 p-6 bg-gray-50 transition-all duration-300">
+          <div className="flex justify-center items-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800">시스템 설정 (관리자 전용)</h1>
           </div>
 
           {/* 탭 네비게이션 */}
-          <div className="tm-tabs">
+          <div className="flex mb-6 border-b border-gray-200 gap-1">
             <button
-              className={`tm-tab-btn ${activeTab === "general" ? "active" : ""}`}
+              className={`px-6 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap border-b-3 ${
+                activeTab === "general"
+                  ? "text-blue-600 border-blue-600 font-semibold"
+                  : "text-gray-600 border-transparent hover:text-blue-600 hover:bg-gray-50"
+              }`}
               onClick={() => setActiveTab("general")}
             >
               일반 설정
             </button>
             <button
-              className={`tm-tab-btn ${activeTab === "menu" ? "active" : ""}`}
+              className={`px-6 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap border-b-3 ${
+                activeTab === "menu"
+                  ? "text-blue-600 border-blue-600 font-semibold"
+                  : "text-gray-600 border-transparent hover:text-blue-600 hover:bg-gray-50"
+              }`}
               onClick={() => setActiveTab("menu")}
             >
               메뉴 설정
             </button>
             <button
-              className={`tm-tab-btn ${activeTab === "terms" ? "active" : ""}`}
+              className={`px-6 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap border-b-3 ${
+                activeTab === "terms"
+                  ? "text-blue-600 border-blue-600 font-semibold"
+                  : "text-gray-600 border-transparent hover:text-blue-600 hover:bg-gray-50"
+              }`}
               onClick={() => setActiveTab("terms")}
             >
               이용약관 설정
             </button>
             <button
-              className={`tm-tab-btn ${activeTab === "privacy" ? "active" : ""}`}
+              className={`px-6 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap border-b-3 ${
+                activeTab === "privacy"
+                  ? "text-blue-600 border-blue-600 font-semibold"
+                  : "text-gray-600 border-transparent hover:text-blue-600 hover:bg-gray-50"
+              }`}
               onClick={() => setActiveTab("privacy")}
             >
               개인정보처리방침
             </button>
             <button
-              className={`tm-tab-btn ${activeTab === "marketing" ? "active" : ""}`}
+              className={`px-6 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap border-b-3 ${
+                activeTab === "marketing"
+                  ? "text-blue-600 border-blue-600 font-semibold"
+                  : "text-gray-600 border-transparent hover:text-blue-600 hover:bg-gray-50"
+              }`}
               onClick={() => setActiveTab("marketing")}
             >
               마케팅 동의
             </button>
           </div>
 
-          <div className="settings-container">
+          <div className="flex flex-col gap-6 max-w-4xl mx-auto relative">
             {/* 로딩 상태 표시 */}
             {isLoading && (
-              <div className="loading-overlay">
-                <div className="loading-container">
-                  <div className="loading-spinner"></div>
-                  <p>설정을 불러오는 중...</p>
+              <div className="absolute inset-0 bg-white/80 flex justify-center items-center z-50 rounded-xl">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <p className="text-gray-600 text-sm">설정을 불러오는 중...</p>
                 </div>
               </div>
             )}
 
             {/* 탭별 컨텐츠 */}
             {activeTab === "general" && (
-              <div className="tab-content">
-
-            {/* 일반 설정 섹션 */}
-            <div className="settings-section">
-              <div className="section-header">
-                <h2>일반 설정</h2>
-                <p>시스템 전반에 적용되는 기본 설정을 관리합니다.</p>
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">포털 이름</label>
-                <input
-                  type="text"
-                  className="setting-input"
-                  value={settings.portalName}
-                  onChange={(e) =>
-                    handleSettingChange("portalName", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="setting-item">
-                <div className="setting-toggle-container">
-                  <div className="setting-toggle-info">
-                    <label className="setting-label">점검 모드 활성화</label>
-                    <p className="setting-description">
-                      활성화 시 일반 사용자 접근이 차단됩니다.
-                    </p>
-                  </div>
-                  <div className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      id="dormantMode"
-                      className="toggle-input"
-                      checked={settings.dormantMode}
-                      onChange={(e) =>
-                        handleSettingChange("dormantMode", e.target.checked)
-                      }
-                    />
-                    <label
-                      htmlFor="dormantMode"
-                      className="toggle-label"
-                    ></label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">기본 시간대</label>
-                <select
-                  className="setting-select"
-                  value={settings.timezone}
-                  onChange={(e) =>
-                    handleSettingChange("timezone", e.target.value)
-                  }
-                >
-                  <option value="Asia/Seoul (UTC+9)">Asia/Seoul (UTC+9)</option>
-                  <option value="America/New_York (UTC-5)">
-                    America/New_York (UTC-5)
-                  </option>
-                  <option value="Europe/London (UTC+0)">
-                    Europe/London (UTC+0)
-                  </option>
-                  <option value="Asia/Tokyo (UTC+9)">Asia/Tokyo (UTC+9)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* API 키 관리 섹션 */}
-            <div className="settings-section">
-              <div className="section-header">
-                <h2>API 키 관리</h2>
-                <p>외부 연동을 위한 API 키를 관리합니다.</p>
-              </div>
-
-              <div className="setting-item">
-                <label className="setting-label">외부 서비스 API 키</label>
-                <div className="api-key-container">
-                  <input
-                    type="text"
-                    className="setting-input api-key-input"
-                    value={settings.externalApiKey}
-                    onChange={(e) =>
-                      handleSettingChange("externalApiKey", e.target.value)
-                    }
-                    placeholder="API 키를 입력하세요"
-                  />
-                  <button
-                    type="button"
-                    className="btn-generate-key"
-                    onClick={handleGenerateApiKey}
-                  >
-                    재발급
-                  </button>
-                </div>
-              </div>
-
-              <div className="setting-item">
-                <button
-                  type="button"
-                  className="btn-new-api-key"
-                  onClick={handleGenerateApiKey}
-                >
-                  새 API 키 생성
-                </button>
-              </div>
-            </div>
-
-            {/* 수수료 비율 설정 섹션 */}
-            <div className="settings-section">
-              <div className="section-header">
-                <h2>수수료 비율 설정</h2>
-                <p>추천 시스템의 수수료 비율을 관리합니다.</p>
-              </div>
-
-              <div className="commission-rate-container">
-                <div className="commission-rate-item">
-                  <label className="setting-label">
-                    1차 추천 수수료 비율 (%)
-                  </label>
-                  <div className="rate-input-container">
-                    <input
-                      type="number"
-                      className="setting-input rate-input"
-                      value={settings.firstLevelCommissionRate}
-                      onChange={(e) =>
-                        handleSettingChange(
-                          "firstLevelCommissionRate",
-                          parseFloat(e.target.value) || 10
-                        )
-                      }
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      placeholder="10"
-                    />
-                    <span className="rate-unit">%</span>
-                  </div>
-                  <p className="rate-description">
-                    직접 추천한 사용자가 결제 시 지급되는 수수료 비율입니다.
-                  </p>
-                </div>
-
-                <div className="commission-rate-item">
-                  <label className="setting-label">
-                    n차 수수료 계산용 분모
-                  </label>
-                  <div className="rate-input-container">
-                    <input
-                      type="number"
-                      className="setting-input rate-input"
-                      value={settings.nthLevelDenominator}
-                      onChange={(e) =>
-                        handleSettingChange(
-                          "nthLevelDenominator",
-                          parseFloat(e.target.value) || 20
-                        )
-                      }
-                      min="1"
-                      max="100"
-                      step="1"
-                      placeholder="20"
-                    />
-                    <span className="rate-percentage">
-                      (2차:{" "}
-                      {(
-                        (100 - settings.firstLevelCommissionRate) /
-                        settings.nthLevelDenominator
-                      ).toFixed(2)}
-                      %, 3차:{" "}
-                      {(
-                        (100 - settings.firstLevelCommissionRate) /
-                        Math.pow(settings.nthLevelDenominator, 2)
-                      ).toFixed(3)}
-                      %)
-                    </span>
-                  </div>
-                  <p className="rate-description">
-                    2차 이상 간접 추천 사용자 수수료 계산에 사용되는
-                    분모값입니다.
-                    <br />
-                    공식: (결제금액 - 1차 수수료) ÷ 분모^(차수-1)
-                  </p>
-                </div>
-
-                <div className="commission-rate-preview">
-                  <h4>수수료 예시 (1,000원 결제 기준)</h4>
-                  <div className="preview-content">
-                    <div className="preview-item">
-                      <span>1차 추천자 수수료:</span>
-                      <strong>
-                        {(
-                          (1000 * settings.firstLevelCommissionRate) /
-                          100
-                        ).toFixed(2)}
-                        원
-                      </strong>
-                    </div>
-                    <div className="preview-item">
-                      <span>2차 추천자 수수료:</span>
-                      <strong>
-                        {(
-                          (1000 * (100 - settings.firstLevelCommissionRate)) /
-                          100 /
-                          settings.nthLevelDenominator
-                        ).toFixed(2)}
-                        원
-                      </strong>
-                    </div>
-                    <div className="preview-item">
-                      <span>3차 추천자 수수료:</span>
-                      <strong>
-                        {(
-                          (1000 * (100 - settings.firstLevelCommissionRate)) /
-                          100 /
-                          Math.pow(settings.nthLevelDenominator, 2)
-                        ).toFixed(2)}
-                        원
-                      </strong>
-                    </div>
-                    <div className="preview-calculation">
-                      <small>
-                        • 1차: 1,000원 × {settings.firstLevelCommissionRate}% ={" "}
-                        {(
-                          (1000 * settings.firstLevelCommissionRate) /
-                          100
-                        ).toFixed(2)}
-                        원<br />• 나머지 금액: 1,000원 -{" "}
-                        {(
-                          (1000 * settings.firstLevelCommissionRate) /
-                          100
-                        ).toFixed(2)}
-                        원 ={" "}
-                        {(
-                          (1000 * (100 - settings.firstLevelCommissionRate)) /
-                          100
-                        ).toFixed(2)}
-                        원<br />• 2차:{" "}
-                        {(
-                          (1000 * (100 - settings.firstLevelCommissionRate)) /
-                          100
-                        ).toFixed(2)}
-                        원 ÷ {settings.nthLevelDenominator} ={" "}
-                        {(
-                          (1000 * (100 - settings.firstLevelCommissionRate)) /
-                          100 /
-                          settings.nthLevelDenominator
-                        ).toFixed(2)}
-                        원<br />• 3차:{" "}
-                        {(
-                          (1000 * (100 - settings.firstLevelCommissionRate)) /
-                          100
-                        ).toFixed(2)}
-                        원 ÷ {settings.nthLevelDenominator}² ={" "}
-                        {(
-                          (1000 * (100 - settings.firstLevelCommissionRate)) /
-                          100 /
-                          Math.pow(settings.nthLevelDenominator, 2)
-                        ).toFixed(2)}
-                        원
-                      </small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-                {/* 저장 버튼 */}
-                <div className="settings-actions">
-                  <button
-                    type="button"
-                    className="btn-save-settings"
-                    onClick={handleSaveSettings}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? "저장 중..." : "변경사항 저장"}
-                  </button>
-                </div>
-              </div>
+              <GeneralSettings
+                settings={settings}
+                siteSettings={siteSettings}
+                onSettingChange={handleSettingChange}
+                onSiteSettingChange={(key, value) => setSiteSettings({...siteSettings, [key]: value})}
+                onSave={handleSaveSettings}
+                isSaving={isSaving}
+                onGenerateApiKey={handleGenerateApiKey}
+              />
             )}
 
             {/* 메뉴 설정 탭 */}
             {activeTab === "menu" && (
-              <div className="tab-content">
-                <div className="settings-section">
-                  <div className="section-header">
-                    <h2>메뉴 설정</h2>
-                    <p>사이트의 메뉴 구성을 관리합니다.</p>
-                  </div>
-
-                  <div className="menu-section">
-                    <h3>메인 메뉴</h3>
-                    <div className="menu-items">
-                      {menuSettings.main_menu.map((item, index) => (
-                        <div key={item.id} className="menu-item">
-                          <input
-                            type="text"
-                            value={item.name}
-                            onChange={(e) => {
-                              const newMainMenu = [...menuSettings.main_menu];
-                              newMainMenu[index].name = e.target.value;
-                              setMenuSettings({...menuSettings, main_menu: newMainMenu});
-                            }}
-                            className="menu-name-input"
-                          />
-                          <input
-                            type="text"
-                            value={item.url}
-                            onChange={(e) => {
-                              const newMainMenu = [...menuSettings.main_menu];
-                              newMainMenu[index].url = e.target.value;
-                              setMenuSettings({...menuSettings, main_menu: newMainMenu});
-                            }}
-                            className="menu-url-input"
-                          />
-                          <label className="menu-visible-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={item.visible}
-                              onChange={(e) => {
-                                const newMainMenu = [...menuSettings.main_menu];
-                                newMainMenu[index].visible = e.target.checked;
-                                setMenuSettings({...menuSettings, main_menu: newMainMenu});
-                              }}
-                            />
-                            보이기
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="site-settings-section">
-                    <h3>사이트 정보</h3>
-                    <div className="setting-item">
-                      <label className="setting-label">사이트 이름</label>
-                      <input
-                        type="text"
-                        className="setting-input"
-                        value={siteSettings.site_name}
-                        onChange={(e) => setSiteSettings({...siteSettings, site_name: e.target.value})}
-                      />
-                    </div>
-                    <div className="setting-item">
-                      <label className="setting-label">사이트 설명</label>
-                      <input
-                        type="text"
-                        className="setting-input"
-                        value={siteSettings.site_description}
-                        onChange={(e) => setSiteSettings({...siteSettings, site_description: e.target.value})}
-                      />
-                    </div>
-                    <div className="setting-item">
-                      <label className="setting-label">연락처 이메일</label>
-                      <input
-                        type="email"
-                        className="setting-input"
-                        value={siteSettings.contact_email}
-                        onChange={(e) => setSiteSettings({...siteSettings, contact_email: e.target.value})}
-                      />
-                    </div>
-                    <div className="setting-item">
-                      <label className="setting-label">연락처 전화번호</label>
-                      <input
-                        type="tel"
-                        className="setting-input"
-                        value={siteSettings.contact_phone}
-                        onChange={(e) => setSiteSettings({...siteSettings, contact_phone: e.target.value})}
-                      />
-                    </div>
-                    <div className="setting-item">
-                      <label className="setting-label">푸터 텍스트</label>
-                      <input
-                        type="text"
-                        className="setting-input"
-                        value={siteSettings.footer_text}
-                        onChange={(e) => setSiteSettings({...siteSettings, footer_text: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="settings-actions">
-                    <button
-                      type="button"
-                      className="btn-save-settings"
-                      onClick={handleSaveSettings}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "저장 중..." : "메뉴 설정 저장"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <MenuSettings
+                menuSettings={menuSettings}
+                siteSettings={siteSettings}
+                onMenuSettingsChange={setMenuSettings}
+                onSiteSettingsChange={setSiteSettings}
+                onSave={handleSaveSettings}
+                isSaving={isSaving}
+              />
             )}
 
             {/* 이용약관 설정 탭 */}
             {activeTab === "terms" && (
-              <div className="tab-content">
-                <div className="settings-section">
-                  <div className="section-header">
-                    <h2>이용약관 설정</h2>
-                    <p>서비스 이용약관을 관리합니다.</p>
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">약관 제목</label>
-                    <input
-                      type="text"
-                      className="setting-input"
-                      value={termsData.title}
-                      onChange={(e) => setTermsData({...termsData, title: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">버전</label>
-                    <input
-                      type="text"
-                      className="setting-input"
-                      value={termsData.version}
-                      onChange={(e) => setTermsData({...termsData, version: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">약관 내용</label>
-                    <textarea
-                      className="setting-textarea"
-                      rows={15}
-                      value={termsData.content}
-                      onChange={(e) => setTermsData({...termsData, content: e.target.value})}
-                      placeholder="이용약관 내용을 입력하세요..."
-                    />
-                  </div>
-
-                  <div className="settings-actions">
-                    <button
-                      type="button"
-                      className="btn-save-settings"
-                      onClick={handleSaveTerms}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "저장 중..." : "이용약관 저장"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-version-history"
-                      onClick={() => toggleVersionHistory('terms')}
-                      style={{ marginLeft: '10px', padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      {showVersionHistory.terms ? "버전 히스토리 숨기기" : "버전 히스토리 보기"}
-                    </button>
-                  </div>
-
-                  {/* 버전 히스토리 */}
-                  {showVersionHistory.terms && (
-                    <div className="version-history-section" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '5px' }}>
-                      <h3 style={{ marginBottom: '15px', fontSize: '16px', fontWeight: 'bold' }}>이용약관 버전 히스토리</h3>
-                      {termsVersions.length === 0 ? (
-                        <p style={{ color: '#6c757d', fontStyle: 'italic' }}>버전 히스토리가 없습니다.</p>
-                      ) : (
-                        <>
-                          <div className="version-list">
-                            {getCurrentPageVersions(termsVersions, 'terms').map((version) => (
-                              <div key={version.id} className="version-item" style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '10px',
-                                marginBottom: '10px',
-                                backgroundColor: version.is_active ? '#d4edda' : 'white',
-                                border: '1px solid ' + (version.is_active ? '#c3e6cb' : '#dee2e6'),
-                                borderRadius: '4px'
-                              }}>
-                                <div>
-                                  <strong>버전 {version.version}</strong>
-                                  {version.is_active && <span style={{ color: '#155724', marginLeft: '8px', fontSize: '12px' }}>(현재 활성)</span>}
-                                  <br />
-                                  <small style={{ color: '#6c757d' }}>
-                                    생성일: {new Date(version.created_at).toLocaleString('ko-KR')}
-                                  </small>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  {!version.is_active && (
-                                    <button
-                                      onClick={() => activateVersion('SERVICE_TERMS', version.id)}
-                                      style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#007bff',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                      }}
-                                    >
-                                      활성화
-                                    </button>
-                                  )}
-                                  {!version.is_active && (
-                                    <button
-                                      onClick={() => deleteVersion('SERVICE_TERMS', version.id, version.version)}
-                                      style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#dc3545',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                      }}
-                                    >
-                                      삭제
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* 페이지네이션 */}
-                          {pagination.terms.totalPages > 1 && (
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '15px', gap: '10px' }}>
-                              <button
-                                onClick={() => changePage('terms', pagination.terms.currentPage - 1)}
-                                disabled={pagination.terms.currentPage <= 1}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: pagination.terms.currentPage <= 1 ? '#6c757d' : '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: pagination.terms.currentPage <= 1 ? 'not-allowed' : 'pointer',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                이전
-                              </button>
-
-                              <span style={{ fontSize: '14px', color: '#6c757d' }}>
-                                {pagination.terms.currentPage} / {pagination.terms.totalPages}
-                              </span>
-
-                              <button
-                                onClick={() => changePage('terms', pagination.terms.currentPage + 1)}
-                                disabled={pagination.terms.currentPage >= pagination.terms.totalPages}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: pagination.terms.currentPage >= pagination.terms.totalPages ? '#6c757d' : '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: pagination.terms.currentPage >= pagination.terms.totalPages ? 'not-allowed' : 'pointer',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                다음
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <DocumentSettings
+                type="terms"
+                title="이용약관 설정"
+                description="서비스 이용약관을 관리합니다."
+                data={termsData}
+                versions={termsVersions}
+                showVersionHistory={showVersionHistory.terms}
+                pagination={pagination.terms}
+                onDataChange={setTermsData}
+                onSave={handleSaveTerms}
+                onToggleVersionHistory={() => toggleVersionHistory('terms')}
+                onChangePage={(page) => changePage('terms', page)}
+                onActivateVersion={(versionId) => activateVersion('SERVICE_TERMS', versionId)}
+                onDeleteVersion={(versionId, version) => deleteVersion('SERVICE_TERMS', versionId, version)}
+                isSaving={isSaving}
+                getCurrentPageVersions={(versions) => getCurrentPageVersions(versions, 'terms')}
+              />
             )}
 
             {/* 개인정보처리방침 설정 탭 */}
             {activeTab === "privacy" && (
-              <div className="tab-content">
-                <div className="settings-section">
-                  <div className="section-header">
-                    <h2>개인정보처리방침 설정</h2>
-                    <p>개인정보처리방침을 관리합니다.</p>
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">방침 제목</label>
-                    <input
-                      type="text"
-                      className="setting-input"
-                      value={privacyData.title}
-                      onChange={(e) => setPrivacyData({...privacyData, title: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">버전</label>
-                    <input
-                      type="text"
-                      className="setting-input"
-                      value={privacyData.version}
-                      onChange={(e) => setPrivacyData({...privacyData, version: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">방침 내용</label>
-                    <textarea
-                      className="setting-textarea"
-                      rows={15}
-                      value={privacyData.content}
-                      onChange={(e) => setPrivacyData({...privacyData, content: e.target.value})}
-                      placeholder="개인정보처리방침 내용을 입력하세요..."
-                    />
-                  </div>
-
-                  <div className="settings-actions">
-                    <button
-                      type="button"
-                      className="btn-save-settings"
-                      onClick={handleSavePrivacy}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "저장 중..." : "개인정보처리방침 저장"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-version-history"
-                      onClick={() => toggleVersionHistory('privacy')}
-                      style={{ marginLeft: '10px', padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      {showVersionHistory.privacy ? "버전 히스토리 숨기기" : "버전 히스토리 보기"}
-                    </button>
-                  </div>
-
-                  {/* 버전 히스토리 */}
-                  {showVersionHistory.privacy && (
-                    <div className="version-history-section" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '5px' }}>
-                      <h3 style={{ marginBottom: '15px', fontSize: '16px', fontWeight: 'bold' }}>개인정보처리방침 버전 히스토리</h3>
-                      {privacyVersions.length === 0 ? (
-                        <p style={{ color: '#6c757d', fontStyle: 'italic' }}>버전 히스토리가 없습니다.</p>
-                      ) : (
-                        <>
-                          <div className="version-list">
-                            {getCurrentPageVersions(privacyVersions, 'privacy').map((version) => (
-                              <div key={version.id} className="version-item" style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '10px',
-                                marginBottom: '10px',
-                                backgroundColor: version.is_active ? '#d4edda' : 'white',
-                                border: '1px solid ' + (version.is_active ? '#c3e6cb' : '#dee2e6'),
-                                borderRadius: '4px'
-                              }}>
-                                <div>
-                                  <strong>버전 {version.version}</strong>
-                                  {version.is_active && <span style={{ color: '#155724', marginLeft: '8px', fontSize: '12px' }}>(현재 활성)</span>}
-                                  <br />
-                                  <small style={{ color: '#6c757d' }}>
-                                    생성일: {new Date(version.created_at).toLocaleString('ko-KR')}
-                                  </small>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  {!version.is_active && (
-                                    <button
-                                      onClick={() => activateVersion('PRIVACY_POLICY', version.id)}
-                                      style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#007bff',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                      }}
-                                    >
-                                      활성화
-                                    </button>
-                                  )}
-                                  {!version.is_active && (
-                                    <button
-                                      onClick={() => deleteVersion('PRIVACY_POLICY', version.id, version.version)}
-                                      style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#dc3545',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                      }}
-                                    >
-                                      삭제
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* 페이지네이션 */}
-                          {pagination.privacy.totalPages > 1 && (
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '15px', gap: '10px' }}>
-                              <button
-                                onClick={() => changePage('privacy', pagination.privacy.currentPage - 1)}
-                                disabled={pagination.privacy.currentPage <= 1}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: pagination.privacy.currentPage <= 1 ? '#6c757d' : '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: pagination.privacy.currentPage <= 1 ? 'not-allowed' : 'pointer',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                이전
-                              </button>
-
-                              <span style={{ fontSize: '14px', color: '#6c757d' }}>
-                                {pagination.privacy.currentPage} / {pagination.privacy.totalPages}
-                              </span>
-
-                              <button
-                                onClick={() => changePage('privacy', pagination.privacy.currentPage + 1)}
-                                disabled={pagination.privacy.currentPage >= pagination.privacy.totalPages}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: pagination.privacy.currentPage >= pagination.privacy.totalPages ? '#6c757d' : '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: pagination.privacy.currentPage >= pagination.privacy.totalPages ? 'not-allowed' : 'pointer',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                다음
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <DocumentSettings
+                type="privacy"
+                title="개인정보처리방침 설정"
+                description="개인정보처리방침을 관리합니다."
+                data={privacyData}
+                versions={privacyVersions}
+                showVersionHistory={showVersionHistory.privacy}
+                pagination={pagination.privacy}
+                onDataChange={setPrivacyData}
+                onSave={handleSavePrivacy}
+                onToggleVersionHistory={() => toggleVersionHistory('privacy')}
+                onChangePage={(page) => changePage('privacy', page)}
+                onActivateVersion={(versionId) => activateVersion('PRIVACY_POLICY', versionId)}
+                onDeleteVersion={(versionId, version) => deleteVersion('PRIVACY_POLICY', versionId, version)}
+                isSaving={isSaving}
+                getCurrentPageVersions={(versions) => getCurrentPageVersions(versions, 'privacy')}
+              />
             )}
 
             {/* 마케팅 동의 설정 탭 */}
             {activeTab === "marketing" && (
-              <div className="tab-content">
-                <div className="settings-section">
-                  <div className="section-header">
-                    <h2>마케팅 동의 설정</h2>
-                    <p>마케팅 정보 수신 동의서를 관리합니다.</p>
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">동의서 제목</label>
-                    <input
-                      type="text"
-                      className="setting-input"
-                      value={marketingData.title}
-                      onChange={(e) => setMarketingData({...marketingData, title: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">버전</label>
-                    <input
-                      type="text"
-                      className="setting-input"
-                      value={marketingData.version}
-                      onChange={(e) => setMarketingData({...marketingData, version: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="setting-item">
-                    <label className="setting-label">동의서 내용</label>
-                    <textarea
-                      className="setting-textarea"
-                      rows={15}
-                      value={marketingData.content}
-                      onChange={(e) => setMarketingData({...marketingData, content: e.target.value})}
-                      placeholder="마케팅 정보 수신 동의서 내용을 입력하세요..."
-                    />
-                  </div>
-
-                  <div className="settings-actions">
-                    <button
-                      className="btn-save-settings"
-                      onClick={handleSaveMarketing}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "저장 중..." : "마케팅 동의서 저장"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-version-history"
-                      onClick={() => toggleVersionHistory('marketing')}
-                      style={{ marginLeft: '10px', padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      {showVersionHistory.marketing ? "버전 히스토리 숨기기" : "버전 히스토리 보기"}
-                    </button>
-                  </div>
-
-                  {/* 버전 히스토리 */}
-                  {showVersionHistory.marketing && (
-                    <div className="version-history-section" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '5px' }}>
-                      <h3 style={{ marginBottom: '15px', fontSize: '16px', fontWeight: 'bold' }}>마케팅 동의 버전 히스토리</h3>
-                      {marketingVersions.length === 0 ? (
-                        <p style={{ color: '#6c757d', fontStyle: 'italic' }}>버전 히스토리가 없습니다.</p>
-                      ) : (
-                        <>
-                          <div className="version-list">
-                            {getCurrentPageVersions(marketingVersions, 'marketing').map((version) => (
-                              <div key={version.id} className="version-item" style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '10px',
-                                marginBottom: '10px',
-                                backgroundColor: version.is_active ? '#d4edda' : 'white',
-                                border: '1px solid ' + (version.is_active ? '#c3e6cb' : '#dee2e6'),
-                                borderRadius: '4px'
-                              }}>
-                                <div>
-                                  <strong>버전 {version.version}</strong>
-                                  {version.is_active && <span style={{ color: '#155724', marginLeft: '8px', fontSize: '12px' }}>(현재 활성)</span>}
-                                  <br />
-                                  <small style={{ color: '#6c757d' }}>
-                                    생성일: {new Date(version.created_at).toLocaleString('ko-KR')}
-                                  </small>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  {!version.is_active && (
-                                    <button
-                                      onClick={() => activateVersion('MARKETING_CONSENT', version.id)}
-                                      style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#007bff',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                      }}
-                                    >
-                                      활성화
-                                    </button>
-                                  )}
-                                  {!version.is_active && (
-                                    <button
-                                      onClick={() => deleteVersion('MARKETING_CONSENT', version.id, version.version)}
-                                      style={{
-                                        padding: '6px 12px',
-                                        backgroundColor: '#dc3545',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                      }}
-                                    >
-                                      삭제
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* 페이지네이션 */}
-                          {pagination.marketing.totalPages > 1 && (
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '15px', gap: '10px' }}>
-                              <button
-                                onClick={() => changePage('marketing', pagination.marketing.currentPage - 1)}
-                                disabled={pagination.marketing.currentPage <= 1}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: pagination.marketing.currentPage <= 1 ? '#6c757d' : '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: pagination.marketing.currentPage <= 1 ? 'not-allowed' : 'pointer',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                이전
-                              </button>
-
-                              <span style={{ fontSize: '14px', color: '#6c757d' }}>
-                                {pagination.marketing.currentPage} / {pagination.marketing.totalPages}
-                              </span>
-
-                              <button
-                                onClick={() => changePage('marketing', pagination.marketing.currentPage + 1)}
-                                disabled={pagination.marketing.currentPage >= pagination.marketing.totalPages}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: pagination.marketing.currentPage >= pagination.marketing.totalPages ? '#6c757d' : '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: pagination.marketing.currentPage >= pagination.marketing.totalPages ? 'not-allowed' : 'pointer',
-                                  fontSize: '12px'
-                                }}
-                              >
-                                다음
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <DocumentSettings
+                type="marketing"
+                title="마케팅 동의 설정"
+                description="마케팅 정보 수신 동의서를 관리합니다."
+                data={marketingData}
+                versions={marketingVersions}
+                showVersionHistory={showVersionHistory.marketing}
+                pagination={pagination.marketing}
+                onDataChange={setMarketingData}
+                onSave={handleSaveMarketing}
+                onToggleVersionHistory={() => toggleVersionHistory('marketing')}
+                onChangePage={(page) => changePage('marketing', page)}
+                onActivateVersion={(versionId) => activateVersion('MARKETING_CONSENT', versionId)}
+                onDeleteVersion={(versionId, version) => deleteVersion('MARKETING_CONSENT', versionId, version)}
+                isSaving={isSaving}
+                getCurrentPageVersions={(versions) => getCurrentPageVersions(versions, 'marketing')}
+              />
             )}
 
-            <p className="settings-notice">
+            <p className="text-xs text-gray-600 leading-relaxed italic text-center w-full mt-4">
               * 이 페이지는 RBAC에서 기본 설정은 제외 메뉴에 있는 시스템 관리자 권한이 있는 사용자에게만 표시됩니다.
             </p>
           </div>

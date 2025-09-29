@@ -21,7 +21,9 @@ interface Campaign {
   sent_count: number;
   success_count: number;
   failed_count: number;
-  budget?: number;
+  budget?: number; // 기존 budget 필드
+  campaign_budget?: number; // 새로운 캠페인 예산 필드
+  daily_ad_spend_limit?: number; // 일 최대 광고비 제한
   actual_cost?: number;
   approved_by?: number;
   approved_at?: string;
@@ -419,6 +421,8 @@ export default function CampaignsPage() {
       schedule_start_date: campaign.schedule_start_date,
       schedule_end_date: campaign.schedule_end_date,
       budget: campaign.budget,
+      campaign_budget: campaign.campaign_budget,
+      daily_ad_spend_limit: campaign.daily_ad_spend_limit,
       actual_cost: campaign.actual_cost,
       total_recipients: campaign.total_recipients,
       sent_count: campaign.sent_count,

@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { DynamicButton } from "@/types/targetMarketing";
 import { targetOptions } from "@/lib/targetOptions";
-import { 
-  CAMPAIGN_CONSTANTS, 
+import {
   ERROR_MESSAGES,
   TIME_CONSTANTS,
   BUTTON_CONSTRAINTS,
@@ -489,15 +488,13 @@ export const useCalculations = () => {
     return unit;
   }, []);
 
-  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", maxRecipients: string, adRecipientCount: number, unitCost?: number) => {
-    // 발송 정책에 따라 다른 수신자 수 사용
-    const actualRecipients = sendPolicy === "batch" 
-      ? adRecipientCount  // 일괄 발송: 광고 수신자 수 사용
-      : parseInt(maxRecipients) || 0;  // 실시간 발송: 최대 수신자 수 사용
-    
-    const perItem = unitCost ?? CAMPAIGN_CONSTANTS.COST_PER_ITEM;
-    return perItem * actualRecipients;
+  // ✅ 새로운 계산 로직: 캠페인 전체 예산 기준
+  const calculateTotalCost = useCallback((sendPolicy: "realtime" | "batch", campaignBudget: string | number) => {
+    // 캠페인 전체 예산 반환 (승인 시 차감되는 금액)
+    const budget = typeof campaignBudget === 'string' ? parseInt(campaignBudget) || 0 : campaignBudget;
+    return budget;
   }, []);
+
 
   const calculateRequiredCredits = useCallback((totalCost: number, userCredits: number) => {
     const shortage = totalCost - userCredits;

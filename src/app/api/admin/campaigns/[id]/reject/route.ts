@@ -121,9 +121,99 @@ export async function POST(
       );
     }
 
+    // 예약 크레딧 해제 처리 - 거부 시에도 예약된 금액을 해제해야 함
+    const campaignUserId = campaign.user_id;
+
+    // 해당 캠페인에 대한 예약 트랜잭션들 조회
+    const { data: reserveTransactions, error: reserveError } = await supabase
+      .from("transactions")
+      .select("amount, metadata, reference_id")
+      .eq("user_id", campaignUserId)
+      .eq("type", "reserve")
+      .eq("status", "completed")
+      .or(`reference_id.like.%campaign_reserve_${campaignId}%,reference_id.like.%campaign_point_reserve_${campaignId}%`);
+
+    if (reserveError) {
+      console.error("예약 트랜잭션 조회 오류:", reserveError);
+    }
+
+    // 포인트 예약과 광고머니 예약 분리
+    let pointReservedAmount = 0;
+    let creditReservedAmount = 0;
+
+    if (reserveTransactions) {
+      for (const transaction of reserveTransactions) {
+        const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
+        if (metadata?.transactionType === "point") {
+          pointReservedAmount += transaction.amount;
+        } else {
+          creditReservedAmount += transaction.amount;
+        }
+      }
+    }
+
+    const transactions = [];
+
+    // 1. 포인트 예약 해제 (포인트가 예약되어 있을 경우)
+    if (pointReservedAmount > 0) {
+      transactions.push({
+        user_id: campaignUserId,
+        type: "unreserve",
+        amount: pointReservedAmount,
+        description: `캠페인 포인트 예약 해제 - 거부 (${campaign.name})`,
+        reference_id: `campaign_point_unreserve_reject_${campaignId}`,
+        metadata: {
+          campaign_id: parseInt(campaignId),
+          campaign_name: campaign.name,
+          unreserve_type: "campaign_rejection",
+          transactionType: "point",
+        },
+        status: "completed",
+      });
+    }
+
+    // 2. 광고머니 예약 해제 (광고머니가 예약되어 있을 경우)
+    if (creditReservedAmount > 0) {
+      transactions.push({
+        user_id: campaignUserId,
+        type: "unreserve",
+        amount: creditReservedAmount,
+        description: `캠페인 광고머니 예약 해제 - 거부 (${campaign.name})`,
+        reference_id: `campaign_credit_unreserve_reject_${campaignId}`,
+        metadata: {
+          campaign_id: parseInt(campaignId),
+          campaign_name: campaign.name,
+          unreserve_type: "campaign_rejection",
+          transactionType: "credit",
+        },
+        status: "completed",
+      });
+    }
+
+    // 트랜잭션 실행
+    if (transactions.length > 0) {
+      const { error: transactionError } = await supabase
+        .from("transactions")
+        .insert(transactions);
+
+      if (transactionError) {
+        console.error("예약 해제 트랜잭션 처리 오류:", transactionError);
+        // 거부 처리는 성공했으므로 경고와 함께 응답
+        return NextResponse.json({
+          success: true,
+          message: "캠페인이 거부되었으나 예약 해제 처리에 문제가 발생했습니다. 관리자에게 문의하세요.",
+          warning: "예약 해제 실패",
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "캠페인이 성공적으로 거부되었습니다.",
+      unreservedAmounts: {
+        point: pointReservedAmount,
+        credit: creditReservedAmount,
+      },
     });
   } catch (error) {
     console.error("캠페인 거부 오류:", error);

@@ -11,7 +11,11 @@ export interface CampaignDraft {
     duplicateCheck: boolean;
     skipWeekend: boolean;
   };
-  maxRecipients: number;
+
+  // ✅ 새로운 예산 로직
+  campaignBudget?: number;  // 캠페인 예산
+  dailyAdSpendLimit?: number;  // 일 최대 광고비 제한
+
   adRecipientCount: number;
   selectedTemplate?: {
     id: number;

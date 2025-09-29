@@ -313,8 +313,8 @@ export async function POST(
       );
     }
 
-    // 예약 크레딧 처리
-    const campaignCost = campaign.budget || 0;
+    // 예약 크레딧 처리 - 새로운 예산 로직
+    const campaignCost = campaign.campaign_budget || campaign.budget || 0;
     const campaignUserId = campaign.user_id;
 
     // 해당 캠페인에 대한 예약 트랜잭션들 조회
