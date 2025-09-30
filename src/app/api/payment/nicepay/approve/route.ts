@@ -35,8 +35,6 @@ export async function POST(request: NextRequest) {
       `${NICEPAY_CLIENT_ID}:${NICEPAY_SECRET_KEY}`
     ).toString("base64");
 
-    console.log("🔄 수동 승인 API 호출:", approveUrl);
-
     const approveResponse = await fetch(approveUrl, {
       method: "POST",
       headers: {
@@ -49,8 +47,6 @@ export async function POST(request: NextRequest) {
     });
 
     const approveData = await approveResponse.json();
-
-    console.log("📦 수동 승인 API 응답:", approveData);
 
     // 승인 실패한 경우
     if (!approveResponse.ok || approveData.resultCode !== "0000") {

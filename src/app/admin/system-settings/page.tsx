@@ -625,7 +625,6 @@ export default function SystemSettingsPage() {
   };
 
   const handleGenerateApiKey = () => {
-    // TODO: 새 API 키 생성 로직
     const newApiKey =
       "sk_live_" +
       Math.random().toString(36).substring(2, 15) +

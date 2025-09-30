@@ -15,7 +15,15 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
-// 광고머니 잔액 계산 함수 (transaction 기반)
+/**
+ * 사용자의 광고머니 잔액 계산
+ * - 완료된 거래 내역(completed)만 집계
+ * - charge: 충전 (리워드 제외)
+ * - usage: 사용 (포인트 제외)
+ * - refund: 환불
+ * - penalty: 차감
+ * - reserve/unreserve: 예약 (잔액에 영향 없음)
+ */
 async function calculateCreditBalance(userId: number): Promise<number> {
   try {
     const { data: transactions, error } = await supabase
@@ -36,12 +44,10 @@ async function calculateCreditBalance(userId: number): Promise<number> {
       const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
 
       if (transaction.type === "charge") {
-        // 광고머니 충전만 계산 (포인트 제외)
         if (!metadata?.isReward) {
           balance += transaction.amount;
         }
       } else if (transaction.type === "usage") {
-        // 광고머니 사용만 계산 (포인트 사용 제외)
         if (metadata?.transactionType !== "point") {
           balance -= transaction.amount;
         }
@@ -50,7 +56,6 @@ async function calculateCreditBalance(userId: number): Promise<number> {
       } else if (transaction.type === "penalty") {
         balance -= transaction.amount;
       }
-      // reserve/unreserve는 잔액에 영향 없음 (예약만)
     }
 
     return Math.max(0, balance);
@@ -74,11 +79,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Nice Payments의 경우 이미 승인된 상태로 전달되므로 별도 승인 API 호출 불필요
-    // paymentData에 Nice Payments 승인 결과가 포함되어 있음
     let finalPaymentData = paymentData;
 
-    // 결제 데이터가 없는 경우 기본 데이터 생성
     if (!finalPaymentData) {
       finalPaymentData = {
         resultCode: "0000",
@@ -92,15 +94,12 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // 광고머니는 1원 = 1광고머니
     const adMoney = amount;
     const description = "광고머니 충전";
 
     try {
-      // 결제 정보에서 사용자 정보 추출
       let customerEmail = null;
 
-      // 다양한 경로에서 이메일 추출 시도 (paymentData 안전성 체크)
       if (paymentData?.checkout?.customer?.email) {
         customerEmail = paymentData.checkout.customer.email;
       } else if (paymentData?.customer?.email) {
@@ -115,21 +114,17 @@ export async function POST(request: NextRequest) {
         customerEmail = paymentData.custEmail;
       }
 
-      // 이메일이 없는 경우 orderId에서 사용자 정보 추출 시도
       let userIdFromOrderId = null;
       if (!customerEmail && orderId) {
-        // orderId 형식: credit_timestamp_userId_randomstring
         const orderIdParts = orderId.split("_");
         if (orderIdParts.length >= 3 && orderIdParts[0] === "credit") {
-          userIdFromOrderId = orderIdParts[2]; // userId 부분
+          userIdFromOrderId = orderIdParts[2];
         }
       }
 
-      // 사용자 조회 (이메일 또는 orderId에서 추출한 ID로)
       let userData = null;
       let userError = null;
 
-      // 1. 이메일로 사용자 조회 시도
       if (
         customerEmail &&
         customerEmail !== "unknown@example.com" &&
@@ -145,7 +140,6 @@ export async function POST(request: NextRequest) {
         userError = result.error;
       }
 
-      // 2. 이메일로 찾지 못한 경우 orderId에서 추출한 ID로 조회
       if (!userData && userIdFromOrderId && userIdFromOrderId !== "unknown") {
         const result = await supabase
           .from("users")
@@ -190,7 +184,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 이미 처리된 결제인지 확인 (중복 트랜잭션 방지)
       const { data: existingTransaction, error: existingError } = await supabase
         .from("transactions")
         .select("*")
@@ -204,7 +197,6 @@ export async function POST(request: NextRequest) {
       if (existingTransaction && !existingError) {
         transaction = existingTransaction;
 
-        // 이미 처리된 경우, 현재 잔액만 조회해서 반환 (transaction 기반)
         const newBalance = await calculateCreditBalance(userId);
 
         return NextResponse.json({
@@ -220,7 +212,6 @@ export async function POST(request: NextRequest) {
           },
         });
       } else {
-        // 광고머니 충전 트랜잭션 생성
         const transactionData = {
           user_id: userId,
           type: "charge" as const,
@@ -252,7 +243,6 @@ export async function POST(request: NextRequest) {
         transaction = newTransaction;
       }
 
-      // 최종 잔액 조회 (transaction 기반)
       const newBalance = await calculateCreditBalance(userId);
 
       const responseData = {
@@ -272,8 +262,6 @@ export async function POST(request: NextRequest) {
     } catch (creditError) {
       console.error("광고머니 충전 처리 오류:", creditError);
 
-      // 광고머니 충전 실패해도 결제는 성공했으므로 성공으로 응답
-      // 수동으로 광고머니를 추가할 수 있도록 정보 제공
       return NextResponse.json({
         success: true,
         payment: finalPaymentData,
