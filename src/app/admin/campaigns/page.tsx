@@ -95,29 +95,24 @@ export default function CampaignsPage() {
     fetchCampaigns();
   }, []);
 
-  // 검색어나 필터 변경 시 첫 페이지로 리셋
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
-  // 필터링된 캠페인 목록
   const filteredCampaigns = useMemo(() => {
     return campaigns.filter(campaign => {
-      // 검색어 필터링
-      const matchesSearch = 
+      const matchesSearch =
         campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         campaign.users?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         campaign.users?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         campaign.users?.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // 상태 필터링
+
       const matchesStatus = statusFilter === "ALL" || campaign.status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   }, [campaigns, searchTerm, statusFilter]);
 
-  // 상태별 카운트
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {
       ALL: campaigns.length,
@@ -132,7 +127,6 @@ export default function CampaignsPage() {
     return counts;
   }, [campaigns]);
 
-  // 페이지네이션 계산
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentCampaigns = filteredCampaigns.slice(indexOfFirstItem, indexOfLastItem);
@@ -148,7 +142,6 @@ export default function CampaignsPage() {
         throw new Error("로그인이 필요합니다. 다시 로그인해주세요.");
       }
 
-      // 관리자는 모든 캠페인을 볼 수 있어야 하므로 직접 Supabase에서 조회
       const response = await fetch("/api/admin/campaigns", {
         method: "GET",
         headers: {
@@ -158,7 +151,6 @@ export default function CampaignsPage() {
       });
 
       if (response.status === 401) {
-        // 토큰이 만료되었거나 유효하지 않음
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
@@ -186,7 +178,6 @@ export default function CampaignsPage() {
           : "캠페인 조회 중 오류가 발생했습니다.";
       setError(errorMessage);
 
-      // 인증 오류인 경우 5초 후 로그인 페이지로 리다이렉트
       if (errorMessage.includes("로그인") || errorMessage.includes("인증")) {
         setTimeout(() => {
           window.location.href = "/login";
@@ -267,7 +258,6 @@ export default function CampaignsPage() {
       );
 
       if (response.ok) {
-        // 즉시 테이블 업데이트 (네트워크 요청 없이)
         setCampaigns((prevCampaigns) =>
           prevCampaigns.map((campaign) =>
             campaign.id === campaignId
@@ -324,7 +314,6 @@ export default function CampaignsPage() {
       );
 
       if (response.ok) {
-        // 즉시 테이블 업데이트
         setCampaigns((prevCampaigns) =>
           prevCampaigns.map((campaign) =>
             campaign.id === campaignId
@@ -354,8 +343,7 @@ export default function CampaignsPage() {
   };
 
   const handleCreateCampaign = () => {
-    console.log("새 캠페인 만들기");
-    // TODO: 캠페인 생성 페이지로 이동
+    alert("캠페인 생성 기능은 준비 중입니다.");
   };
 
   const handleViewDetail = (campaign: Campaign) => {
@@ -390,7 +378,6 @@ export default function CampaignsPage() {
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
-    // 테이블 상단으로 스크롤
     document.querySelector('.campaigns-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -408,7 +395,7 @@ export default function CampaignsPage() {
 
   const handlePageSizeChange = (newSize: number) => {
     setItemsPerPage(newSize);
-    setCurrentPage(1); // 페이지 크기 변경 시 첫 페이지로 이동
+    setCurrentPage(1);
   };
 
   const convertCampaignToModalFormat = (campaign: Campaign) => {
@@ -450,7 +437,6 @@ export default function CampaignsPage() {
     };
   };
 
-  // 캠페인 이름 업데이트 함수 (관리자용)
   const updateCampaignName = async (campaignId: number | string, newName: string) => {
     try {
       const token = localStorage.getItem("accessToken");
@@ -467,10 +453,8 @@ export default function CampaignsPage() {
         throw new Error('캠페인 이름 수정 실패');
       }
 
-      // 캠페인 목록 새로고침
       await fetchCampaigns();
-      
-      // 선택된 캠페인 업데이트
+
       if (selectedCampaign && selectedCampaign.id === campaignId) {
         setSelectedCampaign({ ...selectedCampaign, name: newName });
       }

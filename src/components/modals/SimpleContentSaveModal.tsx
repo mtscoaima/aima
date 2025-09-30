@@ -19,8 +19,7 @@ const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
   if (!isOpen) return null;
 
   const handleSave = () => {
-    // TODO: 실제 저장 로직 구현
-    console.log("저장:", { name: saveName, content: currentContent });
+    alert("저장 기능은 준비 중입니다.");
     onClose();
   };
 

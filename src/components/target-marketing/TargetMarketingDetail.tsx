@@ -7,7 +7,6 @@ import { Sparkles } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
 import ApprovalRequestComplete from "@/components/approval/ApprovalRequestComplete";
 import { PaymentModal } from "@/components/credit/PaymentModal";
-import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
 import IndustrySelectModal from "@/components/modals/IndustrySelectModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -242,9 +241,7 @@ function TargetMarketingDetailContent({
 
   // 크레딧 관련 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [requiredAmount, setRequiredAmount] = useState<number>(0);
 
   // BalanceContext에서 크레딧 정보 가져오기 (광고머니 + 포인트)
@@ -843,17 +840,25 @@ function TargetMarketingDetailContent({
     validityStartDate, validityEndDate, sendPolicy, campaignBudget, dailyAdSpendLimit, saveState
   ]);
 
-  // 크레딧 충전 모달 열기 (권장 패키지 자동 선택)
+  // 광고머니 충전 모달 열기
   const openCreditModal = () => {
-    // 임시로 안내 모달 표시
-    setIsNoticeModalOpen(true);
-    
-    // 기존 결제 로직은 유지 (주석 처리)
-    // handleAutoSelectPackage();
-  };
+    try {
+      // 결제 전 현재 상태 저장
+      saveState();
 
-  const handleCloseNoticeModal = () => {
-    setIsNoticeModalOpen(false);
+      // 필요한 광고머니 계산
+      const totalCost = calculateTotalCost(sendPolicy, campaignBudget);
+      const requiredCredits = calculateRequiredCredits(totalCost, userCredits);
+
+      // PaymentModal 열기 (필요한 금액 설정)
+      setSelectedPackage(null);
+      setRequiredAmount(requiredCredits);
+      setIsPaymentModalOpen(true);
+
+    } catch (error) {
+      console.error("충전 모달 열기 오류:", error);
+      alert(`충전 준비 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   // 캠페인 임시저장 로직
@@ -4100,32 +4105,18 @@ function TargetMarketingDetailContent({
       />
 
       {/* 결제 모달 */}
-      <div
-        className="fixed left-0 top-0 w-screen h-screen z-[999999]"
-        style={{
-          display: isPaymentModalOpen ? "block" : "none",
-        }}
-      >
-        <PaymentModal
-          isOpen={isPaymentModalOpen}
-          onClose={handleClosePaymentModal}
-          chargeInfo={selectedPackage ? {
-            id: selectedPackage.id,
-            name: selectedPackage.name,
-            amount: selectedPackage.credits,
-            price: selectedPackage.price
-          } : null}
-          redirectUrl={window.location.pathname}
-          requiredAmount={requiredAmount}
-          allowEdit={!selectedPackage}
-        />
-      </div>
+      {/* Nice Payments 광고머니 충전 모달 */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={handleClosePaymentModal}
+        chargeAmount={selectedPackage?.price || requiredAmount || 0}
+      />
 
-      {/* 충전 안내 모달 */}
-      <PaymentNoticeModal
+      {/* 충전 안내 모달 (비활성화) */}
+      {/* <PaymentNoticeModal
         isOpen={isNoticeModalOpen}
         onClose={handleCloseNoticeModal}
-      />
+      /> */}
 
       {/* 캠페인 불러오기 모달 */}
       <CampaignModal

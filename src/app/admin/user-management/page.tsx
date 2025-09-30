@@ -813,14 +813,9 @@ export default function UserManagementPage() {
 
   // handleGradeAdjust는 추후 등급 관리 기능에서 구현 예정
 
-  // 접속 관리 핸들러들
-  // const handleTerminateSession = (sessionId: string) => {
-  //   console.log("세션 강제 종료:", sessionId);
-  // };
-
-  // const handleBlockIp = (ip: string) => {
-  //   console.log("IP 차단:", ip);
-  // };
+  // 접속 관리 핸들러들 (미구현)
+  // const handleTerminateSession = (sessionId: string) => {};
+  // const handleBlockIp = (ip: string) => {};
 
   const getStatusBadge = (status: string) => {
     switch (status) {

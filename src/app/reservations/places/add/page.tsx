@@ -19,8 +19,7 @@ export default function AddPlacePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement place creation logic
-    console.log("Creating place:", { placeName, iconName, iconColor });
+    alert("장소 추가 기능은 준비 중입니다.");
   };
 
   return (

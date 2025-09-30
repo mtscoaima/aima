@@ -5,7 +5,6 @@ import { useBalance } from "@/contexts/BalanceContext";
 import { CreditBalance } from "@/components/credit/CreditBalance";
 import { ChargeInput } from "@/components/credit/ChargeInput";
 import { PaymentModal } from "@/components/credit/PaymentModal";
-import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 
 interface ChargeInfo {
@@ -24,7 +23,6 @@ const CreditManagementPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedCharge, setSelectedCharge] = useState<ChargeInfo | null>(null);
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
   // 필터링 상태
   const [dateFilter, setDateFilter] = useState("all");
@@ -104,23 +102,16 @@ const CreditManagementPage = () => {
   }, [refreshTransactions]);
 
   const handleCharge = (
-    // chargeInfo: ChargeInfo
+    chargeInfo: ChargeInfo
   ) => {
-    // 임시로 결제 모달 대신 안내 모달 표시
-    setIsNoticeModalOpen(true);
-    
-    // 기존 결제 로직은 유지 (주석 처리)
-    // setSelectedCharge(chargeInfo);
-    // setIsPaymentModalOpen(true);
+    // Nice Payments 자동 결제 활성화
+    setSelectedCharge(chargeInfo);
+    setIsPaymentModalOpen(true);
   };
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
     setSelectedCharge(null);
-  };
-
-  const handleCloseNoticeModal = () => {
-    setIsNoticeModalOpen(false);
   };
 
   const allTransactions = getTransactionHistory();
@@ -212,9 +203,6 @@ const CreditManagementPage = () => {
                         충전일시
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        패키지명
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         광고머니
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -240,9 +228,6 @@ const CreditManagementPage = () => {
                         typeof metadata.paymentMethod === "string"
                           ? metadata.paymentMethod
                           : "card";
-                      const packageName =
-                        metadata.packageName ||
-                        `광고머니 ${transaction.amount.toLocaleString()}개 패키지`;
 
                       return (
                         <tr key={transaction.id}>
@@ -257,9 +242,6 @@ const CreditManagementPage = () => {
                                 minute: "2-digit",
                               }
                             )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {packageName}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
                             +{transaction.amount.toLocaleString()}
@@ -555,13 +537,13 @@ const CreditManagementPage = () => {
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      패키지 검색
+                      내용 검색
                     </label>
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="패키지명으로 검색..."
+                      placeholder="내용으로 검색..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -811,16 +793,18 @@ const CreditManagementPage = () => {
           <div className="flex-1 flex flex-col">{renderTabContent()}</div>
         </div>
 
+        {/* Nice Payments 자동 결제 모달 (활성화) */}
         <PaymentModal
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
-          chargeInfo={selectedCharge}
+          chargeAmount={selectedCharge?.price || 0}
         />
-        
-        <PaymentNoticeModal
+
+        {/* 수동 충전 안내 모달 (비활성화) */}
+        {/* <PaymentNoticeModal
           isOpen={isNoticeModalOpen}
           onClose={handleCloseNoticeModal}
-        />
+        /> */}
       </div>
     </AdvertiserGuardWithDisabled>
   );

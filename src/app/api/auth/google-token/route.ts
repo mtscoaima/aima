@@ -22,9 +22,7 @@ export async function POST(request: NextRequest) {
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
     const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri =
-      process.env.GOOGLE_REDIRECT_URI ||
-      process.env.SITE_URL ||
-      "http://localhost:3000";
+      process.env.REDIRECT_URI!
 
     if (!googleClientId || !googleClientSecret) {
       return NextResponse.json(
