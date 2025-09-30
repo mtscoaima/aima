@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import styles from "./login.module.css";
 
 interface KakaoAuthObject {
   access_token: string;
@@ -133,9 +132,9 @@ export default function LoginPage() {
   // 로그인된 사용자에게는 로딩 화면 표시
   if (isAuthenticated) {
     return (
-      <div className={styles.loginContainer}>
-        <div className={styles.loginWrapper}>
-          <div className={styles.loginCard}>
+      <div className="min-h-[calc(100vh-120px)] flex items-center justify-center p-5 z-[1] relative max-[768px]:min-h-[calc(100vh-100px)] max-[768px]:p-4 max-[480px]:min-h-[calc(100vh-80px)] max-[480px]:p-3">
+        <div className="w-full max-w-[440px]">
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-md p-8 relative z-[2] my-5 max-[768px]:p-6 max-[480px]:p-5">
 
             <div style={{ textAlign: "center", padding: "2rem" }}>
               <p>이미 로그인되어 있습니다. 대시보드로 이동합니다...</p>
@@ -590,23 +589,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={styles.loginContainer}>
-      <div className={styles.loginWrapper}>
+    <div className="min-h-[calc(100vh-120px)] flex items-center justify-center p-5 z-[1] relative max-[768px]:min-h-[calc(100vh-100px)] max-[768px]:p-4 max-[480px]:min-h-[calc(100vh-80px)] max-[480px]:p-3">
+      <div className="w-full max-w-[440px]">
         {/* 헤더 */}
-        <div className={styles.header}>
-          <h1 className={styles.title}>로그인</h1>
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-[#1f2937] m-0 max-[768px]:text-xl max-[480px]:text-lg">로그인</h1>
         </div>
-        
-        <div className={styles.loginCard}>
+
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-md p-8 relative z-[2] my-5 max-[768px]:p-6 max-[480px]:p-5">
 
 
           {/* 에러 메시지 */}
-          {error && <div className={styles.errorMessage}>{error}</div>}
+          {error && <div className="bg-[#fef2f2] border border-[#fecaca] text-[#dc2626] py-3 px-4 rounded-lg text-sm mb-5 text-center">{error}</div>}
 
           {/* 로그인 폼 */}
-          <form onSubmit={handleSubmit} className={styles.loginForm}>
-            <div className={styles.formGroup}>
-              <label htmlFor="username" className={styles.formLabel}>
+          <form onSubmit={handleSubmit} className="mb-8">
+            <div className="mb-5">
+              <label htmlFor="username" className="block text-sm font-semibold text-[#374151] mb-2">
                 아이디
               </label>
               <input
@@ -615,25 +614,25 @@ export default function LoginPage() {
                 name="username"
                 value={formData.username}
                 onChange={handleInputChange}
-                className={styles.formInput}
+                className="w-full py-3.5 px-4 border-2 border-[#e5e7eb] rounded-xl text-base text-[#1f2937] transition-all duration-200 bg-[#fafafa] box-border focus:outline-none focus:border-[#0070f3] focus:bg-white focus:shadow-[0_0_0_3px_rgba(0,112,243,0.1)] placeholder:text-[#9ca3af] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed max-[480px]:py-3 max-[480px]:px-3.5 max-[480px]:text-[15px]"
                 placeholder="아이디를 입력하세요"
                 required
                 disabled={isLoading}
               />
             </div>
 
-            <div className={styles.formGroup}>
-              <label htmlFor="password" className={styles.formLabel}>
+            <div className="mb-5">
+              <label htmlFor="password" className="block text-sm font-semibold text-[#374151] mb-2">
                 비밀번호
               </label>
-              <div className={styles.passwordInputWrapper}>
+              <div className="relative flex items-center">
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={styles.formInput}
+                  className="w-full py-3.5 px-4 pr-12 border-2 border-[#e5e7eb] rounded-xl text-base text-[#1f2937] transition-all duration-200 bg-[#fafafa] box-border focus:outline-none focus:border-[#0070f3] focus:bg-white focus:shadow-[0_0_0_3px_rgba(0,112,243,0.1)] placeholder:text-[#9ca3af] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed max-[480px]:py-3 max-[480px]:px-3.5 max-[480px]:text-[15px] max-[480px]:pr-10"
                   placeholder="8~20자의 영문, 숫자, 특수기호 조합"
                   required
                   disabled={isLoading}
@@ -641,7 +640,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
-                  className={styles.passwordToggleBtn}
+                  className="absolute right-3 bg-none border-none cursor-pointer text-[#6b7280] p-1 flex items-center justify-center rounded transition-colors duration-200 hover:text-[#0070f3] hover:bg-[rgba(0,112,243,0.05)] disabled:cursor-not-allowed disabled:text-[#9ca3af] max-[480px]:right-2 max-[480px]:min-w-7 max-[480px]:min-h-7 max-[480px]:p-1"
                   disabled={isLoading}
                 >
                   <svg
@@ -677,23 +676,23 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className={styles.formOptions}>
-              <label className={styles.checkboxLabel}>
+            <div className="flex justify-between items-center mb-6">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
                   name="rememberMe"
                   checked={formData.rememberMe}
                   onChange={handleInputChange}
-                  className={styles.checkboxInput}
+                  className="mr-2 scale-110"
                   disabled={isLoading}
                 />
-                <span className={styles.checkboxText}>로그인 유지</span>
+                <span className="text-sm text-[#475569]">로그인 유지</span>
               </label>
             </div>
 
             <button
               type="submit"
-              className={styles.loginButton}
+              className="w-full bg-[#0070f3] text-white border-none py-4 px-4 rounded-xl text-base font-semibold cursor-pointer transition-all duration-200 hover:bg-[#0051cc] hover:-translate-y-0.5 hover:shadow-[0_10px_25px_rgba(0,112,243,0.3)] disabled:bg-[#9ca3af] disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none max-[480px]:py-3.5 max-[480px]:text-[15px]"
               disabled={isLoading}
             >
               {isLoading ? "로그인 중..." : "로그인"}
@@ -701,23 +700,23 @@ export default function LoginPage() {
           </form>
 
           {/* 회원가입 링크 */}
-          <div className={styles.signupLink}>
-            <span>아직 회원이 아니신가요?</span>
-            <Link href="/signup" className={styles.signupButton}>
+          <div className="text-center">
+            <span className="text-[#475569] text-sm mr-2">아직 회원이 아니신가요?</span>
+            <Link href="/signup" className="text-[#0070f3] no-underline font-semibold text-sm hover:underline hover:text-[#0051cc]">
               회원가입
             </Link>
           </div>
 
           {/* SNS 로그인 섹션 */}
-          <div className={styles.snsLoginSection}>
-            <div className={styles.socialLoginHeader}>
-              <span className={styles.socialLoginText}>간편 로그인</span>
+          <div className="mb-6">
+            <div className="text-center my-4">
+              <span className="text-[#4b5563] text-sm font-medium">간편 로그인</span>
             </div>
 
-            <div className={styles.snsButtonGroup}>
+            <div className="flex justify-center items-center gap-4 max-[768px]:gap-3.5 max-[480px]:gap-3">
               <button
                 type="button"
-                className={`${styles.snsButton} ${styles.kakaoButton}`}
+                className="w-[52px] h-[52px] border-none rounded-full p-0 cursor-pointer transition-all duration-200 flex items-center justify-center relative border-2 border-transparent bg-[#fee500] text-black hover:bg-[#fdd835] hover:border-[#fdd835] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(254,229,0,0.4)] max-[768px]:w-12 max-[768px]:h-12 max-[480px]:w-11 max-[480px]:h-11"
                 onClick={handleKakaoLogin}
                 title="카카오로 로그인"
               >
@@ -731,11 +730,11 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                className={`${styles.snsButton} ${styles.naverButton}`}
+                className="w-[52px] h-[52px] border-none rounded-full p-0 cursor-pointer transition-all duration-200 flex items-center justify-center relative border-2 border-transparent bg-[#03c75a] text-white hover:bg-[#02b351] hover:border-[#02b351] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(3,199,90,0.4)] max-[768px]:w-12 max-[768px]:h-12 max-[480px]:w-11 max-[480px]:h-11"
                 onClick={handleNaverLogin}
                 title="네이버로 로그인"
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="max-[768px]:w-5 max-[768px]:h-5 max-[480px]:w-[18px] max-[480px]:h-[18px]">
                   <path
                     d="M16.273 12.845L7.376 0H0V24H7.727V11.155L16.624 24H24V0H16.273V12.845Z"
                     fill="currentColor"
@@ -745,7 +744,7 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                className={`${styles.snsButton} ${styles.googleButton}`}
+                className="w-[52px] h-[52px] border-none rounded-full p-0 cursor-pointer transition-all duration-200 flex items-center justify-center relative border-2 bg-white text-[#1f2937] border-[#e5e7eb] hover:bg-[#f9fafb] hover:border-[#d1d5db] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] max-[768px]:w-12 max-[768px]:h-12 max-[480px]:w-11 max-[480px]:h-11"
                 onClick={handleGoogleLogin}
                 title="구글로 로그인"
               >
@@ -771,16 +770,16 @@ export default function LoginPage() {
             </div>
           </div>
 
-         
+
         </div>
-        
+
         {/* 아이디/비밀번호 찾기 링크 - modal 외부 */}
-        <div className={styles.findLinksExternal}>
-          <Link href="/auth/find-username" className={styles.forgotLink}>
+        <div className="flex items-center justify-center gap-2 mt-5 text-center max-[480px]:mt-4 max-[360px]:mt-3.5 max-[280px]:mt-3">
+          <Link href="/auth/find-username" className="text-sm text-[#0070f3] no-underline font-medium hover:underline hover:text-[#0051cc]">
             아이디 찾기
           </Link>
-          <span className={styles.linkSeparator}>|</span>
-          <Link href="/auth/find-password" className={styles.forgotLink}>
+          <span className="text-[#9ca3af] text-sm">|</span>
+          <Link href="/auth/find-password" className="text-sm text-[#0070f3] no-underline font-medium hover:underline hover:text-[#0051cc]">
             비밀번호 찾기
           </Link>
         </div>
