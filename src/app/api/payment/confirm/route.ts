@@ -74,19 +74,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // KG이니시스의 경우 이미 승인된 상태로 전달되므로 별도 승인 API 호출 불필요
-    // paymentData에 KG이니시스 승인 결과가 포함되어 있음
+    // Nice Payments의 경우 이미 승인된 상태로 전달되므로 별도 승인 API 호출 불필요
+    // paymentData에 Nice Payments 승인 결과가 포함되어 있음
     let finalPaymentData = paymentData;
 
-    // KG이니시스 결제 데이터가 없는 경우 기본 데이터 생성
+    // 결제 데이터가 없는 경우 기본 데이터 생성
     if (!finalPaymentData) {
       finalPaymentData = {
         resultCode: "0000",
         resultMsg: "정상처리",
         tid: paymentKey,
-        MOID: orderId,
-        TotPrice: amount.toString(),
-        method: "inicis",
+        orderId: orderId,
+        amount: amount.toString(),
+        method: "nicepay",
         applDate: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
         applTime: new Date().toISOString().slice(11, 19).replace(/:/g, ""),
       };
@@ -95,12 +95,12 @@ export async function POST(request: NextRequest) {
     let creditAmount = 0;
     let packageName = "크레딧 충전";
 
-    // KG이니시스 결제 데이터에서 크레딧 수량 추출
+    // 결제 데이터에서 크레딧 수량 추출
     const extractCreditsFromGoodName = (goodName: string): number => {
-      // "크레딧 10,000개 충전" 같은 형식에서 숫자 추출
-      const match = goodName.match(/크레딧\s*([\d,]+)개/);
+      // "크레딧 10,000개 충전" 또는 "광고머니 10,000개 충전" 같은 형식에서 숫자 추출
+      const match = goodName.match(/(크레딧|광고머니)\s*([\d,]+)개/);
       if (match) {
-        const creditStr = match[1].replace(/,/g, ""); // 콤마 제거
+        const creditStr = match[2].replace(/,/g, ""); // 콤마 제거
         return parseInt(creditStr);
       }
       return 0;
@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
             orderId,
             paymentAmount: amount,
             packagePrice: amount, // 충전 내역에서 사용
-            paymentMethod: finalPaymentData.method || "inicis",
+            paymentMethod: finalPaymentData.method || "nicepay",
             packageName,
             totalCredits: creditAmount,
           },
