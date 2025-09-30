@@ -203,9 +203,6 @@ const CreditManagementPage = () => {
                         충전일시
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        패키지명
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         광고머니
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -231,9 +228,6 @@ const CreditManagementPage = () => {
                         typeof metadata.paymentMethod === "string"
                           ? metadata.paymentMethod
                           : "card";
-                      const packageName =
-                        metadata.packageName ||
-                        `광고머니 ${transaction.amount.toLocaleString()}개 패키지`;
 
                       return (
                         <tr key={transaction.id}>
@@ -248,9 +242,6 @@ const CreditManagementPage = () => {
                                 minute: "2-digit",
                               }
                             )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {packageName}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
                             +{transaction.amount.toLocaleString()}
@@ -546,13 +537,13 @@ const CreditManagementPage = () => {
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      패키지 검색
+                      내용 검색
                     </label>
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="패키지명으로 검색..."
+                      placeholder="내용으로 검색..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
