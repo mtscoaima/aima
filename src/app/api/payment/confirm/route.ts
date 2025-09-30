@@ -261,10 +261,9 @@ export async function POST(request: NextRequest) {
         message: "결제가 성공적으로 완료되었습니다.",
         creditInfo: {
           userId,
-          creditAmount,
-          totalCredits: creditAmount,
+          adMoney,
           newBalance,
-          packageName,
+          description,
           transaction,
         },
       };

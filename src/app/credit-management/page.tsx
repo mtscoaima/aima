@@ -5,7 +5,6 @@ import { useBalance } from "@/contexts/BalanceContext";
 import { CreditBalance } from "@/components/credit/CreditBalance";
 import { ChargeInput } from "@/components/credit/ChargeInput";
 import { PaymentModal } from "@/components/credit/PaymentModal";
-import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
 import { AdvertiserGuardWithDisabled } from "@/components/RoleGuard";
 
 interface ChargeInfo {
@@ -24,7 +23,6 @@ const CreditManagementPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedCharge, setSelectedCharge] = useState<ChargeInfo | null>(null);
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
   // 필터링 상태
   const [dateFilter, setDateFilter] = useState("all");
@@ -109,18 +107,11 @@ const CreditManagementPage = () => {
     // Nice Payments 자동 결제 활성화
     setSelectedCharge(chargeInfo);
     setIsPaymentModalOpen(true);
-
-    // 수동 충전 방식 (비활성화)
-    // setIsNoticeModalOpen(true);
   };
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false);
     setSelectedCharge(null);
-  };
-
-  const handleCloseNoticeModal = () => {
-    setIsNoticeModalOpen(false);
   };
 
   const allTransactions = getTransactionHistory();

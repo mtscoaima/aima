@@ -7,7 +7,6 @@ import { Sparkles } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
 import ApprovalRequestComplete from "@/components/approval/ApprovalRequestComplete";
 import { PaymentModal } from "@/components/credit/PaymentModal";
-import PaymentNoticeModal from "@/components/credit/PaymentNoticeModal";
 import IndustrySelectModal from "@/components/modals/IndustrySelectModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -242,9 +241,7 @@ function TargetMarketingDetailContent({
 
   // 크레딧 관련 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [requiredAmount, setRequiredAmount] = useState<number>(0);
 
   // BalanceContext에서 크레딧 정보 가져오기 (광고머니 + 포인트)
@@ -862,10 +859,6 @@ function TargetMarketingDetailContent({
       console.error("충전 모달 열기 오류:", error);
       alert(`충전 준비 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
     }
-  };
-
-  const handleCloseNoticeModal = () => {
-    setIsNoticeModalOpen(false);
   };
 
   // 캠페인 임시저장 로직
@@ -4117,11 +4110,6 @@ function TargetMarketingDetailContent({
         isOpen={isPaymentModalOpen}
         onClose={handleClosePaymentModal}
         chargeAmount={selectedPackage?.price || requiredAmount || 0}
-        onSuccess={() => {
-          // 결제 성공 시 잔액 새로고침
-          refreshBalance();
-          handleClosePaymentModal();
-        }}
       />
 
       {/* 충전 안내 모달 (비활성화) */}

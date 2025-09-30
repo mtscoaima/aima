@@ -8,14 +8,28 @@ interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   chargeAmount: number;
-  onSuccess?: () => void; // 결제 성공 시 호출되는 콜백 (옵셔널)
+}
+
+interface NicePaymentResult {
+  errorMsg?: string;
 }
 
 // Nice Payments 전역 객체 타입 정의 (v1)
 declare global {
   interface Window {
     AUTHNICE?: {
-      requestPay: (params: any) => void;
+      requestPay: (params: {
+        clientId: string;
+        method: string;
+        orderId: string;
+        amount: number;
+        goodsName: string;
+        returnUrl: string;
+        buyerName: string;
+        buyerEmail: string;
+        buyerTel: string;
+        fnError: (result: NicePaymentResult) => void;
+      }) => void;
     };
   }
 }
@@ -24,7 +38,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
   chargeAmount,
-  onSuccess,
 }) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -131,7 +144,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         buyerName: paymentData.buyerName,
         buyerEmail: paymentData.buyerEmail,
         buyerTel: paymentData.buyerTel,
-        fnError: function(result: any) {
+        fnError: function(result: NicePaymentResult) {
           console.error("❌ 결제 오류:", result);
           setError(result.errorMsg || "결제 중 오류가 발생했습니다.");
           setIsLoading(false);

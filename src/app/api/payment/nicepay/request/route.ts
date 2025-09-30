@@ -18,8 +18,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 
 // Nice Payments 환경변수
 const NICEPAY_CLIENT_ID = process.env.NICEPAY_CLIENT_ID!;
-const NICEPAY_SECRET_KEY = process.env.NICEPAY_SECRET_KEY!;
-const NICEPAY_JS_SDK_URL = process.env.NICEPAY_JS_SDK_URL!;
 
 /**
  * Nice Payments 결제 요청 API

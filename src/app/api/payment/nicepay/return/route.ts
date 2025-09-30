@@ -1,20 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-// Supabase 클라이언트 생성
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  db: {
-    schema: "public",
-  },
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
 
 // Nice Payments 환경변수
 const NICEPAY_CLIENT_ID = process.env.NICEPAY_CLIENT_ID!;
@@ -48,7 +33,6 @@ export async function POST(request: NextRequest) {
       amount,
       authToken,
       signature,
-      mallReserved,
     } = body;
 
     // 인증 실패 처리
