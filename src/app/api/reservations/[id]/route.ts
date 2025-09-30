@@ -112,7 +112,6 @@ export async function PUT(
     } = body;
 
     // 먼저 예약의 존재 여부와 소유권 확인
-    console.log('Looking for reservation with ID:', reservationId, 'and user ID:', userId);
     const { data: reservation, error: findError } = await supabase
       .from("reservations")
       .select("id")
@@ -126,7 +125,6 @@ export async function PUT(
     }
 
     if (!reservation) {
-      console.log('No reservation found for ID:', reservationId, 'user:', userId);
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
     }
 
@@ -145,7 +143,6 @@ export async function PUT(
     if (special_requirements !== undefined) updateData.special_requirements = special_requirements;
 
     // 예약 정보 업데이트
-    console.log('Updating reservation with data:', updateData);
     const { data, error } = await supabase
       .from("reservations")
       .update(updateData)

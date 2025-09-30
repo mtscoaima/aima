@@ -101,7 +101,6 @@ export default function SpaceDetailPage() {
 
   const handleSaveHostContact = () => {
     // 호스트 연락처 저장 로직 (향후 구현)
-    console.log('Host contact saved:', hostContact);
     setShowHostContactModal(false);
     alert('호스트 연락처가 저장되었습니다.');
   };

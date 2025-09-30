@@ -151,15 +151,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (conflictingReservations && conflictingReservations.length > 0) {
-      console.log("=== RESERVATION CONFLICT DETECTED ===");
-      console.log("New reservation attempt:");
-      console.log("  Start:", start_datetime);
-      console.log("  End:", end_datetime);
-      console.log("Conflicting existing reservations:");
-      conflictingReservations.forEach((res, index) => {
-        console.log(`  ${index + 1}. ID: ${res.id}, Start: ${res.start_datetime}, End: ${res.end_datetime}`);
-      });
-      console.log("=====================================");
       
       return NextResponse.json(
         { 

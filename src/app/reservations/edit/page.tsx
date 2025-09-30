@@ -357,8 +357,6 @@ export default function EditReservationPage() {
         special_requirements: formData.memo || null
       };
 
-      console.log('Sending update data:', updateData);
-
       const response = await fetch(`/api/reservations/${reservationId}`, {
         method: 'PUT',
         headers: {
@@ -369,8 +367,7 @@ export default function EditReservationPage() {
       });
 
       if (response.ok) {
-        const responseData = await response.json();
-        console.log('Update response:', responseData);
+        await response.json();
         alert('예약이 수정되었습니다.');
         router.push(`/reservations/detail?id=${reservationId}`);
       } else {

@@ -267,8 +267,7 @@ export default function CreateReservationPage() {
         return;
       }
 
-      const { reservation } = await response.json();
-      console.log('Reservation created successfully:', reservation);
+      await response.json();
       
       // 예약 생성 성공 시 sessionStorage 정리
       sessionStorage.removeItem('reservationPrice');
@@ -418,7 +417,7 @@ export default function CreateReservationPage() {
 
   // 예약채널 목록
   const channels = [
-    "아워플레이스", 
+    "아워플레이스",
     "스페이스클라우드",
     "여기어때",
     "웨이닛",

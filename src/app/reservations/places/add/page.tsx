@@ -57,8 +57,7 @@ export default function AddPlacePage() {
         throw new Error(errorData.error || '공간 생성에 실패했습니다.');
       }
 
-      const { space } = await response.json();
-      console.log('Space created successfully:', space);
+      await response.json();
       
       alert('공간이 성공적으로 추가되었습니다!');
       router.push('/reservations/places');

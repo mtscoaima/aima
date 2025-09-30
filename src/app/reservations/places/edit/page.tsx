@@ -123,9 +123,7 @@ export default function SpaceEditPage() {
         throw new Error(errorData.error || '공간 수정에 실패했습니다.');
       }
 
-      const { space } = await response.json();
-      console.log('Space updated successfully:', space);
-      
+      await response.json();      
       alert('공간이 성공적으로 수정되었습니다!');
       router.back();
       
