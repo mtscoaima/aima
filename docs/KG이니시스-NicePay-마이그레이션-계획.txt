@@ -4,7 +4,7 @@
 ================================================================================
 
 📅 작성일: 2025-09-29
-📅 최종 업데이트: 2025-09-29 (Phase 1-2 완료)
+📅 최종 업데이트: 2025-09-30 (Phase 3 완료)
 📝 목적: 사용하지 않는 KG 이니시스 결제 로직을 Nice Payments로 교체
 ⚠️ 주의: 현재 수동 충전 방식 유지, KG이니시스 본인인증 시스템 절대 유지
 🔄 전략: KG이니시스 결제 코드 삭제 → Nice Payments 코드로 교체
@@ -13,8 +13,8 @@
 📊 진행 상황:
 ✅ Phase 1: KG이니시스 결제 코드 정리 완료 (2025-09-29)
 ✅ Phase 2: Nice Payments 환경 설정 완료 (2025-09-29)
-🔄 Phase 3: Nice Payments API 라우트 구현 (진행 예정)
-⏳ Phase 4: PaymentModal 컴포넌트 재작성 (대기 중)
+✅ Phase 3: Nice Payments API 라우트 구현 완료 (2025-09-30)
+✅ Phase 4: PaymentModal 컴포넌트 재작성 완료 (2025-09-30)
 ⏳ Phase 5: 연동 및 테스트 (대기 중)
 ⏳ Phase 6: 문서 정리 및 완료 (대기 중)
 ⏳ Phase 7: 나중에 활성화 (언제든지 가능)
@@ -370,31 +370,46 @@ NICEPAY_JS_SDK_URL=https://sandbox-pay.nicepay.co.kr/v1/js/
   - NICEPAY_JS_SDK_URL=https://sandbox-pay.nicepay.co.kr/v1/js/
 ✅ 환경변수 가이드 업데이트 (docs/env.txt)
 
-8.3 Phase 3: Nice Payments API 라우트 구현 (예상 소요: 2일)
+8.3 Phase 3: Nice Payments API 라우트 구현 ✅ 완료 (소요: 1일)
 ----------------------------------------
-📅 Day 2-3:
-□ /api/payment/nicepay/request 구현
-  - 주문 정보 생성
-  - 서명 생성 로직
-  - 데이터베이스 저장
-□ /api/payment/nicepay/return 구현
-  - POST 데이터 수신
-  - 위변조 검증
-  - 승인 API 호출
-□ /api/payment/nicepay/success 구현
-  - 결제 성공 처리
-  - 크레딧 충전 로직
-□ /api/payment/confirm 수정 (Nice Payments 방식으로)
+📅 Day 2: ✅ 완료됨
+✅ /api/payment/nicepay/request 구현 완료
+  - orderId 생성 (credit_timestamp_userId_random)
+  - ediDate 및 서명(signature) 생성 로직 구현
+  - 임시 트랜잭션 DB 저장
+  - 클라이언트에게 결제창 정보 반환
+✅ /api/payment/nicepay/return 구현 완료
+  - POST 데이터 수신 및 파싱
+  - 서명 검증을 통한 위변조 방지
+  - Nice Payments 승인 API 호출 (Basic Auth)
+  - /api/payment/confirm으로 크레딧 충전 위임
+✅ /api/payment/nicepay/approve 구현 완료 (수동 승인용)
+  - tid와 amount로 직접 승인 API 호출
+  - 에러 복구 및 재시도용
+✅ /api/payment/confirm 수정 완료
+  - KG이니시스 → Nice Payments 방식으로 변경
+  - 기본 method: "inicis" → "nicepay"
+  - 광고머니/크레딧 수량 추출 로직 개선
 
-8.4 Phase 4: PaymentModal 컴포넌트 재작성 (예상 소요: 2일)
+8.4 Phase 4: PaymentModal 컴포넌트 재작성 ✅ 완료 (소요: 1일)
 ----------------------------------------
-📅 Day 4-5:
-□ PaymentModal.tsx 새로 작성 (Nice Payments 방식)
-□ Nice Payments JS SDK 로드 구현
-□ AUTHNICE.requestPay() 메소드 구현
-□ 결제창 옵션 설정 (카드결제, 금액, returnUrl 등)
-□ 에러 처리 및 로딩 상태 구현
-□ 팝업 차단 해제 안내 추가
+📅 Day 3: ✅ 완료됨
+✅ PaymentModal.tsx 새로 작성 (Nice Payments 방식)
+  - Next.js Script 컴포넌트로 JS SDK 동적 로드
+  - SDK 로드 상태 추적 (sdkLoaded state)
+✅ AUTHNICE.requestPay() 메소드 구현 완료
+  - TypeScript 타입 정의 추가
+  - 결제창 호출 파라미터 설정
+✅ 결제창 옵션 설정 완료
+  - 카드결제 (method: "card")
+  - 충전 금액 및 상품명
+  - returnUrl 자동 설정
+✅ 에러 처리 및 로딩 상태 구현 완료
+  - SDK 로드 실패 감지
+  - 결제 요청 실패 에러 메시지
+  - fnError 콜백으로 Nice Payments 에러 처리
+✅ AuthContext 연동으로 실제 사용자 정보 사용
+  - 사용자 이름, 이메일, 전화번호, ID 자동 입력
 
 8.5 Phase 5: 연동 및 테스트 (예상 소요: 2일)
 ----------------------------------------
