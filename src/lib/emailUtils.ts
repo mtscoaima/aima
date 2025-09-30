@@ -144,7 +144,7 @@ export function createUsernameEmailTemplate(
         margin: 30px 0;
       ">
         <a href="${
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+          process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
         }/login" style="
           background: #0070f3;
           color: white;
@@ -186,7 +186,7 @@ ${usernames.map((username) => `- ${username}`).join("\n")}
 - 만약 본인이 요청하지 않았다면, 즉시 비밀번호를 변경해주세요.
 - 아이디 정보를 타인과 공유하지 마세요.
 
-로그인: ${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/login
+로그인: ${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login
 
 © 2024 MTS플러스. All rights reserved.
   `;
@@ -312,7 +312,7 @@ export function createTempPasswordEmailTemplate(
         margin: 30px 0;
       ">
         <a href="${
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+          process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
         }/login" style="
           background: #0070f3;
           color: white;
@@ -357,7 +357,7 @@ MTS플러스 임시 비밀번호 안내
 - 이 이메일은 본인의 요청에 의해 발송되었습니다.
 - 만약 본인이 요청하지 않았다면, 즉시 고객센터에 문의하세요.
 
-로그인: ${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/login
+로그인: ${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/login
 
 © 2024 MTS플러스. All rights reserved.
   `;

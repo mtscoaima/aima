@@ -778,18 +778,7 @@ export function decryptSEED(
       return "TEST_CI_" + decryptedHex.substring(0, 40);
     }
 
-    // 6. 실제 운영 환경 복호화 (나중에 사용)
-    // 운영 환경에서는 아래 로직을 사용
-    /*
-    try {
-      const utf8Result = Buffer.from(decrypted).toString('utf8').trim();
-      if (/^[\x20-\x7E가-힣]+$/.test(utf8Result) && utf8Result.length > 0) {
-        return utf8Result;
-      }
-    } catch (err) {
-      console.log('UTF-8 conversion failed');
-    }
-    */
+    // 운영 환경에서는 UTF-8 변환 로직 활성화 필요
 
     // 기본값
     return "테스트데이터";

@@ -23,9 +23,7 @@ export async function POST(request: NextRequest) {
     const naverClientId = process.env.NAVER_CLIENT_ID;
     const naverClientSecret = process.env.NAVER_CLIENT_SECRET;
     const redirectUri =
-      process.env.NAVER_REDIRECT_URI ||
-      process.env.SITE_URL ||
-      "http://localhost:3000";
+      process.env.REDIRECT_URI!
 
     if (!naverClientId || !naverClientSecret) {
       console.error("❌ [네이버 토큰 API] 환경 변수 누락");

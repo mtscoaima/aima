@@ -21,9 +21,7 @@ export async function POST(request: NextRequest) {
 
     const kakaoAppKey = process.env.KAKAO_APP_KEY;
     const redirectUri =
-      process.env.KAKAO_REDIRECT_URI ||
-      process.env.SITE_URL ||
-      "http://localhost:3000";
+      process.env.REDIRECT_URI!
 
     if (!kakaoAppKey) {
       return NextResponse.json(
