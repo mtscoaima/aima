@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
     if (authResultCode !== "0000") {
       console.error("❌ 결제 인증 실패:", authResultMsg);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=${encodeURIComponent(authResultMsg)}`
+        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=${encodeURIComponent(authResultMsg)}`,
+        303
       );
     }
 
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest) {
     if (signature !== expectedSignature) {
       console.error("❌ 서명 검증 실패");
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=서명 검증 실패`
+        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=서명 검증 실패`,
+        303
       );
     }
 
@@ -127,18 +129,21 @@ export async function POST(request: NextRequest) {
     if (!confirmResponse.ok) {
       console.error("❌ confirm API 실패");
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=크레딧 충전 실패`
+        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=크레딧 충전 실패`,
+        303
       );
     }
 
     // 성공 시 리다이렉트
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=success&amount=${amount}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=success&amount=${amount}`,
+      303
     );
   } catch (error) {
     console.error("Nice Payments Return 처리 실패:", error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=처리 중 오류 발생`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=처리 중 오류 발생`,
+      303
     );
   }
 }
