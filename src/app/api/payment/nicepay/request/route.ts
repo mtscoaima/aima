@@ -47,25 +47,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const orderId = `credit_${timestamp}_${userId}_${crypto.randomBytes(4).toString("hex")}`;
 
-    // ediDate 생성 (YYYYMMDDHHmmss 형식)
-    const now = new Date();
-    const ediDate =
-      now.getFullYear().toString() +
-      (now.getMonth() + 1).toString().padStart(2, "0") +
-      now.getDate().toString().padStart(2, "0") +
-      now.getHours().toString().padStart(2, "0") +
-      now.getMinutes().toString().padStart(2, "0") +
-      now.getSeconds().toString().padStart(2, "0");
-
-    // 서명 생성 (위변조 방지)
-    // signData = ediDate + clientId + amount + mid
-    const signData = ediDate + NICEPAY_CLIENT_ID + amount + NICEPAY_CLIENT_ID;
-    const signature = crypto
-      .createHash("sha256")
-      .update(signData)
-      .digest("hex");
-
-    // returnUrl 설정 (결제 완료 후 돌아올 URL)
+    // returnUrl 설정 (인증 완료 후 돌아올 URL)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const returnUrl = `${baseUrl}/api/payment/nicepay/return`;
 
@@ -74,8 +56,8 @@ export async function POST(request: NextRequest) {
       await supabase.from("transactions").insert({
         user_id: userId,
         type: "charge",
-        amount: 0, // 아직 결제 완료 전이므로 0
-        description: `${goodsName} 결제 시도`,
+        amount: 0, // 아직 인증 완료 전이므로 0
+        description: `${goodsName} 결제 인증 시도`,
         reference_id: orderId,
         metadata: {
           orderId,
@@ -84,8 +66,6 @@ export async function POST(request: NextRequest) {
           buyerName,
           buyerEmail,
           buyerTel,
-          ediDate,
-          signature,
           paymentMethod: "nicepay",
           paymentStatus: "pending",
         },
@@ -96,7 +76,7 @@ export async function POST(request: NextRequest) {
       // DB 저장 실패해도 결제는 진행 (나중에 수동 처리 가능)
     }
 
-    // 클라이언트에게 반환할 데이터
+    // 클라이언트에게 반환할 데이터 (Server 승인 모델)
     const responseData = {
       clientId: NICEPAY_CLIENT_ID,
       orderId,
@@ -106,9 +86,6 @@ export async function POST(request: NextRequest) {
       buyerEmail,
       buyerTel,
       returnUrl,
-      ediDate,
-      signature,
-      jsSDKUrl: NICEPAY_JS_SDK_URL,
     };
 
     return NextResponse.json({

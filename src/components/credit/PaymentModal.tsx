@@ -11,23 +11,13 @@ interface PaymentModalProps {
   onSuccess?: () => void; // 결제 성공 시 호출되는 콜백 (옵셔널)
 }
 
-// Nice Payments 전역 객체 타입 정의
+// Nice Payments 전역 객체 타입 정의 (v1)
 declare global {
   interface Window {
     AUTHNICE?: {
-      requestPay: (params: NicePayRequestParams) => void;
+      requestPay: (params: any) => void;
     };
   }
-}
-
-interface NicePayRequestParams {
-  clientId: string;
-  method: string;
-  orderId: string;
-  amount: number;
-  goodsName: string;
-  returnUrl: string;
-  fnError?: (error: { errorMsg: string; errorCode: string }) => void;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -41,16 +31,40 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
 
-  // 모달이 열릴 때 에러 초기화
+  // SDK 로드 체크 (모달이 열릴 때)
   useEffect(() => {
     if (isOpen) {
       setError(null);
+
+      // SDK가 이미 로드되어 있는지 확인
+      if (window.AUTHNICE?.requestPay) {
+        setSdkLoaded(true);
+        return;
+      }
+
+      // SDK 로드 대기 (최대 5초)
+      let attempts = 0;
+      const maxAttempts = 50; // 5초 (100ms * 50)
+
+      const checkSDK = setInterval(() => {
+        attempts++;
+
+        if (window.AUTHNICE?.requestPay) {
+          setSdkLoaded(true);
+          clearInterval(checkSDK);
+        } else if (attempts >= maxAttempts) {
+          console.error("❌ SDK 로드 타임아웃");
+          setError("결제 시스템 로드에 실패했습니다. 페이지를 새로고침해주세요.");
+          clearInterval(checkSDK);
+        }
+      }, 100);
+
+      return () => clearInterval(checkSDK);
     }
   }, [isOpen]);
 
   // Nice Payments JS SDK 로드 확인
   const handleScriptLoad = () => {
-    console.log("✅ Nice Payments JS SDK 로드 완료");
     setSdkLoaded(true);
   };
 
@@ -66,14 +80,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       return;
     }
 
-    if (!window.AUTHNICE) {
-      setError("결제 시스템을 찾을 수 없습니다. 페이지를 새로고침해주세요.");
-      return;
-    }
-
     // 사용자 정보 확인
     if (!user) {
       setError("로그인이 필요합니다.");
+      return;
+    }
+
+    // AUTHNICE SDK 확인
+    if (!window.AUTHNICE || !window.AUTHNICE.requestPay) {
+      setError("Nice Payments SDK가 로드되지 않았습니다.");
       return;
     }
 
@@ -105,21 +120,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       const paymentData = result.data;
 
-      console.log("📦 결제 요청 데이터:", paymentData);
-
-      // 2. Nice Payments 결제창 호출
+      // 2. Nice Payments 결제창 호출 (AUTHNICE.requestPay 방식)
       window.AUTHNICE.requestPay({
         clientId: paymentData.clientId,
-        method: "card", // 카드 결제
+        method: 'card',
         orderId: paymentData.orderId,
         amount: paymentData.amount,
         goodsName: paymentData.goodsName,
         returnUrl: paymentData.returnUrl,
-        fnError: (error) => {
-          console.error("❌ Nice Payments 결제 오류:", error);
-          setError(error.errorMsg || "결제 처리 중 오류가 발생했습니다.");
+        buyerName: paymentData.buyerName,
+        buyerEmail: paymentData.buyerEmail,
+        buyerTel: paymentData.buyerTel,
+        fnError: function(result: any) {
+          console.error("❌ 결제 오류:", result);
+          setError(result.errorMsg || "결제 중 오류가 발생했습니다.");
           setIsLoading(false);
-        },
+        }
       });
 
       // 결제창이 열리면 로딩 해제
@@ -141,10 +157,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     <>
       {/* Nice Payments JS SDK 로드 */}
       <Script
-        src={process.env.NEXT_PUBLIC_NICEPAY_JS_SDK_URL || "https://sandbox-pay.nicepay.co.kr/v1/js/"}
+        src={process.env.NEXT_PUBLIC_NICEPAY_JS_SDK_URL || "https://pay.nicepay.co.kr/v1/js/"}
         onLoad={handleScriptLoad}
         onError={handleScriptError}
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
 
       {/* 모달 오버레이 */}
@@ -187,7 +203,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                   충전 광고머니
                 </span>
                 <span className="font-semibold text-blue-600 text-lg">
-                  {chargeAmount.toLocaleString()}개
+                  {chargeAmount.toLocaleString()}원
                 </span>
               </div>
             </div>
@@ -243,3 +259,4 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 };
 
 export default PaymentModal;
+export { PaymentModal };

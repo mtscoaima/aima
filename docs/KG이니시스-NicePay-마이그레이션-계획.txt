@@ -15,9 +15,9 @@
 ✅ Phase 2: Nice Payments 환경 설정 완료 (2025-09-29)
 ✅ Phase 3: Nice Payments API 라우트 구현 완료 (2025-09-30)
 ✅ Phase 4: PaymentModal 컴포넌트 재작성 완료 (2025-09-30)
-⏳ Phase 5: 연동 및 테스트 (대기 중)
-⏳ Phase 6: 문서 정리 및 완료 (대기 중)
-⏳ Phase 7: 나중에 활성화 (언제든지 가능)
+✅ Phase 5: 자동 결제 활성화 완료 (2025-09-30)
+⏳ Phase 6: 테스트 및 검증 (진행 예정)
+⏳ Phase 7: 문서 정리 및 완료 (대기 중)
 
 ================================================================================
 📋 목차
@@ -411,34 +411,46 @@ NICEPAY_JS_SDK_URL=https://sandbox-pay.nicepay.co.kr/v1/js/
 ✅ AuthContext 연동으로 실제 사용자 정보 사용
   - 사용자 이름, 이메일, 전화번호, ID 자동 입력
 
-8.5 Phase 5: 연동 및 테스트 (예상 소요: 2일)
+8.5 Phase 5: 자동 결제 활성화 ✅ 완료 (소요: 0.5일)
 ----------------------------------------
-📅 Day 6-7:
-□ src/app/payment/close/page.tsx 수정 (Nice Payments 응답 형식에 맞게)
-□ 로컬 환경 테스트
+📅 Day 3 (오후): ✅ 완료됨
+✅ src/app/credit-management/page.tsx 수정 완료
+  - handleCharge 함수에서 수동 충전 주석 처리
+  - Nice Payments 자동 결제 활성화
+  - PaymentModal에 chargeAmount prop 전달
+  - PaymentNoticeModal 주석 처리
+
+변경 내용:
+  // 수동 충전 방식 (비활성화)
+  // setIsNoticeModalOpen(true);
+
+  // Nice Payments 자동 결제 활성화
+  setSelectedCharge(chargeInfo);
+  setIsPaymentModalOpen(true);
+
+🎯 이제 사용자가 "충전하기" 버튼을 누르면 자동으로 Nice Payments 결제창이 열립니다.
+
+8.6 Phase 6: 테스트 및 검증 (진행 예정)
+----------------------------------------
+📅 Day 4-5 (예정):
+□ 로컬 환경에서 결제 플로우 테스트
 □ 샌드박스 환경 결제 테스트
 □ 에러 시나리오 테스트
 □ 브라우저 호환성 테스트
 □ 모바일 환경 테스트
 □ 본인인증 기능 영향도 확인 (절대 영향 없어야 함)
 
-8.6 Phase 6: 문서 정리 및 완료 (예상 소요: 0.5일)
+8.7 Phase 7: 문서 정리 및 운영 배포 (대기 중)
 ----------------------------------------
-📅 Day 8:
+📅 Day 6 (예정):
 □ 모든 테스트 통과 확인
 □ Nice Payments 사용가이드 작성
 □ 코드 리뷰 및 최종 점검
-□ 운영 환경변수 준비
-✅ Nice Payments 결제 시스템 준비 완료
-
-8.7 Phase 7: 나중에 활성화 (언제든지 가능)
-----------------------------------------
-🚀 수동 → 자동 전환 시점 (원할 때 언제든지):
 □ 운영 환경변수로 변경
-□ handleCharge에서 단 한 줄 수정:
-  - setIsNoticeModalOpen(true) → setIsPaymentModalOpen(true)
+  - NICEPAY_CLIENT_ID: S2_xxx → R1_xxx (운영용)
+  - NICEPAY_API_URL: sandbox → 운영
 □ 실제 결제 테스트 및 모니터링
-🎯 이 작업으로 수동 충전 → 자동 결제로 즉시 전환
+✅ Nice Payments 결제 시스템 완전 가동
 
 ================================================================================
 9. 테스트 계획

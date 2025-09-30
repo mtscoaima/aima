@@ -104,14 +104,14 @@ const CreditManagementPage = () => {
   }, [refreshTransactions]);
 
   const handleCharge = (
-    // chargeInfo: ChargeInfo
+    chargeInfo: ChargeInfo
   ) => {
-    // 임시로 결제 모달 대신 안내 모달 표시
-    setIsNoticeModalOpen(true);
-    
-    // 기존 결제 로직은 유지 (주석 처리)
-    // setSelectedCharge(chargeInfo);
-    // setIsPaymentModalOpen(true);
+    // Nice Payments 자동 결제 활성화
+    setSelectedCharge(chargeInfo);
+    setIsPaymentModalOpen(true);
+
+    // 수동 충전 방식 (비활성화)
+    // setIsNoticeModalOpen(true);
   };
 
   const handleClosePaymentModal = () => {
@@ -811,16 +811,18 @@ const CreditManagementPage = () => {
           <div className="flex-1 flex flex-col">{renderTabContent()}</div>
         </div>
 
+        {/* Nice Payments 자동 결제 모달 (활성화) */}
         <PaymentModal
           isOpen={isPaymentModalOpen}
           onClose={handleClosePaymentModal}
-          chargeInfo={selectedCharge}
+          chargeAmount={selectedCharge?.price || 0}
         />
-        
-        <PaymentNoticeModal
+
+        {/* 수동 충전 안내 모달 (비활성화) */}
+        {/* <PaymentNoticeModal
           isOpen={isNoticeModalOpen}
           onClose={handleCloseNoticeModal}
-        />
+        /> */}
       </div>
     </AdvertiserGuardWithDisabled>
   );

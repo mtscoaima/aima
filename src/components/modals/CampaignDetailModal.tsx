@@ -453,30 +453,11 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
       const isTemplateModified = isImageChanged || isNameChanged || isContentChanged || isButtonsChanged;
 
-      console.log('템플릿 변경 감지:', {
-        isImageChanged,
-        isNameChanged,
-        isContentChanged,
-        isButtonsChanged,
-        isTemplateModified,
-        originalImageUrl,
-        editedImageUrl,
-        originalName,
-        editedName,
-        originalContent: originalContent.substring(0, 50) + '...',
-        editedContent: editedContent.substring(0, 50) + '...',
-        originalButtons: originalButtons.length,
-        editedButtons: editedButtons.length,
-        hasTemplateId: !!campaign.template_id
-      });
-
       const finalEditedData = { ...editedData };
 
       // 템플릿 필드가 수정된 경우 새 템플릿 생성
       if (isTemplateModified) {
         try {
-          console.log('새 템플릿 생성 시도...');
-
           // 새 템플릿 생성
           const templateResponse = await fetch('/api/templates', {
             method: 'POST',
@@ -501,11 +482,9 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
           }
 
           const templateResult = await templateResponse.json();
-          console.log('새 템플릿 생성 성공:', templateResult);
 
           // 새 템플릿 ID로 업데이트
           finalEditedData.template_id = templateResult.template.id;
-          console.log('템플릿 ID 업데이트:', campaign.template_id, '->', templateResult.template.id);
 
           // message_templates 필드는 제거 (캠페인 테이블에 직접 저장하지 않음)
           delete finalEditedData.message_templates;
@@ -516,7 +495,6 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
           return;
         }
       } else {
-        console.log('템플릿 변경 없음, 기존 template_id 유지');
         // 템플릿 필드가 수정되지 않은 경우 기존 template_id 유지
         if (campaign.template_id) {
           finalEditedData.template_id = campaign.template_id;
