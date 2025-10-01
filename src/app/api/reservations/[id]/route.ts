@@ -97,16 +97,21 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { 
-      customer_name, 
-      customer_phone, 
-      reservation_date, 
-      start_time, 
-      end_time, 
-      people_count, 
+    const {
+      space_id,
+      customer_name,
+      customer_phone,
+      start_datetime,
+      end_datetime,
+      reservation_date,
+      start_time,
+      end_time,
+      guest_count,
+      people_count,
       amount,
-      total_amount, 
+      total_amount,
       payment_status,
+      booking_channel,
       memo,
       special_requirements
     } = body;
@@ -130,14 +135,19 @@ export async function PUT(
 
     // 업데이트할 데이터 준비
     const updateData: Record<string, string | number | null> = {};
+    if (space_id !== undefined) updateData.space_id = space_id;
     if (customer_name !== undefined) updateData.customer_name = customer_name;
     if (customer_phone !== undefined) updateData.customer_phone = customer_phone;
+    if (start_datetime !== undefined) updateData.start_datetime = start_datetime;
+    if (end_datetime !== undefined) updateData.end_datetime = end_datetime;
     if (reservation_date !== undefined) updateData.reservation_date = reservation_date;
     if (start_time !== undefined) updateData.start_time = start_time;
     if (end_time !== undefined) updateData.end_time = end_time;
+    if (guest_count !== undefined) updateData.guest_count = guest_count;
     if (people_count !== undefined) updateData.guest_count = people_count;
     if (amount !== undefined) updateData.total_amount = amount;
     if (total_amount !== undefined) updateData.total_amount = total_amount;
+    if (booking_channel !== undefined) updateData.booking_channel = booking_channel;
     if (payment_status !== undefined) updateData.payment_status = payment_status;
     if (memo !== undefined) updateData.special_requirements = memo;
     if (special_requirements !== undefined) updateData.special_requirements = special_requirements;

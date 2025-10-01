@@ -248,7 +248,7 @@ export default function ReservationCalendarPage() {
   };
 
   const handleShowStats = () => {
-    setShowStatsModal(true);
+    router.push('/reservations/statistics');
   };
 
   const handleCloseStats = () => {

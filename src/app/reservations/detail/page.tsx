@@ -37,6 +37,10 @@ export default function ReservationDetailPage() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [spaces, setSpaces] = useState<Array<{ id: number; name: string; icon_text: string; icon_color: string }>>([]);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);
+  const [copying, setCopying] = useState(false);
 
   const reservationId = searchParams.get('id');
 
@@ -170,6 +174,85 @@ export default function ReservationDetailPage() {
 
   const handleDeleteCancel = () => {
     setShowDeleteModal(false);
+  };
+
+  // 공간 목록 가져오기
+  const fetchSpaces = async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const response = await fetch('/api/reservations/spaces', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSpaces(data.spaces || []);
+      }
+    } catch (error) {
+      console.error('Error fetching spaces:', error);
+    }
+  };
+
+  // 복사 모달 열기
+  const handleCopyClick = () => {
+    fetchSpaces();
+    setShowCopyModal(true);
+  };
+
+  // 예약 복사 실행
+  const handleCopyReservation = async () => {
+    if (!reservation || !selectedSpaceId) {
+      alert('공간을 선택해주세요.');
+      return;
+    }
+
+    try {
+      setCopying(true);
+      const token = await getAccessToken();
+      if (!token) {
+        alert('인증이 필요합니다.');
+        return;
+      }
+
+      const copyData = {
+        space_id: selectedSpaceId,
+        customer_name: reservation.customer_name,
+        customer_phone: reservation.customer_phone,
+        start_datetime: reservation.start_datetime,
+        end_datetime: reservation.end_datetime,
+        guest_count: reservation.guest_count,
+        booking_channel: reservation.booking_channel,
+        special_requirements: reservation.special_requirements
+      };
+
+      const response = await fetch('/api/reservations/bookings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(copyData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert('예약이 복사되었습니다.');
+        setShowCopyModal(false);
+        router.push(`/reservations/detail?id=${data.reservation.id}`);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || '예약 복사에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error copying reservation:', error);
+      alert('예약 복사에 실패했습니다.');
+    } finally {
+      setCopying(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -373,7 +456,7 @@ export default function ReservationDetailPage() {
               </button>
             </div>
             
-            <button className="w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button onClick={handleCopyClick} className="w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
               다른 공간으로 예약 복사하기
             </button>
           </div>
@@ -526,6 +609,51 @@ export default function ReservationDetailPage() {
                     {deleting ? '삭제 중...' : '삭제하기'}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 예약 복사 모달 */}
+        {showCopyModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">다른 공간으로 예약 복사</h3>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">복사할 공간 선택</label>
+                <select
+                  value={selectedSpaceId || ''}
+                  onChange={(e) => setSelectedSpaceId(Number(e.target.value))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">공간을 선택하세요</option>
+                  {spaces.filter(space => space.id !== reservation?.space_id).map(space => (
+                    <option key={space.id} value={space.id}>
+                      {space.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCopyModal(false);
+                    setSelectedSpaceId(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  disabled={copying}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleCopyReservation}
+                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={copying}
+                >
+                  {copying ? '복사 중...' : '복사하기'}
+                </button>
               </div>
             </div>
           </div>
