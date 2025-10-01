@@ -129,7 +129,7 @@ export async function PUT(
     }
 
     // 업데이트할 데이터 준비
-    const updateData: any = {};
+    const updateData: Record<string, string | number | null> = {};
     if (customer_name !== undefined) updateData.customer_name = customer_name;
     if (customer_phone !== undefined) updateData.customer_phone = customer_phone;
     if (reservation_date !== undefined) updateData.reservation_date = reservation_date;

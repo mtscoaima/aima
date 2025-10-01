@@ -602,7 +602,7 @@ export const tokenManager = {
       
       // exp 필드가 있고 현재 시간보다 작으면 만료
       return payload.exp && payload.exp < currentTime;
-    } catch (error) {
+    } catch {
       // 토큰 파싱 실패 시 만료된 것으로 간주
       return true;
     }

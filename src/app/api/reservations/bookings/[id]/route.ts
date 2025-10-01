@@ -27,7 +27,7 @@ function getUserIdFromToken(request: NextRequest): string | null {
 // 특정 예약 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -35,7 +35,8 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const reservationId = parseInt(params.id);
+    const { id } = await params;
+    const reservationId = parseInt(id);
     if (isNaN(reservationId)) {
       return NextResponse.json({ error: "Invalid reservation ID" }, { status: 400 });
     }
@@ -69,7 +70,7 @@ export async function GET(
 // 예약 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -77,7 +78,8 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const reservationId = parseInt(params.id);
+    const { id } = await params;
+    const reservationId = parseInt(id);
     if (isNaN(reservationId)) {
       return NextResponse.json({ error: "Invalid reservation ID" }, { status: 400 });
     }
@@ -113,7 +115,7 @@ export async function PUT(
     if (start_datetime && end_datetime) {
       const startDate = new Date(start_datetime);
       const endDate = new Date(end_datetime);
-      
+
       if (startDate >= endDate) {
         return NextResponse.json({ error: "End time must be after start time" }, { status: 400 });
       }
@@ -137,8 +139,8 @@ export async function PUT(
     }
 
     // 업데이트 데이터 구성
-    const updateData: any = {};
-    
+    const updateData: Record<string, string | number | null> = {};
+
     if (customer_name !== undefined) updateData.customer_name = customer_name.trim();
     if (customer_phone !== undefined) updateData.customer_phone = customer_phone.trim();
     if (customer_email !== undefined) updateData.customer_email = customer_email?.trim() || null;
@@ -182,7 +184,7 @@ export async function PUT(
 // 예약 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -190,7 +192,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const reservationId = parseInt(params.id);
+    const { id } = await params;
+    const reservationId = parseInt(id);
     if (isNaN(reservationId)) {
       return NextResponse.json({ error: "Invalid reservation ID" }, { status: 400 });
     }

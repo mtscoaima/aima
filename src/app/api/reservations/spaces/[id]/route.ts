@@ -98,7 +98,7 @@ export async function PUT(
     }
 
     // 업데이트할 데이터 준비
-    const updateData: any = { name: name.trim() };
+    const updateData: Record<string, string> = { name: name.trim() };
     if (icon_text !== undefined) updateData.icon_text = icon_text;
     if (icon_color !== undefined) updateData.icon_color = icon_color;
 

@@ -25,7 +25,9 @@ function getUserIdFromToken(request: NextRequest): string | null {
 }
 
 // CSV 형식으로 변환
-function convertToCSV(data: any[]): string {
+interface ReservationData { id: number; spaces?: { name: string }; customer_name: string; customer_phone: string; customer_email: string | null; start_datetime: string; end_datetime: string; guest_count: number; total_amount: number; deposit_amount: number; status: string; payment_status: string; booking_channel: string; special_requirements: string | null; created_at: string; }
+
+function convertToCSV(data: ReservationData[]): string {
   if (data.length === 0) {
     return "";
   }

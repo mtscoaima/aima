@@ -54,10 +54,10 @@ export default function ReservationPlacesPage() {
     } finally {
       setLoading(false);
     }
-  }, []); // 의존성 배열에서 getAccessToken 제거
+  }, [getAccessToken]); // 의존성 배열에서 getAccessToken 제거
 
   // 공간 이름 변경 (편집 페이지로 이동)
-  const handleRenameSpace = async (spaceId: number, currentName: string) => {
+  const handleRenameSpace = async (spaceId: number) => {
     router.push(`/reservations/places/edit?id=${spaceId}`);
     setOpenDropdownId(null);
   };
@@ -230,7 +230,7 @@ export default function ReservationPlacesPage() {
                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
                           <div className="py-1">
                             <button
-                              onClick={() => handleRenameSpace(space.id, space.name)}
+                              onClick={() => handleRenameSpace(space.id)}
                               className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                             >
                               공간 이름 바꾸기

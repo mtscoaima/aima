@@ -123,6 +123,7 @@ export default function ReservationStatisticsPage() {
   // 년/월 변경 시 통계 데이터 재로드
   useEffect(() => {
     fetchStatistics();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentYear, currentMonthNum]);
 
   // 공간 선택 변경 시 통계 데이터 재로드
@@ -130,6 +131,7 @@ export default function ReservationStatisticsPage() {
     if (statistics) {
       fetchStatistics();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSpaceId]);
 
   // 금액 포맷팅

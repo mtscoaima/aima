@@ -50,8 +50,8 @@ export default function ReservationCalendarPage() {
   const [statsMonth, setStatsMonth] = useState(new Date());
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
   const [viewSettings, setViewSettings] = useState<ViewSettings>({
     spaces: {},
     sortBy: "시간순",
@@ -88,7 +88,7 @@ export default function ReservationCalendarPage() {
     } catch (error) {
       console.error('Error fetching spaces:', error);
     }
-  }, []); // getAccessToken 의존성 제거
+  }, [getAccessToken]); // getAccessToken 의존성 제거
 
   // 예약 목록 가져오기
   const fetchReservations = useCallback(async () => {
@@ -131,7 +131,7 @@ export default function ReservationCalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentMonth]); // getAccessToken 의존성 제거
+  }, [currentMonth, getAccessToken]);
 
   // 예약의 날짜 위치 정보 계산 (시작/중간/끝)
   const getReservationDatePosition = (reservation: Reservation, currentDate: Date) => {
@@ -237,11 +237,11 @@ export default function ReservationCalendarPage() {
   // 데이터 로딩
   useEffect(() => {
     fetchSpaces();
-  }, []); // 빈 의존성 배열로 한 번만 실행
+  }, [fetchSpaces]); // 빈 의존성 배열로 한 번만 실행
 
   useEffect(() => {
     fetchReservations();
-  }, [currentMonth]); // currentMonth 변경 시에만 실행
+  }, [currentMonth, fetchReservations]); // currentMonth 변경 시에만 실행
 
   const handleShareCalendar = () => {
     router.push('/reservations/calendar/shared');
@@ -459,7 +459,7 @@ export default function ReservationCalendarPage() {
                     
                     {hasReservation && (
                       <div className="space-y-1">
-                        {dayReservations.slice(0, 2).map((reservation, index) => {
+                        {dayReservations.slice(0, 2).map((reservation) => {
                           const timeStr = formatReservationTime(reservation);
                           const displayParts = [];
                           const position = getReservationDatePosition(reservation, day);

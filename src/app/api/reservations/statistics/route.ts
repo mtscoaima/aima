@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
     }).filter(stat => stat.reservation_count > 0) || [];
 
     // 예약 채널별 통계 계산
-    const channelStatistics: { [key: string]: any } = {};
+    const channelStatistics: Record<string, { channel: string; total_amount: number; reservation_count: number; guest_count: number }> = {};
     reservations?.forEach(res => {
       const channel = res.booking_channel || "manual";
       if (!channelStatistics[channel]) {

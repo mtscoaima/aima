@@ -78,6 +78,7 @@ export default function SpaceEditPage() {
 
   useEffect(() => {
     fetchSpace();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spaceId]);
 
   const handleBackClick = () => {
@@ -122,7 +123,6 @@ export default function SpaceEditPage() {
         const errorData = await response.json();
         throw new Error(errorData.error || '공간 수정에 실패했습니다.');
       }
-
       await response.json();      
       alert('공간이 성공적으로 수정되었습니다!');
       router.back();
