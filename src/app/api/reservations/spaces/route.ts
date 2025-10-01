@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    // 공간 목록 조회
+    const { data: spacesData, error } = await supabase
       .from("spaces")
       .select("*")
       .eq("user_id", userId)
@@ -42,6 +43,38 @@ export async function GET(request: NextRequest) {
       console.error("Error fetching spaces:", error);
       return NextResponse.json({ error: "Failed to fetch spaces" }, { status: 500 });
     }
+
+    // host_contact_number_id가 있는 경우 sender_numbers 조회
+    const data = await Promise.all(
+      (spacesData || []).map(async (space) => {
+        if (space.host_contact_number_id) {
+          const { data: contactData, error: contactError } = await supabase
+            .from("sender_numbers")
+            .select("id, phone_number, display_name, status")
+            .eq("id", space.host_contact_number_id)
+            .eq("user_id", userId)
+            .single();
+
+          if (contactError) {
+            console.error(`Error fetching sender_number ${space.host_contact_number_id}:`, contactError);
+          }
+
+          // 컬럼명을 프론트엔드에서 기대하는 형식으로 변환
+          const transformedData = contactData ? {
+            id: contactData.id,
+            number: contactData.phone_number,
+            name: contactData.display_name,
+            status: contactData.status,
+          } : null;
+
+          return {
+            ...space,
+            host_contact_number: transformedData,
+          };
+        }
+        return space;
+      })
+    );
 
     return NextResponse.json({ spaces: data || [] });
   } catch (error) {

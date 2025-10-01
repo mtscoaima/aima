@@ -79,7 +79,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, icon_text, icon_color } = body;
+    const { name, icon_text, icon_color, host_contact_number_id } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "Space name is required" }, { status: 400 });
@@ -98,9 +98,12 @@ export async function PUT(
     }
 
     // 업데이트할 데이터 준비
-    const updateData: Record<string, string> = { name: name.trim() };
+    const updateData: Record<string, string | number | null> = { name: name.trim() };
     if (icon_text !== undefined) updateData.icon_text = icon_text;
     if (icon_color !== undefined) updateData.icon_color = icon_color;
+    if (host_contact_number_id !== undefined) {
+      updateData.host_contact_number_id = host_contact_number_id;
+    }
 
     // 공간 정보 업데이트
     const { data, error } = await supabase
