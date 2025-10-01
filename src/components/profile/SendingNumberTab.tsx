@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 interface SenderNumber {
   id: number;
@@ -12,10 +11,10 @@ interface SenderNumber {
   isDefault: boolean;
   isVerified?: boolean;
   isUserPhone?: boolean;
+  isSystem?: boolean;
 }
 
 export default function SendingNumberTab() {
-  const router = useRouter();
   
   // 발신번호 관리 관련 상태
   const [senderNumbers, setSenderNumbers] = useState<SenderNumber[]>([]);
@@ -28,11 +27,10 @@ export default function SendingNumberTab() {
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
   const [numbersToDelete, setNumbersToDelete] = useState<SenderNumber[]>([]);
   const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
+  const [isSetDefaultModalOpen, setIsSetDefaultModalOpen] = useState(false);
   const [newNumberForm, setNewNumberForm] = useState({
     phoneNumber: "",
     displayName: "",
-    carrier: "",
-    documents: null as File | null,
   });
 
   // 전화번호 형식 변환 함수
@@ -65,9 +63,9 @@ export default function SendingNumberTab() {
 
   // 전체 선택/해제 처리
   const handleSelectAll = () => {
-    // 선택 가능한 번호들만 필터링 (기본번호나 본인번호가 아닌 것들)
+    // 선택 가능한 번호들만 필터링 (시스템번호, 기본번호, 본인번호가 아닌 것들)
     const selectableNumbers = senderNumbers.filter(
-      (num) => !num.isDefault && !num.isUserPhone
+      (num) => !num.isSystem && !num.isDefault && !num.isUserPhone
     );
 
     if (selectedNumbers.length === selectableNumbers.length) {
@@ -99,7 +97,20 @@ export default function SendingNumberTab() {
 
       const data = await response.json();
 
-      setSenderNumbers(data.senderNumbers || []);
+      // 시스템 기본번호를 맨 앞에 추가
+      const systemNumber: SenderNumber = {
+        id: -1,
+        number: "[비공개]",
+        name: "시스템 기본번호",
+        registrationDate: "-",
+        status: "정상",
+        isDefault: true,
+        isSystem: true,
+        isVerified: true,
+        isUserPhone: false,
+      };
+
+      setSenderNumbers([systemNumber, ...(data.senderNumbers || [])]);
       setRemainingCount(data.remainingCount || 10);
     } catch (error) {
       console.error("❌ 발신번호 목록 조회 오류:", error);
@@ -121,24 +132,21 @@ export default function SendingNumberTab() {
       return;
     }
 
-    // 기본번호 삭제 방지 체크
-    const defaultNumbers = senderNumbers.filter(
-      (num) => selectedNumbers.includes(num.id) && num.isDefault
+    // 시스템번호나 기본번호 삭제 방지 체크
+    const systemOrDefaultNumbers = senderNumbers.filter(
+      (num) => selectedNumbers.includes(num.id) && (num.isSystem || num.isDefault)
     );
-    if (defaultNumbers.length > 0) {
-      alert("기본 발신번호는 삭제할 수 없습니다.");
+    if (systemOrDefaultNumbers.length > 0) {
+      alert("시스템 기본번호는 삭제할 수 없습니다.");
       return;
     }
 
-    // 준비중 모달 열기
-    setIsComingSoonModalOpen(true);
-    
-    // 기존 로직은 주석 처리
-    // const numbersToDelete = senderNumbers.filter(
-    //   (num) => selectedNumbers.includes(num.id)
-    // );
-    // setNumbersToDelete(numbersToDelete);
-    // setIsDeleteConfirmModalOpen(true);
+    // 삭제 확인 모달 열기
+    const numbersToDelete = senderNumbers.filter(
+      (num) => selectedNumbers.includes(num.id)
+    );
+    setNumbersToDelete(numbersToDelete);
+    setIsDeleteConfirmModalOpen(true);
   };
 
   // 발신번호 삭제 확인 처리
@@ -186,17 +194,11 @@ export default function SendingNumberTab() {
 
   // 발신번호 추가 모달 열기
   const openAddNumberModal = () => {
-    // 준비중 모달 열기
-    setIsComingSoonModalOpen(true);
-    
-    // 기존 로직은 주석 처리
-    // setNewNumberForm({ 
-    //   phoneNumber: "", 
-    //   displayName: "", 
-    //   carrier: "", 
-    //   documents: null 
-    // });
-    // setIsAddNumberModalOpen(true);
+    setNewNumberForm({
+      phoneNumber: "",
+      displayName: ""
+    });
+    setIsAddNumberModalOpen(true);
   };
 
   // 발신번호 추가 처리
@@ -206,17 +208,10 @@ export default function SendingNumberTab() {
       return;
     }
 
-    if (!newNumberForm.carrier) {
-      alert("통신사를 선택해주세요.");
-      return;
-    }
-
     if (!newNumberForm.displayName) {
       alert("발신번호 명의자를 입력해주세요.");
       return;
     }
-
-    // 서류는 선택사항이므로 검증하지 않음
 
     // 전화번호 형식 검증 (두 가지 형식 허용)
     const digitsOnly = newNumberForm.phoneNumber.replace(/[^0-9]/g, "");
@@ -247,8 +242,6 @@ export default function SendingNumberTab() {
         body: JSON.stringify({
           phoneNumber: newNumberForm.phoneNumber,
           displayName: newNumberForm.displayName,
-          carrier: newNumberForm.carrier,
-          hasDocuments: !!newNumberForm.documents, // 서류 제출 여부만 전송
         }),
       });
 
@@ -259,7 +252,7 @@ export default function SendingNumberTab() {
 
       alert("발신번호 등록 신청이 완료되었습니다. 심사 결과를 기다려주세요.");
       setIsAddNumberModalOpen(false);
-      setNewNumberForm({ phoneNumber: "", displayName: "", carrier: "", documents: null });
+      setNewNumberForm({ phoneNumber: "", displayName: "" });
       await fetchSenderNumbers(); // 목록 새로고침
     } catch (error) {
       console.error("발신번호 추가 오류:", error);
@@ -270,20 +263,13 @@ export default function SendingNumberTab() {
   };
 
   // 발신번호명 수정 처리
-  const handleEditNumberName = async () => {
-    // 준비중 모달 열기
-    setIsComingSoonModalOpen(true);
-    
-    // 기존 로직은 주석 처리
-    /*
-    const currentNumber = senderNumbers.find((num) => num.id === id);
-    if (!currentNumber) return;
-
+  const handleEditNumberName = async (id: number, currentName: string) => {
     const newDisplayName = prompt(
       "새로운 발신번호명을 입력해주세요:",
-      currentNumber.name
+      currentName
     );
-    if (!newDisplayName || newDisplayName === currentNumber.name) return;
+
+    if (!newDisplayName || newDisplayName === currentName) return;
 
     try {
       const token = localStorage.getItem("accessToken");
@@ -315,7 +301,11 @@ export default function SendingNumberTab() {
           : "발신번호명 수정에 실패했습니다."
       );
     }
-    */
+  };
+
+  // 기본번호로 설정 시도
+  const handleSetDefault = () => {
+    setIsSetDefaultModalOpen(true);
   };
   return (
     <div className="space-y-6">
@@ -363,10 +353,10 @@ export default function SendingNumberTab() {
                     checked={
                       selectedNumbers.length ===
                         senderNumbers.filter(
-                          (num) => !num.isDefault && !num.isUserPhone
+                          (num) => !num.isSystem && !num.isDefault && !num.isUserPhone
                         ).length &&
                       senderNumbers.filter(
-                        (num) => !num.isDefault && !num.isUserPhone
+                        (num) => !num.isSystem && !num.isDefault && !num.isUserPhone
                       ).length > 0
                     }
                     onChange={handleSelectAll}
@@ -385,13 +375,16 @@ export default function SendingNumberTab() {
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                   상태
                 </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  작업
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {senderNumbersLoading ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     <div className="flex items-center justify-center">
@@ -403,7 +396,7 @@ export default function SendingNumberTab() {
               ) : senderNumbers.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     등록된 발신번호가 없습니다. 발신번호를 추가해주세요.
@@ -418,7 +411,7 @@ export default function SendingNumberTab() {
                         checked={selectedNumbers.includes(number.id)}
                         onChange={() => handleNumberSelect(number.id)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        disabled={number.isDefault || number.isUserPhone} // 기본번호나 본인번호는 선택 불가
+                        disabled={number.isSystem || number.isDefault || number.isUserPhone} // 시스템번호, 기본번호, 본인번호는 선택 불가
                       />
                     </td>
                     <td className="px-6 py-4">
@@ -438,12 +431,19 @@ export default function SendingNumberTab() {
                         <span className="text-sm text-gray-900">
                           {number.name}
                         </span>
-                        <button
-                          onClick={() => handleEditNumberName()}
-                          className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
-                        >
-                          수정
-                        </button>
+                        {number.isUserPhone && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            본인
+                          </span>
+                        )}
+                        {!number.isSystem && (
+                          <button
+                            onClick={() => handleEditNumberName(number.id, number.name)}
+                            className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+                          >
+                            수정
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
@@ -453,6 +453,16 @@ export default function SendingNumberTab() {
                       <span className="text-sm text-blue-600 font-medium">
                         {number.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {!number.isSystem && !number.isDefault && (
+                        <button
+                          onClick={handleSetDefault}
+                          className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                        >
+                          기본으로 설정
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -513,7 +523,7 @@ export default function SendingNumberTab() {
               <button
                 onClick={() => {
                   setIsAddNumberModalOpen(false);
-                  setNewNumberForm({ phoneNumber: "", displayName: "", carrier: "", documents: null });
+                  setNewNumberForm({ phoneNumber: "", displayName: "" });
                 }}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
               >
@@ -522,33 +532,6 @@ export default function SendingNumberTab() {
             </div>
 
             <div className="space-y-6">
-              {/* 통신사 */}
-              <div className="flex items-center">
-                <label className="block text-sm font-medium text-gray-700 w-32">
-                  통신사
-                </label>
-                <div className="flex-1">
-                  <select
-                    value={newNumberForm.carrier}
-                    onChange={(e) =>
-                      setNewNumberForm((prev) => ({
-                        ...prev,
-                        carrier: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  >
-                    <option value="">통신사 선택</option>
-                    <option value="skt">SKT</option>
-                    <option value="kt">KT</option>
-                    <option value="lgu">LG U+</option>
-                    <option value="skt_mvno">SKT 알뜰폰</option>
-                    <option value="kt_mvno">KT 알뜰폰</option>
-                    <option value="lgu_mvno">LG U+ 알뜰폰</option>
-                  </select>
-                </div>
-              </div>
-
               {/* 발신번호 입력 */}
               <div className="flex items-center">
                 <label className="block text-sm font-medium text-gray-700 w-32">
@@ -592,80 +575,13 @@ export default function SendingNumberTab() {
                 </div>
               </div>
 
-              {/* 증빙서류 제출 */}
-              <div className="flex items-start">
-                <label className="block text-sm font-medium text-gray-700 w-32 mt-2">
-                  증빙서류 제출 <span className="text-gray-500 text-xs">(선택)</span>
-                </label>
-                <div className="flex-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = '.pdf,.jpg,.jpeg,.png';
-                      input.onchange = (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) {
-                          setNewNumberForm((prev) => ({
-                            ...prev,
-                            documents: file,
-                          }));
-                        }
-                      };
-                      input.click();
-                    }}
-                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-                  >
-                    파일 첨부
-                  </button>
-                  {newNumberForm.documents && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      선택된 파일: {newNumberForm.documents.name}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    서류는 나중에 제출할 수 있습니다.
-                  </p>
-                </div>
-              </div>
-
-              {/* 증빙서류 안내 */}
-              <div className="bg-gray-50 p-4 rounded-md">
-                <div className="text-sm text-gray-700 space-y-2">
-                  <div>
-                    <p className="font-medium">1. 사업자 대표 또는 재직원</p>
-                    <ul className="ml-4 space-y-1">
-                      <li>- 통신서비스 이용가입증명원</li>
-                      <li>- 번호소유자 재직증명서 (선택사항)</li>
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <p className="font-medium">2. 자회사, 계열사등 다른 사업자</p>
-                    <ul className="ml-4 space-y-1">
-                      <li>- 통신서비스 이용가입증명원</li>
-                      <li>- 위임 관계증명서</li>
-                      <li>- 발신번호 위임장</li>
-                      <li>- 위임자 사업자등록증</li>
-                    </ul>
-                  </div>
-                  
-                  <p className="text-xs text-gray-600 mt-3">
-                    ※증빙서류 관련 도움 요청→ <span 
-                      className="text-blue-500 underline cursor-pointer hover:text-blue-700"
-                      onClick={() => router.push('/support?tab=inquiry')}
-                    >고객센터 문의</span>
-                  </p>
-                </div>
-              </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-8">
               <button
                 onClick={() => {
                   setIsAddNumberModalOpen(false);
-                  setNewNumberForm({ phoneNumber: "", displayName: "", carrier: "", documents: null });
+                  setNewNumberForm({ phoneNumber: "", displayName: "" });
                 }}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
               >
@@ -673,7 +589,7 @@ export default function SendingNumberTab() {
               </button>
               <button
                 onClick={handleAddNumber}
-                disabled={!newNumberForm.phoneNumber || !newNumberForm.carrier || !newNumberForm.displayName}
+                disabled={!newNumberForm.phoneNumber || !newNumberForm.displayName}
                 className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 등록하기
@@ -697,6 +613,36 @@ export default function SendingNumberTab() {
               </p>
               <button
                 onClick={() => setIsComingSoonModalOpen(false)}
+                className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 기본번호 설정 제한 모달 */}
+      {isSetDefaultModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+            <div className="text-center">
+              <div className="text-gray-400 text-6xl mb-4">⏳</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                기본 발신번호 설정
+              </h3>
+              <p className="text-gray-600 mb-4 leading-relaxed">
+                기본 발신번호 변경 기능은 준비중입니다.
+              </p>
+              <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                현재는 시스템이 제공하는 기본번호로만<br/>
+                메시지를 발송할 수 있습니다.<br/><br/>
+                추후 업데이트를 통해 사용자가 등록한<br/>
+                발신번호를 기본번호로 설정할 수 있도록<br/>
+                개선할 예정입니다.
+              </p>
+              <button
+                onClick={() => setIsSetDefaultModalOpen(false)}
                 className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
               >
                 확인

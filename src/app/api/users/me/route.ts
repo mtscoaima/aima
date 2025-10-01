@@ -546,7 +546,7 @@ export async function PUT(request: NextRequest) {
           .from("sender_numbers")
           .update({
             phone_number: normalizedPhoneNumber,
-            display_name: `${updatedUser.name} (본인)`,
+            display_name: updatedUser.name,
             updated_at: getKSTISOString(),
           })
           .eq("user_id", userId)
@@ -570,8 +570,8 @@ export async function PUT(request: NextRequest) {
               .insert({
                 user_id: userId,
                 phone_number: normalizedPhoneNumber,
-                display_name: `${updatedUser.name} (본인)`,
-                is_default: isFirstNumber,
+                display_name: updatedUser.name,
+                is_default: false,
                 is_user_phone: true,
                 is_verified: false,
                 status: "ACTIVE",

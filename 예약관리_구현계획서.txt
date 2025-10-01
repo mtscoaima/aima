@@ -136,48 +136,52 @@ MTS Message 예약 관리 시스템 구현 계획서 (간소화 버전)
 5. 최소 데이터베이스 설계 (간소화)
 =====================================================
 
-🗄️ **핵심 테이블 3개만:**
+🗄️ **핵심 테이블 3개 (실제 구현):**
 
 ```sql
--- 공간 테이블 (간소화)
+-- 공간 테이블
 CREATE TABLE spaces (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id),
-    name VARCHAR(100) NOT NULL,
-    icon_text VARCHAR(2) DEFAULT '',
-    icon_color VARCHAR(7) DEFAULT '#8BC34A',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id INT8 PRIMARY KEY,
+    user_id INT8 REFERENCES users(id),
+    name VARCHAR NOT NULL,
+    icon_text VARCHAR,
+    icon_color VARCHAR,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
 );
 
--- 예약 테이블 (간소화)
+-- 예약 테이블
 CREATE TABLE reservations (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id),
-    space_id BIGINT REFERENCES spaces(id),
-    customer_name VARCHAR(100) NOT NULL,
-    customer_phone VARCHAR(20) NOT NULL,
-    customer_email VARCHAR(255),
-    start_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-    guest_count INTEGER DEFAULT 1,
-    total_amount INTEGER DEFAULT 0,
-    deposit_amount INTEGER DEFAULT 0,
+    id INT8 PRIMARY KEY,
+    user_id INT8 REFERENCES users(id),
+    space_id INT8 REFERENCES spaces(id),
+    customer_name VARCHAR NOT NULL,
+    customer_phone VARCHAR NOT NULL,
+    customer_email VARCHAR,
+    start_datetime TIMESTAMPTZ NOT NULL,
+    end_datetime TIMESTAMPTZ NOT NULL,
+    guest_count INT4,
+    total_amount INT4,
+    deposit_amount INT4,
     special_requirements TEXT,
-    booking_type VARCHAR(20) DEFAULT 'hourly',
-    status VARCHAR(20) DEFAULT 'confirmed',
-    payment_status VARCHAR(20) DEFAULT 'pending',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    booking_type VARCHAR,
+    status VARCHAR,
+    payment_status VARCHAR,
+    booking_channel VARCHAR,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
 );
 
--- 메시지 템플릿 (간소화)
-CREATE TABLE message_templates (
-    id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id),
-    name VARCHAR(100) NOT NULL,
+-- 예약 관련 메시지 템플릿
+CREATE TABLE reservation_message_templates (
+    id INT8 PRIMARY KEY,
+    user_id INT8 REFERENCES users(id),
+    name VARCHAR NOT NULL,
     content TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    category VARCHAR,
+    is_active BOOL,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
 );
 ```
 
@@ -186,6 +190,9 @@ CREATE TABLE message_templates (
 CREATE INDEX idx_spaces_user ON spaces(user_id);
 CREATE INDEX idx_reservations_user_date ON reservations(user_id, start_datetime);
 CREATE INDEX idx_reservations_space ON reservations(space_id);
+CREATE INDEX idx_reservations_channel ON reservations(booking_channel);
+CREATE INDEX idx_reservation_message_templates_user ON reservation_message_templates(user_id);
+CREATE INDEX idx_reservation_message_templates_category ON reservation_message_templates(category);
 ```
 
 =====================================================
@@ -214,9 +221,13 @@ DELETE /api/reservations/[id]   # 예약 삭제
 GET    /api/export/reservations # CSV 다운로드
 ```
 
-**📱 메시지 (추후):**
+**📱 메시지 (Phase 2 예정):**
 ```
-GET    /api/messages/templates  # 템플릿 목록
+GET    /api/reservations/message-templates       # 템플릿 목록
+POST   /api/reservations/message-templates       # 템플릿 생성
+PUT    /api/reservations/message-templates/[id]  # 템플릿 수정
+DELETE /api/reservations/message-templates/[id]  # 템플릿 삭제
+POST   /api/reservations/send-message            # 메시지 발송
 ```
 
 =====================================================
@@ -234,7 +245,11 @@ GET    /api/messages/templates  # 템플릿 목록
 ✅ 예약 리스트 조회 UI (완료)
 ✅ 캘린더 뷰 UI (완료)
 ✅ 예약 상세 페이지 UI (완료)
-⭕ 통계 페이지 구현 (진행 중)
+✅ 예약 수정 기능 (완료)
+✅ 예약 삭제 기능 (완료)
+✅ 예약 복사 기능 (완료)
+✅ 통계 페이지 구현 (완료)
+✅ 캘린더 통계 버튼 연동 (완료)
 ```
 
 📅 **Phase 2: 메시지 시스템 (1주)**
@@ -252,6 +267,7 @@ GET    /api/messages/templates  # 템플릿 목록
 ```
 
 🎯 **총 개발 기간: 3주 (기존 9주 → 3주)**
+✅ **Phase 1 완료: 1주 소요 (2025-09-30 ~ 2025-10-01)**
 
 =====================================================
 📝 주요 고려사항
@@ -295,7 +311,7 @@ GET    /api/messages/templates  # 템플릿 목록
 8. 다음 단계
 =====================================================
 
-🎯 **현재 상태 (2025-09-30 기준):**
+🎯 **현재 상태 (2025-10-01 기준):**
 ✅ 공간 관리 API 완료
 ✅ 예약 관리 API 완료
 ✅ 기본 UI 구조 완료
@@ -305,19 +321,23 @@ GET    /api/messages/templates  # 템플릿 목록
 ✅ 예약 생성/조회/수정/삭제 UI 완료
 ✅ 캘린더 뷰 완료
 ✅ 예약 리스트 필터링 완료
+✅ 통계 페이지 구현 완료
+✅ 예약 복사 기능 완료
+✅ 예약 채널 드롭다운 동기화 완료
 
 🚀 **다음 할 일:**
 1. ✅ 데이터베이스 마이그레이션 (완료 - spaces, reservations 테이블)
 2. ✅ 캘린더/리스트 페이지 API 연동 (완료)
 3. ✅ CSV Export 기능 추가 (완료)
-4. 🔄 통계 페이지 구현 (진행 중)
-5. ⏳ 메시지 시스템 기본 기능 (대기 중)
+4. ✅ 통계 페이지 구현 (완료)
+5. ✅ Phase 1 완료 (완료)
+6. ⏳ 메시지 시스템 기본 기능 (다음 단계)
 
 =====================================================
 작성일: 2025-09-12
-최종 수정일: 2025-09-30 (구현 현황 업데이트)
+최종 수정일: 2025-10-01 (Phase 1 완전 완료)
 작성자: MTS Message 개발팀
-버전: 3.1 (간소화 버전 - Phase 1 완료)
+버전: 4.0 (간소화 버전 - Phase 1 100% 완료)
 =====================================================
 
 📊 **Phase 1 구현 완료 상세:**
@@ -334,6 +354,10 @@ GET    /api/messages/templates  # 템플릿 목록
 9. PUT /api/reservations/bookings/[id] - 예약 수정
 10. DELETE /api/reservations/bookings/[id] - 예약 삭제
 11. GET /api/reservations/export/csv - 예약 데이터 CSV 다운로드
+12. GET /api/reservations/[id] - 예약 단일 조회
+13. PUT /api/reservations/[id] - 예약 수정 (다중 필드명 지원)
+14. DELETE /api/reservations/[id] - 예약 삭제
+15. GET /api/reservations/statistics - 통계 데이터 조회 (채널별, 공간별)
 
 🎨 **구현된 UI 페이지:**
 1. /reservations - 예약 관리 메인 대시보드 (활성화)
@@ -343,14 +367,29 @@ GET    /api/messages/templates  # 템플릿 목록
 5. /reservations/places/edit - 공간 수정
 6. /reservations/create - 예약 생성
 7. /reservations/list - 예약 리스트 (필터링)
-8. /reservations/detail - 예약 상세 보기
-9. /reservations/edit - 예약 수정
-10. /reservations/calendar - 캘린더 뷰
-11. /reservations/statistics - 통계 페이지 (부분 완료)
+8. /reservations/detail - 예약 상세 보기 + 예약 복사 기능
+9. /reservations/edit - 예약 수정 (채널 목록 동기화 완료)
+10. /reservations/calendar - 캘린더 뷰 (통계 페이지 연동)
+11. /reservations/statistics - 통계 페이지 (완료)
 
 🗄️ **구현된 데이터베이스:**
-- spaces 테이블: 공간 정보 저장
-- reservations 테이블: 예약 정보 저장 (중복 방지 로직 포함)
+- **spaces 테이블**: 공간 정보 저장
+  - 필드: id, user_id, name, icon_text, icon_color, created_at, updated_at
+  - 공간 아이콘 커스터마이징 지원
+
+- **reservations 테이블**: 예약 정보 저장
+  - 필드: id, user_id, space_id, customer_name, customer_phone, customer_email
+  - start_datetime, end_datetime, guest_count
+  - total_amount, deposit_amount, special_requirements
+  - booking_type, status, payment_status, booking_channel
+  - created_at, updated_at
+  - 예약 시간 중복 검사 로직 포함
+  - 10개 예약 채널 지원
+
+- **reservation_message_templates 테이블**: 예약 메시지 템플릿
+  - 필드: id, user_id, name, content, category, is_active
+  - created_at, updated_at
+  - 자동 메시지 발송용 템플릿 관리
 
 ✨ **주요 구현 기능:**
 - JWT 인증 기반 사용자별 데이터 관리
@@ -361,5 +400,11 @@ GET    /api/messages/templates  # 템플릿 목록
 - 실시간 예약 가능 시간 확인
 - 예약 상태 관리 (confirmed, cancelled)
 - 결제 상태 추적 (pending, paid, refunded)
+- 예약 복사 기능 (다른 공간으로 예약 복사)
+- 채널별/공간별 통계 차트 (Chart.js 활용)
+- 예약 채널 목록 표준화 (10개 채널)
+  * 아워플레이스, 스페이스클라우드, 여기어때, 웨이닛, 빌리오
+  * 카카오 채널, 네이버 예약, 전화, 인스타그램, 홈페이지, 직접입력
+- Next.js 15 호환성 (Promise 기반 params 처리)
 
 =====================================================
