@@ -113,6 +113,13 @@ Response: {
   - ✅ 로컬 테스트 완료 (curl 수동 실행)
   - ✅ TypeScript 타입 오류 수정 (transaction.amount unknown 해결)
 
+
+### 8. 전화번호 변수 버그 수정 (완료)
+- ✅ `{{전화번호}}` 변수가 호스트 회신 번호로 치환되도록 수정
+- ✅ `messageTemplateParser.ts` - `space.host_contact_number` 사용
+- ✅ `send-message API` - `sender_numbers` 테이블에서 `phone_number` 컬럼 조회
+- ✅ `ReservationWithSpace` 인터페이스에 `host_contact_number` 필드 추가
+
 **Cron Job 주의사항:**
 - Vercel Cron은 배포 환경에서만 자동 실행
 - 로컬 개발 환경에서는 수동 API 호출로 테스트 필요
