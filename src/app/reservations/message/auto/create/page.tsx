@@ -1,41 +1,217 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import RoleGuard from "@/components/RoleGuard";
 
+interface Space {
+  id: number;
+  name: string;
+}
+
+interface Template {
+  id: number;
+  name: string;
+}
+
+interface SpaceDetail {
+  id: number;
+  name: string;
+  host_contact_number_id?: number;
+  host_contact_number?: {
+    id: number;
+    number: string;
+    name: string;
+    status: string;
+  };
+}
+
 export default function CreateAutoRulePage() {
   const router = useRouter();
-  
+
   const [formData, setFormData] = useState({
     ruleName: "",
-    target: "공간을 선택하세요",
-    sendTime: "입실 (이용 시작)",
-    timeType: "상대적 시점",
-    timeValue: "2시간",
-    timeUnit: "전",
-    template: "템플릿을 선택하세요"
+    spaceId: "",
+    triggerType: "check_in",
+    timeType: "relative",
+    timeValue: "120", // 분 단위 (2시간 = 120분)
+    timeDirection: "before",
+    absoluteTime: "09:00",
+    absoluteDaysBefore: "1",
+    templateId: ""
   });
   const [showSenderInfo, setShowSenderInfo] = useState(true);
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hostContactNumber, setHostContactNumber] = useState<string>("[비공개]");
+
+  // 공간 목록 조회
+  useEffect(() => {
+    fetchSpaces();
+    fetchTemplates();
+  }, []);
+
+  const fetchSpaces = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/reservations/spaces", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("공간 조회 실패");
+
+      const data = await response.json();
+      setSpaces(data.spaces || []);
+    } catch (error) {
+      console.error("공간 조회 오류:", error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/reservations/message-templates", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("템플릿 조회 실패");
+
+      const data = await response.json();
+      setTemplates(data.templates || []);
+    } catch (error) {
+      console.error("템플릿 조회 오류:", error);
+    }
+  };
+
 
   const handleBackClick = () => {
     router.back();
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+  const handleInputChange = async (field: string, value: string) => {
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
+
+    // 공간 선택 시 호스트 연락처 조회
+    if (field === "spaceId" && value) {
+      await fetchHostContactNumber(parseInt(value));
+    }
+  };
+
+  // 호스트 연락처 조회
+  const fetchHostContactNumber = async (spaceId: number) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`/api/reservations/spaces/${spaceId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const space: SpaceDetail = data.space;
+
+        if (space.host_contact_number?.number) {
+          setHostContactNumber(space.host_contact_number.number);
+        } else {
+          setHostContactNumber("[비공개]");
+        }
+      } else {
+        setHostContactNumber("[비공개]");
+      }
+    } catch (error) {
+      console.error("호스트 연락처 조회 오류:", error);
+      setHostContactNumber("[비공개]");
+    }
   };
 
   const handleSenderInfo = () => {
     setShowSenderInfo(!showSenderInfo);
   };
 
-  const handleCreateRule = () => {
-    // 만들기 기능 (UI만 구현)
+
+  const handleCreateRule = async () => {
+    // 유효성 검사
+    if (!formData.ruleName.trim()) {
+      alert("발송 규칙 제목을 입력하세요.");
+      return;
+    }
+
+    if (!formData.spaceId) {
+      alert("대상 공간을 선택하세요.");
+      return;
+    }
+
+    if (!formData.templateId) {
+      alert("메시지 템플릿을 선택하세요.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      // API 요청 데이터 구성
+      const requestData: Record<string, string | number> = {
+        rule_name: formData.ruleName,
+        space_id: parseInt(formData.spaceId),
+        template_id: parseInt(formData.templateId),
+        trigger_type: formData.triggerType,
+        time_type: formData.timeType,
+      };
+
+      if (formData.timeType === "relative") {
+        // 상대적 시점
+        requestData.time_value = parseInt(formData.timeValue);
+        requestData.time_direction = formData.timeDirection;
+      } else {
+        // 절대적 시점
+        requestData.time_value = parseInt(formData.absoluteDaysBefore);
+        requestData.absolute_time = formData.absoluteTime + ":00";
+      }
+
+      const response = await fetch("/api/reservations/auto-rules", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "규칙 생성 실패");
+      }
+
+      alert("자동 발송 규칙이 생성되었습니다.");
+      router.push("/reservations/message/auto");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "규칙 생성에 실패했습니다.";
+      console.error("규칙 생성 오류:", error);
+      alert(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 폼 유효성 검사
+  const isFormValid = (): boolean => {
+    return (
+      formData.ruleName.trim() !== "" &&
+      formData.spaceId !== "" &&
+      formData.templateId !== ""
+    );
   };
 
   return (
@@ -83,13 +259,16 @@ export default function CreateAutoRulePage() {
               </p>
               <div className="relative">
                 <select
-                  value={formData.target}
-                  onChange={(e) => handleInputChange("target", e.target.value)}
+                  value={formData.spaceId}
+                  onChange={(e) => handleInputChange("spaceId", e.target.value)}
                   className="w-full p-4 bg-white border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="공간을 선택하세요">공간을 선택하세요</option>
-                  <option value="공간1">공간 1</option>
-                  <option value="공간2">공간 2</option>
+                  <option value="">공간을 선택하세요</option>
+                  {spaces.map((space) => (
+                    <option key={space.id} value={space.id}>
+                      {space.name}
+                    </option>
+                  ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,12 +291,12 @@ export default function CreateAutoRulePage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">기준</label>
                   <div className="relative">
                     <select
-                      value={formData.sendTime}
-                      onChange={(e) => handleInputChange("sendTime", e.target.value)}
+                      value={formData.triggerType}
+                      onChange={(e) => handleInputChange("triggerType", e.target.value)}
                       className="w-full p-3 bg-white border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="입실 (이용 시작)">입실 (이용 시작)</option>
-                      <option value="퇴실 (이용 종료)">퇴실 (이용 종료)</option>
+                      <option value="check_in">입실 (이용 시작)</option>
+                      <option value="check_out">퇴실 (이용 종료)</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,9 +311,9 @@ export default function CreateAutoRulePage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">유형</label>
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => handleInputChange("timeType", "시간 지정")}
+                      onClick={() => handleInputChange("timeType", "absolute")}
                       className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                        formData.timeType === "시간 지정"
+                        formData.timeType === "absolute"
                           ? "bg-gray-200 border-gray-300 text-gray-900"
                           : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
@@ -142,9 +321,9 @@ export default function CreateAutoRulePage() {
                       시간 지정
                     </button>
                     <button
-                      onClick={() => handleInputChange("timeType", "상대적 시점")}
+                      onClick={() => handleInputChange("timeType", "relative")}
                       className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                        formData.timeType === "상대적 시점"
+                        formData.timeType === "relative"
                           ? "bg-gray-200 border-gray-300 text-gray-900"
                           : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
@@ -155,7 +334,7 @@ export default function CreateAutoRulePage() {
                 </div>
 
                 {/* 시간 설정 */}
-                {formData.timeType === "상대적 시점" ? (
+                {formData.timeType === "relative" ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">시간</label>
                     <div className="flex space-x-2">
@@ -164,23 +343,23 @@ export default function CreateAutoRulePage() {
                         onChange={(e) => handleInputChange("timeValue", e.target.value)}
                         className="flex-1 p-2 bg-white border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="30분">30분</option>
-                        <option value="1시간">1시간</option>
-                        <option value="2시간">2시간</option>
-                        <option value="3시간">3시간</option>
-                        <option value="6시간">6시간</option>
-                        <option value="12시간">12시간</option>
-                        <option value="1일">1일</option>
-                        <option value="2일">2일</option>
-                        <option value="3일">3일</option>
+                        <option value="30">30분</option>
+                        <option value="60">1시간</option>
+                        <option value="120">2시간</option>
+                        <option value="180">3시간</option>
+                        <option value="360">6시간</option>
+                        <option value="720">12시간</option>
+                        <option value="1440">1일</option>
+                        <option value="2880">2일</option>
+                        <option value="4320">3일</option>
                       </select>
                       <select
-                        value={formData.timeUnit}
-                        onChange={(e) => handleInputChange("timeUnit", e.target.value)}
+                        value={formData.timeDirection}
+                        onChange={(e) => handleInputChange("timeDirection", e.target.value)}
                         className="w-20 p-2 bg-white border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="전">전</option>
-                        <option value="후">후</option>
+                        <option value="before">전</option>
+                        <option value="after">후</option>
                       </select>
                     </div>
                   </div>
@@ -189,18 +368,20 @@ export default function CreateAutoRulePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">시간</label>
                     <div className="flex space-x-2">
                       <select
-                        value={formData.timeValue}
-                        onChange={(e) => handleInputChange("timeValue", e.target.value)}
+                        value={formData.absoluteDaysBefore}
+                        onChange={(e) => handleInputChange("absoluteDaysBefore", e.target.value)}
                         className="flex-1 p-2 bg-white border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="1일 전">1일 전</option>
-                        <option value="2일 전">2일 전</option>
-                        <option value="3일 전">3일 전</option>
+                        <option value="0">당일</option>
+                        <option value="1">1일 전</option>
+                        <option value="2">2일 전</option>
+                        <option value="3">3일 전</option>
                       </select>
                       <input
                         type="time"
+                        value={formData.absoluteTime}
+                        onChange={(e) => handleInputChange("absoluteTime", e.target.value)}
                         className="w-32 p-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        defaultValue="09:00"
                       />
                     </div>
                   </div>
@@ -215,13 +396,16 @@ export default function CreateAutoRulePage() {
               </label>
               <div className="relative">
                 <select
-                  value={formData.template}
-                  onChange={(e) => handleInputChange("template", e.target.value)}
+                  value={formData.templateId}
+                  onChange={(e) => handleInputChange("templateId", e.target.value)}
                   className="w-full p-4 bg-white border border-gray-200 rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="템플릿을 선택하세요">템플릿을 선택하세요</option>
-                  <option value="입실 안내 템플릿">입실 안내 템플릿</option>
-                  <option value="확인 템플릿">확인 템플릿</option>
+                  <option value="">템플릿을 선택하세요</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,29 +436,23 @@ export default function CreateAutoRulePage() {
                 {showSenderInfo && (
                   <div className="px-4 pb-4 border-t border-gray-100 space-y-3">
                     {/* 보내는 번호 */}
-                    <div className="flex items-center justify-between py-3">
-                      <div>
-                        <div className="text-gray-900 font-medium">보내는 번호</div>
-                        <div className="text-gray-500 text-sm">발신전용 번호 (02-2138-8050)</div>
-                      </div>
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </button>
+                    <div className="py-3">
+                      <div className="text-gray-900 font-medium mb-1">보내는 번호</div>
+                      <div className="text-gray-700 text-sm font-mono">[비공개]</div>
+                      <p className="text-xs text-gray-400 mt-2">
+                        ※ SMS 발신은 통신사 및 정부 정책에 따라 발신전용 번호로 발송됩니다.
+                      </p>
                     </div>
-                    
+
                     {/* 호스트 연락처 */}
-                    <div className="flex items-center justify-between py-3 border-t border-gray-100">
-                      <div>
-                        <div className="text-gray-900 font-medium">호스트 연락처</div>
-                        <div className="text-gray-500 text-sm">예약 공간에 따라 입력됩니다.</div>
+                    <div className="py-3 border-t border-gray-100">
+                      <div className="text-gray-900 font-medium mb-1">호스트 연락처</div>
+                      <div className="text-gray-700 text-sm font-mono">
+                        {formData.spaceId ? hostContactNumber : "공간을 먼저 선택하세요"}
                       </div>
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </button>
+                      <p className="text-xs text-gray-400 mt-2">
+                        ※ 메시지 내용에 {`{{전화번호}}`} 변수로 삽입됩니다. 고객이 회신할 수 있는 번호입니다.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -285,10 +463,14 @@ export default function CreateAutoRulePage() {
             <div className="pt-4">
               <button
                 onClick={handleCreateRule}
-                className="w-full py-3 px-4 bg-gray-400 text-white rounded-lg font-medium"
-                disabled
+                disabled={!isFormValid() || loading}
+                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                  isFormValid() && !loading
+                    ? "bg-blue-500 hover:bg-blue-600 text-white"
+                    : "bg-gray-400 text-white cursor-not-allowed"
+                }`}
               >
-                만들기
+                {loading ? "만드는 중..." : "만들기"}
               </button>
             </div>
           </div>

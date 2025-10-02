@@ -345,8 +345,8 @@ export async function POST(request: NextRequest) {
         .insert({
           user_id: newUser.id,
           phone_number: normalizedPhoneNumber,
-          display_name: `${name} (본인)`,
-          is_default: true, // 첫 번째 발신번호이므로 기본값으로 설정
+          display_name: name,
+          is_default: false, // 시스템 기본번호만 true
           is_user_phone: true, // 본인 전화번호 표시
           is_verified: false,
           status: "ACTIVE",

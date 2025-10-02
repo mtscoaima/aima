@@ -45,6 +45,7 @@ interface AuthContextType {
   error: string | null;
   checkAuth: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
+  getAccessToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -266,6 +267,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
   };
 
+  // 액세스 토큰 반환 함수
+  const getAccessToken = async (): Promise<string | null> => {
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
+        return null;
+      }
+
+      // 토큰이 만료되었는지 확인하고 필요시에만 갱신
+      if (tokenManager.isTokenExpired(token)) {
+        const isRefreshed = await refreshAccessToken();
+        if (!isRefreshed) {
+          return null;
+        }
+        // 갱신된 토큰 반환
+        return tokenManager.getAccessToken();
+      }
+
+      // 토큰이 유효하면 그대로 반환
+      return token;
+    } catch (error) {
+      console.error("Error getting access token:", error);
+      return null;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -276,6 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     checkAuth,
     refreshAccessToken,
+    getAccessToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

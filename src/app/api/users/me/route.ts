@@ -546,7 +546,7 @@ export async function PUT(request: NextRequest) {
           .from("sender_numbers")
           .update({
             phone_number: normalizedPhoneNumber,
-            display_name: `${updatedUser.name} (본인)`,
+            display_name: updatedUser.name,
             updated_at: getKSTISOString(),
           })
           .eq("user_id", userId)
@@ -557,21 +557,13 @@ export async function PUT(request: NextRequest) {
           // 발신번호가 없는 경우 새로 생성
           if (senderUpdateError.code === "PGRST116") {
             // No rows found
-            // 기존 발신번호가 있는지 확인 (기본값 설정용)
-            const { count: senderCount } = await supabase
-              .from("sender_numbers")
-              .select("*", { count: "exact", head: true })
-              .eq("user_id", userId);
-
-            const isFirstNumber = senderCount === 0;
-
             const { error: insertError } = await supabase
               .from("sender_numbers")
               .insert({
                 user_id: userId,
                 phone_number: normalizedPhoneNumber,
-                display_name: `${updatedUser.name} (본인)`,
-                is_default: isFirstNumber,
+                display_name: updatedUser.name,
+                is_default: false,
                 is_user_phone: true,
                 is_verified: false,
                 status: "ACTIVE",
