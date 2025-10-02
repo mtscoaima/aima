@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 import RoleGuard from "@/components/RoleGuard";
 
@@ -27,8 +27,10 @@ interface SpaceDetail {
   };
 }
 
-export default function CreateAutoRulePage() {
+export default function EditAutoRulePage() {
   const router = useRouter();
+  const params = useParams();
+  const ruleId = params.id as string;
 
   const [formData, setFormData] = useState({
     ruleName: "",
@@ -48,10 +50,12 @@ export default function CreateAutoRulePage() {
   const [hostContactNumber, setHostContactNumber] = useState<string>("[비공개]");
   const [sendingNumber, setSendingNumber] = useState<string>("[비공개]");
 
-  // 공간 목록 조회
+  // 공간 목록 조회 및 기존 규칙 데이터 로드
   useEffect(() => {
     fetchSpaces();
     fetchTemplates();
+    fetchRuleData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSpaces = async () => {
@@ -87,6 +91,45 @@ export default function CreateAutoRulePage() {
       setTemplates(data.templates || []);
     } catch (error) {
       console.error("템플릿 조회 오류:", error);
+    }
+  };
+
+  // 기존 규칙 데이터 로드
+  const fetchRuleData = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`/api/reservations/auto-rules/${ruleId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("규칙 조회 실패");
+
+      const data = await response.json();
+      const rule = data.rule;
+
+      // 폼 데이터 채우기
+      setFormData({
+        ruleName: rule.rule_name,
+        spaceId: String(rule.space_id),
+        triggerType: rule.trigger_type,
+        timeType: rule.time_type,
+        timeValue: String(rule.time_value || 120),
+        timeDirection: rule.time_direction || "before",
+        absoluteTime: rule.absolute_time ? rule.absolute_time.substring(0, 5) : "09:00",
+        absoluteDaysBefore: String(rule.time_value || 1),
+        templateId: String(rule.template_id),
+      });
+
+      // 호스트 연락처 조회
+      if (rule.space_id) {
+        await fetchHostContactNumber(rule.space_id);
+      }
+    } catch (error) {
+      console.error("규칙 조회 오류:", error);
+      alert("규칙을 불러오는데 실패했습니다.");
+      router.push("/reservations/message/auto");
     }
   };
 
@@ -157,7 +200,7 @@ export default function CreateAutoRulePage() {
     return parseInt(dayStr);
   };
 
-  const handleCreateRule = async () => {
+  const handleUpdateRule = async () => {
     // 유효성 검사
     if (!formData.ruleName.trim()) {
       alert("발송 규칙 제목을 입력하세요.");
@@ -198,8 +241,8 @@ export default function CreateAutoRulePage() {
         requestData.absolute_time = formData.absoluteTime + ":00";
       }
 
-      const response = await fetch("/api/reservations/auto-rules", {
-        method: "POST",
+      const response = await fetch(`/api/reservations/auto-rules/${ruleId}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -209,14 +252,14 @@ export default function CreateAutoRulePage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "규칙 생성 실패");
+        throw new Error(errorData.error || "규칙 수정 실패");
       }
 
-      alert("자동 발송 규칙이 생성되었습니다.");
+      alert("자동 발송 규칙이 수정되었습니다.");
       router.push("/reservations/message/auto");
     } catch (error: any) {
-      console.error("규칙 생성 오류:", error);
-      alert(error.message || "규칙 생성에 실패했습니다.");
+      console.error("규칙 수정 오류:", error);
+      alert(error.message || "규칙 수정에 실패했습니다.");
     } finally {
       setLoading(false);
     }
@@ -246,7 +289,7 @@ export default function CreateAutoRulePage() {
               </svg>
             </button>
             <h1 className="text-xl font-bold text-gray-900">
-              발송 규칙 만들기
+              발송 규칙 수정하기
             </h1>
           </div>
 
@@ -476,10 +519,10 @@ export default function CreateAutoRulePage() {
               </div>
             </div>
 
-            {/* 만들기 버튼 */}
+            {/* 수정하기 버튼 */}
             <div className="pt-4">
               <button
-                onClick={handleCreateRule}
+                onClick={handleUpdateRule}
                 disabled={!isFormValid() || loading}
                 className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
                   isFormValid() && !loading
@@ -487,7 +530,7 @@ export default function CreateAutoRulePage() {
                     : "bg-gray-400 text-white cursor-not-allowed"
                 }`}
               >
-                {loading ? "만드는 중..." : "만들기"}
+                {loading ? "수정 중..." : "수정하기"}
               </button>
             </div>
           </div>

@@ -112,7 +112,7 @@ export default function MessageSendPage() {
   // 템플릿 추가 모달 상태
   const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
-  const [newTemplateCategory, setNewTemplateCategory] = useState("예약확정");
+  const [newTemplateCategory, setNewTemplateCategory] = useState("예약 확정 안내");
 
   // URL 파라미터로 예약 자동 선택
   useEffect(() => {
@@ -637,7 +637,7 @@ export default function MessageSendPage() {
       return;
     }
     setNewTemplateName("");
-    setNewTemplateCategory("예약확정");
+    setNewTemplateCategory("예약 확정 안내");
     setIsCreateTemplateModalOpen(true);
   };
 
@@ -671,6 +671,7 @@ export default function MessageSendPage() {
         alert("템플릿이 저장되었습니다.");
         setIsCreateTemplateModalOpen(false);
         setNewTemplateName("");
+        setNewTemplateCategory("예약 확정 안내");
       } else {
         const data = await response.json();
         alert(data.error || "템플릿 저장에 실패했습니다.");
@@ -1596,11 +1597,11 @@ export default function MessageSendPage() {
                   onChange={(e) => setNewTemplateCategory(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="예약확정">예약 확정</option>
-                  <option value="예약변경">예약 변경</option>
-                  <option value="예약취소">예약 취소</option>
-                  <option value="리마인더">리마인더</option>
-                  <option value="감사인사">감사 인사</option>
+                  <option value="예약 확정 안내">예약 확정 안내</option>
+                  <option value="체크인 안내">체크인 안내</option>
+                  <option value="체크아웃 안내">체크아웃 안내</option>
+                  <option value="예약 변경 안내">예약 변경 안내</option>
+                  <option value="예약 취소 안내">예약 취소 안내</option>
                   <option value="기타">기타</option>
                 </select>
               </div>

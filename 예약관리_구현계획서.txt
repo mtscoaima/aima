@@ -1,5 +1,5 @@
 =====================================================
-MTS Message 예약 관리 시스템 구현 계획서 (간소화 버전)
+MTS Message 예약 관리 시스템 구현 계획서 (통합본)
 현재 UI 기반 필수 기능만 구현
 =====================================================
 
@@ -8,7 +8,10 @@ MTS Message 예약 관리 시스템 구현 계획서 (간소화 버전)
 2. 간소화된 구현 계획
 3. 최소 데이터베이스 설계
 4. API 설계
-5. 우선순위 및 일정
+5. 개발 일정 및 진행 상황
+6. Phase 2 상세 구현 가이드
+7. 테스트 시나리오
+8. 다음 단계
 
 =====================================================
 1. 현재 UI 분석 및 실제 필요 기능
@@ -44,113 +47,37 @@ MTS Message 예약 관리 시스템 구현 계획서 (간소화 버전)
 1. **내 공간 생성하기** - 여러 플랫폼에 흩어진 내 공간들을 한번에 관리
 2. **예약 추가하기** - 스마트 캘린더로 예약 세부 사항들을 편리하게 기록
 3. **예약 정보 입력하기** - 금액 추가, 부분 환불 등, 예약 별 특이사항들을 꼼꼼하게 기록
-4. **예약 캘린더 보기** - 등록된 예약들을 캘린더로 빠르게 파악하고 관리. 여러 공간 운영 시 원하는 공간의 캘린더만 필터해서 조회 가능
+4. **예약 캘린더 보기** - 등록된 예약들을 캘린더로 빠르게 파악하고 관리
 5. **최근 예약 내역 보기** - 최근 예약 리스트를 한눈에 확인
-6. **공유 캘린더 만들기** - 실시간 예약 현황을 예약 문의자, 청소 이모님 등 외부에 링크 하나로 편리하게 공유
-7. **예약 데이터 다운받기** - 통계에 활용된 원본 예약 데이터를 다운받아 엑셀로 활용
+6. **공유 캘린더 만들기** - 실시간 예약 현황을 외부에 링크로 편리하게 공유
+7. **예약 데이터 다운받기** - 통계에 활용된 원본 예약 데이터를 엑셀로 활용
 
 💬 **메시지 기능 (4개):**
-8. **발신자 정보 설정하기** - 고객으로부터 메시지를 수신할 호스트님의 연락처 등록
+8. **발신자 정보 설정하기** - 고객으로부터 메시지를 수신할 호스트 연락처 등록
 9. **메시지 보내기** - 개별 고객에게 직접 메시지 발송
 10. **자동 템플릿 만들기** - 예약 안내 메시지를 자동화. 예약자 상세 내역은 자동으로 입력
 11. **자동 메시지를 위한 발송 규칙 만들기** - 메시지를 자동으로 발송할 규칙 설정
 
-❌ **제외된 기능:**
-- 보낸 메시지 확인하기 (복잡함)
-- 발송 예정 메시지 확인하기 (복잡함)
-- 결제 관리 (범위 외)
-- 복잡한 통계 (기본 데이터 다운로드만)
-
 =====================================================
-3. 간소화된 구현 계획 (현재 UI 기준)
+3. 최소 데이터베이스 설계
 =====================================================
 
-📅 **Phase 1: 스마트 캘린더 핵심 (2주)**
--------------------
-🎯 **목표: 기본 예약 관리 시스템**
-
-**1.1 내 공간 생성하기**
-- `/reservations/places/add`: 기본 공간 등록 폼 (이름, 아이콘만)
-- `/reservations/places`: 공간 목록 표시 (현재 UI 그대로)
-
-**1.2 예약 추가하기**
-- `/reservations/create`: 기본 예약 생성 폼 (현재 UI 그대로)
-- 고객 정보, 날짜/시간, 메모만 입력
-
-**1.3 예약 캘린더 보기**
-- `/reservations/calendar`: 월간 캘린더 (현재 UI 그대로)
-- 예약 데이터 표시만
-
-**1.4 최근 예약 내역 보기**
-- `/reservations/list`: 예약 목록 (현재 UI 그대로)
-- 기본 필터링만
-
-**1.5 예약 데이터 다운받기**
-- `/reservations/statistics`: 기본 통계 + CSV 다운로드
-
-📅 **Phase 2: 메시지 시스템 (2주)** ✅ 90% 완료
--------------------
-🎯 **목표: 기본 SMS 기능**
-
-**2.1 발신자 정보 설정하기** ✅ 완료
-- `/reservations/message/sender-contact`: 기본 연락처 등록
-
-**2.2 메시지 보내기** ⏳ 90% 완료 (API만 남음)
-- `/reservations/message/send`: 단순 메시지 발송
-
-**2.3 자동 템플릿 만들기**
-- `/reservations/message/templates`: 기본 템플릿 관리
-
-**2.4 자동 메시지 발송 규칙**
-- `/reservations/message/auto`: 기본 자동 발송 규칙
-
-📅 **Phase 3: 공유 캘린더 (1주)**
--------------------
-🎯 **목표: 외부 공유 기능**
-
-**3.1 공유 캘린더 만들기**
-- `/reservations/calendar/shared`: 공유 링크 생성
-- 읽기 전용 캘린더 뷰
-
-=====================================================
-4. 기술 스택 (기존 유지)
-=====================================================
-
-🏗️ **프론트엔드 (기존 유지):**
-- Next.js 15 + React 19
-- TypeScript
-- Tailwind CSS 4
-- 현재 UI 구조 그대로 활용
-
-🔧 **백엔드 (기존 유지):**
-- Next.js API Routes
-- Supabase 데이터베이스
-- JWT 인증 (기존 구조 유지)
-
-🔗 **외부 API (필요시만):**
-- Naver SENS (SMS)
-- CSV Export 라이브러리
-
-
-=====================================================
-5. 최소 데이터베이스 설계 (간소화)
-=====================================================
-
-🗄️ **핵심 테이블 5개 (Phase 1~2 구현):**
+🗄️ **핵심 테이블 7개:**
 
 ```sql
--- 공간 테이블
+-- 1. 공간 테이블
 CREATE TABLE spaces (
     id INT8 PRIMARY KEY,
     user_id INT8 REFERENCES users(id),
     name VARCHAR NOT NULL,
     icon_text VARCHAR,
     icon_color VARCHAR,
+    host_contact_number_id INT8 REFERENCES sender_numbers(id),
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 );
 
--- 예약 테이블
+-- 2. 예약 테이블
 CREATE TABLE reservations (
     id INT8 PRIMARY KEY,
     user_id INT8 REFERENCES users(id),
@@ -172,7 +99,7 @@ CREATE TABLE reservations (
     updated_at TIMESTAMPTZ
 );
 
--- 예약 관련 메시지 템플릿
+-- 3. 예약 메시지 템플릿
 CREATE TABLE reservation_message_templates (
     id INT8 PRIMARY KEY,
     user_id INT8 REFERENCES users(id),
@@ -184,62 +111,52 @@ CREATE TABLE reservation_message_templates (
     updated_at TIMESTAMPTZ
 );
 
--- 보낸 메시지 기록 (Phase 2.2)
+-- 4. 보낸 메시지 기록
 CREATE TABLE reservation_message_logs (
     id BIGSERIAL PRIMARY KEY,
     user_id INT8 REFERENCES users(id),
     reservation_id INT8 REFERENCES reservations(id),
     template_id INT8 REFERENCES reservation_message_templates(id),
-
-    -- 메시지 내용
+    to_number VARCHAR NOT NULL,
+    to_name VARCHAR,
     message_content TEXT NOT NULL,
-    recipient_phone VARCHAR NOT NULL,
-    recipient_name VARCHAR,
-
-    -- 발송 정보
-    message_type VARCHAR NOT NULL, -- 'SMS' | 'LMS'
-    send_type VARCHAR NOT NULL, -- 'immediate' | 'scheduled' | 'auto'
-    scheduled_at TIMESTAMPTZ, -- 예약 발송 시간
-    sent_at TIMESTAMPTZ, -- 실제 발송 시간
-
-    -- 발송 결과
-    status VARCHAR NOT NULL, -- 'pending' | 'sent' | 'failed'
-    sens_request_id VARCHAR, -- Naver SENS 요청 ID
-    sens_message_id VARCHAR, -- Naver SENS 메시지 ID
+    message_type VARCHAR NOT NULL,
+    sent_at TIMESTAMPTZ,
+    status VARCHAR NOT NULL,
     error_message TEXT,
-
-    -- 비용
-    message_bytes INT,
-    credit_used INT,
-
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 자동 발송 규칙 (Phase 2.2)
-CREATE TABLE reservation_auto_message_rules (
+-- 5. 예약 발송 메시지
+CREATE TABLE reservation_scheduled_messages (
     id BIGSERIAL PRIMARY KEY,
     user_id INT8 REFERENCES users(id),
-    space_id INT8 REFERENCES spaces(id), -- 대상 공간
+    reservation_id INT8 REFERENCES reservations(id),
     template_id INT8 REFERENCES reservation_message_templates(id),
+    to_number VARCHAR NOT NULL,
+    to_name VARCHAR,
+    message_content TEXT NOT NULL,
+    message_type VARCHAR NOT NULL,
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    status VARCHAR NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-    -- 규칙 정보
-    name VARCHAR NOT NULL, -- 발송 규칙 제목
+-- 6. 자동 발송 규칙 (Phase 2.3) ✅ DB 이미 존재
+CREATE TABLE reservation_auto_message_rules (
+    id INT8 PRIMARY KEY,
+    user_id INT8 REFERENCES users(id),
+    space_id INT8 REFERENCES spaces(id),
+    template_id INT8 REFERENCES reservation_message_templates(id),
+    rule_name VARCHAR NOT NULL,              -- 실제 DB: rule_name (계획서: name)
     is_active BOOL DEFAULT true,
-
-    -- 발송 시점 설정
-    trigger_event VARCHAR NOT NULL, -- 'checkin' | 'checkout'
-    timing_type VARCHAR NOT NULL, -- 'relative' | 'absolute'
-
-    -- 상대적 시점 (예: 입실 2시간 전)
-    relative_value INT, -- 숫자 (예: 2)
-    relative_unit VARCHAR, -- 'minutes' | 'hours' | 'days'
-    relative_direction VARCHAR, -- 'before' | 'after'
-
-    -- 절대적 시점 (예: 1일 전 09:00)
-    absolute_days_before INT, -- 며칠 전
-    absolute_time TIME, -- 정확한 시간 (09:00)
-
+    trigger_type VARCHAR NOT NULL,           -- 실제 DB: trigger_type (계획서: trigger_event)
+    time_type VARCHAR NOT NULL,              -- 실제 DB: time_type (계획서: timing_type)
+    time_value INT4,                         -- 실제 DB: time_value (계획서: relative_value)
+    time_direction VARCHAR,                  -- 실제 DB: time_direction (계획서: relative_direction)
+    absolute_time TIME,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -251,805 +168,640 @@ CREATE TABLE reservation_auto_message_rules (
 CREATE INDEX idx_spaces_user ON spaces(user_id);
 CREATE INDEX idx_reservations_user_date ON reservations(user_id, start_datetime);
 CREATE INDEX idx_reservations_space ON reservations(space_id);
-CREATE INDEX idx_reservations_channel ON reservations(booking_channel);
 
--- Phase 2.1
-CREATE INDEX idx_reservation_message_templates_user ON reservation_message_templates(user_id);
-CREATE INDEX idx_reservation_message_templates_category ON reservation_message_templates(category);
-
--- Phase 2.2
+-- Phase 2
+CREATE INDEX idx_message_templates_user ON reservation_message_templates(user_id);
 CREATE INDEX idx_message_logs_user ON reservation_message_logs(user_id);
 CREATE INDEX idx_message_logs_reservation ON reservation_message_logs(reservation_id);
-CREATE INDEX idx_message_logs_status ON reservation_message_logs(status);
 CREATE INDEX idx_message_logs_sent_at ON reservation_message_logs(sent_at);
+CREATE INDEX idx_scheduled_messages_user ON reservation_scheduled_messages(user_id);
+CREATE INDEX idx_scheduled_messages_status ON reservation_scheduled_messages(status);
+CREATE INDEX idx_scheduled_messages_scheduled_at ON reservation_scheduled_messages(scheduled_at);
 CREATE INDEX idx_auto_rules_user ON reservation_auto_message_rules(user_id);
-CREATE INDEX idx_auto_rules_space ON reservation_auto_message_rules(space_id);
 CREATE INDEX idx_auto_rules_active ON reservation_auto_message_rules(is_active);
 ```
 
 =====================================================
-6. 최소 API 설계 (간소화)
+4. API 설계
 =====================================================
 
-🌐 **핵심 API만 (9개 엔드포인트):**
+🌐 **핵심 API 엔드포인트:**
 
-**📦 공간 관리:**
+**📦 공간 관리 (Phase 1):**
 ```
-GET    /api/spaces              # 공간 목록
-POST   /api/spaces              # 공간 추가
-DELETE /api/spaces/[id]         # 공간 삭제
-```
-
-**📅 예약 관리:**
-```
-GET    /api/reservations        # 예약 목록
-POST   /api/reservations        # 예약 추가
-PUT    /api/reservations/[id]   # 예약 수정
-DELETE /api/reservations/[id]   # 예약 삭제
+GET    /api/reservations/spaces              # 공간 목록 ✅
+POST   /api/reservations/spaces              # 공간 추가 ✅
+PUT    /api/reservations/spaces/[id]         # 공간 수정 ✅
+DELETE /api/reservations/spaces/[id]         # 공간 삭제 ✅
 ```
 
-**📊 데이터 Export:**
+**📅 예약 관리 (Phase 1):**
 ```
-GET    /api/export/reservations # CSV 다운로드
+GET    /api/reservations/bookings            # 예약 목록 ✅
+POST   /api/reservations/bookings            # 예약 추가 ✅
+PUT    /api/reservations/bookings/[id]       # 예약 수정 ✅
+DELETE /api/reservations/bookings/[id]       # 예약 삭제 ✅
+GET    /api/reservations/statistics          # 통계 데이터 ✅
+GET    /api/reservations/export/csv          # CSV 다운로드 ✅
 ```
 
-**📱 메시지 (Phase 2):**
+**📱 메시지 템플릿 (Phase 2.1):**
 ```
-# 템플릿 관리
-GET    /api/reservations/message-templates       # 템플릿 목록
-POST   /api/reservations/message-templates       # 템플릿 생성
-PUT    /api/reservations/message-templates/[id]  # 템플릿 수정
-DELETE /api/reservations/message-templates/[id]  # 템플릿 삭제
+GET    /api/reservations/message-templates       # 템플릿 목록 ✅
+POST   /api/reservations/message-templates       # 템플릿 생성 ✅
+PUT    /api/reservations/message-templates/[id]  # 템플릿 수정 ✅
+DELETE /api/reservations/message-templates/[id]  # 템플릿 삭제 ✅
+```
 
-# 메시지 발송
-POST   /api/reservations/send-message            # 메시지 발송 (즉시/예약/자동)
+**📱 메시지 발송 (Phase 2.1):**
+```
+POST   /api/reservations/send-message            # 메시지 발송 (즉시/예약) ✅
+```
 
-# 보낸 메시지 조회
-GET    /api/reservations/message-logs            # 보낸 메시지 목록
-GET    /api/reservations/message-logs/[id]       # 메시지 상세
+**📱 보낸 메시지 (Phase 2.2):**
+```
+GET    /api/reservations/message-logs            # 보낸 메시지 목록 ✅
+GET    /api/reservations/message-logs/[id]       # 메시지 상세 ✅
+```
 
-# 자동 발송 규칙 관리
+**📱 예약 발송 메시지 (Phase 2.2):**
+```
+GET    /api/reservations/scheduled-messages      # 예약 메시지 목록 ✅
+DELETE /api/reservations/scheduled-messages      # 예약 메시지 취소 ✅
+```
+
+**📱 Cron Job (Phase 2.1.5):**
+```
+GET    /api/cron/send-scheduled-messages         # 예약 메시지 자동 발송 ✅
+```
+
+**📱 자동 발송 규칙 (Phase 2.3 - 미착수):**
+```
 GET    /api/reservations/auto-rules              # 자동 규칙 목록
 POST   /api/reservations/auto-rules              # 자동 규칙 생성
 PUT    /api/reservations/auto-rules/[id]         # 자동 규칙 수정
 DELETE /api/reservations/auto-rules/[id]         # 자동 규칙 삭제
-
-# 자동 발송 실행 (Cron Job)
-GET    /api/reservations/auto-send-check         # 자동 발송 체크 및 실행
+GET    /api/reservations/auto-send-check         # 자동 발송 체크 (Cron)
 ```
 
 =====================================================
-7. 간소화된 개발 일정
+5. 개발 일정 및 진행 상황
 =====================================================
 
-📅 **Phase 1: 스마트 캘린더 (1주)**
+📅 **Phase 1: 스마트 캘린더 (2주)** ✅ 100% 완료
+-------------------
 ```
-✅ 공간 관리 API (완료)
-✅ 예약 관리 API (완료)
-✅ CSV Export 기능 (완료)
-✅ 예약 관리 페이지 메인 화면 활성화 (완료)
-✅ 내 공간 조회/추가/수정/삭제 UI (완료)
-✅ 예약 생성 UI (완료)
-✅ 예약 리스트 조회 UI (완료)
-✅ 캘린더 뷰 UI (완료)
-✅ 예약 상세 페이지 UI (완료)
-✅ 예약 수정 기능 (완료)
-✅ 예약 삭제 기능 (완료)
-✅ 예약 복사 기능 (완료)
-✅ 통계 페이지 구현 (완료)
-✅ 캘린더 통계 버튼 연동 (완료)
+✅ 공간 관리 CRUD
+✅ 예약 관리 CRUD
+✅ 캘린더 뷰
+✅ 통계 페이지
+✅ CSV Export
+✅ 예약 복사 기능
+✅ 예약 상세 페이지
 ```
 
-📅 **Phase 2: 메시지 시스템 (2주)** ✅ Phase 2.1.5 완료, Phase 2.2 대기
+📅 **Phase 2: 메시지 시스템 (2주)** ✅ 90% 완료
+-------------------
+
+**Phase 2.1: 메시지 템플릿 & 발송 (1주)** ✅ 100% 완료
 ```
-# Phase 2.1: 메시지 템플릿 & 발송 (1주) ✅ 100% 완료
-✅ 기존 Naver SENS API 연동 유지
-✅ 발신번호 관리 UI 정리 완료
-✅ 예약 관리용 메시지 템플릿 관리 (CRUD 완료)
-✅ 템플릿 변수 치환 ({{고객명}}, {{공간명}}, {{예약날짜}} 등)
-✅ 메시지 보내기 UI 완성 (예약 선택, 템플릿 선택, 변수 삽입, 미리보기)
-✅ 변수 치환 유틸리티 구현 (11가지 변수, 포맷팅)
-✅ 메시지 발송 API 구현 (POST /api/reservations/send-message)
-  - Naver SENS API 연동
-  - 광고머니 차감 (transactions 기반)
-  - reservation_message_logs 기록
-  - 즉시 발송 완료
-✅ 예약 상세 페이지에서 메시지 발송 버튼
-  - 메시지 보내기 버튼 클릭 시 /message/send로 이동
-  - URL 파라미터로 예약 ID 전달
-  - 메시지 페이지에서 예약 자동 선택
-✅ 템플릿에 추가 기능
-  - "📝 템플릿에 추가" 버튼 구현
-  - 현재 메시지 내용으로 템플릿 생성 모달
-  - 템플릿 관리 API 연동
-
-# Phase 2.1.5: 예약 발송 시스템 (완료) ✅ 100% 완료
-✅ reservation_scheduled_messages 테이블 확인 (DB 스키마 존재)
-✅ 예약 발송 UI 완성 (날짜/시간 선택, 라디오 버튼)
-✅ 예약 발송 API 구현 (완료)
-  - sendType: 'scheduled' 처리
-  - reservation_scheduled_messages에 INSERT
-✅ Vercel Cron Job 설정 (완료)
-  - vercel.json 생성 (매 분마다 실행)
-  - /api/cron/send-scheduled-messages 엔드포인트
-  - 예약 시간 도래한 메시지 자동 발송
-  - 광고머니 차감 (발송 시점)
-  - CRON_SECRET 환경변수 보안
-
-# Phase 2.2: 보낸 메시지 & 자동 메시지 (1주) ⭕ 미착수
-✅ reservation_message_logs 테이블 생성 (DB 스키마 확인 완료)
-⭕ 보낸 메시지 목록 API (GET /api/reservations/message-logs)
-⭕ 보낸 메시지 페이지 연동 (/message/list)
-⭕ 예약 발송 메시지 페이지 연동 (/message/list/reserved)
-⭕ reservation_auto_message_rules 테이블 생성
-⭕ 자동 발송 규칙 CRUD API
-⭕ 자동 메시지 설정 페이지 연동 (/message/auto)
-⭕ 발송 규칙 만들기 페이지 연동 (/message/auto/create)
+✅ 발신자 정보 설정하기
+✅ 메시지 템플릿 CRUD
+✅ 변수 치환 유틸리티 (11가지 변수)
+✅ 메시지 발송 API (즉시 발송)
+✅ 메시지 보내기 UI
+✅ 예약 상세 페이지 연동
+✅ 광고머니 차감 연동
 ```
 
-📅 **Phase 3: 공유 캘린더 (1주)**
+**Phase 2.1.5: 예약 발송 시스템** ✅ 100% 완료
 ```
-⭕ 공유 링크 생성
-⭕ 읽기 전용 캘린더
+✅ 예약 발송 UI (캘린더 날짜 선택)
+✅ 예약 발송 API (scheduled)
+✅ Vercel Cron Job 설정
+✅ 자동 발송 엔드포인트
+✅ CRON_SECRET 보안
 ```
 
-🎯 **총 개발 기간: 4주 (기존 9주 → 4주)**
-✅ **Phase 1 완료: 1주 소요 (2025-09-30 ~ 2025-10-01)**
-⏳ **Phase 2 진행 중: 2주 예정 (2025-10-01 ~ 2025-10-15)**
-  - Phase 2.1 (메시지 템플릿 & 발송): 100% 완료
-  - Phase 2.1.5 (예약 발송 시스템): 100% 완료
-  - Phase 2.2 (보낸 메시지 & 자동 메시지): 미착수
+**Phase 2.2: 보낸 메시지 & 발송 예정 메시지** ✅ 100% 완료
+```
+✅ 보낸 메시지 목록 API
+✅ 보낸 메시지 상세 API
+✅ 보낸 메시지 페이지 UI
+  - 통계 대시보드
+  - 검색/필터링
+  - 페이지네이션
+  - 상세 모달
+✅ 예약 발송 메시지 목록 API
+✅ 예약 발송 메시지 취소 API
+✅ 예약 발송 메시지 페이지 UI
+  - 탭 정렬
+  - 남은 시간 표시
+  - 취소 기능
+```
+
+**Phase 2.3: 자동 메시지 규칙 (1주)** ⭕ 미착수 (예상 8-12시간)
+```
+✅ reservation_auto_message_rules 테이블 생성 (이미 존재)
+⭕ 자동 발송 규칙 CRUD API (3-4시간)
+⭕ 자동 메시지 설정 페이지 연동 (/message/auto) (2-3시간)
+⭕ 발송 규칙 만들기 페이지 연동 (/message/auto/create) (2-3시간)
+⭕ 자동 발송 Cron Job 구현 (4-5시간)
+```
+
+📅 **Phase 3: 공유 캘린더 (1주)** ⭕ 미착수 - **필수 구현**
+-------------------
+```
+⭕ 공유 링크 생성 API (2-3시간)
+⭕ 읽기 전용 캘린더 뷰 (3-4시간)
+⭕ 공유 캘린더 설정 페이지 (2-3시간)
+⭕ 공유 링크 관리 (복사/삭제) (1-2시간)
+```
+
+🎯 **총 개발 기간: 5주**
+- ✅ Phase 1 완료: 2주 소요 (2025-09-30 ~ 2025-10-01)
+- ✅ Phase 2.1 완료: 1주 소요 (2025-10-01 ~ 2025-10-02)
+- ✅ Phase 2.1.5 완료: 1일 소요 (2025-10-02)
+- ✅ Phase 2.2 완료: 1일 소요 (2025-10-02)
+- ⏳ Phase 2.3 진행 중: 1주 예정 (자동 발송 규칙)
+- ⏳ Phase 3 대기 중: 1주 예정 (공유 캘린더) - **필수**
+
+=====================================================
+6. Phase 2 상세 구현 가이드
+=====================================================
+
+## Phase 2.1: 템플릿 관리 & 메시지 발송 ✅ 100% 완료
+
+### 변수 치환 엔진 (완료)
+**파일:** `src/utils/messageTemplateParser.ts`
+
+**지원 변수 (11개):**
+```
+{{고객명}} → customer_name
+{{공간명}} → space.name
+{{예약날짜}} → start_datetime (YYYY-MM-DD)
+{{체크인시간}} → start_datetime (HH:mm)
+{{체크아웃시간}} → end_datetime (HH:mm)
+{{인원수}} → guest_count
+{{총금액}} → total_amount (원 단위, 콤마)
+{{입금액}} → deposit_amount (원 단위, 콤마)
+{{잔금}} → (total_amount - deposit_amount)
+{{전화번호}} → host_contact_number.phone_number (호스트 회신 번호)
+{{특이사항}} → special_requirements
+```
+
+**주요 함수:**
+```typescript
+replaceTemplateVariables(template, reservation) // 변수 치환
+previewTemplate(template) // 샘플 데이터로 미리보기
+calculateMessageBytes(content) // 바이트 계산
+determineMessageType(bytes) // SMS/LMS 자동 판단
+```
+
+### 템플릿 CRUD API (완료)
+```
+GET    /api/reservations/message-templates       ✅
+POST   /api/reservations/message-templates       ✅
+PUT    /api/reservations/message-templates/[id]  ✅
+DELETE /api/reservations/message-templates/[id]  ✅
+```
+
+### 메시지 발송 API (완료)
+**엔드포인트:** POST /api/reservations/send-message
+
+**Request Body:**
+```typescript
+{
+  reservationId: number,
+  templateId?: number,
+  message: string,
+  sendType?: 'immediate' | 'scheduled',
+  scheduledAt?: string // ISO 8601
+}
+```
+
+**Response:**
+```typescript
+{
+  success: boolean,
+  messageId?: string,
+  logId?: number,
+  scheduledId?: number,
+  messageType?: 'SMS' | 'LMS',
+  creditUsed?: number,
+  error?: string
+}
+```
+
+**주요 로직:**
+1. 예약 데이터 조회 (JOIN spaces, sender_numbers)
+2. 템플릿 변수 치환
+3. 바이트 계산 및 SMS/LMS 판단
+4. 즉시 발송 vs 예약 발송 분기
+   - immediate: Naver SENS API → reservation_message_logs
+   - scheduled: reservation_scheduled_messages INSERT
+5. 광고머니 차감 (transactions 기반)
+6. 에러 핸들링 및 롤백
+
+---
+
+## Phase 2.1.5: 예약 발송 시스템 ✅ 100% 완료
+
+### 예약 발송 UI (완료)
+- 캘린더 방식 날짜 선택
+- 시간 드롭다운 (시/분)
+- 즉시 발송 / 예약 발송 라디오 버튼
+
+### Vercel Cron Job 설정 (완료)
+**파일:** `vercel.json`
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/send-scheduled-messages",
+      "schedule": "* * * * *"
+    }
+  ]
+}
+```
+
+**Cron 엔드포인트:** GET /api/cron/send-scheduled-messages
+
+**실행 로직:**
+1. CRON_SECRET 검증
+2. status='pending', scheduled_at <= NOW() 조회
+3. 각 메시지에 대해:
+   - Naver SENS API 호출
+   - 광고머니 차감 (transactions)
+   - reservation_message_logs INSERT
+   - status='sent' 업데이트
+4. 실패 시 status='failed', error_message 기록
+
+**환경변수:**
+- CRON_SECRET: Cron Job 보안 토큰
+
+---
+
+## Phase 2.2: 보낸 메시지 & 발송 예정 메시지 ✅ 100% 완료
+
+### 보낸 메시지 목록 API (완료)
+**엔드포인트:** GET /api/reservations/message-logs
+
+**Query Parameters:**
+- page: 페이지 번호
+- limit: 페이지당 개수
+- search: 수신자 이름/전화번호 검색
+- status: 'sent' | 'failed'
+- messageType: 'SMS' | 'LMS'
+
+**Response:**
+```typescript
+{
+  logs: MessageLog[],
+  stats: {
+    total: number,
+    sent: number,
+    failed: number,
+    sms: number,
+    lms: number
+  },
+  pagination: { ... }
+}
+```
+
+### 보낸 메시지 페이지 UI (완료)
+**경로:** /reservations/message/list
+
+**주요 기능:**
+- 통계 대시보드 (5개 메트릭 카드)
+- 검색 기능 (Enter 키 지원)
+- 이중 필터링 (상태 + 메시지 타입)
+- 스마트 페이지네이션 (최대 5개 버튼)
+- 상세 모달
+- 날짜/시간 포맷팅
+
+### 예약 발송 메시지 목록 API (완료)
+**엔드포인트:** GET /api/reservations/scheduled-messages
+
+**Query Parameters:**
+- page, limit
+- sortBy: 'scheduled_at' | 'created_at'
+
+### 예약 발송 메시지 페이지 UI (완료)
+**경로:** /reservations/message/list/reserved
+
+**주요 기능:**
+- 탭 정렬 (발송 일정순/등록순)
+- 남은 시간 실시간 표시
+- 예약 취소 기능
+- 카드 기반 반응형 UI
+
+---
+
+## Phase 2.3: 자동 메시지 규칙 ⭕ 미착수
+
+### 데이터베이스 테이블 ✅ 이미 존재
+**테이블:** reservation_auto_message_rules
+
+**실제 DB 필드:**
+- `id` INT8 - Primary Key
+- `user_id` INT8 - 사용자 ID
+- `space_id` INT8 - 공간 ID
+- `template_id` INT8 - 템플릿 ID
+- `rule_name` VARCHAR - 규칙 제목
+- `is_active` BOOL - 활성화 여부 (기본값: true)
+- `trigger_type` VARCHAR - 트리거 유형 ('checkin' | 'checkout')
+- `time_type` VARCHAR - 시간 유형 ('relative' | 'absolute')
+- `time_value` INT4 - 시간 값 (예: 2시간 전 → 2)
+- `time_direction` VARCHAR - 시간 방향 ('before' | 'after')
+- `absolute_time` TIME - 절대 시간 (예: 09:00)
+- `created_at` TIMESTAMPTZ
+- `updated_at` TIMESTAMPTZ
+
+**시간 설정 방식:**
+
+1. **상대적 시점** (예: 입실 2시간 전)
+   - `time_type` = 'relative'
+   - `time_value` = 2
+   - `time_direction` = 'before'
+   - 시간 단위는 UI에서 시/분/일 선택 후 분 단위로 변환하여 저장
+
+2. **절대적 시점** (예: 입실일 09:00)
+   - `time_type` = 'absolute'
+   - `absolute_time` = '09:00:00'
+   - `time_value`는 며칠 전인지 (0=당일, 1=1일전)
+
+### API 엔드포인트 (미착수)
+```
+GET    /api/reservations/auto-rules              # 자동 규칙 목록
+POST   /api/reservations/auto-rules              # 자동 규칙 생성
+PUT    /api/reservations/auto-rules/[id]         # 자동 규칙 수정
+DELETE /api/reservations/auto-rules/[id]         # 자동 규칙 삭제
+GET    /api/reservations/auto-send-check         # 자동 발송 체크 (Cron)
+```
+
+### 자동 발송 로직 (예정)
+**Cron 주기:** 1분마다 실행
+
+**실행 로직:**
+1. 활성화된 모든 자동 발송 규칙 조회
+2. 각 규칙에 대해:
+   - 발송 대상 예약 찾기
+   - 발송 시간 계산
+   - 이미 발송된 기록 확인 (중복 방지)
+   - 발송 시간 도래 확인 (15분 이내)
+   - 메시지 발송
+   - reservation_message_logs 기록
+
+**발송 시간 계산 (실제 DB 필드 기준):**
+```typescript
+function calculateSendTime(reservation, rule) {
+  const baseTime = rule.trigger_type === 'checkin'
+    ? reservation.start_datetime
+    : reservation.end_datetime;
+
+  if (rule.time_type === 'relative') {
+    // 상대적: "입실 2시간 전"
+    // time_value는 분 단위로 저장됨 (2시간 = 120분)
+    const multiplier = rule.time_direction === 'before' ? -1 : 1;
+    const offsetMs = rule.time_value * 60 * 1000; // 분을 밀리초로 변환
+    return new Date(baseTime.getTime() + multiplier * offsetMs);
+  } else {
+    // 절대적: "입실일 09:00" 또는 "입실 1일 전 09:00"
+    const [hours, minutes] = rule.absolute_time.split(':');
+    const targetDate = new Date(baseTime);
+
+    // time_value가 며칠 전인지 (0=당일, 1=1일전)
+    if (rule.time_value > 0) {
+      targetDate.setDate(targetDate.getDate() - rule.time_value);
+    }
+
+    targetDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    return targetDate;
+  }
+}
+```
+
+### UI 페이지 (미착수)
+**페이지 1:** /reservations/message/auto
+- 자동 규칙 목록
+- 규칙 만들기 버튼
+- 활성화/비활성화 토글
+
+**페이지 2:** /reservations/message/auto/create
+- 규칙 제목 입력
+- 대상 공간 선택
+- 발송 시점 선택 (상대적/절대적)
+- 템플릿 선택
+- 발신자 정보 표시
+
+=====================================================
+7. 테스트 시나리오
+=====================================================
+
+### Phase 1 테스트 (완료)
+✅ 공간 생성/수정/삭제
+✅ 예약 생성/수정/삭제
+✅ 캘린더 뷰 표시
+✅ 통계 차트 표시
+✅ CSV 다운로드
+
+### Phase 2.1 테스트 (완료)
+✅ 템플릿 생성 (모든 변수 포함)
+✅ 템플릿 수정
+✅ 변수 치환 정확도 확인
+✅ 메시지 발송 (즉시)
+✅ 실제 휴대폰 수신 확인
+
+### Phase 2.1.5 테스트 (완료)
+✅ 예약 발송 UI 테스트
+✅ 예약 발송 API 테스트
+✅ Cron Job 수동 실행 테스트
+✅ 예약 시간 도래 시 자동 발송 확인
+
+### Phase 2.2 테스트 (완료)
+✅ 보낸 메시지 목록 조회
+✅ 검색/필터링 동작 확인
+✅ 상세 모달 표시
+✅ 예약 메시지 목록 조회
+✅ 예약 취소 기능
+✅ 남은 시간 표시
+
+### Phase 2.3 테스트 (예정)
+- 자동 규칙 생성 (상대적 시점)
+- 자동 규칙 생성 (절대적 시점)
+- 규칙 활성화/비활성화
+- 규칙 수정/삭제
+- Cron Job 수동 실행
+- 실제 예약 자동 발송 확인
+- 중복 발송 방지 확인
+- 발송 시간 계산 정확도 확인
+
+=====================================================
+8. 다음 단계 (Phase 2.3)
+=====================================================
+
+🎯 **현재 상태 (2025-10-02 기준):**
+✅ Phase 1 완료 (100%)
+✅ Phase 2.1 완료 (100%)
+✅ Phase 2.1.5 완료 (100%)
+✅ Phase 2.2 완료 (100%)
+⏳ Phase 2.3 진행 예정 (0%)
+
+🚀 **Phase 2.3 구현 순서 (예상 8-12시간):**
+
+1. **DB 확인 ✅ 완료**
+   - reservation_auto_message_rules 테이블 이미 존재
+   - 필드명 확인: rule_name, trigger_type, time_type, time_value, time_direction
+
+2. **자동 규칙 CRUD API (3-4시간)**
+   - GET /api/reservations/auto-rules
+   - POST /api/reservations/auto-rules
+   - PUT /api/reservations/auto-rules/[id]
+   - DELETE /api/reservations/auto-rules/[id]
+
+3. **자동 메시지 설정 페이지 연동 (2-3시간)**
+   - /message/auto 페이지 연동
+   - 규칙 목록 표시
+   - 활성화/비활성화 토글
+
+4. **발송 규칙 만들기 페이지 연동 (2-3시간)**
+   - /message/auto/create 페이지 연동
+   - 폼 입력 및 검증
+   - API 연결
+
+5. **자동 발송 Cron Job 구현 (4-5시간)**
+   - GET /api/reservations/auto-send-check
+   - 발송 시간 계산 로직
+   - 중복 발송 방지 로직
+   - Vercel Cron 설정
 
 =====================================================
 📝 주요 고려사항
 =====================================================
 
-🔒 보안:
-- PCI DSS 준수 (결제 정보)
+🔒 **보안:**
+- PCI DSS 준수
 - 개인정보보호법 준수
 - JWT 토큰 보안 강화
 - API Rate Limiting
+- CRON_SECRET 환경변수 보안
 
-🚀 확장성:
-- 멀티 테넌트 아키텍처 고려
-- 캐싱 전략 수립
-- 데이터베이스 파티셔닝 계획
-- CDN 활용 방안
+🚀 **확장성:**
+- 멀티 테넌트 아키텍처
+- 캐싱 전략
+- 데이터베이스 파티셔닝
+- CDN 활용
 
-📊 모니터링:
+📊 **모니터링:**
 - 에러 추적 시스템 (Sentry)
 - 성능 모니터링 (Vercel Analytics)
-- 사용자 행동 분석 도구 연동
+- 사용자 행동 분석
 - 실시간 알림 시스템
+
+⚠️ **Cron Job 제약:**
+- Vercel Pro 플랜 이상 필요
+- 매 분마다 실행 (최대 1분 오차)
+- 타임존 처리 (UTC ↔ KST)
+- 중복 발송 방지 필수
 
 =====================================================
 🎯 성공 지표 (KPI)
 =====================================================
 
-📈 비즈니스 지표:
+📈 **비즈니스 지표:**
 - 예약 생성률 증가: 월 50건 → 200건
-- 결제 전환율: 80% 이상
 - 고객 재방문율: 40% 이상
 - 운영 시간 단축: 일 2시간 → 30분
 
-🔧 기술 지표:
+🔧 **기술 지표:**
 - 페이지 로딩 속도: 2초 이하
 - API 응답 시간: 500ms 이하
 - 시스템 가동률: 99.9% 이상
-- 모바일 사용성 점수: 90점 이상
+- 메시지 발송 성공률: 95% 이상
 
 =====================================================
-8. 다음 단계
+📊 구현 완료 상세 (2025-10-02)
 =====================================================
 
-🎯 **현재 상태 (2025-10-02 기준):**
-✅ 공간 관리 API 완료
-✅ 예약 관리 API 완료
-✅ 기본 UI 구조 완료
-✅ CSV Export 기능 완료
-✅ 예약 관리 메인 페이지 활성화
-✅ 내 공간 CRUD UI 완료
-✅ 예약 생성/조회/수정/삭제 UI 완료
-✅ 캘린더 뷰 완료
-✅ 예약 리스트 필터링 완료
-✅ 통계 페이지 구현 완료
-✅ 예약 복사 기능 완료
-✅ 예약 채널 드롭다운 동기화 완료
-✅ 메시지 템플릿 CRUD 완료
-✅ 메시지 보내기 UI 완성
-✅ 변수 치환 유틸리티 구현 완료
+🏗️ **구현된 API 엔드포인트 (20개):**
 
-🚀 **다음 할 일:**
-1. ✅ 데이터베이스 마이그레이션 (완료 - spaces, reservations 테이블)
-2. ✅ 캘린더/리스트 페이지 API 연동 (완료)
-3. ✅ CSV Export 기능 추가 (완료)
-4. ✅ 통계 페이지 구현 (완료)
-5. ✅ Phase 1 완료 (완료)
-6. ✅ 발신번호 관리 UI 정리 (완료 - 사용하지 않는 필드 제거)
-7. ✅ Phase 2 UI 확인 (완료 - 모든 메시지 UI 존재 확인)
-8. ✅ Phase 2 DB 마이그레이션 작성 (완료)
-9. ✅ spaces 테이블에 host_contact_number_id 컬럼 추가 (완료)
-10. ✅ 발신자 정보 설정 페이지 구현 (완료)
-11. ✅ 메시지 템플릿 CRUD 구현 (완료)
-12. ✅ 변수 치환 유틸리티 구현 (완료)
-13. ✅ 메시지 보내기 UI 구현 (완료)
-14. ✅ 메시지 발송 API 구현 (완료)
-    - POST /api/reservations/send-message
-    - Naver SENS API 연동
-    - 광고머니 차감 연동 (transactions 기반)
-    - reservation_message_logs 기록
-    - DB 스키마 정합성 확인 및 수정 (to_number, to_name)
-15. ✅ 예약 상세 페이지에 메시지 보내기 버튼 추가
-    - /reservations/detail 페이지 버튼 연동
-    - URL 파라미터로 예약 ID 전달
-    - 메시지 페이지에서 예약 자동 선택
-16. ✅ Phase 2.1 완료 (완료)
-17. ✅ 템플릿에 추가 기능 구현 (완료)
-    - "📝 템플릿에 추가" 버튼 추가
-    - 현재 메시지 내용으로 템플릿 생성
-18. ✅ Phase 2.1.5 예약 발송 시스템 구현 (완료)
-    - send-message API 수정 (scheduled 처리)
-    - Vercel Cron Job 설정
-    - 자동 발송 엔드포인트 구현
-19. ✅ 전화번호 변수 버그 수정 (완료)
-    - {{전화번호}} 변수가 호스트 번호로 치환되도록 수정
-    - sender_numbers 테이블 phone_number 컬럼 조회
-    - messageTemplateParser.ts 수정
-20. ⏳ Phase 2.2 구현 (다음 단계)
-    - send-message API 수정 (scheduled 처리)
-    - Vercel Cron Job 설정
-    - 자동 발송 엔드포인트 구현
-19. ⏳ Phase 2.2 구현 (다음 단계)
-    - 보낸 메시지 목록 API
-    - 보낸 메시지 페이지 연동
-    - 자동 메시지 규칙 CRUD
+**Phase 1 (15개):**
+1. GET /api/reservations/spaces
+2. POST /api/reservations/spaces
+3. PUT /api/reservations/spaces/[id]
+4. DELETE /api/reservations/spaces/[id]
+5. GET /api/reservations/bookings
+6. POST /api/reservations/bookings
+7. PUT /api/reservations/bookings/[id]
+8. DELETE /api/reservations/bookings/[id]
+9. GET /api/reservations/[id]
+10. PUT /api/reservations/[id]
+11. DELETE /api/reservations/[id]
+12. GET /api/reservations/statistics
+13. GET /api/reservations/export/csv
+
+**Phase 2 (7개):**
+14. GET /api/reservations/message-templates
+15. POST /api/reservations/message-templates
+16. PUT /api/reservations/message-templates/[id]
+17. DELETE /api/reservations/message-templates/[id]
+18. POST /api/reservations/send-message (즉시/예약)
+19. GET /api/reservations/message-logs
+20. GET /api/reservations/message-logs/[id]
+21. GET /api/reservations/scheduled-messages
+22. DELETE /api/reservations/scheduled-messages
+23. GET /api/cron/send-scheduled-messages (Cron)
+
+🎨 **구현된 UI 페이지 (17개):**
+1. /reservations - 메인 대시보드
+2. /reservations/places - 공간 목록
+3. /reservations/places/add - 공간 추가
+4. /reservations/places/detail - 공간 상세
+5. /reservations/places/edit - 공간 수정
+6. /reservations/create - 예약 생성
+7. /reservations/list - 예약 리스트
+8. /reservations/detail - 예약 상세
+9. /reservations/edit - 예약 수정
+10. /reservations/calendar - 캘린더 뷰
+11. /reservations/statistics - 통계
+12. /reservations/message/sender-contact - 발신자 정보
+13. /reservations/message/templates - 템플릿 관리
+14. /reservations/message/send - 메시지 보내기
+15. /reservations/message/list - 보낸 메시지 목록
+16. /reservations/message/list/reserved - 예약 메시지 목록
+17. /reservations/message/auto - 자동 메시지 설정 (UI만)
+18. /reservations/message/auto/create - 규칙 만들기 (UI만)
+
+🗄️ **구현된 데이터베이스 테이블 (6개):**
+1. spaces - 공간 정보
+2. reservations - 예약 정보
+3. reservation_message_templates - 메시지 템플릿
+4. reservation_message_logs - 보낸 메시지 기록
+5. reservation_scheduled_messages - 예약 발송 메시지
+6. reservation_auto_message_rules - 자동 발송 규칙 (Phase 2.3용, 테이블만 존재)
+
+✨ **완성된 핵심 기능:**
+1. 공간 관리 (CRUD)
+2. 예약 관리 (CRUD, 복사)
+3. 캘린더 뷰
+4. 통계 대시보드
+5. CSV Export
+6. 메시지 템플릿 관리
+7. 변수 치환 엔진 (11가지 변수)
+8. 메시지 발송 (즉시/예약)
+9. 광고머니 연동
+10. 보낸 메시지 목록
+11. 예약 메시지 관리
+12. Vercel Cron Job 자동 발송
 
 =====================================================
 작성일: 2025-09-12
-최종 수정일: 2025-10-02 (Phase 2.1.5 완료, 전화번호 변수 버그 수정 완료)
+최종 수정일: 2025-10-02 15:20
 작성자: MTS Message 개발팀
-버전: 4.8 (Phase 2.1.5 완료, 전화번호 변수 호스트 번호 치환 완료)
-
-📎 **참고 문서:**
-- Phase2_2_구현가이드.md: 보낸 메시지 & 자동 메시지 상세 구현 가이드
+버전: 5.1 (DB 필드명 실제 스키마 반영)
 =====================================================
 
-📝 **Phase 2 주요 변경사항:**
-- 메시지 관련 UI가 이미 모두 구현되어 있음을 확인
-- UI 수정 최소화, 백엔드 로직만 연결하는 방향으로 전환
-- 기존 UI 구조를 최대한 활용
-- 새로운 UI 요소는 예약 상세 페이지의 "메시지 보내기" 버튼만 추가
-- DB 마이그레이션 파일 생성 완료 (Phase 2.1, Phase 2.5)
-- reservation_message_logs 테이블 준비 완료
-
-📊 **Phase 2.2 진행 상황 (2025-10-02 업데이트):**
-- ✅ UI 확인 완료 (모든 메시지 페이지 존재)
-- ✅ DB 마이그레이션 작성 완료
-- ✅ DB 마이그레이션 실행 완료 (reservation_message_logs 테이블 생성)
-- ✅ 변수 치환 유틸리티 작성 완료 (messageTemplateParser.ts)
-  * replaceTemplateVariables - 예약 데이터로 변수 치환
-  * previewTemplate - 샘플 데이터로 미리보기
-  * calculateMessageBytes - 메시지 바이트 계산
-  * determineMessageType - SMS/LMS 자동 판단
-  * 11가지 변수 지원 (고객명, 공간명, 날짜, 시간, 금액, 인원, 전화번호, 특이사항)
-- ✅ 템플릿 CRUD API 구현 완료 (GET, POST, PUT, DELETE)
-- ✅ 템플릿 UI 연동 완료 (API 데이터 바인딩, 생성/수정/삭제 모달)
-- ✅ spaces 테이블에 host_contact_number_id 컬럼 추가 (2025-10-01)
-- ✅ 발신자 정보 설정 페이지 구현 완료 (2025-10-01)
-  * GET /api/reservations/spaces - sender_numbers JOIN 로직 추가
-  * PUT /api/reservations/spaces/[id] - host_contact_number_id 업데이트
-  * /reservations/message/sender-contact - 전체 기능 구현 (공간별 호스트 연락처 설정)
-- ✅ 메시지 보내기 페이지 UI 완성 (2025-10-02)
-  * 예약 리스트에서 선택 모달 구현 (검색, 페이지네이션, 필터링)
-  * 템플릿 선택 모달 구현 (API 연동)
-  * 자동 문구 넣기 모달 구현 (11가지 변수 삽입, 실시간 미리보기)
-  * 발신자 정보 모달 구현 (공간별 호스트 연락처 표시)
-  * 미리보기 모달 구현 (변수 치환 실시간 반영)
-  * 즉시 발송 / 예약 발송 UI 구현
-  * 바이트 수 실시간 계산 (SMS/LMS 자동 판단)
-  * 받는 사람 정보 카드 UI (예약 정보 표시)
-- ⏳ 메시지 발송 API 구현 (다음 단계)
-  * POST /api/reservations/send-message - 예약 메시지 발송
-  * Naver SENS API 연동
-  * 크레딧 차감 연동
-  * reservation_message_logs 기록
-- ⏳ 예약 상세 페이지에 "메시지 보내기" 버튼 추가
-
-📊 **Phase 1 구현 완료 상세:**
-
-🏗️ **구현된 API 엔드포인트 (Phase 1):**
-1. GET /api/reservations/spaces - 공간 목록 조회
-2. POST /api/reservations/spaces - 공간 생성
-3. GET /api/reservations/spaces/[id] - 공간 상세 조회
-4. PUT /api/reservations/spaces/[id] - 공간 수정
-5. DELETE /api/reservations/spaces/[id] - 공간 삭제
-6. GET /api/reservations/bookings - 예약 목록 조회 (필터링 지원)
-7. POST /api/reservations/bookings - 예약 생성 (중복 검증 포함)
-8. GET /api/reservations/bookings/[id] - 예약 상세 조회
-9. PUT /api/reservations/bookings/[id] - 예약 수정
-10. DELETE /api/reservations/bookings/[id] - 예약 삭제
-11. GET /api/reservations/export/csv - 예약 데이터 CSV 다운로드
-12. GET /api/reservations/[id] - 예약 단일 조회
-13. PUT /api/reservations/[id] - 예약 수정 (다중 필드명 지원)
-14. DELETE /api/reservations/[id] - 예약 삭제
-15. GET /api/reservations/statistics - 통계 데이터 조회 (채널별, 공간별)
-
-🏗️ **구현된 API 엔드포인트 (Phase 2):**
-16. GET /api/reservations/message-templates - 템플릿 목록 조회
-17. POST /api/reservations/message-templates - 템플릿 생성
-18. PUT /api/reservations/message-templates/[id] - 템플릿 수정
-19. DELETE /api/reservations/message-templates/[id] - 템플릿 삭제
-20. POST /api/reservations/send-message - 메시지 발송 (완료)
-    - Naver SENS API 연동
-    - 광고머니 차감 (transactions 기반)
-    - reservation_message_logs 기록
-
-🎨 **구현된 UI 페이지:**
-1. /reservations - 예약 관리 메인 대시보드 (활성화)
-2. /reservations/places - 내 공간 목록
-3. /reservations/places/add - 공간 추가
-4. /reservations/places/detail - 공간 상세 보기
-5. /reservations/places/edit - 공간 수정
-6. /reservations/create - 예약 생성
-7. /reservations/list - 예약 리스트 (필터링)
-8. /reservations/detail - 예약 상세 보기 + 예약 복사 기능
-9. /reservations/edit - 예약 수정 (채널 목록 동기화 완료)
-10. /reservations/calendar - 캘린더 뷰 (통계 페이지 연동)
-11. /reservations/statistics - 통계 페이지 (완료)
-12. /reservations/message/sender-contact - 발신자 정보 설정 페이지 (완료)
-    * 공간별 호스트 연락처 설정
-    * 발신번호 선택 모달
-    * 신규 발신번호 등록 모달
-13. /reservations/message/templates - 메시지 템플릿 관리 페이지 (완료)
-    * 템플릿 목록 조회 (API 연동)
-    * 템플릿 생성 모달 (변수 안내, 미리보기)
-    * 템플릿 수정 모달
-    * 템플릿 삭제 기능
-    * 카테고리별 분류
-14. /reservations/message/send - 메시지 보내기 페이지 (완료)
-    * 예약 리스트에서 선택 모달 (검색, 페이지네이션)
-    * 템플릿 선택 모달 (API 연동)
-    * 자동 문구 넣기 모달 (11가지 변수)
-    * 발신자 정보 모달
-    * 미리보기 모달 (변수 치환 반영)
-    * 즉시 발송 / 예약 발송 선택
-    * 바이트 수 실시간 계산
-
-🗄️ **구현된 데이터베이스:**
-- **spaces 테이블**: 공간 정보 저장
-  - 필드: id, user_id, name, icon_text, icon_color, host_contact_number_id, created_at, updated_at
-  - 공간 아이콘 커스터마이징 지원
-  - 공간별 호스트 연락처 설정 지원 (sender_numbers 테이블과 FK 연결)
-
-- **reservations 테이블**: 예약 정보 저장
-  - 필드: id, user_id, space_id, customer_name, customer_phone, customer_email
-  - start_datetime, end_datetime, guest_count
-  - total_amount, deposit_amount, special_requirements
-  - booking_type, status, payment_status, booking_channel
-  - created_at, updated_at
-  - 예약 시간 중복 검사 로직 포함
-  - 10개 예약 채널 지원
-
-- **reservation_message_templates 테이블**: 예약 메시지 템플릿
-  - 필드: id, user_id, name, content, category, is_active
-  - created_at, updated_at
-  - 자동 메시지 발송용 템플릿 관리
-
-✨ **주요 구현 기능:**
-- JWT 인증 기반 사용자별 데이터 관리
-- 예약 시간 중복 검사 및 충돌 방지
-- 공간/예약 필터링 및 검색
-- CSV 형식 데이터 Export (한글 BOM 지원)
-- 반응형 UI 디자인
-- 실시간 예약 가능 시간 확인
-- 예약 상태 관리 (confirmed, cancelled)
-- 결제 상태 추적 (pending, paid, refunded)
-- 예약 복사 기능 (다른 공간으로 예약 복사)
-- 채널별/공간별 통계 차트 (Chart.js 활용)
-- 예약 채널 목록 표준화 (10개 채널)
-  * 아워플레이스, 스페이스클라우드, 여기어때, 웨이닛, 빌리오
-  * 카카오 채널, 네이버 예약, 전화, 인스타그램, 홈페이지, 직접입력
-- Next.js 15 호환성 (Promise 기반 params 처리)
-
-=====================================================
-📅 Phase 2: 예약 메시지 시스템 구현 계획 (상세)
-=====================================================
-
-🎯 **목표:**
-- 기존 Naver SENS API를 활용한 예약 메시지 발송 기능
-- 예약 정보를 활용한 자동 변수 치환
-- 예약 상세 페이지에서 직접 메시지 발송
-- 재사용 가능한 템플릿 관리
-
-=====================================================
-0. 데이터베이스 마이그레이션 (완료)
-=====================================================
-
-✅ **생성된 마이그레이션 파일:**
-
-1. **20251001_add_reservation_message_logs.sql** (Phase 2.1 - 필수)
-   - `reservation_message_logs` 테이블 생성
-   - 발송 이력 저장 (보낸 메시지 목록용)
-   - RLS 정책 및 인덱스 포함
-   - 발송 통계 뷰 생성
-
-2. **20251001_add_reservation_auto_messages.sql** (Phase 2.5 - 추후)
-   - `reservation_auto_message_rules` 테이블 (자동 발송 규칙)
-   - `reservation_scheduled_messages` 테이블 (발송 예정 메시지)
-   - 자동 메시지 생성 트리거 함수 (비활성화 상태)
-
-3. **README_PHASE2_MIGRATIONS.md**
-   - 마이그레이션 실행 가이드
-   - 테이블 관계도
-   - 테스트 쿼리 예제
-   - 롤백 방법
-
-**테이블 구조:**
-
-```
-reservation_message_logs (Phase 2.1 - 발송 이력)
-├─ id (BIGSERIAL)
-├─ user_id (BIGINT) → users
-├─ reservation_id (BIGINT) → reservations (NULL 가능)
-├─ template_id (BIGINT) → reservation_message_templates (NULL 가능)
-├─ to_number (VARCHAR) - 수신자 전화번호
-├─ to_name (VARCHAR) - 수신자 이름
-├─ message_content (TEXT) - 메시지 내용
-├─ message_type (VARCHAR) - SMS/LMS/MMS
-├─ sent_at (TIMESTAMPTZ) - 발송 시간
-├─ status (VARCHAR) - sent/failed
-├─ error_message (TEXT)
-└─ created_at (TIMESTAMPTZ)
-
-인덱스:
-- idx_reservation_message_logs_user (user_id)
-- idx_reservation_message_logs_reservation (reservation_id)
-- idx_reservation_message_logs_sent_at (sent_at DESC)
-- idx_reservation_message_logs_status (status)
-
-RLS 정책:
-- 사용자는 자신의 메시지 이력만 조회/추가 가능
-```
-
-**실행 방법:**
-1. Supabase Dashboard → SQL Editor
-2. `20251001_add_reservation_message_logs.sql` 복사 & 실행
-3. 테이블 생성 확인:
-   ```sql
-   SELECT * FROM reservation_message_logs LIMIT 1;
-   ```
-
-**UI 연동:**
-- `/reservations/message/list` - 보낸 메시지 목록 페이지
-
-=====================================================
-1. 기존 시스템 통합 방침
-=====================================================
-
-✅ **변경하지 않을 부분:**
-- `src/lib/naverSensApi.ts` - Naver SENS API 로직 유지
-- `src/app/api/message/send/route.ts` - 기본 메시지 발송 API 유지
-- TEST_CALLING_NUMBER 환경변수로 고정 발신 (변경 불가)
-- sender_numbers 테이블 구조 유지
-
-✅ **완료된 작업:**
-- 발신번호 관리 UI 정리 (통신사, 서류 첨부 필드 제거)
-- 시스템 기본번호 "[비공개]"로 표시
-- 사용자 전화번호 "본인" 태그 표시
-- "기본으로 설정" 시도 시 "준비중" 모달
-
-=====================================================
-2. 구현할 기능
-=====================================================
-
-📋 **2.1 예약 메시지 템플릿 관리**
-
-**데이터베이스 (이미 존재):**
-- reservation_message_templates 테이블 활용
-  * id, user_id, name, content, category, is_active
-  * created_at, updated_at
-
-**지원할 템플릿 변수:**
-```
-{{고객명}} → customer_name
-{{공간명}} → space.name (JOIN spaces)
-{{예약날짜}} → start_datetime (YYYY-MM-DD 형식)
-{{체크인시간}} → start_datetime (HH:mm 형식)
-{{체크아웃시간}} → end_datetime (HH:mm 형식)
-{{인원수}} → guest_count
-{{총금액}} → total_amount (원 단위, 콤마 포함)
-{{입금액}} → deposit_amount (원 단위, 콤마 포함)
-{{잔금}} → (total_amount - deposit_amount)
-{{전화번호}} → customer_phone
-{{특이사항}} → special_requirements
-```
-
-**템플릿 카테고리:**
-- 예약 확정 안내
-- 체크인 안내
-- 체크아웃 안내
-- 예약 변경 안내
-- 예약 취소 안내
-- 기타
-
-**API 엔드포인트:**
-```
-GET    /api/reservations/message-templates       # 템플릿 목록
-POST   /api/reservations/message-templates       # 템플릿 생성
-PUT    /api/reservations/message-templates/[id]  # 템플릿 수정
-DELETE /api/reservations/message-templates/[id]  # 템플릿 삭제
-```
-
-**UI 위치:**
-```
-/reservations/message/templates
-- 템플릿 목록 (카테고리별 필터링)
-- 템플릿 추가/수정 모달
-- 템플릿 미리보기 (변수 샘플 데이터로 치환 표시)
-- 활성화/비활성화 토글
-```
-
----
-
-📋 **2.2 예약 상세 페이지에서 메시지 발송**
-
-**발송 플로우:**
-1. 예약 상세 페이지에 "메시지 보내기" 버튼 추가
-2. 버튼 클릭 시 메시지 발송 모달 오픈
-3. 템플릿 선택 드롭다운 표시
-4. 선택한 템플릿의 변수가 현재 예약 데이터로 자동 치환
-5. 최종 메시지 내용 확인 및 수정 가능
-6. "발송" 버튼으로 즉시 발송
-7. 발송 결과 표시 (성공/실패)
-
-**API 엔드포인트:**
-```
-POST /api/reservations/send-message
-Body: {
-  reservationId: number,
-  templateId?: number,  // 선택사항
-  message: string,      // 최종 메시지 내용
-  toNumber: string      // 수신자 번호 (기본값: customer_phone)
-}
-
-Response: {
-  success: boolean,
-  messageId?: string,
-  error?: string
-}
-```
-
-**변수 치환 로직 (서버사이드):**
-```typescript
-// src/utils/messageTemplateParser.ts
-export function replaceTemplateVariables(
-  template: string,
-  reservation: ReservationWithSpace
-): string {
-  // {{고객명}}, {{공간명}} 등을 실제 데이터로 치환
-  // 날짜/시간 포맷팅
-  // 금액 콤마 추가
-}
-```
-
-**UI 수정:**
-```
-/reservations/detail/[id]
-- 기존 페이지에 "메시지 보내기" 버튼 추가
-- 메시지 발송 모달 컴포넌트 추가
-  * 템플릿 선택 드롭다운
-  * 메시지 내용 TextArea (실시간 변수 치환 미리보기)
-  * 받는 사람 표시 (수정 불가)
-  * 발송 버튼
-```
-
----
-
-📋 **2.3 메시지 발송 이력 (선택사항 - Phase 2.5)**
-
-**확장 가능성 고려:**
-나중에 필요하면 메시지 발송 이력 테이블 추가
-```sql
-CREATE TABLE reservation_message_logs (
-  id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT REFERENCES users(id),
-  reservation_id BIGINT REFERENCES reservations(id),
-  template_id BIGINT REFERENCES reservation_message_templates(id),
-  to_number VARCHAR NOT NULL,
-  message_content TEXT NOT NULL,
-  sent_at TIMESTAMPTZ DEFAULT NOW(),
-  status VARCHAR, -- 'sent', 'failed'
-  error_message TEXT
-);
-```
-
-하지만 Phase 2에서는 구현하지 않고, 기본 발송 기능만 구현.
-
-=====================================================
-3. 구현 우선순위 (UI는 이미 완성됨)
-=====================================================
-
-**✅ 완료된 작업:**
-- 모든 메시지 관련 UI 페이지 완성
-- 템플릿 관리 UI 완성
-- 메시지 발송 UI 완성
-- 자동 메시지 UI 완성
-
-**🔄 진행할 작업 (백엔드만):**
-
-**Day 1: 템플릿 API 구현 (3-4시간)**
-```
-1. 변수 치환 유틸리티 함수 작성
-   - src/utils/messageTemplateParser.ts
-   - 10가지 변수 지원 ({{고객명}}, {{공간명}} 등)
-
-2. 템플릿 CRUD API 작성
-   - GET /api/reservations/message-templates (목록)
-   - POST /api/reservations/message-templates (생성)
-   - GET /api/reservations/message-templates/[id] (상세)
-   - PUT /api/reservations/message-templates/[id] (수정)
-   - DELETE /api/reservations/message-templates/[id] (삭제)
-```
-
-**Day 2: 템플릿 UI 연동 (2-3시간)**
-```
-1. templates/page.tsx 수정
-   - 샘플 데이터 제거
-   - API 호출로 실제 데이터 로드
-   - 추가/수정/삭제 기능 API 연결
-   - 카테고리 필터링 구현
-```
-
-**Day 3: 메시지 발송 API 구현 (3-4시간)**
-```
-1. 발송 API 작성
-   - POST /api/reservations/send-message
-   - 예약 데이터 조회 (JOIN spaces)
-   - 템플릿 변수 치환
-   - Naver SENS API 호출
-   - 크레딧 차감 연동
-
-2. 예약 리스트 선택 API 추가
-   - GET /api/reservations/bookings (이미 존재 - 활용)
-```
-
-**Day 4: 메시지 발송 UI 연동 (2-3시간)**
-```
-1. send/page.tsx 수정
-   - "예약 리스트에서 선택하기" 모달 구현
-   - "내 템플릿에서 불러오기" 드롭다운 연동
-   - "자동 문구 넣기" 변수 삽입 버튼
-   - 발송 API 연결
-   - 바이트 수 계산 (SMS/LMS 자동 판단)
-
-2. detail/[id]/page.tsx 수정
-   - "메시지 보내기" 버튼 추가
-   - /message/send?reservationId={id} 이동
-```
-
-**총 예상 시간: 10-14시간 (1.5-2일)**
-```
-
-=====================================================
-4. 파일 구조
-=====================================================
-
-**✅ 이미 존재하는 UI 파일 (수정 금지):**
-```
-src/app/reservations/message/
-├── page.tsx                    # 메시지 메인 메뉴 (완성)
-├── templates/page.tsx          # 템플릿 관리 UI (완성 - 샘플 데이터만 표시)
-├── send/page.tsx              # 메시지 보내기 UI (완성)
-├── list/page.tsx              # 보낸 메시지 목록 UI (완성)
-├── list/reserved/page.tsx     # 발송 예정 메시지 UI (완성)
-├── auto/page.tsx              # 자동 메시지 설정 UI (완성)
-├── auto/create/page.tsx       # 자동 메시지 생성 UI (완성)
-└── sender-contact/page.tsx    # 발신자 정보 설정 UI (완성)
-```
-
-**🆕 신규 생성할 파일 (백엔드 API만):**
-```
-src/
-├── app/
-│   └── api/
-│       └── reservations/
-│           ├── message-templates/
-│           │   ├── route.ts              # GET, POST (템플릿 목록/생성)
-│           │   └── [id]/
-│           │       └── route.ts          # GET, PUT, DELETE (템플릿 상세/수정/삭제)
-│           └── send-message/
-│               └── route.ts              # POST (메시지 발송)
-└── utils/
-    └── messageTemplateParser.ts          # 변수 치환 로직
-```
-
-**🔧 수정할 파일 (기능 연결만):**
-```
-src/app/reservations/message/templates/page.tsx
-- 샘플 데이터 제거
-- API 호출로 실제 데이터 로드
-- 템플릿 추가/수정/삭제 기능 API 연결
-
-src/app/reservations/message/send/page.tsx
-- "예약 리스트에서 선택하기" 기능 구현
-- "내 템플릿에서 불러오기" 기능 구현
-- "자동 문구 넣기" 변수 삽입 기능
-- 발송 API 연결
-
-src/app/reservations/detail/[id]/page.tsx
-- "메시지 보내기" 버튼 추가 (새로운 UI 요소)
-- 메시지 발송 모달 또는 /message/send로 이동
-```
-
-=====================================================
-5. 주의사항
-=====================================================
-
-🚨 **발신번호 제약:**
-- 현재 TEST_CALLING_NUMBER로만 발송 가능
-- UI에서 발신번호 변경 불가 (시스템 제약)
-- 사용자에게 명확히 안내
-
-⚠️ **메시지 길이 제한:**
-- SMS: 90자 이하
-- LMS: 90자 초과 2000자 이하
-- 자동으로 SMS/LMS 선택 (naverSensApi.ts 로직 활용)
-
-💰 **크레딧 차감:**
-- 기존 메시지 크레딧 시스템 활용
-- 발송 전 잔액 확인 필수
-- 발송 실패 시 크레딧 환불 불필요 (SENS API가 실패하면 차감 안됨)
-
-🔐 **권한 체크:**
-- 예약 소유자만 메시지 발송 가능
-- JWT 토큰 검증 필수
-- user_id 기반 권한 체크
-
-=====================================================
-6. 테스트 시나리오
-=====================================================
-
-**템플릿 관리 테스트:**
-1. 템플릿 생성 (모든 변수 포함)
-2. 템플릿 목록 조회 (카테고리 필터)
-3. 템플릿 수정
-4. 템플릿 미리보기 (변수 치환 확인)
-5. 템플릿 삭제
-
-**메시지 발송 테스트:**
-1. 예약 상세 페이지에서 "메시지 보내기" 클릭
-2. 템플릿 선택 → 변수 자동 치환 확인
-3. 메시지 내용 수동 수정
-4. 발송 → 성공/실패 메시지 확인
-5. 실제 휴대폰으로 메시지 수신 확인
-
-**엣지 케이스 테스트:**
-1. 템플릿 없이 직접 메시지 작성 발송
-2. 예약 데이터가 부족한 경우 (null 필드)
-3. 잘못된 전화번호 형식
-4. 크레딧 부족 시 발송 차단
-5. 네트워크 오류 처리
-
-=====================================================
-7. 성공 기준
-=====================================================
-
-✅ **기능 완성도:**
-- 템플릿 CRUD 동작
-- 변수 치환 정확도 100%
-- 예약 상세에서 메시지 발송 가능
-- 발송 성공률 95% 이상
-
-✅ **사용자 경험:**
-- 템플릿 선택 후 3클릭 이내 발송
-- 변수 미리보기 실시간 반영
-- 발송 결과 즉시 피드백
-- 모바일 반응형 지원
-
-✅ **코드 품질:**
-- TypeScript 타입 안전성
-- 에러 핸들링 완벽
-- 기존 코드와 충돌 없음
-- 주석 및 문서화
-
-=====================================================
+📎 **참고:**
+이 문서는 예약관리_구현계획서.txt, Phase2_2_구현가이드.md, PHASE2_PROGRESS.md를 통합한 최종 버전입니다.
+기존 분산된 3개 문서를 하나로 통합하여 관리 편의성을 높였습니다.
