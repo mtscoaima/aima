@@ -1,17 +1,50 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import RoleGuard from "@/components/RoleGuard";
 
+interface Space {
+  id: number;
+  name: string;
+  icon_text: string;
+  icon_color: string;
+}
+
 export default function CreateSharedCalendarPage() {
   const router = useRouter();
-  
+
   const [formData, setFormData] = useState({
     title: "",
-    calendarSpaces: ["내공간"],
+    selectedSpaceIds: [] as number[],
     reservationDescription: ""
   });
+
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchSpaces();
+  }, []);
+
+  const fetchSpaces = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/reservations/spaces", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSpaces(data.spaces || []);
+      }
+    } catch (error) {
+      console.error("Error fetching spaces:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBackClick = () => {
     router.back();
@@ -24,8 +57,49 @@ export default function CreateSharedCalendarPage() {
     }));
   };
 
-  const handleCreateCalendar = () => {
-    // 공유 캘린더 만들기 기능 (UI만 구현)
+  const toggleSpaceSelection = (spaceId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedSpaceIds: prev.selectedSpaceIds.includes(spaceId)
+        ? prev.selectedSpaceIds.filter(id => id !== spaceId)
+        : [...prev.selectedSpaceIds, spaceId]
+    }));
+  };
+
+  const handleCreateCalendar = async () => {
+    if (!formData.title.trim()) {
+      alert("캘린더 제목을 입력해주세요.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/reservations/shared-calendars", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          spaceIds: formData.selectedSpaceIds,
+          reservationDescription: formData.reservationDescription || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create shared calendar");
+      }
+
+      alert("공유 캘린더가 생성되었습니다.");
+      router.push("/reservations/calendar/shared");
+    } catch (error) {
+      console.error("Error creating calendar:", error);
+      alert("캘린더 생성 중 오류가 발생했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -85,21 +159,53 @@ export default function CreateSharedCalendarPage() {
                 캘린더 선택
               </label>
               <p className="text-sm text-gray-600 mb-3">
-                표시할 캘린더를 선택하세요. 여러 개를 선택할 수 있습니다.
+                표시할 캘린더를 선택하세요. 여러 개를 선택할 수 있습니다. (비선택시 전체 공간)
               </p>
-              <div className="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="w-4 h-4 bg-green-500 rounded-sm flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">내</span>
+              {loading ? (
+                <p className="text-gray-500">로딩 중...</p>
+              ) : spaces.length === 0 ? (
+                <p className="text-gray-500">등록된 공간이 없습니다.</p>
+              ) : (
+                <div className="space-y-2">
+                  {spaces.map((space) => (
+                    <div
+                      key={space.id}
+                      onClick={() => toggleSpaceSelection(space.id)}
+                      className={`flex items-center space-x-2 p-3 border rounded-lg cursor-pointer transition-colors ${
+                        formData.selectedSpaceIds.includes(space.id)
+                          ? "bg-green-50 border-green-200"
+                          : "bg-white border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-sm flex items-center justify-center text-white text-sm font-bold"
+                        style={{ backgroundColor: space.icon_color }}
+                      >
+                        {space.icon_text}
+                      </div>
+                      <span className={`font-medium ${
+                        formData.selectedSpaceIds.includes(space.id)
+                          ? "text-green-800"
+                          : "text-gray-900"
+                      }`}>
+                        {space.name}
+                      </span>
+                      {formData.selectedSpaceIds.includes(space.id) && (
+                        <svg className="w-5 h-5 ml-auto text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <span className="text-green-800 font-medium">내공간</span>
-              </div>
+              )}
             </div>
 
             {/* 예약 문의 설명글 */}
             <div>
               <label className="block text-gray-900 font-medium mb-3 flex items-center">
                 예약 문의 설명글
-                <button className="ml-2 text-gray-400 hover:text-gray-600">
+                <button type="button" className="ml-2 text-gray-400 hover:text-gray-600">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -108,8 +214,16 @@ export default function CreateSharedCalendarPage() {
               <p className="text-sm text-gray-600 mb-3">
                 예약 문의 버튼을 누르면 표시되는 문구입니다.
               </p>
-              
-              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+
+              <textarea
+                value={formData.reservationDescription}
+                onChange={(e) => handleInputChange("reservationDescription", e.target.value)}
+                placeholder="예약 문의 시 표시될 설명글을 입력하세요"
+                rows={6}
+                className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+
+              <div className="bg-gray-50 p-4 rounded-lg space-y-4 mt-3">
                 <div>
                   <p className="text-sm text-gray-700 mb-2">
                     설명글을 자유롭게 수정해서 이용하세요.
@@ -120,9 +234,9 @@ export default function CreateSharedCalendarPage() {
                   <p className="text-sm text-gray-700 mb-4">
                     (단, 링크는 http로 시작하는 전체 URL, 전화번호는 하이픈( - )이 있는 경우에만 인식됩니다.)
                   </p>
-                  
+
                   <p className="text-sm text-gray-700 mb-2">예시)</p>
-                  
+
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center space-x-2">
                       <span>♦️</span>
@@ -139,7 +253,7 @@ export default function CreateSharedCalendarPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-4 space-y-2 text-sm text-gray-600">
                 <p>• 예약처명은 &apos;김**&apos; 형식으로 별 앞글자만 표기됩니다.</p>
                 <p>• 과거 날짜의 예약 정보도 표시되지 않습니다.</p>
@@ -150,10 +264,14 @@ export default function CreateSharedCalendarPage() {
             <div className="pt-4">
               <button
                 onClick={handleCreateCalendar}
-                className="w-full py-3 px-4 bg-gray-400 text-white rounded-lg font-medium"
-                disabled
+                disabled={!formData.title.trim() || submitting}
+                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                  !formData.title.trim() || submitting
+                    ? "bg-gray-400 text-white cursor-not-allowed"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                }`}
               >
-                공유 캘린더 만들기
+                {submitting ? "생성 중..." : "공유 캘린더 만들기"}
               </button>
             </div>
           </div>

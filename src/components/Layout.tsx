@@ -33,6 +33,9 @@ export default function Layout({ children }: LayoutProps) {
   // 관리자 페이지인지 확인
   const isAdminPage = pathname.startsWith("/admin");
 
+  // 공유 캘린더 페이지인지 확인
+  const isSharedPage = pathname.startsWith("/shared");
+
   // 헤더 아래 여백이 필요한 페이지들 확인
   const needsHeaderPadding =
     pathname === "/support" ||
@@ -49,6 +52,11 @@ export default function Layout({ children }: LayoutProps) {
   // 관리자 페이지인 경우 별도 레이아웃
   if (isAdminPage) {
     return <div className="admin-layout">{children}</div>;
+  }
+
+  // 공유 캘린더 페이지인 경우 네비게이션/푸터 없이
+  if (isSharedPage) {
+    return <div className="shared-layout">{children}</div>;
   }
 
   return (
