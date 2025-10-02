@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import RoleGuard from "@/components/RoleGuard";
 
@@ -28,6 +28,7 @@ interface Reservation {
 
 export default function MessageSendPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [sendType, setSendType] = useState("immediate"); // "immediate" or "scheduled"
   const [message, setMessage] = useState("");
   const [selectedDate, setSelectedDate] = useState("2025.09.12 (금)");
@@ -66,6 +67,36 @@ export default function MessageSendPage() {
 
   // 미리보기 모달 상태
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
+  // URL 파라미터로 예약 자동 선택
+  useEffect(() => {
+    const reservationIdFromUrl = searchParams.get('reservationId');
+    if (reservationIdFromUrl) {
+      fetchAndSelectReservation(parseInt(reservationIdFromUrl));
+    }
+  }, [searchParams]);
+
+  // 특정 예약 조회 및 선택
+  const fetchAndSelectReservation = async (reservationId: number) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`/api/reservations/bookings/${reservationId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const reservation = data.reservation;
+
+        // 예약 선택
+        await handleSelectReservation(reservation);
+      }
+    } catch (error) {
+      console.error("Error fetching reservation:", error);
+    }
+  };
 
   // 바이트 수 계산 함수 (한글 3바이트, 영문/숫자 1바이트)
   const calculateBytes = (text: string) => {
@@ -380,12 +411,110 @@ export default function MessageSendPage() {
     setIsPreviewModalOpen(true);
   };
 
-  const handleSend = () => {
-    // 보내기 기능 (UI만 구현)
+  const handleSend = async () => {
+    if (!selectedReservation) {
+      alert("먼저 받는 사람을 선택해주세요.");
+      return;
+    }
+    if (!message.trim()) {
+      alert("메시지 내용을 입력해주세요.");
+      return;
+    }
+
+    if (!confirm("메시지를 발송하시겠습니까?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/reservations/send-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reservationId: selectedReservation.id,
+          message: message,
+          sendType: "immediate",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`메시지가 발송되었습니다.\n\n타입: ${data.messageType}\n사용 크레딧: ${data.creditUsed}원`);
+        // 메시지 내용 초기화
+        setMessage("");
+        setSelectedReservation(null);
+      } else {
+        alert(data.error || "메시지 발송에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("메시지 발송 오류:", error);
+      alert("메시지 발송 중 오류가 발생했습니다.");
+    }
   };
 
-  const handleScheduledSend = () => {
-    // 예약 보내기 기능 (UI만 구현)
+  const handleScheduledSend = async () => {
+    if (!selectedReservation) {
+      alert("먼저 받는 사람을 선택해주세요.");
+      return;
+    }
+    if (!message.trim()) {
+      alert("메시지 내용을 입력해주세요.");
+      return;
+    }
+
+    // 날짜/시간 파싱
+    const dateMatch = selectedDate.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+    if (!dateMatch) {
+      alert("올바른 날짜를 선택해주세요.");
+      return;
+    }
+
+    const [, year, month, day] = dateMatch;
+    const scheduledDateTime = new Date(`${year}-${month}-${day}T${selectedHour}:${selectedMinute}:00`);
+
+    // 과거 시간 체크
+    if (scheduledDateTime <= new Date()) {
+      alert("예약 발송 시간은 현재 시간 이후여야 합니다.");
+      return;
+    }
+
+    if (!confirm(`${selectedDate} ${selectedHour}:${selectedMinute}에 메시지를 예약하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/reservations/send-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reservationId: selectedReservation.id,
+          message: message,
+          sendType: "scheduled",
+          scheduledAt: scheduledDateTime.toISOString(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`메시지 예약이 완료되었습니다.\n\n발송 예정: ${selectedDate} ${selectedHour}:${selectedMinute}`);
+        setMessage("");
+        setSelectedReservation(null);
+      } else {
+        alert(data.error || "메시지 예약에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("메시지 예약 오류:", error);
+      alert("메시지 예약 중 오류가 발생했습니다.");
+    }
   };
 
   return (

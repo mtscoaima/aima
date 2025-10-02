@@ -374,13 +374,22 @@ export default function ReservationDetailPage() {
 
             {/* 메시지 버튼들 */}
             <div className="flex gap-2 mt-4">
-              <button className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+              <button
+                onClick={() => router.push(`/reservations/message/send?reservationId=${reservation.id}`)}
+                className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer"
+              >
                 메시지 보내기
               </button>
-              <button className="px-4 py-2 text-sm bg-gray-50 text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+              <button
+                onClick={() => router.push('/reservations/message/list')}
+                className="px-4 py-2 text-sm bg-gray-50 text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
                 보낸 메시지
               </button>
-              <button className="px-4 py-2 text-sm bg-gray-50 text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+              <button
+                onClick={() => router.push('/reservations/message/list/reserved')}
+                className="px-4 py-2 text-sm bg-gray-50 text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
                 발송 예정
               </button>
             </div>
