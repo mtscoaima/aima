@@ -11,7 +11,7 @@
  * - {{총금액}} → total_amount (원 단위, 콤마 포함)
  * - {{입금액}} → deposit_amount (원 단위, 콤마 포함)
  * - {{잔금}} → (total_amount - deposit_amount)
- * - {{전화번호}} → customer_phone
+ * - {{전화번호}} → space.host_contact_number (호스트 회신 번호)
  * - {{특이사항}} → special_requirements
  */
 
@@ -117,7 +117,7 @@ export function replaceTemplateVariables(
     '{{잔금}}': formatNumber(
       (reservation.total_amount || 0) - (reservation.deposit_amount || 0)
     ),
-    '{{전화번호}}': formatPhoneNumber(reservation.customer_phone),
+    '{{전화번호}}': formatPhoneNumber(reservation.space?.host_contact_number || reservation.customer_phone),
     '{{특이사항}}': reservation.special_requirements || '',
   };
 

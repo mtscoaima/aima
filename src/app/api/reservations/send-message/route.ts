@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendNaverSMS } from "@/lib/naverSensApi";
-import { replaceTemplateVariables, calculateMessageBytes, determineMessageType } from "@/utils/messageTemplateParser";
+import { replaceTemplateVariables, determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -13,7 +13,7 @@ function getUserIdFromToken(token: string): number | null {
       Buffer.from(token.split(".")[1], "base64").toString()
     );
     return payload.userId || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     let finalMessage = message;
     let recipientPhone = '';
     let recipientName = '';
-    let reservationData = null;
 
     // 예약 정보가 있으면 조회
     if (reservationId) {
@@ -61,7 +60,8 @@ export async function POST(request: NextRequest) {
           *,
           spaces (
             id,
-            name
+            name,
+            host_contact_number_id
           )
         `)
         .eq('id', reservationId)
@@ -69,12 +69,24 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (reservationError || !reservation) {
+        console.error('예약 조회 오류:', reservationError);
         return NextResponse.json({ error: "예약을 찾을 수 없습니다" }, { status: 404 });
       }
 
-      reservationData = reservation;
       recipientPhone = reservation.customer_phone;
       recipientName = reservation.customer_name;
+
+      // 호스트 연락처 조회 (별도 쿼리)
+      let hostContactNumber = null;
+      if (reservation.spaces?.host_contact_number_id) {
+        const { data: senderNumber } = await supabase
+          .from('sender_numbers')
+          .select('phone_number')
+          .eq('id', reservation.spaces.host_contact_number_id)
+          .single();
+
+        hostContactNumber = senderNumber?.phone_number || null;
+      }
 
       // 템플릿이 선택된 경우 변수 치환
       if (templateId) {
@@ -88,14 +100,20 @@ export async function POST(request: NextRequest) {
         if (template) {
           finalMessage = replaceTemplateVariables(message, {
             ...reservation,
-            space: reservation.spaces
+            space: {
+            ...reservation.spaces,
+            host_contact_number: hostContactNumber
+          }
           });
         }
       } else {
         // 템플릿 없이 직접 입력한 경우에도 변수 치환
         finalMessage = replaceTemplateVariables(message, {
           ...reservation,
-          space: reservation.spaces
+          space: {
+            ...reservation.spaces,
+            host_contact_number: hostContactNumber
+          }
         });
       }
     } else {
@@ -111,7 +129,6 @@ export async function POST(request: NextRequest) {
     const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
 
     // 메시지 타입 결정
-    const messageBytes = calculateMessageBytes(finalMessage);
     const messageType = determineMessageType(finalMessage);
 
     // 광고머니 비용 계산 (기존 시스템 활용)
@@ -191,8 +208,43 @@ export async function POST(request: NextRequest) {
         errorMessage = sendResult.error || '발송 실패';
       }
     } else if (sendType === 'scheduled') {
-      // 예약 발송은 추후 구현 (Phase 2.2)
-      status = 'pending';
+      // 예약 발송 - reservation_scheduled_messages에 저장
+      if (!scheduledAt) {
+        return NextResponse.json({ error: "예약 시간이 필요합니다" }, { status: 400 });
+      }
+
+      // 과거 시간 체크
+      const scheduledTime = new Date(scheduledAt);
+      if (scheduledTime <= new Date()) {
+        return NextResponse.json({ error: "예약 시간은 현재 시간 이후여야 합니다" }, { status: 400 });
+      }
+
+      const { data: scheduledData, error: scheduledError } = await supabase
+        .from('reservation_scheduled_messages')
+        .insert({
+          user_id: userId,
+          reservation_id: reservationId,
+          template_id: templateId || null,
+          to_number: cleanPhone,
+          to_name: recipientName,
+          message_content: finalMessage,
+          scheduled_at: scheduledAt,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (scheduledError) {
+        console.error('예약 메시지 저장 실패:', scheduledError);
+        return NextResponse.json({ error: "예약 메시지 저장에 실패했습니다" }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        scheduledId: scheduledData.id,
+        scheduledAt: scheduledAt,
+        message: '메시지 예약이 완료되었습니다'
+      });
     }
 
     // 메시지 로그 기록

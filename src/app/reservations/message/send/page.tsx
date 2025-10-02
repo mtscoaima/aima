@@ -26,14 +26,55 @@ interface Reservation {
   };
 }
 
+interface MessageTemplate {
+  id: number;
+  name: string;
+  category: string;
+  content: string;
+  user_id: number;
+  is_public: boolean;
+  created_at: string;
+}
+
+interface Space {
+  id: number;
+  name: string;
+  host_contact_number?: {
+    number: string;
+  };
+}
+
 export default function MessageSendPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sendType, setSendType] = useState("immediate"); // "immediate" or "scheduled"
   const [message, setMessage] = useState("");
-  const [selectedDate, setSelectedDate] = useState("2025.09.12 (금)");
+
+  // 기본값: 내일 날짜
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayName = dayNames[tomorrow.getDay()];
+    return `${year}.${month}.${day} (${dayName})`;
+  };
+
+  // 날짜 저장: displayDate는 화면 표시용, isoDate는 실제 ISO 형식
+  const getTomorrowISODate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getTomorrowDate());
+  const [selectedISODate, setSelectedISODate] = useState(getTomorrowISODate());
   const [selectedHour, setSelectedHour] = useState("00");
   const [selectedMinute, setSelectedMinute] = useState("00");
+  const [showDateCalendar, setShowDateCalendar] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // 예약 선택 관련 상태
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
@@ -58,7 +99,7 @@ export default function MessageSendPage() {
 
   // 템플릿 선택 모달 상태
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
 
   // 자동 문구 넣기 모달 상태
@@ -68,12 +109,18 @@ export default function MessageSendPage() {
   // 미리보기 모달 상태
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
+  // 템플릿 추가 모달 상태
+  const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateCategory, setNewTemplateCategory] = useState("예약확정");
+
   // URL 파라미터로 예약 자동 선택
   useEffect(() => {
     const reservationIdFromUrl = searchParams.get('reservationId');
     if (reservationIdFromUrl) {
       fetchAndSelectReservation(parseInt(reservationIdFromUrl));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // 특정 예약 조회 및 선택
@@ -131,7 +178,6 @@ export default function MessageSendPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched reservations:", data.reservations);
         setReservations(data.reservations || []);
       }
     } catch (error) {
@@ -153,6 +199,21 @@ export default function MessageSendPage() {
   const handleSelectReservation = async (reservation: Reservation) => {
     setSelectedReservation(reservation);
     setIsReservationModalOpen(false);
+
+    // 예약 시작 시간을 기본 예약 발송 시간으로 설정
+    if (reservation.start_datetime) {
+      const reservationDate = new Date(reservation.start_datetime);
+      const year = reservationDate.getFullYear();
+      const month = String(reservationDate.getMonth() + 1).padStart(2, '0');
+      const day = String(reservationDate.getDate()).padStart(2, '0');
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      const dayName = dayNames[reservationDate.getDay()];
+
+      setSelectedDate(`${year}.${month}.${day} (${dayName})`);
+      setSelectedISODate(reservationDate.toISOString().split('T')[0]); // YYYY-MM-DD
+      setSelectedHour(String(reservationDate.getHours()).padStart(2, '0'));
+      setSelectedMinute(String(reservationDate.getMinutes()).padStart(2, '0'));
+    }
 
     // 호스트 연락처 정보 가져오기
     try {
@@ -177,7 +238,7 @@ export default function MessageSendPage() {
 
           if (contactResponse.ok) {
             const contactData = await contactResponse.json();
-            const spaceWithContact = contactData.spaces?.find((s: any) => s.id === space.id);
+            const spaceWithContact = contactData.spaces?.find((s: Space) => s.id === space.id);
             setHostContactNumber(spaceWithContact?.host_contact_number?.number || "[비공개]");
           }
         } else {
@@ -257,7 +318,7 @@ export default function MessageSendPage() {
   };
 
   // 템플릿 선택
-  const handleSelectTemplate = (template: any) => {
+  const handleSelectTemplate = (template: MessageTemplate) => {
     setMessage(template.content);
     setIsTemplateModalOpen(false);
   };
@@ -323,13 +384,13 @@ export default function MessageSendPage() {
 
           if (contactResponse.ok) {
             const contactData = await contactResponse.json();
-            const spaceWithContact = contactData.spaces?.find((s: any) => s.id === space.id);
+            const spaceWithContact = contactData.spaces?.find((s: Space) => s.id === space.id);
 
             setSenderInfo({
               space_name: space.name,
               sending_number: "[비공개]", // 보내는 번호는 시스템 기본으로 고정
               reply_contact_number: spaceWithContact?.host_contact_number?.number || "[비공개]",
-              reply_contact_name: spaceWithContact?.host_contact_number?.name || "시스템 기본",
+              reply_contact_name: "[비공개]",
             });
           }
         } else {
@@ -411,6 +472,62 @@ export default function MessageSendPage() {
     setIsPreviewModalOpen(true);
   };
 
+  // 캘린더 관련 함수들
+  const handleDateClick = () => {
+    setShowDateCalendar(!showDateCalendar);
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  };
+
+  const handleDateSelect = (date: Date) => {
+    // 오늘 이전 날짜는 선택 불가
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      return;
+    }
+
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    // 로컬 타임존 기준으로 ISO 날짜 생성 (UTC 변환 문제 방지)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const isoDate = `${year}-${month}-${day}`; // YYYY-MM-DD
+    const displayDate = `${year}.${month}.${day} (${days[date.getDay()]})`;
+
+    setSelectedDate(displayDate);
+    setSelectedISODate(isoDate);
+    setShowDateCalendar(false);
+  };
+
+  // 캘린더 날짜 생성
+  const generateCalendarDays = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    const days = [];
+    const current = new Date(startDate);
+
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+
+    return days;
+  };
+
   const handleSend = async () => {
     if (!selectedReservation) {
       alert("먼저 받는 사람을 선택해주세요.");
@@ -466,19 +583,15 @@ export default function MessageSendPage() {
       return;
     }
 
-    // 날짜/시간 파싱
-    const dateMatch = selectedDate.match(/(\d{4})\.(\d{2})\.(\d{2})/);
-    if (!dateMatch) {
-      alert("올바른 날짜를 선택해주세요.");
-      return;
-    }
+    // 로컬 타임존으로 날짜/시간 생성
+    const [year, month, day] = selectedISODate.split('-').map(Number);
+    const scheduledDateTime = new Date(year, month - 1, day, parseInt(selectedHour), parseInt(selectedMinute), 0);
+    const now = new Date();
 
-    const [, year, month, day] = dateMatch;
-    const scheduledDateTime = new Date(`${year}-${month}-${day}T${selectedHour}:${selectedMinute}:00`);
-
-    // 과거 시간 체크
-    if (scheduledDateTime <= new Date()) {
-      alert("예약 발송 시간은 현재 시간 이후여야 합니다.");
+    // 과거 시간 체크 (1분 여유를 둠)
+    const oneMinuteFromNow = new Date(now.getTime() + 60000);
+    if (scheduledDateTime <= oneMinuteFromNow) {
+      alert(`예약 발송 시간은 현재 시간(${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}) 이후여야 합니다.\n선택된 시간: ${selectedDate} ${selectedHour}:${selectedMinute}`);
       return;
     }
 
@@ -514,6 +627,57 @@ export default function MessageSendPage() {
     } catch (error) {
       console.error("메시지 예약 오류:", error);
       alert("메시지 예약 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 템플릿 추가 모달 열기
+  const handleOpenCreateTemplateModal = () => {
+    if (!message.trim()) {
+      alert("먼저 메시지 내용을 입력해주세요.");
+      return;
+    }
+    setNewTemplateName("");
+    setNewTemplateCategory("예약확정");
+    setIsCreateTemplateModalOpen(true);
+  };
+
+  // 템플릿 저장
+  const handleSaveAsTemplate = async () => {
+    if (!newTemplateName.trim()) {
+      alert("템플릿 이름을 입력해주세요.");
+      return;
+    }
+    if (!message.trim()) {
+      alert("메시지 내용이 비어있습니다.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/reservations/message-templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newTemplateName,
+          category: newTemplateCategory,
+          content: message,
+        }),
+      });
+
+      if (response.ok) {
+        alert("템플릿이 저장되었습니다.");
+        setIsCreateTemplateModalOpen(false);
+        setNewTemplateName("");
+      } else {
+        const data = await response.json();
+        alert(data.error || "템플릿 저장에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("템플릿 저장 오류:", error);
+      alert("템플릿 저장 중 오류가 발생했습니다.");
     }
   };
 
@@ -644,6 +808,12 @@ export default function MessageSendPage() {
               >
                 내 템플릿에서 불러오기
               </button>
+              <button
+                onClick={handleOpenCreateTemplateModal}
+                className="text-green-600 text-sm font-medium hover:text-green-700 cursor-pointer"
+              >
+                📝 템플릿에 추가
+              </button>
             </div>
 
             {/* 보내기 방식 */}
@@ -702,23 +872,110 @@ export default function MessageSendPage() {
               {/* 예약 발송 시간 선택 */}
               {sendType === "scheduled" && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* 날짜 */}
-                    <div>
+                  <div className="space-y-4">
+                    {/* 날짜 - 캘린더 형식 */}
+                    <div className="relative">
                       <label className="block text-sm font-medium text-gray-700 mb-2">날짜</label>
-                      <select 
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+
+                      {/* 날짜 선택 버튼 */}
+                      <button
+                        onClick={handleDateClick}
+                        className="w-full flex items-center justify-between p-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                       >
-                        <option value="2025.09.12 (금)">2025.09.12 (금)</option>
-                      </select>
+                        <span className="text-gray-900 font-medium">{selectedDate}</span>
+                        <svg
+                          className={`w-4 h-4 text-gray-600 transition-transform ${showDateCalendar ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {/* 드롭다운 캘린더 */}
+                      {showDateCalendar && (
+                        <div className="absolute z-10 w-full mt-2 bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden">
+                          {/* 캘린더 네비게이션 */}
+                          <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200">
+                            <button
+                              onClick={handlePrevMonth}
+                              className="p-1 hover:bg-gray-200 rounded-lg"
+                            >
+                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {currentMonth.getFullYear()}.{(currentMonth.getMonth() + 1).toString().padStart(2, '0')}
+                            </h3>
+                            <button
+                              onClick={handleNextMonth}
+                              className="p-1 hover:bg-gray-200 rounded-lg"
+                            >
+                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* 캘린더 */}
+                          <div className="p-4">
+                            {/* 요일 헤더 */}
+                            <div className="grid grid-cols-7 mb-2">
+                              {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
+                                <div key={day} className={`p-2 text-center text-sm font-medium ${
+                                  index === 0 ? 'text-red-500' :
+                                  index === 6 ? 'text-blue-500' :
+                                  'text-gray-700'
+                                }`}>
+                                  {day}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* 캘린더 그리드 */}
+                            <div className="grid grid-cols-7 gap-1">
+                              {generateCalendarDays().map((day, index) => {
+                                const today = new Date();
+                                const isToday = day.toDateString() === today.toDateString();
+                                const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
+                                const isPastDate = day < today && !isToday;
+                                const dayOfWeek = day.getDay();
+
+                                // 선택된 날짜 확인
+                                const isSelected = selectedISODate && day.toISOString().split('T')[0] === selectedISODate;
+
+                                return (
+                                  <button
+                                    key={index}
+                                    onClick={() => !isPastDate && handleDateSelect(day)}
+                                    disabled={isPastDate}
+                                    className={`p-2 text-sm rounded-lg transition-colors ${
+                                      isPastDate ? 'text-gray-300 cursor-not-allowed' :
+                                      !isCurrentMonth ? 'text-gray-400 hover:bg-gray-100' :
+                                      isSelected ? 'bg-blue-500 text-white' :
+                                      isToday ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                                      dayOfWeek === 0 ? 'text-red-500 hover:bg-gray-100' :
+                                      dayOfWeek === 6 ? 'text-blue-500 hover:bg-gray-100' :
+                                      'text-gray-900 hover:bg-gray-100'
+                                    }`}
+                                  >
+                                    {day.getDate()}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
+
                     {/* 시간 */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">시간</label>
                       <div className="flex space-x-2">
-                        <select 
+                        <select
                           value={selectedHour}
                           onChange={(e) => setSelectedHour(e.target.value)}
                           className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
@@ -729,7 +986,7 @@ export default function MessageSendPage() {
                             </option>
                           ))}
                         </select>
-                        <select 
+                        <select
                           value={selectedMinute}
                           onChange={(e) => setSelectedMinute(e.target.value)}
                           className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
@@ -757,7 +1014,7 @@ export default function MessageSendPage() {
               </button>
               <button
                 onClick={sendType === "immediate" ? handleSend : handleScheduledSend}
-                className="flex-1 py-3 px-4 bg-gray-400 text-white rounded-lg font-medium cursor-pointer"
+                className="flex-1 py-3 px-4 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 cursor-pointer"
               >
                 {sendType === "immediate" ? "보내기" : "보내기 예약"}
               </button>
@@ -942,7 +1199,7 @@ export default function MessageSendPage() {
 
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                   <p className="text-xs text-gray-600">
-                    💡 회신 연락처를 변경하려면 "예약 관리 &gt; 메시지 &gt; 발신자 정보 설정"에서 공간별 호스트 연락처를 설정해주세요.
+                    💡 회신 연락처를 변경하려면 &quot;예약 관리 &gt; 메시지 &gt; 발신자 정보 설정&quot;에서 공간별 호스트 연락처를 설정해주세요.
                   </p>
                 </div>
               </div>
@@ -1289,6 +1546,96 @@ export default function MessageSendPage() {
                   className="flex-1 py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
                 >
                   {sendType === "immediate" ? "발송하기" : "예약하기"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 템플릿 추가 모달 */}
+      {isCreateTemplateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">템플릿에 추가</h3>
+              <button
+                onClick={() => setIsCreateTemplateModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* 템플릿 이름 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  템플릿 이름 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  placeholder="예: 예약 확정 안내"
+                  maxLength={100}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">{newTemplateName.length}/100자</p>
+              </div>
+
+              {/* 카테고리 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  카테고리 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newTemplateCategory}
+                  onChange={(e) => setNewTemplateCategory(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="예약확정">예약 확정</option>
+                  <option value="예약변경">예약 변경</option>
+                  <option value="예약취소">예약 취소</option>
+                  <option value="리마인더">리마인더</option>
+                  <option value="감사인사">감사 인사</option>
+                  <option value="기타">기타</option>
+                </select>
+              </div>
+
+              {/* 템플릿 내용 (읽기 전용 미리보기) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  템플릿 내용
+                </label>
+                <div className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[200px] whitespace-pre-wrap">
+                  {message}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{calculateBytes(message)}/2000 바이트</p>
+              </div>
+
+              {/* 안내 메시지 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800">
+                  💡 현재 입력된 메시지 내용이 템플릿으로 저장됩니다. 변수(&#123;&#123;고객명&#125;&#125; 등)도 함께 저장됩니다.
+                </p>
+              </div>
+
+              {/* 버튼 */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setIsCreateTemplateModalOpen(false)}
+                  className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleSaveAsTemplate}
+                  className="flex-1 py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors cursor-pointer"
+                >
+                  저장하기
                 </button>
               </div>
             </div>
