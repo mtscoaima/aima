@@ -30,11 +30,6 @@ export default function MessageAutoPage() {
   const [rules, setRules] = useState<AutoRule[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 자동 발송 규칙 목록 조회
-  useEffect(() => {
-    fetchRules();
-  }, []);
-
   const fetchRules = async () => {
     try {
       const token = localStorage.getItem("accessToken");
@@ -63,6 +58,11 @@ export default function MessageAutoPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchRules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleBackClick = () => {
     router.back();

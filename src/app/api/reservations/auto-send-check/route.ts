@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
           }
 
           // 4. 중복 발송 방지: 이미 발송했는지 확인
-          const { data: existingLog, error: logCheckError } = await supabase
+          const { data: existingLog } = await supabase
             .from("reservation_message_logs")
             .select("id")
             .eq("reservation_id", reservation.id)
@@ -205,11 +205,12 @@ export async function POST(request: NextRequest) {
             });
 
             results.sent++;
-          } catch (sendError: any) {
+          } catch (sendError) {
+            const errorMessage = sendError instanceof Error ? sendError.message : "발송 실패";
             console.error("메시지 발송 오류:", sendError);
             results.failed++;
             results.errors.push(
-              `예약 ${reservation.id}: ${sendError.message || "발송 실패"}`
+              `예약 ${reservation.id}: ${errorMessage}`
             );
 
             // 실패 로그 기록
@@ -222,13 +223,14 @@ export async function POST(request: NextRequest) {
               message_content: messageContent,
               message_type: messageType,
               status: "failed",
-              error_message: sendError.message || "발송 실패",
+              error_message: errorMessage,
             });
           }
         }
-      } catch (ruleError: any) {
+      } catch (ruleError) {
+        const errorMessage = ruleError instanceof Error ? ruleError.message : "처리 오류";
         console.error(`규칙 처리 오류 (규칙 ${rule.id}):`, ruleError);
-        results.errors.push(`규칙 ${rule.id}: ${ruleError.message}`);
+        results.errors.push(`규칙 ${rule.id}: ${errorMessage}`);
       }
     }
 
@@ -238,10 +240,11 @@ export async function POST(request: NextRequest) {
       results,
       timestamp: now.toISOString(),
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
     console.error("자동 발송 체크 API 오류:", error);
     return NextResponse.json(
-      { error: "서버 오류가 발생했습니다", details: error.message },
+      { error: "서버 오류가 발생했습니다", details: errorMessage },
       { status: 500 }
     );
   }

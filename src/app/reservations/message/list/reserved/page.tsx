@@ -38,15 +38,11 @@ export default function MessageReservedListPage() {
   const [total, setTotal] = useState(0);
   const limit = 10;
 
-  useEffect(() => {
-    fetchMessages();
-  }, [currentPage, activeTab]);
-
   const fetchMessages = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("accessToken");
-      
+
       if (!token) {
         alert("로그인이 필요합니다.");
         router.push("/login");
@@ -82,6 +78,11 @@ export default function MessageReservedListPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, activeTab]);
 
   const handleCancel = async (messageId: number) => {
     if (!confirm("이 예약 메시지를 취소하시겠습니까?")) return;

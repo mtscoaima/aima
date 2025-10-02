@@ -99,24 +99,6 @@ export default function ReservationsPage() {
               </svg>
             </div>
 
-            {/* 결제 리스트 */}
-            <div
-              onClick={() => handleMenuClick('/reservations/payments')}
-              className="bg-white rounded-xl p-4 border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <div className="w-4 h-3 border-2 border-blue-500 rounded-sm flex items-center justify-center">
-                    <div className="w-1 h-1 bg-blue-500"></div>
-                  </div>
-                </div>
-                <span className="font-medium text-gray-900">결제 리스트</span>
-              </div>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-
             {/* 통계 */}
             <div
               onClick={() => handleMenuClick('/reservations/statistics')}

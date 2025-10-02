@@ -46,7 +46,6 @@ export default function CreateAutoRulePage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [hostContactNumber, setHostContactNumber] = useState<string>("[비공개]");
-  const [sendingNumber, setSendingNumber] = useState<string>("[비공개]");
 
   // 공간 목록 조회
   useEffect(() => {
@@ -139,23 +138,6 @@ export default function CreateAutoRulePage() {
     setShowSenderInfo(!showSenderInfo);
   };
 
-  // 시간 값 변환 (UI 값 -> 분 단위)
-  const convertTimeToMinutes = (timeStr: string): number => {
-    if (timeStr.includes("분")) {
-      return parseInt(timeStr);
-    } else if (timeStr.includes("시간")) {
-      return parseInt(timeStr) * 60;
-    } else if (timeStr.includes("일")) {
-      return parseInt(timeStr) * 24 * 60;
-    }
-    return 0;
-  };
-
-  // 절대 시간 며칠 전 변환
-  const convertDaysBefore = (dayStr: string): number => {
-    if (dayStr === "당일") return 0;
-    return parseInt(dayStr);
-  };
 
   const handleCreateRule = async () => {
     // 유효성 검사
@@ -180,7 +162,7 @@ export default function CreateAutoRulePage() {
       const token = localStorage.getItem("accessToken");
 
       // API 요청 데이터 구성
-      const requestData: any = {
+      const requestData: Record<string, string | number> = {
         rule_name: formData.ruleName,
         space_id: parseInt(formData.spaceId),
         template_id: parseInt(formData.templateId),
@@ -214,16 +196,17 @@ export default function CreateAutoRulePage() {
 
       alert("자동 발송 규칙이 생성되었습니다.");
       router.push("/reservations/message/auto");
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "규칙 생성에 실패했습니다.";
       console.error("규칙 생성 오류:", error);
-      alert(error.message || "규칙 생성에 실패했습니다.");
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   // 폼 유효성 검사
-  const isFormValid = () => {
+  const isFormValid = (): boolean => {
     return (
       formData.ruleName.trim() !== "" &&
       formData.spaceId !== "" &&
@@ -455,7 +438,7 @@ export default function CreateAutoRulePage() {
                     {/* 보내는 번호 */}
                     <div className="py-3">
                       <div className="text-gray-900 font-medium mb-1">보내는 번호</div>
-                      <div className="text-gray-700 text-sm font-mono">{sendingNumber}</div>
+                      <div className="text-gray-700 text-sm font-mono">[비공개]</div>
                       <p className="text-xs text-gray-400 mt-2">
                         ※ SMS 발신은 통신사 및 정부 정책에 따라 발신전용 번호로 발송됩니다.
                       </p>

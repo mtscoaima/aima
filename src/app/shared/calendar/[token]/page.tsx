@@ -45,26 +45,26 @@ export default function SharedCalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/shared/calendar/${token}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to fetch calendar");
+        }
+
+        setCalendarData(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchCalendarData();
   }, [token]);
-
-  const fetchCalendarData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/shared/calendar/${token}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch calendar");
-      }
-
-      setCalendarData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // 월별 캘린더 생성
   const getCalendarDays = () => {

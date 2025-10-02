@@ -116,24 +116,6 @@ export default function CreateReservationPage() {
     // 반복 일정 설정 (UI만 구현)
   };
 
-  const handlePaymentLinks = () => {
-    // 결제 링크 만들기 (UI만 구현)
-  };
-
-  const handleGuestRegistration = () => {
-    // 현재 폼 데이터를 sessionStorage에 저장
-    const formDataToSave = {
-      ...formData,
-      timestamp: Date.now()
-    };
-    sessionStorage.setItem('reservationFormData', JSON.stringify(formDataToSave));
-    
-    // 현재 입력된 금액이 있다면 URL에 포함하여 전달
-    const currentAmount = priceData?.amount || '';
-    const pricePageUrl = currentAmount ? `/reservations/create/price?amount=${currentAmount}` : '/reservations/create/price';
-    router.push(pricePageUrl);
-  };
-
   // 공간 목록 가져오기
   const fetchSpaces = useCallback(async () => {
     try {
@@ -717,50 +699,23 @@ export default function CreateReservationPage() {
             {/* 금액 */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">금액</h3>
-              
-              {/* 입력된 금액 표시 */}
-              {priceData?.amount && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-lg font-semibold text-blue-900">
-                        {parseInt(priceData.amount).toLocaleString()}원
-                      </div>
-                      {priceData.notes && (
-                        <div className="text-sm text-blue-700 mt-1">
-                          {priceData.notes}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleGuestRegistration}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      수정
-                    </button>
-                  </div>
+
+              <div>
+                <label className="block text-gray-900 font-medium mb-3">총 금액</label>
+                <input
+                  type="number"
+                  value={priceData?.amount || ''}
+                  onChange={(e) => setPriceData({ amount: e.target.value, notes: priceData?.notes || '' })}
+                  placeholder="금액을 입력하세요 (원)"
+                  className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {priceData?.notes && (
+                <div className="text-sm text-gray-600">
+                  {priceData.notes}
                 </div>
               )}
-              
-              <button
-                onClick={handlePaymentLinks}
-                className="flex items-center space-x-2 text-blue-500 hover:text-blue-600"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="font-medium">결제 링크 만들기</span>
-              </button>
-
-              <button
-                onClick={handleGuestRegistration}
-                className="flex items-center space-x-2 text-blue-500 hover:text-blue-600"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="font-medium">금액 입력하기</span>
-              </button>
             </div>
 
             {/* 메모 */}
@@ -783,22 +738,20 @@ export default function CreateReservationPage() {
               <button
                 onClick={handleSubmit}
                 disabled={
-                  isSubmitting || 
-                  !formData.space_id || 
-                  !formData.customerName.trim() || 
-                  !formData.phoneNumber.trim() || 
+                  isSubmitting ||
+                  !formData.space_id ||
+                  !formData.customerName.trim() ||
+                  !formData.phoneNumber.trim() ||
                   !formData.people.trim() ||
-                  !formData.channel ||
-                  !priceData?.amount
+                  !formData.channel
                 }
                 className={`w-full py-4 px-4 rounded-lg font-medium transition-colors text-lg ${
-                  isSubmitting || 
-                  !formData.space_id || 
-                  !formData.customerName.trim() || 
-                  !formData.phoneNumber.trim() || 
+                  isSubmitting ||
+                  !formData.space_id ||
+                  !formData.customerName.trim() ||
+                  !formData.phoneNumber.trim() ||
                   !formData.people.trim() ||
-                  !formData.channel ||
-                  !priceData?.amount
+                  !formData.channel
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}

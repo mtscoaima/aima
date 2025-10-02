@@ -32,9 +32,6 @@ export default function ReservationDetailPage() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAmountModal, setShowAmountModal] = useState(false);
-  const [newAmount, setNewAmount] = useState("");
-  const [showLinkModal, setShowLinkModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
@@ -87,50 +84,6 @@ export default function ReservationDetailPage() {
 
   const handleBackClick = () => {
     router.back();
-  };
-
-  const handleAmountChange = () => {
-    router.push(`/reservations/detail/price?reservationId=${reservation?.id}`);
-  };
-
-  const handleSaveAmount = async () => {
-    if (!reservation || !newAmount) return;
-
-    try {
-      const token = await getAccessToken();
-      const response = await fetch(`/api/reservations/${reservation.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: parseInt(newAmount)
-        }),
-      });
-
-      if (response.ok) {
-        setReservation({ ...reservation, amount: parseInt(newAmount) });
-        setShowAmountModal(false);
-        alert('결제 금액이 변경되었습니다.');
-      } else {
-        alert('결제 금액 변경에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('Error updating amount:', error);
-      alert('결제 금액 변경에 실패했습니다.');
-    }
-  };
-
-  const handleCreatePaymentLink = () => {
-    setShowLinkModal(true);
-  };
-
-  const handleCopyLink = () => {
-    const link = `https://payment.example.com/pay/${reservation?.id}`;
-    navigator.clipboard.writeText(link).then(() => {
-      alert('결제 링크가 복사되었습니다.');
-    });
   };
 
   const handleDeleteClick = () => {
@@ -398,42 +351,9 @@ export default function ReservationDetailPage() {
           {/* 금액 */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">금액</h2>
-            
-            <button 
-              onClick={handleAmountChange}
-              className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <span className="text-lg font-semibold text-gray-900">{(reservation.amount || 0).toLocaleString()} 원</span>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            
-            <div className="mt-2">
-              <span className="text-sm text-gray-600">[샘플] 공간 대여료</span>
-            </div>
 
-            {/* 결제 관련 버튼들 */}
-            <div className="space-y-3 mt-6">
-              <button 
-                onClick={handleCreatePaymentLink}
-                className="w-full flex items-center justify-center px-4 py-3 bg-white border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                결제 링크 만들기
-              </button>
-              
-              <button 
-                onClick={handleAmountChange}
-                className="w-full flex items-center justify-center px-4 py-3 bg-white border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                금액 입력하기
-              </button>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <span className="text-lg font-semibold text-gray-900">{(reservation.amount || 0).toLocaleString()} 원</span>
             </div>
           </div>
 
@@ -470,113 +390,6 @@ export default function ReservationDetailPage() {
             </button>
           </div>
         </div>
-
-        {/* 금액 변경 모달 */}
-        {showAmountModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">금액 변경</h3>
-              <input
-                type="number"
-                value={newAmount}
-                onChange={(e) => setNewAmount(e.target.value)}
-                placeholder="금액을 입력하세요"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowAmountModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleSaveAmount}
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  확인
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 결제 링크 생성 모달 */}
-        {showLinkModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <div className="text-center mb-6">
-                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">결제 링크 생성 완료</h3>
-                <p className="text-gray-600 text-sm">
-                  고객에게 아래 링크를 전송하여 온라인으로 결제를 받을 수 있습니다.
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">결제 정보</label>
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-sm text-gray-900 font-medium">{reservation.space_name}</p>
-                    <p className="text-sm text-gray-600">{reservation.customer_name}</p>
-                    <p className="text-sm text-gray-600">{(reservation.total_amount || reservation.amount || 0).toLocaleString()}원</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">결제 링크</label>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      value={`https://payment.example.com/pay/${reservation.id}`}
-                      readOnly
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg bg-gray-50 text-sm"
-                    />
-                    <button
-                      onClick={handleCopyLink}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 transition-colors text-sm"
-                    >
-                      복사
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <div className="flex items-start">
-                    <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs text-blue-700">
-                      결제 링크는 생성일로부터 30일간 유효합니다. 고객이 결제 완료 시 자동으로 예약 상태가 업데이트됩니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowLinkModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  닫기
-                </button>
-                <button
-                  onClick={() => {
-                    handleCopyLink();
-                    setShowLinkModal(false);
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  링크 복사 후 닫기
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 삭제 확인 모달 */}
         {showDeleteModal && (

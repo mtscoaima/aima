@@ -35,7 +35,7 @@ function getUserIdFromToken(request: NextRequest): number | null {
 // GET /api/reservations/auto-rules/[id] - 자동 발송 규칙 단건 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -46,7 +46,8 @@ export async function GET(
       );
     }
 
-    const ruleId = params.id;
+    const { id } = await params;
+    const ruleId = id;
 
     // 자동 발송 규칙 조회
     const { data: rule, error } = await supabase
@@ -76,7 +77,7 @@ export async function GET(
 // PUT /api/reservations/auto-rules/[id] - 자동 발송 규칙 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -87,7 +88,8 @@ export async function PUT(
       );
     }
 
-    const ruleId = params.id;
+    const { id } = await params;
+    const ruleId = id;
     const body = await request.json();
     const {
       rule_name,
@@ -117,7 +119,7 @@ export async function PUT(
     }
 
     // 업데이트할 데이터 구성
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -161,7 +163,7 @@ export async function PUT(
 // DELETE /api/reservations/auto-rules/[id] - 자동 발송 규칙 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = getUserIdFromToken(request);
@@ -172,7 +174,8 @@ export async function DELETE(
       );
     }
 
-    const ruleId = params.id;
+    const { id } = await params;
+    const ruleId = id;
 
     // 소유자 확인 후 삭제
     const { error } = await supabase

@@ -64,52 +64,52 @@ export default function MessageListPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
-    fetchLogs();
-  }, [currentPage, search, statusFilter, messageTypeFilter]);
+    const fetchLogs = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("accessToken");
 
-  const fetchLogs = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem("accessToken");
-      
-      if (!token) {
-        alert("로그인이 필요합니다.");
-        router.push("/login");
-        return;
-      }
-
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: limit.toString(),
-      });
-
-      if (search) params.append("search", search);
-      if (statusFilter) params.append("status", statusFilter);
-      if (messageTypeFilter) params.append("messageType", messageTypeFilter);
-
-      const response = await fetch(
-        `/api/reservations/message-logs?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        if (!token) {
+          alert("로그인이 필요합니다.");
+          router.push("/login");
+          return;
         }
-      );
 
-      if (!response.ok) throw new Error("메시지 목록 조회 실패");
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: limit.toString(),
+        });
 
-      const data = await response.json();
-      setLogs(data.logs);
-      setStatistics(data.statistics);
-      setTotal(data.pagination.total);
-      setTotalPages(data.pagination.totalPages);
-    } catch (error) {
-      console.error("메시지 목록 조회 오류:", error);
-      alert("메시지 목록을 불러오는데 실패했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (search) params.append("search", search);
+        if (statusFilter) params.append("status", statusFilter);
+        if (messageTypeFilter) params.append("messageType", messageTypeFilter);
+
+        const response = await fetch(
+          `/api/reservations/message-logs?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error("메시지 목록 조회 실패");
+
+        const data = await response.json();
+        setLogs(data.logs);
+        setStatistics(data.statistics);
+        setTotal(data.pagination.total);
+        setTotalPages(data.pagination.totalPages);
+      } catch (error) {
+        console.error("메시지 목록 조회 오류:", error);
+        alert("메시지 목록을 불러오는데 실패했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLogs();
+  }, [currentPage, search, statusFilter, messageTypeFilter, router]);
 
   const handleSearch = () => {
     setSearch(searchInput);

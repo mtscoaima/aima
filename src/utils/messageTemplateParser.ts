@@ -30,6 +30,7 @@ export interface ReservationWithSpace {
   space?: {
     id: number;
     name: string;
+    host_contact_number?: string;
   };
 }
 
@@ -203,6 +204,7 @@ export function previewTemplate(template: string): string {
     space: {
       id: 1,
       name: '스튜디오 A',
+      host_contact_number: '010-9876-5432',
     },
   };
 
