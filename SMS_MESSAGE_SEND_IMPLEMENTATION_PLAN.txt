@@ -1,0 +1,1073 @@
+================================================================================
+메시지 발송 기능 구현 계획서 - SMS/LMS/MMS 전용
+================================================================================
+작성일: 2025-10-13
+대상: messages/send 페이지 > 메시지 보내기 탭 > 문자메시지 하위 탭
+범위: SMS/LMS/MMS 발송 기능만 포함 (카카오/RCS/네이버 제외)
+
+⚠️⚠️⚠️ 중요 공지 ⚠️⚠️⚠️
+================================================================================
+🚫 UI 수정 절대 금지! 🚫
+- 기존 UI 컴포넌트는 절대 수정하지 않습니다
+- 새로운 UI 요소를 추가하지 않습니다
+- CSS 스타일을 변경하지 않습니다
+- 컴포넌트 구조를 변경하지 않습니다
+
+✅ 구현 가능한 작업:
+- API 엔드포인트 생성 및 로직 구현
+- 기존 UI에 API 연동 (state 및 handler만)
+- DB 테이블 생성 및 스키마 관리
+- 유틸리티 함수 및 라이브러리 추가
+
+📋 구현 전 체크리스트:
+[ ] 이 작업이 UI를 변경하는가? → NO여야 진행
+[ ] 기존 컴포넌트 파일을 수정하는가? → 최소화, API 연동만
+[ ] 새로운 UI 요소를 추가하는가? → 절대 NO
+================================================================================
+
+
+================================================================================
+목차
+================================================================================
+1. 프로젝트 개요 및 현황
+2. 기존 리소스 분석 (재사용 가능)
+3. 구현 전략 (공통 로직 추출)
+4. 데이터베이스 스키마
+5. API 엔드포인트 설계
+6. 공통 로직 구현 (messageSender.ts)
+7. 단계별 구현 계획 (7일)
+8. 프론트엔드 연동 (API 호출만)
+9. 테스트 시나리오
+10. 보안 및 에러 처리
+
+
+================================================================================
+1. 프로젝트 개요 및 현황
+================================================================================
+
+1.1 대상 UI 구조
+-------------
+messages/send 페이지
+  └─ MessageSendTab (메시지 보내기 탭)
+      ├─ 좌측 영역
+      │   ├─ 메시지 발신번호 선택
+      │   ├─ 메시지 수신번호 추가 (직접입력/주소록/엑셀/텍스트)
+      │   ├─ 추가한 수신번호 목록 (총 0개)
+      │   └─ 저장 섹션 (새로 저장/덮어쓰기/불러오기)
+      │
+      └─ 우측 영역
+          ├─ 4개 하위 탭 (📱문자메시지/💬카카오톡/🔵RCS/🟢네이버톡톡)
+          ├─ SmsMessageContent 컴포넌트 ← 이 부분만 구현!
+          │   ├─ 제목 (40자, optional)
+          │   ├─ 메시지 내용 (2000 bytes)
+          │   ├─ 이미지 첨부 토글 (MMS)
+          │   ├─ 치환문구 버튼 (#[변수명] 형식)
+          │   └─ 발송 옵션 (광고메시지 여부, 대체발송 여부)
+          └─ 전송/예약 준비 버튼
+
+1.2 현재 상태
+-------------
+✅ UI 완성: SmsMessageContent 컴포넌트 완전 구현
+✅ 환경변수: Naver SENS API 설정 완료
+✅ 기존 구현: reservations/message API 완전 동작
+❌ 백엔드: messages/send 전용 API 미구현
+❌ 연동: UI와 API 연결 미완료
+
+1.3 구현 목표
+------------
+문자메시지 탭에서 다음 기능을 제공:
+- SMS/LMS/MMS 즉시 및 예약 발송
+- 발신번호 선택 및 관리
+- 수신자 관리 (직접 입력, 주소록, 엑셀, 텍스트 파일)
+- 메시지 템플릿 저장/불러오기
+- 잔액 확인 및 단가 계산
+- 치환문구 처리 (#[변수명] 형식)
+- 광고메시지 표기 자동 처리
+- MMS 이미지 업로드
+
+🚫 UI 수정 금지: 기존 UI는 그대로 두고 백엔드만 구현!
+
+
+================================================================================
+2. 기존 리소스 분석 (재사용 가능)
+================================================================================
+
+2.1 이미 사용 가능한 환경변수
+---------------------------
+✅ NEXT_PUBLIC_SUPABASE_URL
+✅ SUPABASE_SERVICE_ROLE_KEY
+✅ JWT_SECRET
+✅ NAVER_SENS_SERVICE_ID
+✅ NAVER_ACCESS_KEY_ID
+✅ NAVER_SECRET_KEY
+✅ TEST_CALLING_NUMBER
+
+2.2 기존 DB 테이블 (활용 가능)
+----------------------------
+✅ users - 사용자 정보
+✅ sender_numbers - 발신번호 관리
+✅ message_templates - 메시지 템플릿
+✅ transactions - 잔액 관리 (충전/사용)
+✅ reservation_message_templates - 예약 시스템 템플릿
+✅ reservation_scheduled_messages - 예약 발송
+✅ reservation_message_logs - 발송 내역
+
+2.3 기존 라이브러리 및 유틸리티
+-----------------------------
+✅ src/lib/naverSensApi.ts
+   - sendNaverSMS(toNumber, message, subject?)
+   - sendNaverMMS(toNumber, message, subject, fileIds)
+
+✅ src/utils/messageTemplateParser.ts
+   - replaceTemplateVariables() - 변수 치환
+   - determineMessageType() - SMS/LMS 자동 판단
+   - calculateMessageBytes() - 바이트 수 계산
+   - extractVariables() - 사용 변수 추출
+   - validateTemplate() - 템플릿 유효성 검증
+
+2.4 기존 API 구현 (reservations)
+------------------------------
+✅ src/app/api/reservations/send-message/route.ts
+   - 즉시/예약 발송
+   - 잔액 확인/차감
+   - JWT 인증
+   - 변수 치환
+
+✅ src/app/api/reservations/scheduled-messages/route.ts
+   - 예약 메시지 목록 조회
+   - 예약 메시지 취소
+
+✅ src/app/api/reservations/message-templates/route.ts
+   - 템플릿 CRUD
+
+
+================================================================================
+3. 구현 전략 (공통 로직 추출) ⭐⭐⭐
+================================================================================
+
+3.1 왜 공통 로직 추출인가?
+------------------------
+❌ 방안 A: 기존 API 직접 호출
+   - reservation_id 필수 (예약 시스템 의존)
+
+❌ 방안 B: 코드 복사하여 새 API 생성
+   - 코드 중복
+   - 유지보수 부담
+
+✅ 방안 C: 공통 로직 추출 (선택!)
+   - 코드 재사용
+   - 독립적인 API
+   - 유지보수 용이
+
+3.2 구현 구조
+------------
+```
+┌─────────────────────────────────────────┐
+│  기존: reservations/send-message API    │
+│  신규: messages/send API                │
+└─────────────┬───────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  공통 로직: src/lib/messageSender.ts    │
+│  - sendMessage()                        │
+│  - scheduleMessage()                    │
+│  - checkBalance()                       │
+│  - deductBalance()                      │
+└─────────────┬───────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  외부 API: Naver SENS                   │
+│  DB: Supabase (transactions 등)         │
+└─────────────────────────────────────────┘
+```
+
+
+================================================================================
+4. 데이터베이스 스키마
+================================================================================
+
+4.1 기존 테이블 (수정 없음)
+-------------------------
+✅ sender_numbers - 발신번호
+✅ message_templates - 템플릿
+✅ transactions - 잔액 관리
+✅ users - 사용자 정보
+
+4.2 신규 테이블 (생성 필요)
+-------------------------
+
+📌 scheduled_messages (messages/send 전용 예약 발송)
+----------------------------------------------------
+CREATE TABLE scheduled_messages (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  to_number VARCHAR(20) NOT NULL,
+  to_name VARCHAR(100),
+  message_content TEXT NOT NULL,
+  subject VARCHAR(100),
+  scheduled_at TIMESTAMP NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'sent', 'failed', 'cancelled'
+  sent_at TIMESTAMP,
+  error_message TEXT,
+  metadata JSONB, -- 추가 정보 (source: 'sms_tab', message_type: 'SMS' 등)
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_scheduled_messages_user_id ON scheduled_messages(user_id);
+CREATE INDEX idx_scheduled_messages_status ON scheduled_messages(status);
+CREATE INDEX idx_scheduled_messages_scheduled_at ON scheduled_messages(scheduled_at);
+
+
+📌 message_logs (발송 내역) - Optional
+-------------------------------------
+CREATE TABLE message_logs (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  to_number VARCHAR(20) NOT NULL,
+  to_name VARCHAR(100),
+  message_content TEXT NOT NULL,
+  subject VARCHAR(100),
+  message_type VARCHAR(10) NOT NULL, -- 'SMS', 'LMS', 'MMS'
+  sent_at TIMESTAMP,
+  status VARCHAR(20) NOT NULL, -- 'sent', 'failed'
+  error_message TEXT,
+  credit_used INTEGER,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_message_logs_user_id ON message_logs(user_id);
+CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
+
+
+================================================================================
+5. API 엔드포인트 설계
+================================================================================
+
+5.1 즉시 구현 (Phase 1)
+----------------------
+
+📍 POST /api/messages/send
+- 즉시 발송 및 예약 발송
+- 다중 수신자 지원
+- 치환문구 처리 (#[변수명] 형식)
+
+요청:
+{
+  "recipients": [
+    {
+      "phone_number": "01012345678",
+      "name": "홍길동",
+      "variables": {"이름": "홍길동", "시간": "14:00"}
+    }
+  ],
+  "message": "안녕하세요 #[이름]님",
+  "subject": "제목 (optional)",
+  "sendType": "immediate", // 'immediate' | 'scheduled'
+  "scheduledAt": "2025-10-15T14:00:00+09:00" // sendType이 'scheduled'인 경우
+}
+
+응답 (즉시 발송):
+{
+  "success": true,
+  "totalCount": 1,
+  "successCount": 1,
+  "failCount": 0,
+  "results": [
+    {
+      "recipient": "01012345678",
+      "success": true,
+      "messageId": "req-id-123",
+      "messageType": "SMS",
+      "creditUsed": 20
+    }
+  ]
+}
+
+응답 (예약 발송):
+{
+  "success": true,
+  "scheduledCount": 1,
+  "scheduledAt": "2025-10-15T14:00:00+09:00",
+  "results": [...]
+}
+
+
+📍 GET /api/messages/scheduled
+- 예약 메시지 목록 조회
+
+응답:
+{
+  "messages": [
+    {
+      "id": 1,
+      "to_number": "01012345678",
+      "to_name": "홍길동",
+      "message_content": "...",
+      "scheduled_at": "2025-10-15T14:00:00+09:00",
+      "status": "pending",
+      "created_at": "..."
+    }
+  ]
+}
+
+
+📍 DELETE /api/messages/scheduled?id=123
+- 예약 메시지 취소
+
+응답:
+{
+  "success": true
+}
+
+
+📍 GET /api/sender-numbers
+- 발신번호 목록 조회
+
+응답:
+{
+  "data": [
+    {
+      "id": 1,
+      "phone_number": "01012345678",
+      "display_name": "홍길동",
+      "is_default": true,
+      "is_verified": true,
+      "status": "ACTIVE"
+    }
+  ]
+}
+
+
+📍 POST /api/sender-numbers
+- 발신번호 등록
+
+요청:
+{
+  "phone_number": "01012345678",
+  "display_name": "홍길동"
+}
+
+
+📍 PUT /api/sender-numbers/:id/default
+- 기본 발신번호 설정
+
+
+📍 GET /api/message-templates
+- 템플릿 목록 조회
+
+📍 POST /api/message-templates
+- 템플릿 저장
+
+📍 PUT /api/message-templates/:id
+- 템플릿 수정
+
+📍 DELETE /api/message-templates/:id
+- 템플릿 삭제
+
+
+5.2 추후 구현 (Phase 2+)
+-----------------------
+- POST /api/contacts - 주소록 관리
+- POST /api/contacts/import/excel - 엑셀 업로드
+- POST /api/upload/message-image - MMS 이미지 업로드
+
+
+================================================================================
+6. 공통 로직 구현 (messageSender.ts)
+================================================================================
+
+파일: src/lib/messageSender.ts (신규 생성)
+
+```typescript
+import { createClient } from "@supabase/supabase-js";
+import { sendNaverSMS } from "@/lib/naverSensApi";
+import { determineMessageType } from "@/utils/messageTemplateParser";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export interface SendMessageParams {
+  userId: number;
+  toNumber: string;
+  toName?: string;
+  message: string;
+  subject?: string;
+  messageType?: 'SMS' | 'LMS';
+  metadata?: Record<string, any>;
+}
+
+export interface SendMessageResult {
+  success: boolean;
+  messageId?: string;
+  logId?: number;
+  messageType: 'SMS' | 'LMS';
+  creditUsed: number;
+  error?: string;
+}
+
+/**
+ * 메시지 발송 공통 로직
+ */
+export async function sendMessage(
+  params: SendMessageParams
+): Promise<SendMessageResult> {
+  const { userId, toNumber, toName, message, subject, metadata } = params;
+
+  // 전화번호 정리
+  const cleanPhone = toNumber.replace(/[^0-9]/g, '');
+
+  // 메시지 타입 결정
+  const messageType = params.messageType || determineMessageType(message);
+
+  // 단가 계산
+  const creditRequired = messageType === 'SMS' ? 20 : 50;
+
+  // 1. 잔액 확인
+  const balance = await checkBalance(userId);
+  if (balance < creditRequired) {
+    return {
+      success: false,
+      messageType,
+      creditUsed: 0,
+      error: `광고머니가 부족합니다 (필요: ${creditRequired}원, 현재: ${balance}원)`
+    };
+  }
+
+  // 2. 메시지 발송
+  const sendResult = await sendNaverSMS(cleanPhone, message, subject);
+
+  if (!sendResult.success) {
+    return {
+      success: false,
+      messageType,
+      creditUsed: 0,
+      error: sendResult.error || '발송 실패'
+    };
+  }
+
+  // 3. 잔액 차감
+  await deductBalance(userId, creditRequired, messageType, metadata);
+
+  return {
+    success: true,
+    messageId: sendResult.requestId,
+    messageType,
+    creditUsed: creditRequired
+  };
+}
+
+/**
+ * 예약 발송
+ */
+export interface ScheduleMessageParams {
+  userId: number;
+  toNumber: string;
+  toName?: string;
+  message: string;
+  subject?: string;
+  scheduledAt: string;
+  metadata?: Record<string, any>;
+}
+
+export async function scheduleMessage(
+  params: ScheduleMessageParams,
+  tableName: string = 'scheduled_messages'
+): Promise<{ success: boolean; scheduledId?: number; error?: string }> {
+  const { userId, toNumber, toName, message, subject, scheduledAt, metadata } = params;
+
+  // 과거 시간 체크
+  const scheduledTime = new Date(scheduledAt);
+  if (scheduledTime <= new Date()) {
+    return {
+      success: false,
+      error: "예약 시간은 현재 시간 이후여야 합니다"
+    };
+  }
+
+  const cleanPhone = toNumber.replace(/[^0-9]/g, '');
+
+  const { data, error } = await supabase
+    .from(tableName)
+    .insert({
+      user_id: userId,
+      to_number: cleanPhone,
+      to_name: toName || '',
+      message_content: message,
+      subject: subject || '',
+      scheduled_at: scheduledAt,
+      status: 'pending',
+      metadata: metadata || {}
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('예약 메시지 저장 실패:', error);
+    return {
+      success: false,
+      error: "예약 메시지 저장 실패"
+    };
+  }
+
+  return {
+    success: true,
+    scheduledId: data.id
+  };
+}
+
+/**
+ * 잔액 확인
+ */
+export async function checkBalance(userId: number): Promise<number> {
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false });
+
+  let balance = 0;
+  for (const transaction of transactions || []) {
+    const metadata = transaction.metadata as Record<string, any> | null;
+
+    if (transaction.type === "charge") {
+      if (!metadata?.isReward) {
+        balance += transaction.amount;
+      }
+    } else if (transaction.type === "usage") {
+      if (metadata?.transactionType !== "point") {
+        balance -= transaction.amount;
+      }
+    } else if (transaction.type === "refund") {
+      balance += transaction.amount;
+    } else if (transaction.type === "penalty") {
+      balance -= transaction.amount;
+    }
+  }
+
+  return balance;
+}
+
+/**
+ * 잔액 차감
+ */
+async function deductBalance(
+  userId: number,
+  amount: number,
+  messageType: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  await supabase.from('transactions').insert({
+    user_id: userId,
+    amount: amount,
+    type: 'usage',
+    status: 'completed',
+    description: `메시지 발송 (${messageType})`,
+    metadata: {
+      transactionType: 'advertising',
+      usage_type: 'message_send',
+      message_type: messageType,
+      source: 'sms_tab',
+      ...metadata
+    },
+    created_at: new Date().toISOString()
+  });
+}
+```
+
+
+================================================================================
+7. 단계별 구현 계획 (7일)
+================================================================================
+
+🚫 주의: 모든 단계에서 UI 수정 금지! API 연동만 진행!
+
+Day 1: 공통 로직 및 DB 준비
+--------------------------
+[ ] src/lib/messageSender.ts 생성 및 구현
+    - sendMessage() 함수
+    - scheduleMessage() 함수
+    - checkBalance() 함수
+    - deductBalance() 함수
+[ ] DB 마이그레이션 작성
+    - scheduled_messages 테이블 생성
+    - message_logs 테이블 생성 (optional)
+[ ] 기존 reservations API와 로직 비교 테스트
+
+
+Day 2: 메시지 발송 API 구현
+--------------------------
+[ ] src/app/api/messages/send/route.ts 생성
+    - POST 핸들러 구현
+    - JWT 인증 통합
+    - 다중 수신자 처리
+    - 치환문구 처리 (#[변수명] 형식)
+    - 즉시/예약 발송 분기
+[ ] 단위 테스트 (Postman/Thunder Client)
+    - 단일 수신자 즉시 발송
+    - 다중 수신자 즉시 발송
+    - 예약 발송
+
+
+Day 3: 예약 메시지 관리 API 구현
+-------------------------------
+[ ] src/app/api/messages/scheduled/route.ts 생성
+    - GET: 예약 메시지 목록 조회
+    - DELETE: 예약 메시지 취소
+[ ] 예약 발송 스케줄러 설계
+    - Supabase Edge Function 또는 Cron Job
+[ ] 테스트
+
+
+Day 4: 발신번호 관리 API 구현
+---------------------------
+[ ] src/app/api/sender-numbers/route.ts 생성
+    - GET: 발신번호 목록 조회
+    - POST: 발신번호 등록
+[ ] src/app/api/sender-numbers/[id]/default/route.ts
+    - PUT: 기본값 설정
+[ ] 테스트
+
+
+Day 5: 메시지 템플릿 API
+----------------------------------------
+[ ] 기존 API 활용 가능성 검토
+    - message_templates 테이블 활용
+[ ] 필요시 신규 API 구현
+    - GET /api/message-templates
+    - POST /api/message-templates
+    - PUT /api/message-templates/:id
+    - DELETE /api/message-templates/:id
+[ ] 테스트
+
+
+Day 6: 프론트엔드 연동 (🚫 UI 수정 금지!)
+----------------------------------------
+[ ] MessageSendTab.tsx - API 연동만 추가
+    - selectedSenderNumber 상태 추가
+    - recipients 상태 추가
+    - messageData 상태 추가
+    - handleSend() 함수 구현 (API 호출)
+    - handleSchedule() 함수 구현 (API 호출)
+
+[ ] SmsMessageContent.tsx - API 연동만 추가
+    - 부모로부터 props 받기
+    - 메시지 데이터 변경 시 부모에게 전달
+
+[ ] SenderNumberSelectModal.tsx
+    - fetchSenderNumbers() API 호출 추가
+    - onSelect 핸들러 연결
+
+[ ] SaveContentModal.tsx
+    - handleSave() API 호출 추가
+
+[ ] LoadContentModal.tsx
+    - fetchTemplates() API 호출 추가
+
+⚠️ 주의: 컴포넌트 JSX 구조는 절대 수정하지 말 것!
+         useState, useEffect, handler 함수만 추가!
+
+
+Day 7: 통합 테스트 및 버그 수정
+-----------------------------
+[ ] 전체 플로우 테스트
+    1. 발신번호 선택
+    2. 수신번호 입력
+    3. 메시지 작성
+    4. 즉시 발송
+    5. 예약 발송
+    6. 템플릿 저장/불러오기
+
+[ ] 에러 케이스 테스트
+    - 잔액 부족
+    - 잘못된 전화번호
+    - 네트워크 오류
+    - JWT 만료
+
+[ ] 버그 수정 및 최적화
+
+
+================================================================================
+8. 프론트엔드 연동 (API 호출만, 🚫 UI 수정 금지!)
+================================================================================
+
+8.1 MessageSendTab.tsx 연동
+---------------------------
+
+```typescript
+// 🚫 기존 JSX는 절대 수정하지 말 것!
+// ✅ 다음 코드만 추가:
+
+import { useState, useEffect } from 'react';
+
+export default function MessageSendTab() {
+  // 상태 추가
+  const [selectedSenderNumber, setSelectedSenderNumber] = useState(null);
+  const [recipients, setRecipients] = useState([]);
+  const [messageData, setMessageData] = useState({
+    subject: '',
+    content: '',
+    isAd: false
+  });
+  const [loading, setLoading] = useState(false);
+
+  // 수신자 추가 핸들러
+  const handleAddRecipient = (phoneNumber: string) => {
+    // 전화번호 유효성 검사
+    const cleaned = phoneNumber.replace(/[^0-9]/g, '');
+    if (!/^01[0-9]{8,9}$/.test(cleaned)) {
+      alert('올바른 전화번호를 입력하세요.');
+      return;
+    }
+
+    setRecipients([...recipients, { phone_number: cleaned }]);
+  };
+
+  // 발송 핸들러
+  const handleSend = async () => {
+    // 유효성 검사
+    if (!selectedSenderNumber) {
+      alert('발신번호를 선택해주세요.');
+      return;
+    }
+
+    if (recipients.length === 0) {
+      alert('수신자를 추가해주세요.');
+      return;
+    }
+
+    if (!messageData.content) {
+      alert('메시지 내용을 입력해주세요.');
+      return;
+    }
+
+    // 발송 확인
+    const confirmed = confirm(
+      `${recipients.length}명에게 발송하시겠습니까?`
+    );
+
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}` // 기존 인증 토큰 사용
+        },
+        body: JSON.stringify({
+          recipients,
+          message: messageData.content,
+          subject: messageData.subject,
+          sendType: 'immediate'
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`${result.successCount}건 발송 완료!`);
+        // 수신자 목록 초기화
+        setRecipients([]);
+      } else {
+        alert(`발송 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('발송 오류:', error);
+      alert('발송 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🚫 기존 return JSX는 절대 수정하지 말 것!
+  // ✅ 버튼 onClick에만 핸들러 연결
+}
+```
+
+
+8.2 SenderNumberSelectModal.tsx 연동
+-----------------------------------
+
+```typescript
+// 🚫 기존 JSX는 절대 수정하지 말 것!
+// ✅ 다음 코드만 추가:
+
+const [senderNumbers, setSenderNumbers] = useState([]);
+const [loading, setLoading] = useState(false);
+
+useEffect(() => {
+  if (isOpen) {
+    fetchSenderNumbers();
+  }
+}, [isOpen]);
+
+const fetchSenderNumbers = async () => {
+  setLoading(true);
+  try {
+    const response = await fetch('/api/sender-numbers', {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+
+    const { data } = await response.json();
+    setSenderNumbers(data || []);
+  } catch (error) {
+    console.error('발신번호 조회 실패:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSelect = (number) => {
+  onSelect(number); // 부모 컴포넌트로 전달
+  onClose();
+};
+```
+
+
+8.3 SaveContentModal.tsx 연동
+----------------------------------
+
+```typescript
+const handleSave = async () => {
+  if (!templateName || !currentContent) {
+    alert('템플릿 이름과 내용을 입력하세요.');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/message-templates', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({
+        name: templateName,
+        content: currentContent,
+        category: '기타'
+      })
+    });
+
+    if (response.ok) {
+      alert('저장되었습니다.');
+      onClose();
+    } else {
+      const { error } = await response.json();
+      alert(`저장 실패: ${error}`);
+    }
+  } catch (error) {
+    console.error('저장 오류:', error);
+    alert('저장 중 오류가 발생했습니다.');
+  }
+};
+```
+
+
+================================================================================
+9. 테스트 시나리오
+================================================================================
+
+9.1 API 단위 테스트 (Postman/Thunder Client)
+-------------------------------------------
+
+✅ POST /api/messages/send (즉시 발송)
+요청:
+```json
+{
+  "recipients": [{"phone_number": "01012345678"}],
+  "message": "테스트 메시지",
+  "sendType": "immediate"
+}
+```
+예상 결과: 200 OK, successCount: 1
+
+✅ POST /api/messages/send (예약 발송)
+요청:
+```json
+{
+  "recipients": [{"phone_number": "01012345678"}],
+  "message": "테스트 메시지",
+  "sendType": "scheduled",
+  "scheduledAt": "2025-10-15T14:00:00+09:00"
+}
+```
+예상 결과: 200 OK, scheduledCount: 1
+
+✅ GET /api/messages/scheduled
+예상 결과: 200 OK, messages 배열 반환
+
+✅ GET /api/sender-numbers
+예상 결과: 200 OK, data 배열 반환
+
+✅ POST /api/message-templates
+요청:
+```json
+{
+  "name": "테스트 템플릿",
+  "content": "안녕하세요"
+}
+```
+예상 결과: 201 Created
+
+
+9.2 통합 테스트 (UI에서)
+-----------------------
+🚫 주의: UI 수정 없이 기능만 테스트!
+
+1. 발신번호 선택
+   [ ] 발신번호 목록이 표시되는가?
+   [ ] 선택 시 상태가 업데이트되는가?
+
+2. 수신번호 추가
+   [ ] 전화번호 입력 후 추가 버튼 클릭
+   [ ] 목록에 추가되는가?
+   [ ] 잘못된 번호 입력 시 에러 메시지?
+
+3. 메시지 작성
+   [ ] 내용 입력 시 상태 업데이트?
+   [ ] 글자 수 카운트 동작?
+
+4. 즉시 발송
+   [ ] 발송 버튼 클릭
+   [ ] 확인 다이얼로그 표시?
+   [ ] 발송 완료 메시지?
+   [ ] 잔액 차감 확인?
+
+5. 템플릿 저장
+   [ ] 저장 모달 열림?
+   [ ] 템플릿 이름 입력 후 저장?
+   [ ] 저장 완료 메시지?
+
+6. 템플릿 불러오기
+   [ ] 불러오기 모달 열림?
+   [ ] 템플릿 목록 표시?
+   [ ] 선택 시 내용 복원?
+
+
+9.3 에러 케이스 테스트
+---------------------
+[ ] 잔액 부족 시 발송 차단
+[ ] 잘못된 전화번호 입력 시 에러
+[ ] JWT 토큰 만료 시 401 에러
+[ ] 네트워크 오류 처리
+[ ] 예약 시간이 과거인 경우 에러
+
+
+================================================================================
+10. 보안 및 에러 처리
+================================================================================
+
+10.1 보안
+--------
+✅ JWT 토큰 검증 (모든 API)
+✅ 사용자별 데이터 격리 (user_id 필터)
+✅ 전화번호 형식 검증
+✅ SQL Injection 방지 (Parameterized Query)
+✅ Rate Limiting (추후 추가)
+
+10.2 에러 처리
+------------
+클라이언트:
+```typescript
+try {
+  const response = await fetch('/api/messages/send', {...});
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error);
+  }
+  const data = await response.json();
+  // 성공 처리
+} catch (error) {
+  console.error(error);
+  alert(error.message || '오류가 발생했습니다.');
+}
+```
+
+서버:
+- 200: 성공
+- 400: 잘못된 요청
+- 401: 인증 실패
+- 403: 권한 없음
+- 500: 서버 오류
+
+
+================================================================================
+11. 최종 확인 사항
+================================================================================
+
+구현 시작 전 체크:
+------------------
+[ ] 이 계획서를 처음부터 끝까지 읽었는가?
+[ ] UI 수정 금지 원칙을 이해했는가?
+[ ] 기존 리소스 (API, 라이브러리)를 파악했는가?
+[ ] 공통 로직 추출 전략을 이해했는가?
+[ ] 7일 구현 일정을 확인했는가?
+
+구현 중 체크:
+------------
+[ ] 🚫 UI 파일(JSX)을 수정하고 있지 않은가?
+[ ] ✅ API 엔드포인트만 생성하고 있는가?
+[ ] ✅ 기존 유틸리티를 재사용하고 있는가?
+[ ] ✅ 테스트를 병행하고 있는가?
+
+구현 완료 후 체크:
+----------------
+[ ] 모든 API가 정상 동작하는가?
+[ ] 프론트엔드에서 발송이 가능한가?
+[ ] 잔액 차감이 정상 동작하는가?
+[ ] 예약 발송이 정상 동작하는가?
+[ ] 에러 케이스가 적절히 처리되는가?
+[ ] 🚫 UI가 변경되지 않았는가?
+
+
+================================================================================
+12. 참고 사항
+================================================================================
+
+12.1 메시지 타입별 단가
+---------------------
+- SMS (90바이트 이하): 20원
+- LMS (91바이트 이상): 50원
+- MMS (이미지 포함): 200원 (추후 구현)
+
+12.2 치환문구 형식
+----------------
+- SMS: #[변수명] 형식
+- 예시: "안녕하세요 #[이름]님, #[시간]에 방문 예약되었습니다."
+
+12.3 전화번호 형식
+----------------
+- 형식: 01012345678 (하이픈 제거)
+- 정규식: /^01[0-9]{8,9}$/
+
+12.4 개발 환경
+-------------
+- Node.js: v18+
+- Next.js: 15.3.2
+- TypeScript: 5+
+- Supabase: PostgreSQL
+
+
+================================================================================
+문서 끝
+================================================================================
+
+📌 마지막 체크:
+[ ] UI 수정 금지 원칙을 숙지했습니까? → YES
+[ ] 구현 계획을 이해했습니까? → YES
+[ ] 7일 일정을 확인했습니까? → YES
+
+✅ 모두 YES라면 구현을 시작하세요!
+🚫 UI는 절대 건드리지 말고 API만 구현하세요!
+
+================================================================================

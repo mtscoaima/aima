@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   FileText,
   Image as ImageIcon,
@@ -12,15 +12,48 @@ import {
 import SimpleContentSaveModal from "../modals/SimpleContentSaveModal";
 import LoadContentModal from "../modals/LoadContentModal";
 
-const SmsMessageContent = () => {
+interface MessageData {
+  subject: string;
+  content: string;
+  isAd: boolean;
+}
+
+interface SmsMessageContentProps {
+  messageData?: MessageData;
+  onMessageDataChange?: (data: MessageData) => void;
+}
+
+const SmsMessageContent = ({ messageData, onMessageDataChange }: SmsMessageContentProps) => {
+  const [subject, setSubject] = useState("");
   const [subjectLength, setSubjectLength] = useState(0);
   const [messageLength, setMessageLength] = useState(0);
   const [messageContent, setMessageContent] = useState("");
+  const [isAd, setIsAd] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [loadModalActiveTab, setLoadModalActiveTab] = useState("saved");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (messageData) {
+      setSubject(messageData.subject);
+      setSubjectLength(messageData.subject.length);
+      setMessageContent(messageData.content);
+      setMessageLength(messageData.content.length);
+      setIsAd(messageData.isAd);
+    }
+  }, [messageData]);
+
+  const notifyParent = (newSubject: string, newContent: string, newIsAd: boolean) => {
+    if (onMessageDataChange) {
+      onMessageDataChange({
+        subject: newSubject,
+        content: newContent,
+        isAd: newIsAd
+      });
+    }
+  };
 
   const placeholderText = `이곳에 문자 내용을 입력합니다.
 치환문구 예시) #[이름]님 #[시간]시 방문 예약입니다.`;
@@ -33,8 +66,8 @@ const SmsMessageContent = () => {
       const newText = messageContent.slice(0, start) + "#[변수 A]" + messageContent.slice(end);
       setMessageContent(newText);
       setMessageLength(newText.length);
+      notifyParent(subject, newText, isAd);
 
-      // 커서 위치를 치환문구 뒤로 이동
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + 7, start + 7);
@@ -52,7 +85,6 @@ const SmsMessageContent = () => {
     setIsLoadModalOpen(true);
   };
 
-  // 치환문구 개수 계산
   const getVariableCount = () => {
     const matches = messageContent.match(/#\[.*?\]/g);
     return matches ? matches.length : 0;
@@ -71,9 +103,14 @@ const SmsMessageContent = () => {
         <input
           type="text"
           placeholder=""
+          value={subject}
           className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
           maxLength={40}
-          onChange={(e) => setSubjectLength(e.target.value.length)}
+          onChange={(e) => {
+            setSubject(e.target.value);
+            setSubjectLength(e.target.value.length);
+            notifyParent(e.target.value, messageContent, isAd);
+          }}
         />
       </div>
 
@@ -89,6 +126,7 @@ const SmsMessageContent = () => {
             onChange={(e) => {
               setMessageContent(e.target.value);
               setMessageLength(e.target.value.length);
+              notifyParent(subject, e.target.value, isAd);
             }}
           />
 
@@ -199,7 +237,16 @@ const SmsMessageContent = () => {
       {/* 광고메시지 여부 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2">
-          <input type="checkbox" id="adMessage" className="rounded" />
+          <input
+            type="checkbox"
+            id="adMessage"
+            className="rounded"
+            checked={isAd}
+            onChange={(e) => {
+              setIsAd(e.target.checked);
+              notifyParent(subject, messageContent, e.target.checked);
+            }}
+          />
           <label htmlFor="adMessage" className="text-sm text-gray-700">광고메시지 여부</label>
           <HelpCircle className="w-4 h-4 text-gray-400" />
         </div>

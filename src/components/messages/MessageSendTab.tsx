@@ -10,7 +10,8 @@ import {
   Upload,
   Plus,
   Edit,
-  Download
+  Download,
+  X
 } from "lucide-react";
 import SmsMessageContent from "./SmsMessageContent";
 import KakaoMessageContent from "./KakaoMessageContent";
@@ -21,6 +22,18 @@ import SenderNumberManageModal from "../modals/SenderNumberManageModal";
 import SaveContentModal from "../modals/SaveContentModal";
 import LoadContentModal from "../modals/LoadContentModal";
 
+interface Recipient {
+  phone_number: string;
+  name?: string;
+  variables?: Record<string, string>;
+}
+
+interface MessageData {
+  subject: string;
+  content: string;
+  isAd: boolean;
+}
+
 const MessageSendTab = () => {
   const [activeMessageTab, setActiveMessageTab] = useState("sms");
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
@@ -28,6 +41,22 @@ const MessageSendTab = () => {
   const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+
+  // 발신번호 및 수신번호 상태
+  const [selectedSenderNumber, setSelectedSenderNumber] = useState<string>("");
+  const [recipientInput, setRecipientInput] = useState("");
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+
+  // 메시지 데이터 상태
+  const [messageData, setMessageData] = useState<MessageData>({
+    subject: "",
+    content: "",
+    isAd: false
+  });
+
+  // 로딩 및 에러 상태
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // 탭별 테마색 정의
   const getThemeColor = (tab: string) => {
@@ -41,7 +70,9 @@ const MessageSendTab = () => {
   };
 
   // 모달 핸들러
-  const handleSelectModalOpen = () => setIsSelectModalOpen(true);
+  const handleSelectModalOpen = () => {
+    alert("발신번호 선택 기능은 개발 중입니다.\n현재는 테스트 발신번호로 전송됩니다.");
+  };
   const handleSelectModalClose = () => setIsSelectModalOpen(false);
   const handleManageModalOpen = () => {
     setIsSelectModalOpen(false);
@@ -49,10 +80,129 @@ const MessageSendTab = () => {
   };
   const handleManageModalClose = () => setIsManageModalOpen(false);
 
+  // 수신번호 추가
+  const handleAddRecipient = () => {
+    const trimmed = recipientInput.trim();
+    if (!trimmed) return;
+
+    // 전화번호 형식 검증 (하이픈 제거)
+    const phoneNumber = trimmed.replace(/-/g, "");
+    if (!/^01[0-9]{8,9}$/.test(phoneNumber)) {
+      setError("올바른 전화번호 형식이 아닙니다 (예: 01012345678)");
+      return;
+    }
+
+    // 중복 확인
+    if (recipients.some(r => r.phone_number === phoneNumber)) {
+      setError("이미 추가된 번호입니다");
+      return;
+    }
+
+    setRecipients([...recipients, { phone_number: phoneNumber }]);
+    setRecipientInput("");
+    setError(null);
+  };
+
+  // 수신번호 제거
+  const handleRemoveRecipient = (phoneNumber: string) => {
+    setRecipients(recipients.filter(r => r.phone_number !== phoneNumber));
+  };
+
+  // 수신번호 전체 비우기
+  const handleClearRecipients = () => {
+    setRecipients([]);
+  };
+
+  // 메시지 데이터 변경 핸들러
+  const handleMessageDataChange = (data: MessageData) => {
+    setMessageData(data);
+  };
+
+  // 전송/예약 준비 버튼 클릭
+  const handleSendPrepare = async () => {
+    // 유효성 검증
+    if (recipients.length === 0) {
+      alert("수신번호를 추가해주세요");
+      return;
+    }
+
+    if (!messageData.content.trim()) {
+      alert("메시지 내용을 입력해주세요");
+      return;
+    }
+
+    // 여기서는 "준비" 단계이므로 실제 API 호출을 하지 않고
+    // 사용자에게 확인 모달을 보여주는 것이 적절합니다
+    // 실제 전송은 확인 모달에서 "전송" 버튼 클릭 시 수행됩니다
+
+    const confirmMessage = `
+발신번호: 테스트 발신번호
+수신자 수: ${recipients.length}명
+메시지 내용: ${messageData.content.substring(0, 50)}${messageData.content.length > 50 ? '...' : ''}
+
+전송하시겠습니까?
+    `.trim();
+
+    if (confirm(confirmMessage)) {
+      await handleImmediateSend();
+    }
+  };
+
+  // 즉시 전송
+  const handleImmediateSend = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("로그인이 필요합니다");
+      }
+
+      const response = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          from_number: selectedSenderNumber,
+          recipients: recipients,
+          message: messageData.content,
+          subject: messageData.subject || undefined,
+          sendType: "immediate",
+          isAd: messageData.isAd
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "메시지 전송에 실패했습니다");
+      }
+
+      alert(`메시지 전송 완료\n성공: ${data.results.filter((r: any) => r.success).length}건\n실패: ${data.results.filter((r: any) => !r.success).length}건`);
+
+      // 전송 후 수신번호 목록 비우기 (선택사항)
+      setRecipients([]);
+
+    } catch (err: any) {
+      setError(err.message);
+      alert(`전송 실패: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const renderMessageContent = () => {
     switch (activeMessageTab) {
       case "sms":
-        return <SmsMessageContent />;
+        return (
+          <SmsMessageContent
+            messageData={messageData}
+            onMessageDataChange={handleMessageDataChange}
+          />
+        );
       case "kakao":
         return <KakaoMessageContent />;
       case "rcs":
@@ -60,7 +210,12 @@ const MessageSendTab = () => {
       case "naver":
         return <NaverTalkContent />;
       default:
-        return <SmsMessageContent />;
+        return (
+          <SmsMessageContent
+            messageData={messageData}
+            onMessageDataChange={handleMessageDataChange}
+          />
+        );
     }
   };
 
@@ -75,7 +230,9 @@ const MessageSendTab = () => {
             <span className="font-medium text-gray-700">메시지 발신번호</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-500 text-sm">선택된 발신번호 없음</span>
+            <span className="text-gray-500 text-sm">
+              {selectedSenderNumber || "선택된 발신번호 없음"}
+            </span>
             <button
               className="text-white px-4 py-2 rounded text-sm hover:opacity-90"
               style={{ backgroundColor: getThemeColor(activeMessageTab) }}
@@ -96,14 +253,27 @@ const MessageSendTab = () => {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="01022224444"
+                placeholder="01012345678"
+                value={recipientInput}
+                onChange={(e) => setRecipientInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddRecipient();
+                  }
+                }}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
               />
               <HelpCircle className="w-4 h-4 text-gray-400" />
-              <button className="bg-gray-500 text-white px-3 py-2 rounded text-sm hover:bg-gray-600">
+              <button
+                onClick={handleAddRecipient}
+                className="bg-gray-500 text-white px-3 py-2 rounded text-sm hover:bg-gray-600"
+              >
                 추가
               </button>
             </div>
+            {error && (
+              <div className="text-xs text-red-500">{error}</div>
+            )}
             <div className="w-full justify-between flex gap-2">
               <button className="flex items-center gap-1 w-full justify-center py-2 border border-orange-500 text-orange-500 rounded text-sm hover:bg-orange-50">
                 <FileText className="w-4 h-4" />
@@ -121,21 +291,45 @@ const MessageSendTab = () => {
           </div>
         </div>
 
-        {/* 주가한 수신번호 */}
+        {/* 추가한 수신번호 */}
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-gray-600" />
-              <span className="font-medium text-gray-700">주가한 수신번호</span>
-              <span className="text-gray-500 text-sm">(총 0개)</span>
+              <span className="font-medium text-gray-700">추가한 수신번호</span>
+              <span className="text-gray-500 text-sm">(총 {recipients.length}개)</span>
             </div>
-            <button className="text-gray-400 text-sm hover:text-gray-600">
-              비우기
-            </button>
+            {recipients.length > 0 && (
+              <button
+                onClick={handleClearRecipients}
+                className="text-gray-400 text-sm hover:text-gray-600"
+              >
+                비우기
+              </button>
+            )}
           </div>
-          <div className="text-center py-8 text-gray-500 text-sm">
-            수신자명단이 비어있습니다.
-          </div>
+          {recipients.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 text-sm">
+              수신자명단이 비어있습니다.
+            </div>
+          ) : (
+            <div className="max-h-60 overflow-y-auto space-y-2">
+              {recipients.map((recipient, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
+                >
+                  <span>{recipient.phone_number}</span>
+                  <button
+                    onClick={() => handleRemoveRecipient(recipient.phone_number)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 저장 섹션 */}
@@ -240,10 +434,12 @@ const MessageSendTab = () => {
         {/* 전송/예약 준비 버튼 */}
         <div className="mt-6">
           <button
-            className="w-full text-white py-2 rounded-lg text-lg font-semibold hover:opacity-90 transition-opacity"
+            onClick={handleSendPrepare}
+            disabled={isLoading}
+            className="w-full text-white py-2 rounded-lg text-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             style={{ backgroundColor: getThemeColor(activeMessageTab) }}
           >
-            전송/예약 준비
+            {isLoading ? "전송 중..." : "전송/예약 준비"}
           </button>
           <div className="text-center font-semibold mt-2 text-sm text-gray-600">
             &quot;전송 준비&quot;는 잔액이 차감되지 않습니다.
@@ -259,6 +455,7 @@ const MessageSendTab = () => {
         isOpen={isSelectModalOpen}
         onClose={handleSelectModalClose}
         onManageClick={handleManageModalOpen}
+        onSelect={(phoneNumber) => setSelectedSenderNumber(phoneNumber)}
       />
       <SenderNumberManageModal
         isOpen={isManageModalOpen}
