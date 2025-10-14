@@ -256,12 +256,27 @@ const SmsMessageContent = ({ messageData, onMessageDataChange }: SmsMessageConte
       <SimpleContentSaveModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
-        currentContent={messageContent}
+        currentContent={{
+          subject: subject,
+          content: messageContent,
+          isAd: isAd,
+        }}
+        onSaveSuccess={() => {
+          // 템플릿 저장 성공 시 필요한 작업
+        }}
       />
       <LoadContentModal
         isOpen={isLoadModalOpen}
         onClose={() => setIsLoadModalOpen(false)}
         initialActiveTab={loadModalActiveTab}
+        onSelect={(content) => {
+          setSubject(content.subject || "");
+          setSubjectLength((content.subject || "").length);
+          setMessageContent(content.content);
+          setMessageLength(content.content.length);
+          setIsAd(content.isAd || false);
+          notifyParent(content.subject || "", content.content, content.isAd || false);
+        }}
       />
     </>
   );

@@ -7,22 +7,76 @@ import { X } from "lucide-react";
 interface SimpleContentSaveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentContent: string;
+  currentContent: {
+    subject?: string;
+    content: string;
+    isAd?: boolean;
+  };
+  onSaveSuccess?: () => void;
 }
 
 const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
   isOpen,
   onClose,
   currentContent,
+  onSaveSuccess,
 }) => {
   const router = useRouter();
   const [saveName, setSaveName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    alert("저장 기능은 준비 중입니다.");
-    onClose();
+  const handleSave = async () => {
+    if (!saveName.trim()) {
+      alert("저장 이름을 입력하세요.");
+      return;
+    }
+
+    if (!currentContent.content.trim()) {
+      alert("저장할 메시지 내용이 없습니다.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("로그인이 필요합니다");
+      }
+
+      const response = await fetch("/api/sms-templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: saveName.trim(),
+          content: currentContent.content.trim(),
+          subject: currentContent.subject?.trim() || "",
+          isPrivate: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "템플릿 저장에 실패했습니다");
+      }
+
+      alert("템플릿이 저장되었습니다.");
+      setSaveName("");
+      onSaveSuccess?.();
+      onClose();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "알 수 없는 오류";
+      alert(`저장 실패: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -56,7 +110,7 @@ const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">내용</label>
             <textarea
-              value={currentContent}
+              value={currentContent.content}
               readOnly
               className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 resize-none"
             />
@@ -64,10 +118,10 @@ const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
 
           <button
             onClick={handleSave}
-            disabled={!saveName.trim()}
+            disabled={isLoading || !saveName.trim()}
             className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            내용 저장하기
+            {isLoading ? "저장 중..." : "내용 저장하기"}
           </button>
         </div>
 

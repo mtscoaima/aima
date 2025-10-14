@@ -615,10 +615,25 @@ const MessageSendTab = () => {
       <SaveContentModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
+        currentContent={{
+          subject: messageData.subject,
+          content: messageData.content,
+          isAd: messageData.isAd,
+        }}
+        onSaveSuccess={() => {
+          // 저장 성공 시 필요한 작업
+        }}
       />
       <LoadContentModal
         isOpen={isLoadModalOpen}
         onClose={() => setIsLoadModalOpen(false)}
+        onSelect={(content) => {
+          setMessageData({
+            subject: content.subject || "",
+            content: content.content,
+            isAd: content.isAd || false,
+          });
+        }}
       />
        <AddressBookModal
         isOpen={isAddressBookModalOpen}
