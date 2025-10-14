@@ -37,7 +37,7 @@ const TextUploadModal: React.FC<TextUploadModalProps> = ({
       const trimmedLine = line.trim();
 
       // 전화번호 추출 (01로 시작하는 10~11자리 숫자 또는 +82로 시작)
-      let phoneMatch = trimmedLine.match(/01[0-9]{8,9}/);
+      const phoneMatch = trimmedLine.match(/01[0-9]{8,9}/);
       let phoneNumber = phoneMatch ? phoneMatch[0] : null;
 
       // +82 형식 처리

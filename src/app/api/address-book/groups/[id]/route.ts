@@ -13,7 +13,7 @@ interface JWTPayload {
 // DELETE: 주소록 그룹 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -25,7 +25,8 @@ export async function DELETE(
     const jwtSecret = process.env.JWT_SECRET!;
     const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
 
-    const groupId = parseInt(params.id);
+    const { id } = await params;
+    const groupId = parseInt(id);
     if (isNaN(groupId)) {
       return NextResponse.json({ error: "유효하지 않은 그룹 ID입니다" }, { status: 400 });
     }

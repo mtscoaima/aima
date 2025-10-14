@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Search, Phone, Settings, Headset } from "lucide-react";
+import { X, Search, Phone, Settings } from "lucide-react";
 import SenderNumberRegistrationModal from "./SenderNumberRegistrationModal";
 import LimitRemovalModal from "./LimitRemovalModal";
 

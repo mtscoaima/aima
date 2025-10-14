@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Building, User, Headset, Check } from "lucide-react";
+import { X, Building, User, Check } from "lucide-react";
 
 interface SenderNumberRegistrationModalProps {
   isOpen: boolean;

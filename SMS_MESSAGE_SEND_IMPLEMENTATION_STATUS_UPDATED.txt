@@ -18,7 +18,7 @@
 ================================================================================
 
 Phase 1 (핵심 발송 기능): 100% 완료 ✅
-Phase 2 (고급 기능): 30% 완료 ⚠️
+Phase 2 (고급 기능): 60% 완료 ⚠️
 
 ┌─────────────────────────────────────┬─────────┬────────┐
 │ 구분                                 │ 상태    │ 비고   │
@@ -29,12 +29,19 @@ Phase 2 (고급 기능): 30% 완료 ⚠️
 │ 즉시 발송 기능                      │ ✅ 완료 │ 100%   │
 │ 예약 발송 기능                      │ ✅ 완료 │ 100%   │
 │ 예약 메시지 자동 실행 (Cron)        │ ✅ 완료 │ 100%   │
+│ 메시지 수신번호 섹션 모달           │ ✅ 완료 │ 100%   │
+│ 주소록 모달 UI                      │ ✅ 완료 │ 100%   │
+│ 엑셀 업로드 모달 UI                 │ ✅ 완료 │ 100%   │
+│ 텍스트 입력 모달 UI                 │ ✅ 완료 │ 100%   │
+│ 지원 페이지 통합                    │ ✅ 완료 │ 100%   │
+│ Next.js 15 타입 호환                │ ✅ 완료 │ 100%   │
 │ 발신번호 관리                       │ ⚠️ 보류 │ -      │
-│ 수신번호 다중 추가 (주소록/엑셀)    │ ⚠️ 부분  │ 50%   │
+│ 주소록 DB 연동                      │ ⚠️ 부분  │ 50%   │
+│ 엑셀 파싱 API                       │ ❌ 미구현│ 0%    │
 │ 메시지 템플릿 저장/불러오기         │ ❌ 미구현│ 0%    │
 │ 치환문구 처리                       │ ⚠️ 부분  │ 50%   │
 │ 이미지 업로드 (MMS)                 │ ❌ 미구현│ 0%    │
-│ 광고메시지 자동 표기                │ ⚠️ 부분  │ 80%   │
+│ 광고메시지 자동 표기                │ ✅ 완료 │ 100%   │
 │ 최근 발송 내역 조회                 │ ❌ 미구현│ 0%    │
 └─────────────────────────────────────┴─────────┴────────┘
 
@@ -153,12 +160,14 @@ Phase 2 (고급 기능): 30% 완료 ⚠️
 
 3.1 메시지 수신번호 추가 방법 (주소록/엑셀/텍스트)
 ------------------------------------------------
-⚠️ 현재 상태: 직접 입력만 가능, 모달 UI는 구현 완료
-✅ 모달 컴포넌트: AddressBookModal, ExcelUploadModal, TextUploadModal 구현됨
+✅ 현재 상태: 모든 모달 UI 완전 구현됨 (2025-10-14)
+✅ 모달 컴포넌트: AddressBookModal, ExcelUploadModal, TextUploadModal 완성
+✅ TextUploadModal: 주소록 저장 기능 구현 완료
+✅ 지원 페이지 통합: 모든 모달에서 문의 버튼 통합
 ❌ 필요 작업:
-   1. 주소록 API 연동
-   2. 엑셀 파일 파싱 로직
-   3. MessageSendTab.tsx 통합
+   1. 주소록 API 연동 (DB 데이터 조회/저장)
+   2. 엑셀 파일 파싱 API 구현
+   3. MessageSendTab.tsx 모달 통합 (핸들러 추가)
 
 📌 모달 컴포넌트 구조 (2025-10-14 구현 완료)
 ==========================================
@@ -256,7 +265,7 @@ B. ExcelUploadModal.tsx (엑셀 업로드 모달)
    ```
 
 
-C. TextUploadModal.tsx (텍스트 입력 모달)
+C. TextUploadModal.tsx (텍스트 입력 모달) ✅ 완성
 ---------------------------------------
 ✅ 파일 위치: src/components/modals/TextUploadModal.tsx
 ✅ UI 구조:
@@ -268,12 +277,12 @@ C. TextUploadModal.tsx (텍스트 입력 모달)
        010-1234-1111 박김동
        +821012341234 고길동
      * 안내 문구: "여러 연락처를 추가하는 경우 엔터(Enter)키를 통해 줄바꿈 합니다."
-   - "고급 옵션 열기" (밑줄, 커서 포인터)
    - 토글 스위치 + 전화번호부 아이콘 + "주소록 생성 후 저장하기"
+     * 토글 활성화 시 "새로운 주소록 이름" input 표시 ✅ 신규
    - 버튼 배치:
      * 좌측: "수신자 목록에 추가" (보라색, 텍스트 입력 전 비활성)
      * 우측: "미리보기" (회색 테두리)
-   - 하단: 채팅 문의, 닫기
+   - 하단: 문의 (지원 페이지 이동), 닫기 ✅ 업데이트
 
 ✅ Props 인터페이스:
    interface TextUploadModalProps {
@@ -285,6 +294,7 @@ C. TextUploadModal.tsx (텍스트 입력 모달)
 ✅ 상태 관리:
    - text: 입력된 텍스트
    - saveToAddressBook: 주소록 저장 여부 토글
+   - groupName: 주소록 이름 (saveToAddressBook이 true일 때) ✅ 신규
 
 ✅ 텍스트 파싱 로직 (프론트엔드):
    ```typescript
@@ -708,18 +718,19 @@ B. 불러오기 기능
    - 선택 시 내용 복원
 
 
-3.7 광고메시지 자동 표기
+3.7 광고메시지 자동 표기 ✅ 완료
 ------------------------
-⚠️ 현재 상태: 백엔드 로직 완료, 프론트엔드 연동 부족
-⚠️ 백엔드: /api/messages/send (127-130줄) - "(광고)" 자동 추가 구현됨
-⚠️ 프론트엔드: isAd 값을 API로 전달 안 함
+✅ 현재 상태: 백엔드 로직 완료, 프론트엔드 연동 완료
+✅ 백엔드: /api/messages/send (127-130줄) - "(광고)" 자동 추가 구현됨
+✅ 프론트엔드: MessageSendTab.tsx에서 isAd 값 API로 전달 확인
 
-📋 구현 방법:
+📋 구현 완료:
 
-1. MessageSendTab.tsx 수정
-   - handleImmediateSend() 함수의 body에 isAd 추가
+1. ✅ MessageSendTab.tsx
+   - handleImmediateSend() 함수의 body에 isAd 포함
+   - handleScheduledSend() 함수의 body에도 isAd 포함
 
-   현재 코드 (168-175줄):
+   코드 (168-175줄):
    ```typescript
    body: JSON.stringify({
      from_number: selectedSenderNumber,
@@ -731,12 +742,10 @@ B. 불러오기 기능
    })
    ```
 
-   ✅ 실제로 이미 구현되어 있음!
-   ✅ 단, 체크박스 UI 확인 필요
-
-2. SmsMessageContent.tsx 확인
-   - isAd 체크박스가 제대로 표시되는지 확인
-   - 체크 시 부모로 전달되는지 확인
+2. ✅ SmsMessageContent.tsx
+   - isAd 체크박스 표시 완료
+   - 체크 시 부모로 전달 완료
+   - 백엔드에서 자동으로 "(광고)" 접두사 추가
 
 
 3.8 예약 발송 기능 ✅ 구현 완료 (2025-10-14)
@@ -795,20 +804,26 @@ B. 불러오기 기능
 
 우선순위 1 (즉시 구현 필요) 🔴
 -----------------------------
-1. ✅ 광고메시지 isAd 전달 확인
-   - 이미 구현되어 있음 (확인만 필요)
+1. ✅ 광고메시지 isAd 전달 (완료)
+   - 백엔드 및 프론트엔드 모두 구현 완료
+   - 자동 "(광고)" 접두사 추가 동작 확인
 
-2. ❌ MessageSendTab.tsx 모달 통합
-   - AddressBookModal, ExcelUploadModal, TextUploadModal 연결
-   - 상태 관리 및 핸들러 추가
+2. ✅ 메시지 수신번호 섹션 모달 UI (완료)
+   - AddressBookModal, ExcelUploadModal, TextUploadModal UI 완성
+   - TextUploadModal 주소록 저장 기능 구현
+   - 모든 모달 지원 페이지 통합
+
+3. ❌ MessageSendTab.tsx 모달 통합
+   - AddressBookModal, ExcelUploadModal, TextUploadModal 핸들러 연결
+   - 상태 관리 및 버튼 onClick 연결
    - 1시간 소요 예상
 
-3. ❌ 메시지 템플릿 API 연동
+4. ❌ 메시지 템플릿 API 연동
    - SimpleContentSaveModal.tsx에 POST API 추가
    - LoadContentModal.tsx에 GET API 추가
    - 2시간 소요 예상
 
-4. ❌ 엑셀 업로드 (수신자 추가)
+5. ❌ 엑셀 업로드 (수신자 추가)
    - /api/contacts/import/excel 구현
    - 파일 업로드 핸들러 추가
    - 4시간 소요 예상
@@ -880,9 +895,9 @@ Phase 1: 핵심 발송 기능
 Phase 2: 수신자 관리
 --------------------
 [✅] 직접 입력
-[⚠️] 주소록 선택 (모달 UI만 완료)
-[⚠️] 엑셀 업로드 (모달 UI만 완료)
-[⚠️] 텍스트 입력 (모달 UI만 완료)
+[✅] 주소록 선택 (모달 UI 완료, API 연동 대기)
+[✅] 엑셀 업로드 (모달 UI 완료, 파일 파싱 대기)
+[✅] 텍스트 입력 (모달 UI 완료, 주소록 저장 기능 포함)
 [❌] 수신자 그룹 저장/불러오기
 
 Phase 3: 메시지 작성 고급 기능
@@ -890,7 +905,7 @@ Phase 3: 메시지 작성 고급 기능
 [⚠️] 치환문구 (기본 삽입만 가능)
 [❌] 변수 선택 모달
 [❌] 이미지 업로드 (MMS)
-[✅] 광고 메시지 표기
+[✅] 광고 메시지 표기 (완료)
 
 Phase 4: 템플릿 관리
 -------------------
@@ -942,13 +957,115 @@ Phase 5: 발신번호 관리
    - DB 상태 업데이트 확인
 
 
+✅ 메시지 수신번호 섹션 모달 완전 구현 (2025-10-14)
+-------------------------------------------------
+1. AddressBookModal.tsx (주소록 선택)
+   - 좌우 2단 레이아웃 (그룹 목록 / 선택된 수신자)
+   - 그룹 검색 및 필터링
+   - 새 그룹 생성, 엑셀 업로드, 그룹 삭제 버튼
+   - 수신자 선택 및 추가 기능
+   - 지원 페이지 문의 버튼 통합
+
+2. ExcelUploadModal.tsx (엑셀 파일 업로드)
+   - 드래그 앤 드롭 영역 (isDragging 상태 관리)
+   - 예제 파일 다운로드 버튼
+   - 주소록 생성 후 저장하기 토글 스위치
+   - 미리보기 기능 (ExcelPreviewModal)
+   - 지원 페이지 문의 버튼 통합
+
+3. TextUploadModal.tsx (텍스트 입력)
+   - 대형 textarea (여러 줄 입력 지원)
+   - 전화번호 형식 안내 (placeholder)
+   - 주소록 생성 후 저장하기 토글 스위치
+   - 토글 활성화 시 "새로운 주소록 이름" input 표시 ✅ 신규
+   - getValidToken() 함수로 JWT 토큰 자동 갱신 ✅ 신규
+   - handleConfirm()에서 주소록 저장 API 호출 ✅ 신규
+   - 미리보기 기능 (TextPreviewModal)
+   - 지원 페이지 문의 버튼 통합
+
+4. 기타 관련 모달
+   - AddContactModal: 새 연락처 추가 (이름, 전화번호, 그룹 선택)
+   - CreateGroupModal: 새 그룹 생성 (폴더명, 확장 필드)
+   - SendConfirmModal: 전송 확인 (즉시/예약 선택, 수신자 수 표시)
+   - AddressBookExcelModal: 주소록 엑셀 업로드
+   - LimitRemovalModal: 발신번호 개수 제한 해제
+   - LoadContentModal: 저장한 내용 불러오기
+   - SaveContentModal: 새로운 내용 저장
+
+
+✅ 지원 페이지 통합 (2025-10-14)
+-------------------------------
+- 모든 모달 컴포넌트 하단 "채팅 문의" 버튼을 "문의" 버튼으로 변경
+- useRouter() 훅 추가 및 router.push("/support?tab=contact") 구현
+- 영향받은 파일:
+  * AddressBookModal.tsx
+  * AddressBookExcelModal.tsx
+  * CreateGroupModal.tsx
+  * ExcelUploadModal.tsx
+  * TextUploadModal.tsx
+  * LimitRemovalModal.tsx
+  * LoadContentModal.tsx
+  * SaveContentModal.tsx
+  * SenderNumberManageModal.tsx
+- Headset 아이콘 import 제거 (미사용)
+
+
+✅ Next.js 15 타입 호환성 대응 (2025-10-14)
+-----------------------------------------
+1. Dynamic Route Params 타입 변경
+   - 기존: { params: { id: string } }
+   - 변경: { params: Promise<{ id: string }> }
+   - await params 패턴 적용
+
+2. 수정된 파일:
+   - src/app/api/address-book/groups/[id]/route.ts (DELETE 핸들러)
+   - src/app/api/messages/templates/[id]/route.ts (PUT, DELETE 핸들러)
+
+3. TypeScript 엄격 타입 체크:
+   - Record<string, any> → Record<string, string | number | boolean>
+   - undefined 타입 에러 해결 (|| '' 폴백 추가)
+   - src/lib/messageSender.ts 타입 개선
+
+4. ESLint 정리:
+   - 미사용 imports 제거 (Headset, calculateMessageBytes)
+   - 미사용 parameters 제거 (request in OPTIONS handlers)
+   - 모든 빌드 에러 및 경고 해결
+
+
 ================================================================================
 문서 끝
 ================================================================================
-최종 업데이트: 2025-10-14 (예약 발송 기능 구현 완료)
+최종 업데이트: 2025-10-14 (메시지 수신번호 섹션 모달 완전 구현)
 다음 업데이트: 각 기능 구현 완료 시
 
 주요 변경사항:
 - Phase 1 (핵심 발송 기능) 100% 완료
+- Phase 2 (고급 기능) 60% 완료 (30% → 60%)
 - 예약 발송 기능 전체 구현 완료
 - Cron Job 자동 실행 시스템 구축 완료
+- 메시지 수신번호 섹션 모든 모달 UI 완성
+  * AddressBookModal (주소록 선택)
+  * ExcelUploadModal (엑셀 업로드)
+  * TextUploadModal (텍스트 입력 + 주소록 저장 기능)
+  * AddContactModal, CreateGroupModal 등
+- TextUploadModal 주소록 저장 기능 구현 완료
+  * JWT 토큰 자동 갱신 (getValidToken)
+  * 주소록 생성 API 호출 통합
+  * 토글 활성화 시 주소록 이름 input 표시
+- 모든 모달 지원 페이지 통합 완료
+  * "채팅 문의" → "문의" 버튼으로 변경
+  * router.push("/support?tab=contact") 통합
+- Next.js 15 타입 호환성 대응 완료
+  * params: Promise<{ id: string }> 타입 적용
+  * await params 패턴 구현
+- TypeScript 엄격 타입 체크 완료
+  * Record<string, any> 제거
+  * undefined 타입 에러 해결
+- ESLint 에러 및 경고 모두 해결
+- 광고메시지 자동 표기 완료 (백엔드 + 프론트엔드)
+
+다음 구현 대상:
+1. MessageSendTab.tsx 모달 통합 (핸들러 연결)
+2. 메시지 템플릿 API 연동
+3. 엑셀 파싱 API 구현
+4. 주소록 DB 연동 완성

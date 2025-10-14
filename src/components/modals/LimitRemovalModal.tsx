@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { X, Upload, Headset } from "lucide-react";
+import { X, Upload } from "lucide-react";
 
 interface LimitRemovalModalProps {
   isOpen: boolean;

@@ -33,7 +33,7 @@ function getUserIdFromToken(token: string): number | null {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. JWT 인증
@@ -56,7 +56,8 @@ export async function PUT(
     }
 
     // 2. ID 파싱
-    const templateId = parseInt(params.id, 10);
+    const { id } = await params;
+    const templateId = parseInt(id, 10);
     if (isNaN(templateId)) {
       return NextResponse.json(
         { error: "유효하지 않은 템플릿 ID입니다" },
@@ -84,7 +85,7 @@ export async function PUT(
     }
 
     // 5. 업데이트 데이터 준비
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, string | boolean> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -135,7 +136,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. JWT 인증
@@ -158,7 +159,8 @@ export async function DELETE(
     }
 
     // 2. ID 파싱
-    const templateId = parseInt(params.id, 10);
+    const { id } = await params;
+    const templateId = parseInt(id, 10);
     if (isNaN(templateId)) {
       return NextResponse.json(
         { error: "유효하지 않은 템플릿 ID입니다" },
@@ -202,7 +204,7 @@ export async function DELETE(
 // OPTIONS 핸들러 (CORS)
 // ============================================================================
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

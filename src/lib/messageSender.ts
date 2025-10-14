@@ -5,7 +5,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { sendNaverSMS, sendNaverMMS } from "@/lib/naverSensApi";
-import { determineMessageType, calculateMessageBytes } from "@/utils/messageTemplateParser";
+import { determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +25,7 @@ export interface SendMessageParams {
   subject?: string;
   messageType?: 'SMS' | 'LMS' | 'MMS';
   imageFileIds?: string[]; // MMS용 이미지 파일 ID
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 export interface SendMessageResult {
@@ -45,7 +45,7 @@ export interface ScheduleMessageParams {
   message: string;
   subject?: string;
   scheduledAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 export interface ScheduleMessageResult {
@@ -137,8 +137,8 @@ export async function sendMessage(
   await deductBalance(userId, creditRequired, messageType, {
     ...metadata,
     recipient: cleanPhone,
-    recipient_name: toName,
-    from_number: fromNumber
+    recipient_name: toName || '',
+    from_number: fromNumber || ''
   });
 
   // 4. 발송 로그 저장 (optional)
@@ -153,8 +153,8 @@ export async function sendMessage(
     creditUsed: creditRequired,
     metadata: {
       ...metadata,
-      naver_request_id: sendResult.requestId,
-      from_number: fromNumber
+      naver_request_id: sendResult.requestId || '',
+      from_number: fromNumber || ''
     }
   });
 
@@ -279,7 +279,7 @@ export async function checkBalance(userId: number): Promise<number> {
     let balance = 0;
 
     for (const transaction of transactions || []) {
-      const metadata = transaction.metadata as Record<string, any> | null;
+      const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
 
       if (transaction.type === "charge") {
         // 충전 (리워드 제외)
@@ -320,7 +320,7 @@ async function deductBalance(
   userId: number,
   amount: number,
   messageType: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, string | number | boolean>
 ): Promise<void> {
   try {
     const { error } = await supabase.from('transactions').insert({
@@ -380,7 +380,7 @@ async function saveMessageLog(params: {
   messageType: string;
   status: string;
   creditUsed: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, string | number | boolean>;
 }): Promise<number | undefined> {
   try {
     const { data, error } = await supabase

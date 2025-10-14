@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, Search, Headset, FileText, Clock } from "lucide-react";
+import { X, Search, FileText, Clock } from "lucide-react";
 
 interface LoadContentModalProps {
   isOpen: boolean;

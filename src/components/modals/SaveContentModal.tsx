@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Headset, HelpCircle } from "lucide-react";
+import { X, HelpCircle } from "lucide-react";
 
 interface SaveContentModalProps {
   isOpen: boolean;
