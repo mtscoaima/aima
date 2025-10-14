@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { X, Upload, Headset } from "lucide-react";
 
 interface LimitRemovalModalProps {
@@ -12,6 +13,8 @@ const LimitRemovalModal: React.FC<LimitRemovalModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const router = useRouter();
+
   if (!isOpen) return null;
 
   return (
@@ -56,10 +59,11 @@ const LimitRemovalModal: React.FC<LimitRemovalModalProps> = ({
 
         {/* 하단 */}
         <div className="flex items-center justify-end p-4 border-t bg-gray-50">
-          <button className="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-            <Headset className="w-4 h-4" />
-            채팅 문의
-            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+          <button
+            onClick={() => router.push("/support?tab=contact")}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            문의
           </button>
           <button
             onClick={onClose}

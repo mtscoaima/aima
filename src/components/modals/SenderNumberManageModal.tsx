@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { X, Search, Phone, Settings, Headset } from "lucide-react";
 import SenderNumberRegistrationModal from "./SenderNumberRegistrationModal";
 import LimitRemovalModal from "./LimitRemovalModal";
@@ -14,6 +15,7 @@ const SenderNumberManageModal: React.FC<SenderNumberManageModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("register");
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
@@ -103,10 +105,11 @@ const SenderNumberManageModal: React.FC<SenderNumberManageModalProps> = ({
 
           {/* 하단 버튼 */}
           <div className="flex items-center justify-end p-4 border-t bg-gray-50">
-            <button className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-800">
-              <Headset className="w-4 h-4" />
-              채팅 문의
-              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+            <button
+              onClick={() => router.push("/support?tab=contact")}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              문의
             </button>
             <button
               onClick={onClose}

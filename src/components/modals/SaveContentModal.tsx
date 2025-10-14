@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { X, Headset, HelpCircle } from "lucide-react";
 
 interface SaveContentModalProps {
@@ -25,6 +26,7 @@ const SaveContentModal: React.FC<SaveContentModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const router = useRouter();
   const [saveName, setSaveName] = useState("");
   const [checkedItems, setCheckedItems] = useState<CheckedItems>({
     messageContent: true,
@@ -193,10 +195,11 @@ const SaveContentModal: React.FC<SaveContentModalProps> = ({
 
         {/* 하단 */}
         <div className="flex items-center justify-end p-4 border-t bg-gray-50">
-          <button className="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-            <Headset className="w-4 h-4" />
-            채팅 문의
-            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+          <button
+            onClick={() => router.push("/support?tab=contact")}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            문의
           </button>
           <button
             onClick={onClose}
