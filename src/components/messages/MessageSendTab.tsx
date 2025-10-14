@@ -21,6 +21,9 @@ import SenderNumberSelectModal from "../modals/SenderNumberSelectModal";
 import SenderNumberManageModal from "../modals/SenderNumberManageModal";
 import SaveContentModal from "../modals/SaveContentModal";
 import LoadContentModal from "../modals/LoadContentModal";
+import AddressBookModal from "../modals/AddressBookModal";
+import ExcelUploadModal from "../modals/ExcelUploadModal";
+import TextUploadModal from "../modals/TextUploadModal";
 
 interface Recipient {
   phone_number: string;
@@ -34,10 +37,18 @@ interface MessageData {
   isAd: boolean;
 }
 
+interface Contact {
+  phone_number: string;
+  name: string;
+}
+
 const MessageSendTab = () => {
   const [activeMessageTab, setActiveMessageTab] = useState("sms");
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isAddressBookModalOpen, setIsAddressBookModalOpen] = useState(false);
+  const [isExcelUploadModalOpen, setIsExcelUploadModalOpen] = useState(false);
+  const [isTextUploadModalOpen, setIsTextUploadModalOpen] = useState(false);
   const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
@@ -79,6 +90,58 @@ const MessageSendTab = () => {
     setIsManageModalOpen(true);
   };
   const handleManageModalClose = () => setIsManageModalOpen(false);
+
+    // 주소록에서 선택한 연락처 추가
+    const handleAddressBookSelect = (contacts: Contact[]) => {
+      const newRecipients = contacts.map(c => ({
+        phone_number: c.phone_number,
+        name: c.name
+      }));
+  
+      const uniqueRecipients = [...recipients];
+      newRecipients.forEach(newRecipient => {
+        if (!uniqueRecipients.some(r => r.phone_number === newRecipient.phone_number)) {
+          uniqueRecipients.push(newRecipient);
+        }
+      });
+  
+      setRecipients(uniqueRecipients);
+    };
+  
+    // 엑셀 파일 업로드 처리
+    const handleExcelUpload = async (file: File) => {
+      alert(`엑셀 파일 업로드 기능은 개발 중입니다.\n파일명: ${file.name}`);
+    };
+  
+    // 텍스트 입력 처리
+    const handleTextUpload = (text: string) => {
+      const lines = text.split('\n').filter(line => line.trim());
+      const newRecipients: Recipient[] = [];
+  
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        const parts = trimmed.split(/\s+/);
+        const phoneRaw = parts[0].replace(/-/g, '');
+        const name = parts.length > 1 ? parts.slice(1).join(' ') : undefined;
+  
+        if (/^01[0-9]{8,9}$/.test(phoneRaw)) {
+          newRecipients.push({
+            phone_number: phoneRaw,
+            name: name
+          });
+        }
+      });
+  
+      const uniqueRecipients = [...recipients];
+      newRecipients.forEach(newRecipient => {
+        if (!uniqueRecipients.some(r => r.phone_number === newRecipient.phone_number)) {
+          uniqueRecipients.push(newRecipient);
+        }
+      });
+  
+      setRecipients(uniqueRecipients);
+      alert(`${newRecipients.length}개의 연락처가 추가되었습니다.`);
+    };
 
   // 수신번호 추가
   const handleAddRecipient = () => {
@@ -181,14 +244,18 @@ const MessageSendTab = () => {
         throw new Error(data.error || "메시지 전송에 실패했습니다");
       }
 
-      alert(`메시지 전송 완료\n성공: ${data.results.filter((r: any) => r.success).length}건\n실패: ${data.results.filter((r: any) => !r.success).length}건`);
-
+      const successCount = data.results.filter((r: { success: boolean }) => r.success).length;
+      const failCount = data.results.filter((r: { success: boolean }) => !r.success).length;
+      alert(`메시지 전송 완료
+성공: ${successCount}건
+실패: ${failCount}건`);
       // 전송 후 수신번호 목록 비우기 (선택사항)
       setRecipients([]);
 
-    } catch (err: any) {
-      setError(err.message);
-      alert(`전송 실패: ${err.message}`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
+      setError(errorMessage);
+      alert(`전송 실패: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -275,18 +342,27 @@ const MessageSendTab = () => {
               <div className="text-xs text-red-500">{error}</div>
             )}
             <div className="w-full justify-between flex gap-2">
-              <button className="flex items-center gap-1 w-full justify-center py-2 border border-orange-500 text-orange-500 rounded text-sm hover:bg-orange-50">
+              <button
+                onClick={() => setIsAddressBookModalOpen(true)}
+                className="flex items-center gap-1 w-full justify-center py-2 border border-orange-500 text-orange-500 rounded text-sm hover:bg-orange-50"
+              >
                 <FileText className="w-4 h-4" />
                 주소록
               </button>
-              <button className="flex items-center gap-1 w-full justify-center py-2 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50">
+              <button
+                onClick={() => setIsExcelUploadModalOpen(true)}
+                className="flex items-center gap-1 w-full justify-center py-2 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
+              >
                 <Upload className="w-4 h-4" />
                 엑셀
               </button>
-              <button className="flex items-center gap-1 w-full justify-center py-2 border border-gray-500 text-gray-500 rounded text-sm hover:bg-gray-50">
+              <button
+                onClick={() => setIsTextUploadModalOpen(true)}
+                className="flex items-center gap-1 w-full justify-center py-2 border border-gray-500 text-gray-500 rounded text-sm hover:bg-gray-50"
+              >
                 <FileText className="w-4 h-4" />
                 텍스트
-              </button>
+              </button> 
             </div>
           </div>
         </div>
@@ -468,6 +544,21 @@ const MessageSendTab = () => {
       <LoadContentModal
         isOpen={isLoadModalOpen}
         onClose={() => setIsLoadModalOpen(false)}
+      />
+       <AddressBookModal
+        isOpen={isAddressBookModalOpen}
+        onClose={() => setIsAddressBookModalOpen(false)}
+        onSelect={handleAddressBookSelect}
+      />
+      <ExcelUploadModal
+        isOpen={isExcelUploadModalOpen}
+        onClose={() => setIsExcelUploadModalOpen(false)}
+        onUpload={handleExcelUpload}
+      />
+      <TextUploadModal
+        isOpen={isTextUploadModalOpen}
+        onClose={() => setIsTextUploadModalOpen(false)}
+        onConfirm={handleTextUpload}
       />
     </div>
   );

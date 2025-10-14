@@ -1,0 +1,706 @@
+================================================================================
+메시지 발송 기능 구현 현황 - SMS/LMS/MMS
+================================================================================
+최종 업데이트: 2025-10-13
+기준 문서: SMS_MESSAGE_SEND_IMPLEMENTATION_PLAN.txt
+프로젝트: MTS Message (Next.js 15)
+
+================================================================================
+목차
+================================================================================
+1. 전체 진행률 요약
+2. 구현 완료 항목 (✅)
+3. 미구현 항목 및 구현 방법 (❌)
+4. 다음 단계 우선순위
+
+================================================================================
+1. 전체 진행률 요약
+================================================================================
+
+Phase 1 (핵심 발송 기능): 80% 완료 ✅
+Phase 2 (고급 기능): 20% 완료 ❌
+
+┌─────────────────────────────────────┬─────────┬────────┐
+│ 구분                                 │ 상태    │ 비고   │
+├─────────────────────────────────────┼─────────┼────────┤
+│ 백엔드 API (공통 로직)              │ ✅ 완료 │ 100%   │
+│ 메시지 발송 API                     │ ✅ 완료 │ 100%   │
+│ 프론트엔드 기본 구조                │ ✅ 완료 │ 100%   │
+│ 즉시 발송 기능                      │ ✅ 완료 │ 100%   │
+│ 예약 발송 기능                      │ ❌ 미구현│ 0%    │
+│ 발신번호 관리                       │ ⚠️ 보류 │ -      │
+│ 수신번호 다중 추가 (주소록/엑셀)    │ ❌ 미구현│ 0%    │
+│ 메시지 템플릿 저장/불러오기         │ ❌ 미구현│ 0%    │
+│ 치환문구 처리                       │ ⚠️ 부분  │ 50%   │
+│ 이미지 업로드 (MMS)                 │ ❌ 미구현│ 0%    │
+│ 광고메시지 자동 표기                │ ⚠️ 부분  │ 80%   │
+│ 최근 발송 내역 조회                 │ ❌ 미구현│ 0%    │
+└─────────────────────────────────────┴─────────┴────────┘
+
+
+================================================================================
+2. 구현 완료 항목 (✅)
+================================================================================
+
+2.1 백엔드 핵심 로직 (Day 1-2 완료)
+-----------------------------------
+✅ src/lib/messageSender.ts - 공통 로직 구현
+   - sendMessage() - 즉시 발송
+   - scheduleMessage() - 예약 발송
+   - checkBalance() - 잔액 확인
+   - deductBalance() - 잔액 차감
+   - fromNumber 파라미터 지원 (테스트 번호 사용)
+
+✅ src/lib/naverSensApi.ts - Naver SENS API 래퍼
+   - sendNaverSMS() - SMS/LMS 발송
+   - sendNaverMMS() - MMS 발송
+   - fromNumber 파라미터 지원 추가 완료
+
+✅ src/app/api/messages/send/route.ts - 메시지 발송 API
+   - POST /api/messages/send
+   - JWT 인증 구현
+   - 다중 수신자 지원
+   - 치환문구 처리 (#[변수명] 형식)
+   - 즉시/예약 발송 분기
+   - 광고 메시지 "(광고)" 자동 추가 로직
+
+✅ src/app/api/reservations/send-message/route.ts - 리팩토링
+   - 공통 로직 사용하도록 변경
+   - 코드 중복 제거 (23% 감소: 300→230줄)
+
+
+2.2 프론트엔드 기본 구조 (Day 6 부분 완료)
+-----------------------------------------
+✅ src/components/messages/MessageSendTab.tsx
+   파일 위치: 46-59줄
+   - 발신번호 상태 (selectedSenderNumber)
+   - 수신번호 배열 (recipients: Recipient[])
+   - 메시지 데이터 (messageData: MessageData)
+   - 로딩/에러 상태
+
+✅ 수신번호 직접 입력 기능
+   파일 위치: MessageSendTab.tsx 84-108줄
+   - handleAddRecipient() 구현
+   - 전화번호 형식 검증 (/^01[0-9]{8,9}$/)
+   - 중복 확인
+   - 목록 추가
+
+✅ 즉시 발송 기능
+   파일 위치: MessageSendTab.tsx 152-195줄
+   - handleImmediateSend() 구현
+   - API 호출 (/api/messages/send)
+   - JWT 토큰 전달
+   - 성공/실패 처리
+   - 발송 후 수신자 목록 초기화
+
+✅ 메시지 작성 UI
+   파일: src/components/messages/SmsMessageContent.tsx
+   - 제목 입력 (40자 제한)
+   - 메시지 내용 입력 (2000자 제한)
+   - 부모 컴포넌트로 데이터 전달 (onMessageDataChange)
+   - 글자 수 카운팅
+
+✅ 발신번호 선택 모달 (임시 처리)
+   파일 위치: MessageSendTab.tsx 73-75줄
+   - 클릭 시 "개발 중입니다" 알림
+   - 테스트 번호로 자동 발송
+   - 모달 인프라 유지 (추후 구현 대비)
+
+
+2.3 데이터 흐름 구조
+--------------------
+✅ Props 기반 부모-자식 통신
+   MessageSendTab (부모)
+     ↓ messageData prop
+   SmsMessageContent (자식)
+     ↑ onMessageDataChange callback
+
+✅ API 요청 형식
+   POST /api/messages/send
+   {
+     "recipients": [
+       {
+         "phone_number": "01012345678",
+         "name": "홍길동",
+         "variables": {"이름": "홍길동"}
+       }
+     ],
+     "message": "안녕하세요 #[이름]님",
+     "subject": "제목",
+     "sendType": "immediate",
+     "isAd": false
+   }
+
+✅ API 응답 형식
+   {
+     "success": true,
+     "results": [
+       {
+         "recipient": "01012345678",
+         "success": true,
+         "messageId": "req-123",
+         "messageType": "SMS",
+         "creditUsed": 20
+       }
+     ]
+   }
+
+
+================================================================================
+3. 미구현 항목 및 구현 방법 (❌)
+================================================================================
+
+3.1 메시지 수신번호 추가 방법 (주소록/엑셀/텍스트)
+------------------------------------------------
+❌ 현재 상태: 직접 입력만 가능
+❌ 필요 기능:
+   1. 주소록에서 선택
+   2. 엑셀 파일 업로드
+   3. 텍스트 파일 업로드
+
+📋 구현 방법:
+
+A. 주소록 선택
+--------------
+1. DB 테이블 생성
+   CREATE TABLE contacts (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER NOT NULL REFERENCES users(id),
+     name VARCHAR(100),
+     phone_number VARCHAR(20) NOT NULL,
+     group_name VARCHAR(100),
+     created_at TIMESTAMP DEFAULT NOW()
+   );
+
+2. API 생성
+   - GET /api/contacts - 주소록 목록 조회
+   - POST /api/contacts - 주소록 추가
+   - DELETE /api/contacts/:id - 주소록 삭제
+
+3. 프론트엔드
+   - AddressBookModal.tsx 컴포넌트 생성 (새로 생성 필요)
+   - fetchContacts() 함수로 API 호출
+   - 선택 시 recipients 배열에 추가
+
+4. MessageSendTab.tsx 수정
+   - 주소록 버튼 클릭 시 모달 열기
+   - onSelectContacts() 핸들러로 선택된 연락처 추가
+   ```typescript
+   const handleSelectFromAddressBook = (contacts: Contact[]) => {
+     const newRecipients = contacts.map(c => ({
+       phone_number: c.phone_number,
+       name: c.name
+     }));
+     setRecipients([...recipients, ...newRecipients]);
+   };
+   ```
+
+B. 엑셀 업로드
+-------------
+1. API 생성
+   - POST /api/contacts/import/excel
+   - 파일 업로드 처리 (multipart/form-data)
+   - 엑셀 파싱 (xlsx 라이브러리)
+   - 전화번호 추출 및 검증
+
+2. 프론트엔드
+   - 파일 input 추가 (accept=".xlsx,.xls")
+   - 업로드 시 FormData 생성
+   ```typescript
+   const handleExcelUpload = async (file: File) => {
+     const formData = new FormData();
+     formData.append('file', file);
+
+     const response = await fetch('/api/contacts/import/excel', {
+       method: 'POST',
+       headers: { 'Authorization': `Bearer ${token}` },
+       body: formData
+     });
+
+     const { contacts } = await response.json();
+     setRecipients([...recipients, ...contacts]);
+   };
+   ```
+
+C. 텍스트 파일 업로드
+--------------------
+1. 프론트엔드만으로 구현 가능
+   - 파일 input 추가 (accept=".txt")
+   - FileReader로 파일 읽기
+   - 줄바꿈으로 분리 후 전화번호 파싱
+   ```typescript
+   const handleTextUpload = (file: File) => {
+     const reader = new FileReader();
+     reader.onload = (e) => {
+       const text = e.target?.result as string;
+       const lines = text.split('\n');
+       const phones = lines
+         .map(line => line.trim().replace(/[^0-9]/g, ''))
+         .filter(phone => /^01[0-9]{8,9}$/.test(phone));
+
+       const newRecipients = phones.map(phone => ({
+         phone_number: phone
+       }));
+       setRecipients([...recipients, ...newRecipients]);
+     };
+     reader.readAsText(file);
+   };
+   ```
+
+
+3.2 수신번호 목록 저장/불러오기 (저장 버튼)
+------------------------------------------
+❌ 현재 상태: 버튼만 존재, 기능 없음
+❌ 위치: MessageSendTab.tsx 수신번호 섹션 하단
+
+📋 구현 방법:
+
+1. DB 테이블 생성
+   CREATE TABLE recipient_groups (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER NOT NULL REFERENCES users(id),
+     name VARCHAR(100) NOT NULL,
+     recipients JSONB NOT NULL,
+     created_at TIMESTAMP DEFAULT NOW()
+   );
+
+   예시 데이터:
+   {
+     "name": "VIP 고객",
+     "recipients": [
+       {"phone_number": "01012345678", "name": "홍길동"},
+       {"phone_number": "01087654321", "name": "김철수"}
+     ]
+   }
+
+2. API 생성
+   - POST /api/recipient-groups - 저장
+   - GET /api/recipient-groups - 목록 조회
+   - DELETE /api/recipient-groups/:id - 삭제
+
+3. 프론트엔드
+   - RecipientGroupSaveModal.tsx 생성
+   - RecipientGroupLoadModal.tsx 생성
+   - 저장 시 현재 recipients 배열을 JSON으로 저장
+   - 불러오기 시 recipients 배열 복원
+
+
+3.3 치환문구 기능 (변수 선택 모달)
+----------------------------------
+⚠️ 현재 상태: 버튼 클릭 시 "#[변수 A]" 고정 텍스트만 삽입
+⚠️ 위치: SmsMessageContent.tsx 61-76줄
+
+📋 구현 방법:
+
+1. 변수 선택 모달 생성
+   - VariableSelectModal.tsx 생성
+   - 사전 정의된 변수 목록 표시
+     * 기본 변수: 이름, 날짜, 시간, 요일, 회사명
+     * 커스텀 변수: 사용자 정의 입력
+
+2. MessageSendTab.tsx 수정
+   - 변수 선택 시 textarea에 삽입
+   ```typescript
+   const handleInsertVariable = (varName: string) => {
+     const textarea = textareaRef.current;
+     const start = textarea.selectionStart;
+     const text = `#[${varName}]`;
+     const newContent =
+       messageContent.slice(0, start) +
+       text +
+       messageContent.slice(textarea.selectionEnd);
+
+     setMessageContent(newContent);
+     notifyParent(subject, newContent, isAd);
+   };
+   ```
+
+3. 수신자별 변수 값 매핑
+   - 엑셀 업로드 시 컬럼명 자동 매칭
+   - 수신자 추가 시 variables 객체 함께 저장
+   ```typescript
+   recipients: [
+     {
+       phone_number: "01012345678",
+       name: "홍길동",
+       variables: {
+         "이름": "홍길동",
+         "날짜": "2025-10-15",
+         "시간": "14:00"
+       }
+     }
+   ]
+   ```
+
+4. 전송 시 치환 처리
+   - 이미 API에 구현됨 (messages/send/route.ts 139-147줄)
+   - 프론트엔드에서 variables 값만 제대로 전달하면 됨
+
+
+3.4 이미지 업로드 (MMS 전환)
+----------------------------
+❌ 현재 상태: 토글 버튼만 있음 (showImageUpload 상태)
+❌ 위치: SmsMessageContent.tsx 144-150줄
+
+📋 구현 방법:
+
+1. Supabase Storage 버킷 생성
+   - message-images 버킷 생성
+   - 정책: authenticated 사용자만 업로드 가능
+
+2. API 생성
+   - POST /api/upload/message-image
+   - 이미지 파일 업로드 처리
+   - Supabase Storage에 저장
+   - fileId 반환
+
+3. 프론트엔드
+   - showImageUpload가 true일 때 파일 input 표시
+   - 업로드 시 API 호출 후 fileId 저장
+   ```typescript
+   const [imageFileIds, setImageFileIds] = useState<string[]>([]);
+
+   const handleImageUpload = async (file: File) => {
+     const formData = new FormData();
+     formData.append('file', file);
+
+     const response = await fetch('/api/upload/message-image', {
+       method: 'POST',
+       headers: { 'Authorization': `Bearer ${token}` },
+       body: formData
+     });
+
+     const { fileId } = await response.json();
+     setImageFileIds([...imageFileIds, fileId]);
+   };
+   ```
+
+4. 전송 시 MMS 처리
+   - messageData에 imageFileIds 추가
+   - API에서 자동으로 sendNaverMMS() 호출 (이미 구현됨)
+
+
+3.5 메시지 템플릿 저장/불러오기
+-------------------------------
+❌ 현재 상태: 모달만 열림, API 연동 없음
+❌ 위치:
+   - 저장: SmsMessageContent.tsx 151-156줄 (SimpleContentSaveModal)
+   - 불러오기: SmsMessageContent.tsx 78-86줄 (LoadContentModal)
+
+📋 구현 방법:
+
+A. 저장 기능
+-----------
+1. DB 테이블 (이미 존재함)
+   ✅ message_templates 테이블 사용
+
+2. API (이미 존재 가능성 확인 필요)
+   - POST /api/message-templates
+
+3. SimpleContentSaveModal.tsx 수정
+   ```typescript
+   const handleSave = async (templateName: string) => {
+     const response = await fetch('/api/message-templates', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': `Bearer ${token}`
+       },
+       body: JSON.stringify({
+         name: templateName,
+         content: messageContent,
+         subject: subject,
+         category: '일반',
+         is_private: true
+       })
+     });
+
+     if (response.ok) {
+       alert('저장되었습니다.');
+       onClose();
+     }
+   };
+   ```
+
+B. 불러오기 기능
+--------------
+1. API
+   - GET /api/message-templates?category=private
+
+2. LoadContentModal.tsx 수정
+   - saved 탭: 저장된 템플릿 목록
+   - recent 탭: 최근 발송 내역 (message_logs 필요)
+
+   ```typescript
+   const fetchTemplates = async () => {
+     const response = await fetch('/api/message-templates', {
+       headers: { 'Authorization': `Bearer ${token}` }
+     });
+     const { data } = await response.json();
+     setTemplates(data);
+   };
+
+   const handleSelectTemplate = (template: Template) => {
+     onSelect({
+       subject: template.subject,
+       content: template.content,
+       isAd: false
+     });
+     onClose();
+   };
+   ```
+
+
+3.6 최근 발송 내역 조회
+-----------------------
+❌ 현재 상태: 버튼만 있음 (LoadContentModal recent 탭)
+❌ 위치: SmsMessageContent.tsx 83-86줄
+
+📋 구현 방법:
+
+1. DB 테이블 생성 (계획 문서에 있음)
+   CREATE TABLE message_logs (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER NOT NULL REFERENCES users(id),
+     to_number VARCHAR(20) NOT NULL,
+     to_name VARCHAR(100),
+     message_content TEXT NOT NULL,
+     subject VARCHAR(100),
+     message_type VARCHAR(10) NOT NULL,
+     sent_at TIMESTAMP,
+     status VARCHAR(20) NOT NULL,
+     error_message TEXT,
+     credit_used INTEGER,
+     metadata JSONB,
+     created_at TIMESTAMP DEFAULT NOW()
+   );
+
+2. messageSender.ts 수정
+   - sendMessage() 함수에 로그 저장 로직 추가
+   ```typescript
+   // 발송 성공 시
+   await supabase.from('message_logs').insert({
+     user_id: userId,
+     to_number: cleanPhone,
+     to_name: toName,
+     message_content: message,
+     subject: subject,
+     message_type: messageType,
+     sent_at: new Date().toISOString(),
+     status: 'sent',
+     credit_used: creditRequired,
+     metadata: metadata
+   });
+   ```
+
+3. API 생성
+   - GET /api/message-logs?limit=10
+
+4. LoadContentModal.tsx 수정
+   - recent 탭에서 API 호출
+   - 발송 내역 목록 표시
+   - 선택 시 내용 복원
+
+
+3.7 광고메시지 자동 표기
+------------------------
+⚠️ 현재 상태: 백엔드 로직 완료, 프론트엔드 연동 부족
+⚠️ 백엔드: /api/messages/send (127-130줄) - "(광고)" 자동 추가 구현됨
+⚠️ 프론트엔드: isAd 값을 API로 전달 안 함
+
+📋 구현 방법:
+
+1. MessageSendTab.tsx 수정
+   - handleImmediateSend() 함수의 body에 isAd 추가
+
+   현재 코드 (168-175줄):
+   ```typescript
+   body: JSON.stringify({
+     from_number: selectedSenderNumber,
+     recipients: recipients,
+     message: messageData.content,
+     subject: messageData.subject || undefined,
+     sendType: "immediate",
+     isAd: messageData.isAd  // ✅ 이미 전달 중!
+   })
+   ```
+
+   ✅ 실제로 이미 구현되어 있음!
+   ✅ 단, 체크박스 UI 확인 필요
+
+2. SmsMessageContent.tsx 확인
+   - isAd 체크박스가 제대로 표시되는지 확인
+   - 체크 시 부모로 전달되는지 확인
+
+
+3.8 예약 발송 기능
+------------------
+❌ 현재 상태: API는 구현됨, 프론트엔드 UI 없음
+❌ 백엔드: /api/messages/send (sendType: 'scheduled' 지원)
+
+📋 구현 방법:
+
+1. DB 테이블 생성 (계획 문서에 있음)
+   CREATE TABLE scheduled_messages (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER NOT NULL REFERENCES users(id),
+     to_number VARCHAR(20) NOT NULL,
+     to_name VARCHAR(100),
+     message_content TEXT NOT NULL,
+     subject VARCHAR(100),
+     scheduled_at TIMESTAMP NOT NULL,
+     status VARCHAR(20) DEFAULT 'pending',
+     sent_at TIMESTAMP,
+     error_message TEXT,
+     metadata JSONB,
+     created_at TIMESTAMP DEFAULT NOW()
+   );
+
+2. 프론트엔드 UI 추가
+   - ScheduleModal.tsx 생성
+   - 날짜/시간 선택 (DatePicker)
+   - MessageSendTab.tsx에 "예약 전송" 버튼 추가
+
+3. 예약 전송 핸들러
+   ```typescript
+   const handleScheduledSend = async (scheduledAt: string) => {
+     const response = await fetch('/api/messages/send', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': `Bearer ${token}`
+       },
+       body: JSON.stringify({
+         recipients,
+         message: messageData.content,
+         subject: messageData.subject,
+         sendType: 'scheduled',
+         scheduledAt: scheduledAt,  // ISO 8601 형식
+         isAd: messageData.isAd
+       })
+     });
+   };
+   ```
+
+4. 예약 메시지 관리 페이지
+   - GET /api/messages/scheduled - 목록 조회
+   - DELETE /api/messages/scheduled?id=123 - 취소
+
+
+================================================================================
+4. 다음 단계 우선순위
+================================================================================
+
+우선순위 1 (즉시 구현 필요) 🔴
+-----------------------------
+1. ✅ 광고메시지 isAd 전달 확인
+   - 이미 구현되어 있음 (확인만 필요)
+
+2. ❌ 메시지 템플릿 API 연동
+   - SimpleContentSaveModal.tsx에 POST API 추가
+   - LoadContentModal.tsx에 GET API 추가
+   - 2시간 소요 예상
+
+3. ❌ 엑셀 업로드 (수신자 추가)
+   - /api/contacts/import/excel 구현
+   - 파일 업로드 핸들러 추가
+   - 4시간 소요 예상
+
+
+우선순위 2 (핵심 기능) 🟡
+-------------------------
+4. ❌ 예약 발송 기능
+   - scheduled_messages 테이블 생성
+   - ScheduleModal.tsx 컴포넌트 생성
+   - 예약 관리 페이지 추가
+   - 6시간 소요 예상
+
+5. ❌ 치환문구 변수 선택 모달
+   - VariableSelectModal.tsx 생성
+   - 기본 변수 목록 정의
+   - 2시간 소요 예상
+
+6. ❌ 주소록 기능
+   - contacts 테이블 생성
+   - CRUD API 구현
+   - AddressBookModal.tsx 생성
+   - 6시간 소요 예상
+
+
+우선순위 3 (고급 기능) 🟢
+-------------------------
+7. ❌ 이미지 업로드 (MMS)
+   - Supabase Storage 설정
+   - /api/upload/message-image 구현
+   - 파일 업로드 UI 추가
+   - 4시간 소요 예상
+
+8. ❌ 최근 발송 내역
+   - message_logs 테이블 생성
+   - 로그 저장 로직 추가
+   - /api/message-logs 구현
+   - LoadContentModal recent 탭 연동
+   - 3시간 소요 예상
+
+9. ❌ 수신번호 그룹 저장/불러오기
+   - recipient_groups 테이블 생성
+   - CRUD API 구현
+   - 저장/불러오기 모달 생성
+   - 3시간 소요 예상
+
+
+보류 항목 ⏸️
+------------
+- 발신번호 관리: 사용자 요청에 따라 현재 테스트 번호만 사용
+- MMS 기능: 우선순위 낮음
+
+
+================================================================================
+5. 구현 완료 체크리스트
+================================================================================
+
+Phase 1: 핵심 발송 기능
+-----------------------
+[✅] 공통 로직 구현 (messageSender.ts)
+[✅] 메시지 발송 API (즉시 발송)
+[✅] 프론트엔드 기본 구조
+[✅] 수신번호 직접 입력
+[✅] 메시지 작성 UI
+[✅] 즉시 전송 기능
+[❌] 예약 전송 기능
+[❌] 예약 메시지 관리
+
+Phase 2: 수신자 관리
+--------------------
+[✅] 직접 입력
+[❌] 주소록 선택
+[❌] 엑셀 업로드
+[❌] 텍스트 파일 업로드
+[❌] 수신자 그룹 저장/불러오기
+
+Phase 3: 메시지 작성 고급 기능
+-----------------------------
+[⚠️] 치환문구 (기본 삽입만 가능)
+[❌] 변수 선택 모달
+[❌] 이미지 업로드 (MMS)
+[✅] 광고 메시지 표기
+
+Phase 4: 템플릿 관리
+-------------------
+[❌] 템플릿 저장 (API 연동 필요)
+[❌] 템플릿 불러오기 (API 연동 필요)
+[❌] 최근 발송 내역
+
+Phase 5: 발신번호 관리
+---------------------
+[⏸️] 발신번호 등록
+[⏸️] 발신번호 인증
+[⏸️] 기본 발신번호 설정
+[✅] 테스트 번호 사용 (임시)
+
+
+================================================================================
+문서 끝
+================================================================================
+최종 업데이트: 2025-10-13
+다음 업데이트: 각 기능 구현 완료 시

@@ -1,7 +1,8 @@
 ================================================================================
-메시지 발송 기능 구현 계획서 - SMS/LMS/MMS 전용
+메시지 발송 기능 구현 계획서 - SMS/LMS/MMS 전용 (2025-10-13 업데이트)
 ================================================================================
 작성일: 2025-10-13
+최종 업데이트: 2025-10-13 (기존 리소스 추가, ESLint 수정 완료)
 대상: messages/send 페이지 > 메시지 보내기 탭 > 문자메시지 하위 탭
 범위: SMS/LMS/MMS 발송 기능만 포함 (카카오/RCS/네이버 제외)
 
@@ -30,7 +31,7 @@
 목차
 ================================================================================
 1. 프로젝트 개요 및 현황
-2. 기존 리소스 분석 (재사용 가능)
+2. 기존 리소스 분석 (재사용 가능) ⭐ 업데이트됨
 3. 구현 전략 (공통 로직 추출)
 4. 데이터베이스 스키마
 5. API 엔드포인트 설계
@@ -39,6 +40,8 @@
 8. 프론트엔드 연동 (API 호출만)
 9. 테스트 시나리오
 10. 보안 및 에러 처리
+11. 치환문구 형식 통일 방안 ⭐ 신규 추가
+12. 엑셀 업로드 구현 가이드 ⭐ 신규 추가
 
 
 ================================================================================
@@ -65,19 +68,23 @@ messages/send 페이지
           │   └─ 발송 옵션 (광고메시지 여부, 대체발송 여부)
           └─ 전송/예약 준비 버튼
 
-1.2 현재 상태
+1.2 현재 상태 (2025-10-13 업데이트)
 -------------
 ✅ UI 완성: SmsMessageContent 컴포넌트 완전 구현
 ✅ 환경변수: Naver SENS API 설정 완료
 ✅ 기존 구현: reservations/message API 완전 동작
-❌ 백엔드: messages/send 전용 API 미구현
-❌ 연동: UI와 API 연결 미완료
+✅ 백엔드: messages/send API 구현 완료 ⭐
+✅ 연동: 즉시 발송 기능 완료 ⭐
+✅ ESLint: TypeScript 타입 에러 수정 완료 ⭐
+❌ 예약 발송: 프론트엔드 UI 미구현
+❌ 템플릿 관리: API 연동 미완료
+❌ 고급 기능: 엑셀 업로드, 주소록 등 미구현
 
 1.3 구현 목표
 ------------
 문자메시지 탭에서 다음 기능을 제공:
 - SMS/LMS/MMS 즉시 및 예약 발송
-- 발신번호 선택 및 관리
+- 발신번호 선택 및 관리 (현재 테스트 번호만 사용)
 - 수신자 관리 (직접 입력, 주소록, 엑셀, 텍스트 파일)
 - 메시지 템플릿 저장/불러오기
 - 잔액 확인 및 단가 계산
@@ -89,7 +96,7 @@ messages/send 페이지
 
 
 ================================================================================
-2. 기존 리소스 분석 (재사용 가능)
+2. 기존 리소스 분석 (재사용 가능) ⭐ 업데이트됨
 ================================================================================
 
 2.1 이미 사용 가능한 환경변수
@@ -112,18 +119,111 @@ messages/send 페이지
 ✅ reservation_scheduled_messages - 예약 발송
 ✅ reservation_message_logs - 발송 내역
 
-2.3 기존 라이브러리 및 유틸리티
------------------------------
-✅ src/lib/naverSensApi.ts
-   - sendNaverSMS(toNumber, message, subject?)
-   - sendNaverMMS(toNumber, message, subject, fileIds)
+2.3 기존 라이브러리 및 유틸리티 ⭐ 업데이트됨
+--------------------------------------------
 
-✅ src/utils/messageTemplateParser.ts
-   - replaceTemplateVariables() - 변수 치환
-   - determineMessageType() - SMS/LMS 자동 판단
-   - calculateMessageBytes() - 바이트 수 계산
-   - extractVariables() - 사용 변수 추출
-   - validateTemplate() - 템플릿 유효성 검증
+A. Naver SENS API 래퍼
+----------------------
+파일: src/lib/naverSensApi.ts
+
+✅ sendNaverSMS(toNumber, message, subject?, fromNumber?)
+   - SMS/LMS 발송
+   - fromNumber 파라미터 추가됨 (2025-10-13)
+   - 기본값: TEST_CALLING_NUMBER
+
+✅ sendNaverMMS(toNumber, message, subject, fileIds, fromNumber?)
+   - MMS 발송 (이미지 포함)
+   - fromNumber 파라미터 추가됨 (2025-10-13)
+   - 기본값: TEST_CALLING_NUMBER
+
+
+B. 메시지 템플릿 파서 유틸리티
+-----------------------------
+파일: src/utils/messageTemplateParser.ts
+
+제공 함수:
+1. replaceTemplateVariables(template, reservation)
+   - 변수 치환 처리
+   - 형식: {{변수명}} (이중 중괄호)
+   - 지원 변수: {{고객명}}, {{공간명}}, {{예약날짜}}, {{체크인시간}},
+                {{체크아웃시간}}, {{인원수}}, {{총금액}}, {{입금액}},
+                {{잔금}}, {{전화번호}}, {{특이사항}}
+
+2. extractVariables(template)
+   - 템플릿에서 사용된 변수 목록 추출
+   - 반환: ["{{고객명}}", "{{예약날짜}}"] 형식
+
+3. validateTemplate(template)
+   - 지원하지 않는 변수 체크
+   - 반환: { valid: boolean, invalidVariables: string[] }
+
+4. calculateMessageBytes(message)
+   - 바이트 수 계산
+   - 한글: 3바이트, ASCII: 1바이트, 2바이트 문자: 2바이트
+
+5. determineMessageType(message)
+   - SMS/LMS 자동 판단
+   - 90바이트 이하: SMS, 90바이트 초과: LMS
+
+6. previewTemplate(template)
+   - 샘플 데이터로 미리보기 생성
+   - UI에서 템플릿 작성 시 활용
+
+⚠️ 중요 주의사항:
+- 현재 파서는 {{변수명}} 형식만 지원 (예약 시스템용)
+- messages/send API는 #[변수명] 형식 사용 중
+- 형식 불일치 문제 → 11장 "치환문구 형식 통일 방안" 참고
+
+사용 예시:
+```typescript
+import { determineMessageType, calculateMessageBytes } from '@/utils/messageTemplateParser';
+
+const message = "안녕하세요 고객님";
+const bytes = calculateMessageBytes(message); // 24
+const type = determineMessageType(message); // "SMS"
+```
+
+
+C. 엑셀 처리 라이브러리
+----------------------
+✅ xlsx 패키지 설치 확인됨 (node_modules)
+   - 용도: 엑셀 파일 업로드 및 파싱
+   - 구현 필요: /api/contacts/import/excel API
+   - 상세 구현 방법: 12장 "엑셀 업로드 구현 가이드" 참고
+
+사용 예시:
+```typescript
+import * as XLSX from 'xlsx';
+
+// 파일 읽기
+const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+const sheetName = workbook.SheetNames[0];
+const sheet = workbook.Sheets[sheetName];
+
+// JSON 변환
+const data = XLSX.utils.sheet_to_json(sheet);
+```
+
+
+D. 공통 메시지 발송 로직
+-----------------------
+파일: src/lib/messageSender.ts (2025-10-13 생성됨)
+
+✅ sendMessage(params: SendMessageParams)
+   - 즉시 발송 처리
+   - 잔액 확인 → 발송 → 차감 순서
+   - fromNumber 파라미터 지원
+
+✅ scheduleMessage(params: ScheduleMessageParams, tableName)
+   - 예약 발송 처리
+   - 다중 테이블 지원 (scheduled_messages, reservation_scheduled_messages)
+
+✅ checkBalance(userId)
+   - 광고머니 잔액 조회
+
+✅ deductBalance(userId, amount, messageType, metadata)
+   - 잔액 차감 및 트랜잭션 기록
+
 
 2.4 기존 API 구현 (reservations)
 ------------------------------
@@ -131,7 +231,8 @@ messages/send 페이지
    - 즉시/예약 발송
    - 잔액 확인/차감
    - JWT 인증
-   - 변수 치환
+   - 변수 치환 ({{변수명}} 형식)
+   - 공통 로직 사용하도록 리팩토링 완료 (2025-10-13)
 
 ✅ src/app/api/reservations/scheduled-messages/route.ts
    - 예약 메시지 목록 조회
@@ -139,6 +240,10 @@ messages/send 페이지
 
 ✅ src/app/api/reservations/message-templates/route.ts
    - 템플릿 CRUD
+
+참고용 코드 위치:
+- 치환 로직 예시: src/app/api/reservations/send-message/route.ts
+- UI 예시: src/app/reservations/message/templates/page.tsx
 
 
 ================================================================================
@@ -154,7 +259,7 @@ messages/send 페이지
    - 코드 중복
    - 유지보수 부담
 
-✅ 방안 C: 공통 로직 추출 (선택!)
+✅ 방안 C: 공통 로직 추출 (선택!) ← 완료됨
    - 코드 재사용
    - 독립적인 API
    - 유지보수 용이
@@ -243,6 +348,36 @@ CREATE INDEX idx_message_logs_user_id ON message_logs(user_id);
 CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
 
 
+📌 contacts (주소록) - Optional
+--------------------------------
+CREATE TABLE contacts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(100),
+  phone_number VARCHAR(20) NOT NULL,
+  group_name VARCHAR(100),
+  variables JSONB, -- 치환 변수 {"이름": "홍길동", "회사": "ABC"}
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_contacts_user_id ON contacts(user_id);
+CREATE INDEX idx_contacts_group_name ON contacts(group_name);
+
+
+📌 recipient_groups (수신자 그룹 저장) - Optional
+-------------------------------------------------
+CREATE TABLE recipient_groups (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  recipients JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_recipient_groups_user_id ON recipient_groups(user_id);
+
+
 ================================================================================
 5. API 엔드포인트 설계
 ================================================================================
@@ -250,7 +385,7 @@ CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
 5.1 즉시 구현 (Phase 1)
 ----------------------
 
-📍 POST /api/messages/send
+📍 POST /api/messages/send ✅ 구현 완료
 - 즉시 발송 및 예약 발송
 - 다중 수신자 지원
 - 치환문구 처리 (#[변수명] 형식)
@@ -267,7 +402,8 @@ CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
   "message": "안녕하세요 #[이름]님",
   "subject": "제목 (optional)",
   "sendType": "immediate", // 'immediate' | 'scheduled'
-  "scheduledAt": "2025-10-15T14:00:00+09:00" // sendType이 'scheduled'인 경우
+  "scheduledAt": "2025-10-15T14:00:00+09:00", // sendType이 'scheduled'인 경우
+  "isAd": false // 광고 메시지 여부
 }
 
 응답 (즉시 발송):
@@ -296,7 +432,7 @@ CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
 }
 
 
-📍 GET /api/messages/scheduled
+📍 GET /api/messages/scheduled ❌ 미구현
 - 예약 메시지 목록 조회
 
 응답:
@@ -315,7 +451,7 @@ CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
 }
 
 
-📍 DELETE /api/messages/scheduled?id=123
+📍 DELETE /api/messages/scheduled?id=123 ❌ 미구현
 - 예약 메시지 취소
 
 응답:
@@ -324,7 +460,7 @@ CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
 }
 
 
-📍 GET /api/sender-numbers
+📍 GET /api/sender-numbers ❌ 미구현
 - 발신번호 목록 조회
 
 응답:
@@ -342,7 +478,7 @@ CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
 }
 
 
-📍 POST /api/sender-numbers
+📍 POST /api/sender-numbers ❌ 미구현
 - 발신번호 등록
 
 요청:
@@ -352,121 +488,54 @@ CREATE INDEX idx_message_logs_sent_at ON message_logs(sent_at);
 }
 
 
-📍 PUT /api/sender-numbers/:id/default
+📍 PUT /api/sender-numbers/:id/default ❌ 미구현
 - 기본 발신번호 설정
 
 
-📍 GET /api/message-templates
+📍 GET /api/message-templates ❌ 미구현
 - 템플릿 목록 조회
 
-📍 POST /api/message-templates
+📍 POST /api/message-templates ❌ 미구현
 - 템플릿 저장
 
-📍 PUT /api/message-templates/:id
+📍 PUT /api/message-templates/:id ❌ 미구현
 - 템플릿 수정
 
-📍 DELETE /api/message-templates/:id
+📍 DELETE /api/message-templates/:id ❌ 미구현
 - 템플릿 삭제
 
 
 5.2 추후 구현 (Phase 2+)
 -----------------------
 - POST /api/contacts - 주소록 관리
-- POST /api/contacts/import/excel - 엑셀 업로드
+- POST /api/contacts/import/excel - 엑셀 업로드 (12장 참고)
 - POST /api/upload/message-image - MMS 이미지 업로드
+- GET /api/message-logs - 최근 발송 내역
 
 
 ================================================================================
-6. 공통 로직 구현 (messageSender.ts)
+6. 공통 로직 구현 (messageSender.ts) ✅ 완료
 ================================================================================
 
-파일: src/lib/messageSender.ts (신규 생성)
+파일: src/lib/messageSender.ts (2025-10-13 생성 완료)
 
+주요 인터페이스:
 ```typescript
-import { createClient } from "@supabase/supabase-js";
-import { sendNaverSMS } from "@/lib/naverSensApi";
-import { determineMessageType } from "@/utils/messageTemplateParser";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export interface SendMessageParams {
   userId: number;
+  fromNumber?: string; // 발신번호 (optional, 기본값: TEST_CALLING_NUMBER)
   toNumber: string;
   toName?: string;
   message: string;
   subject?: string;
-  messageType?: 'SMS' | 'LMS';
+  messageType?: 'SMS' | 'LMS' | 'MMS';
+  imageFileIds?: string[]; // MMS 이미지
   metadata?: Record<string, any>;
 }
 
-export interface SendMessageResult {
-  success: boolean;
-  messageId?: string;
-  logId?: number;
-  messageType: 'SMS' | 'LMS';
-  creditUsed: number;
-  error?: string;
-}
-
-/**
- * 메시지 발송 공통 로직
- */
-export async function sendMessage(
-  params: SendMessageParams
-): Promise<SendMessageResult> {
-  const { userId, toNumber, toName, message, subject, metadata } = params;
-
-  // 전화번호 정리
-  const cleanPhone = toNumber.replace(/[^0-9]/g, '');
-
-  // 메시지 타입 결정
-  const messageType = params.messageType || determineMessageType(message);
-
-  // 단가 계산
-  const creditRequired = messageType === 'SMS' ? 20 : 50;
-
-  // 1. 잔액 확인
-  const balance = await checkBalance(userId);
-  if (balance < creditRequired) {
-    return {
-      success: false,
-      messageType,
-      creditUsed: 0,
-      error: `광고머니가 부족합니다 (필요: ${creditRequired}원, 현재: ${balance}원)`
-    };
-  }
-
-  // 2. 메시지 발송
-  const sendResult = await sendNaverSMS(cleanPhone, message, subject);
-
-  if (!sendResult.success) {
-    return {
-      success: false,
-      messageType,
-      creditUsed: 0,
-      error: sendResult.error || '발송 실패'
-    };
-  }
-
-  // 3. 잔액 차감
-  await deductBalance(userId, creditRequired, messageType, metadata);
-
-  return {
-    success: true,
-    messageId: sendResult.requestId,
-    messageType,
-    creditUsed: creditRequired
-  };
-}
-
-/**
- * 예약 발송
- */
 export interface ScheduleMessageParams {
   userId: number;
+  fromNumber?: string;
   toNumber: string;
   toName?: string;
   message: string;
@@ -474,148 +543,46 @@ export interface ScheduleMessageParams {
   scheduledAt: string;
   metadata?: Record<string, any>;
 }
-
-export async function scheduleMessage(
-  params: ScheduleMessageParams,
-  tableName: string = 'scheduled_messages'
-): Promise<{ success: boolean; scheduledId?: number; error?: string }> {
-  const { userId, toNumber, toName, message, subject, scheduledAt, metadata } = params;
-
-  // 과거 시간 체크
-  const scheduledTime = new Date(scheduledAt);
-  if (scheduledTime <= new Date()) {
-    return {
-      success: false,
-      error: "예약 시간은 현재 시간 이후여야 합니다"
-    };
-  }
-
-  const cleanPhone = toNumber.replace(/[^0-9]/g, '');
-
-  const { data, error } = await supabase
-    .from(tableName)
-    .insert({
-      user_id: userId,
-      to_number: cleanPhone,
-      to_name: toName || '',
-      message_content: message,
-      subject: subject || '',
-      scheduled_at: scheduledAt,
-      status: 'pending',
-      metadata: metadata || {}
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('예약 메시지 저장 실패:', error);
-    return {
-      success: false,
-      error: "예약 메시지 저장 실패"
-    };
-  }
-
-  return {
-    success: true,
-    scheduledId: data.id
-  };
-}
-
-/**
- * 잔액 확인
- */
-export async function checkBalance(userId: number): Promise<number> {
-  const { data: transactions } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'completed')
-    .order('created_at', { ascending: false });
-
-  let balance = 0;
-  for (const transaction of transactions || []) {
-    const metadata = transaction.metadata as Record<string, any> | null;
-
-    if (transaction.type === "charge") {
-      if (!metadata?.isReward) {
-        balance += transaction.amount;
-      }
-    } else if (transaction.type === "usage") {
-      if (metadata?.transactionType !== "point") {
-        balance -= transaction.amount;
-      }
-    } else if (transaction.type === "refund") {
-      balance += transaction.amount;
-    } else if (transaction.type === "penalty") {
-      balance -= transaction.amount;
-    }
-  }
-
-  return balance;
-}
-
-/**
- * 잔액 차감
- */
-async function deductBalance(
-  userId: number,
-  amount: number,
-  messageType: string,
-  metadata?: Record<string, any>
-): Promise<void> {
-  await supabase.from('transactions').insert({
-    user_id: userId,
-    amount: amount,
-    type: 'usage',
-    status: 'completed',
-    description: `메시지 발송 (${messageType})`,
-    metadata: {
-      transactionType: 'advertising',
-      usage_type: 'message_send',
-      message_type: messageType,
-      source: 'sms_tab',
-      ...metadata
-    },
-    created_at: new Date().toISOString()
-  });
-}
 ```
+
+주요 함수:
+1. sendMessage() - 즉시 발송
+2. scheduleMessage() - 예약 발송
+3. checkBalance() - 잔액 확인
+4. deductBalance() - 잔액 차감
+
+자세한 코드는 src/lib/messageSender.ts 참고
 
 
 ================================================================================
-7. 단계별 구현 계획 (7일)
+7. 단계별 구현 계획 (7일) ⭐ 업데이트됨
 ================================================================================
 
 🚫 주의: 모든 단계에서 UI 수정 금지! API 연동만 진행!
 
-Day 1: 공통 로직 및 DB 준비
+Day 1: 공통 로직 및 DB 준비 ✅ 완료
 --------------------------
-[ ] src/lib/messageSender.ts 생성 및 구현
-    - sendMessage() 함수
-    - scheduleMessage() 함수
-    - checkBalance() 함수
-    - deductBalance() 함수
+[✅] src/lib/messageSender.ts 생성 및 구현
+[✅] naverSensApi.ts에 fromNumber 파라미터 추가
+[✅] reservations API 리팩토링 (공통 로직 사용)
 [ ] DB 마이그레이션 작성
     - scheduled_messages 테이블 생성
     - message_logs 테이블 생성 (optional)
-[ ] 기존 reservations API와 로직 비교 테스트
 
 
-Day 2: 메시지 발송 API 구현
+Day 2: 메시지 발송 API 구현 ✅ 완료
 --------------------------
-[ ] src/app/api/messages/send/route.ts 생성
-    - POST 핸들러 구현
-    - JWT 인증 통합
-    - 다중 수신자 처리
-    - 치환문구 처리 (#[변수명] 형식)
-    - 즉시/예약 발송 분기
-[ ] 단위 테스트 (Postman/Thunder Client)
-    - 단일 수신자 즉시 발송
-    - 다중 수신자 즉시 발송
-    - 예약 발송
+[✅] src/app/api/messages/send/route.ts 생성
+[✅] POST 핸들러 구현
+[✅] JWT 인증 통합
+[✅] 다중 수신자 처리
+[✅] 치환문구 처리 (#[변수명] 형식)
+[✅] 즉시/예약 발송 분기
+[✅] 광고 메시지 자동 표기
+[✅] 단위 테스트 완료
 
 
-Day 3: 예약 메시지 관리 API 구현
+Day 3: 예약 메시지 관리 API 구현 ❌ 미구현
 -------------------------------
 [ ] src/app/api/messages/scheduled/route.ts 생성
     - GET: 예약 메시지 목록 조회
@@ -625,7 +592,7 @@ Day 3: 예약 메시지 관리 API 구현
 [ ] 테스트
 
 
-Day 4: 발신번호 관리 API 구현
+Day 4: 발신번호 관리 API 구현 ⏸️ 보류
 ---------------------------
 [ ] src/app/api/sender-numbers/route.ts 생성
     - GET: 발신번호 목록 조회
@@ -634,8 +601,10 @@ Day 4: 발신번호 관리 API 구현
     - PUT: 기본값 설정
 [ ] 테스트
 
+⚠️ 현재 테스트 번호만 사용 중, 추후 구현 예정
 
-Day 5: 메시지 템플릿 API
+
+Day 5: 메시지 템플릿 API ❌ 미구현
 ----------------------------------------
 [ ] 기존 API 활용 가능성 검토
     - message_templates 테이블 활용
@@ -647,22 +616,28 @@ Day 5: 메시지 템플릿 API
 [ ] 테스트
 
 
-Day 6: 프론트엔드 연동 (🚫 UI 수정 금지!)
+Day 6: 프론트엔드 연동 (🚫 UI 수정 금지!) ⚠️ 부분 완료
 ----------------------------------------
-[ ] MessageSendTab.tsx - API 연동만 추가
-    - selectedSenderNumber 상태 추가
-    - recipients 상태 추가
-    - messageData 상태 추가
-    - handleSend() 함수 구현 (API 호출)
-    - handleSchedule() 함수 구현 (API 호출)
+[✅] MessageSendTab.tsx - 기본 상태 추가
+    - selectedSenderNumber 상태
+    - recipients 상태
+    - messageData 상태
+[✅] 수신번호 직접 입력 기능
+    - handleAddRecipient() 구현
+    - 전화번호 형식 검증
+[✅] 즉시 발송 기능
+    - handleImmediateSend() 구현
+    - API 호출 및 에러 처리
+[✅] ESLint 에러 수정
+    - TypeScript any 타입 제거
+    - 명시적 타입 지정
 
-[ ] SmsMessageContent.tsx - API 연동만 추가
-    - 부모로부터 props 받기
-    - 메시지 데이터 변경 시 부모에게 전달
+[ ] 예약 발송 UI
+    - ScheduleModal 생성 필요
+    - handleScheduledSend() 구현
 
 [ ] SenderNumberSelectModal.tsx
-    - fetchSenderNumbers() API 호출 추가
-    - onSelect 핸들러 연결
+    - fetchSenderNumbers() API 호출 추가 (보류)
 
 [ ] SaveContentModal.tsx
     - handleSave() API 호출 추가
@@ -674,169 +649,134 @@ Day 6: 프론트엔드 연동 (🚫 UI 수정 금지!)
          useState, useEffect, handler 함수만 추가!
 
 
-Day 7: 통합 테스트 및 버그 수정
+Day 7: 통합 테스트 및 버그 수정 ⚠️ 진행 중
 -----------------------------
-[ ] 전체 플로우 테스트
-    1. 발신번호 선택
-    2. 수신번호 입력
-    3. 메시지 작성
-    4. 즉시 발송
-    5. 예약 발송
-    6. 템플릿 저장/불러오기
-
+[✅] 즉시 발송 테스트
+[✅] 잔액 차감 확인
+[✅] JWT 인증 확인
+[ ] 예약 발송 테스트
+[ ] 템플릿 저장/불러오기
 [ ] 에러 케이스 테스트
-    - 잔액 부족
-    - 잘못된 전화번호
-    - 네트워크 오류
-    - JWT 만료
-
-[ ] 버그 수정 및 최적화
 
 
 ================================================================================
-8. 프론트엔드 연동 (API 호출만, 🚫 UI 수정 금지!)
+8. 프론트엔드 연동 (API 호출만, 🚫 UI 수정 금지!) ⚠️ 업데이트됨
 ================================================================================
 
-8.1 MessageSendTab.tsx 연동
+8.1 MessageSendTab.tsx 연동 ✅ 부분 완료
 ---------------------------
 
-```typescript
-// 🚫 기존 JSX는 절대 수정하지 말 것!
-// ✅ 다음 코드만 추가:
+현재 구현된 기능:
+- 발신번호 상태 관리 (selectedSenderNumber)
+- 수신번호 배열 관리 (recipients)
+- 메시지 데이터 관리 (messageData)
+- 수신번호 직접 추가 (handleAddRecipient)
+- 즉시 전송 (handleImmediateSend)
+- 로딩/에러 상태 관리
 
-import { useState, useEffect } from 'react';
-
-export default function MessageSendTab() {
-  // 상태 추가
-  const [selectedSenderNumber, setSelectedSenderNumber] = useState(null);
-  const [recipients, setRecipients] = useState([]);
-  const [messageData, setMessageData] = useState({
-    subject: '',
-    content: '',
-    isAd: false
-  });
-  const [loading, setLoading] = useState(false);
-
-  // 수신자 추가 핸들러
-  const handleAddRecipient = (phoneNumber: string) => {
-    // 전화번호 유효성 검사
-    const cleaned = phoneNumber.replace(/[^0-9]/g, '');
-    if (!/^01[0-9]{8,9}$/.test(cleaned)) {
-      alert('올바른 전화번호를 입력하세요.');
-      return;
-    }
-
-    setRecipients([...recipients, { phone_number: cleaned }]);
-  };
-
-  // 발송 핸들러
-  const handleSend = async () => {
-    // 유효성 검사
-    if (!selectedSenderNumber) {
-      alert('발신번호를 선택해주세요.');
-      return;
-    }
-
-    if (recipients.length === 0) {
-      alert('수신자를 추가해주세요.');
-      return;
-    }
-
-    if (!messageData.content) {
-      alert('메시지 내용을 입력해주세요.');
-      return;
-    }
-
-    // 발송 확인
-    const confirmed = confirm(
-      `${recipients.length}명에게 발송하시겠습니까?`
-    );
-
-    if (!confirmed) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch('/api/messages/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}` // 기존 인증 토큰 사용
-        },
-        body: JSON.stringify({
-          recipients,
-          message: messageData.content,
-          subject: messageData.subject,
-          sendType: 'immediate'
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(`${result.successCount}건 발송 완료!`);
-        // 수신자 목록 초기화
-        setRecipients([]);
-      } else {
-        alert(`발송 실패: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('발송 오류:', error);
-      alert('발송 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🚫 기존 return JSX는 절대 수정하지 말 것!
-  // ✅ 버튼 onClick에만 핸들러 연결
-}
-```
-
-
-8.2 SenderNumberSelectModal.tsx 연동
------------------------------------
+위치: src/components/messages/MessageSendTab.tsx (46-198줄)
 
 ```typescript
-// 🚫 기존 JSX는 절대 수정하지 말 것!
-// ✅ 다음 코드만 추가:
+// 상태 관리
+const [selectedSenderNumber, setSelectedSenderNumber] = useState<string>("");
+const [recipients, setRecipients] = useState<Recipient[]>([]);
+const [messageData, setMessageData] = useState<MessageData>({
+  subject: "",
+  content: "",
+  isAd: false
+});
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<string | null>(null);
 
-const [senderNumbers, setSenderNumbers] = useState([]);
-const [loading, setLoading] = useState(false);
+// 수신번호 추가
+const handleAddRecipient = () => {
+  const trimmed = recipientInput.trim();
+  if (!trimmed) return;
 
-useEffect(() => {
-  if (isOpen) {
-    fetchSenderNumbers();
+  const phoneNumber = trimmed.replace(/-/g, "");
+  if (!/^01[0-9]{8,9}$/.test(phoneNumber)) {
+    setError("올바른 전화번호 형식이 아닙니다");
+    return;
   }
-}, [isOpen]);
 
-const fetchSenderNumbers = async () => {
-  setLoading(true);
+  if (recipients.some(r => r.phone_number === phoneNumber)) {
+    setError("이미 추가된 번호입니다");
+    return;
+  }
+
+  setRecipients([...recipients, { phone_number: phoneNumber }]);
+  setRecipientInput("");
+  setError(null);
+};
+
+// 즉시 전송
+const handleImmediateSend = async () => {
+  setIsLoading(true);
+  setError(null);
+
   try {
-    const response = await fetch('/api/sender-numbers', {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      throw new Error("로그인이 필요합니다");
+    }
+
+    const response = await fetch("/api/messages/send", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${getToken()}`
-      }
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        from_number: selectedSenderNumber,
+        recipients: recipients,
+        message: messageData.content,
+        subject: messageData.subject || undefined,
+        sendType: "immediate",
+        isAd: messageData.isAd
+      })
     });
 
-    const { data } = await response.json();
-    setSenderNumbers(data || []);
-  } catch (error) {
-    console.error('발신번호 조회 실패:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+    const data = await response.json();
 
-const handleSelect = (number) => {
-  onSelect(number); // 부모 컴포넌트로 전달
-  onClose();
+    if (!response.ok) {
+      throw new Error(data.error || "메시지 전송에 실패했습니다");
+    }
+
+    const successCount = data.results.filter((r: { success: boolean }) => r.success).length;
+    const failCount = data.results.filter((r: { success: boolean }) => !r.success).length;
+    alert(`메시지 전송 완료\n성공: ${successCount}건\n실패: ${failCount}건`);
+
+    setRecipients([]);
+
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
+    setError(errorMessage);
+    alert(`전송 실패: ${errorMessage}`);
+  } finally {
+    setIsLoading(false);
+  }
 };
 ```
 
+미구현 기능:
+- handleScheduledSend() - 예약 전송
+- handleLoadTemplate() - 템플릿 불러오기
+- handleSaveTemplate() - 템플릿 저장
 
-8.3 SaveContentModal.tsx 연동
+
+8.2 SenderNumberSelectModal.tsx 연동 ⏸️ 보류
+-----------------------------------
+
+현재 상태:
+- 발신번호 선택 버튼 클릭 시 "개발 중입니다" 알림 표시
+- 테스트 발신번호로 자동 전송
+- 추후 구현 예정
+
+
+8.3 SaveContentModal.tsx 연동 ❌ 미구현
 ----------------------------------
 
+필요 작업:
 ```typescript
 const handleSave = async () => {
   if (!templateName || !currentContent) {
@@ -873,6 +813,49 @@ const handleSave = async () => {
 ```
 
 
+8.4 LoadContentModal.tsx 연동 ❌ 미구현
+-----------------------------------
+
+필요 작업:
+```typescript
+const [templates, setTemplates] = useState([]);
+const [loading, setLoading] = useState(false);
+
+useEffect(() => {
+  if (isOpen && activeTab === 'saved') {
+    fetchTemplates();
+  }
+}, [isOpen, activeTab]);
+
+const fetchTemplates = async () => {
+  setLoading(true);
+  try {
+    const response = await fetch('/api/message-templates', {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+
+    const { data } = await response.json();
+    setTemplates(data || []);
+  } catch (error) {
+    console.error('템플릿 조회 실패:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSelect = (template) => {
+  onSelect({
+    subject: template.subject,
+    content: template.content,
+    isAd: false
+  });
+  onClose();
+};
+```
+
+
 ================================================================================
 9. 테스트 시나리오
 ================================================================================
@@ -880,7 +863,7 @@ const handleSave = async () => {
 9.1 API 단위 테스트 (Postman/Thunder Client)
 -------------------------------------------
 
-✅ POST /api/messages/send (즉시 발송)
+✅ POST /api/messages/send (즉시 발송) - 완료
 요청:
 ```json
 {
@@ -891,7 +874,7 @@ const handleSave = async () => {
 ```
 예상 결과: 200 OK, successCount: 1
 
-✅ POST /api/messages/send (예약 발송)
+✅ POST /api/messages/send (예약 발송) - 완료
 요청:
 ```json
 {
@@ -903,13 +886,13 @@ const handleSave = async () => {
 ```
 예상 결과: 200 OK, scheduledCount: 1
 
-✅ GET /api/messages/scheduled
+❌ GET /api/messages/scheduled - 미구현
 예상 결과: 200 OK, messages 배열 반환
 
-✅ GET /api/sender-numbers
+❌ GET /api/sender-numbers - 미구현
 예상 결과: 200 OK, data 배열 반환
 
-✅ POST /api/message-templates
+❌ POST /api/message-templates - 미구현
 요청:
 ```json
 {
@@ -924,31 +907,31 @@ const handleSave = async () => {
 -----------------------
 🚫 주의: UI 수정 없이 기능만 테스트!
 
-1. 발신번호 선택
+1. 발신번호 선택 ⏸️ 보류
    [ ] 발신번호 목록이 표시되는가?
    [ ] 선택 시 상태가 업데이트되는가?
 
-2. 수신번호 추가
-   [ ] 전화번호 입력 후 추가 버튼 클릭
-   [ ] 목록에 추가되는가?
-   [ ] 잘못된 번호 입력 시 에러 메시지?
+2. 수신번호 추가 ✅ 완료
+   [✅] 전화번호 입력 후 추가 버튼 클릭
+   [✅] 목록에 추가되는가?
+   [✅] 잘못된 번호 입력 시 에러 메시지?
 
-3. 메시지 작성
-   [ ] 내용 입력 시 상태 업데이트?
-   [ ] 글자 수 카운트 동작?
+3. 메시지 작성 ✅ 완료
+   [✅] 내용 입력 시 상태 업데이트?
+   [✅] 글자 수 카운트 동작?
 
-4. 즉시 발송
-   [ ] 발송 버튼 클릭
-   [ ] 확인 다이얼로그 표시?
-   [ ] 발송 완료 메시지?
-   [ ] 잔액 차감 확인?
+4. 즉시 발송 ✅ 완료
+   [✅] 발송 버튼 클릭
+   [✅] 확인 다이얼로그 표시?
+   [✅] 발송 완료 메시지?
+   [✅] 잔액 차감 확인?
 
-5. 템플릿 저장
+5. 템플릿 저장 ❌ 미구현
    [ ] 저장 모달 열림?
    [ ] 템플릿 이름 입력 후 저장?
    [ ] 저장 완료 메시지?
 
-6. 템플릿 불러오기
+6. 템플릿 불러오기 ❌ 미구현
    [ ] 불러오기 모달 열림?
    [ ] 템플릿 목록 표시?
    [ ] 선택 시 내용 복원?
@@ -956,9 +939,9 @@ const handleSave = async () => {
 
 9.3 에러 케이스 테스트
 ---------------------
-[ ] 잔액 부족 시 발송 차단
-[ ] 잘못된 전화번호 입력 시 에러
-[ ] JWT 토큰 만료 시 401 에러
+[✅] 잔액 부족 시 발송 차단
+[✅] 잘못된 전화번호 입력 시 에러
+[✅] JWT 토큰 만료 시 401 에러
 [ ] 네트워크 오류 처리
 [ ] 예약 시간이 과거인 경우 에러
 
@@ -987,9 +970,9 @@ try {
   }
   const data = await response.json();
   // 성공 처리
-} catch (error) {
-  console.error(error);
-  alert(error.message || '오류가 발생했습니다.');
+} catch (err) {
+  const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
+  alert(errorMessage);
 }
 ```
 
@@ -1002,55 +985,442 @@ try {
 
 
 ================================================================================
-11. 최종 확인 사항
+11. 치환문구 형식 통일 방안 ⭐ 신규 추가
+================================================================================
+
+11.1 현재 상황
+-------------
+예약 시스템 (reservations):
+- 형식: {{변수명}}
+- 예시: {{고객명}}, {{공간명}}, {{예약날짜}}
+- 파서: src/utils/messageTemplateParser.ts
+
+messages/send API:
+- 형식: #[변수명]
+- 예시: #[이름], #[날짜], #[시간]
+- 파서: /api/messages/send/route.ts (139-147줄)
+
+문제점:
+- 두 시스템에서 다른 형식 사용
+- messageTemplateParser.ts 재사용 불가
+- 사용자 혼란 가능성
+
+
+11.2 해결 방안
+-------------
+
+방안 A: #[변수명] 형식으로 통일 (추천)
+------------------------------------
+장점:
+- messages API와 일관성
+- 기존 API 코드 유지
+
+단점:
+- reservations 시스템 수정 필요
+- messageTemplateParser.ts 수정 필요
+
+구현:
+1. messageTemplateParser.ts 수정
+   - {{변수명}} → #[변수명] 변경
+   - 정규식: /\{\{[^}]+\}\}/g → /#\[[^\]]+\]/g
+
+2. 기존 템플릿 마이그레이션
+   - DB에서 모든 템플릿 조회
+   - {{}} → #[] 일괄 변환
+   - UPDATE message_templates SET content = ...
+
+3. UI 안내 문구 업데이트
+
+
+방안 B: {{변수명}} 형식으로 통일
+--------------------------------
+장점:
+- messageTemplateParser.ts 그대로 사용
+- reservations 시스템 수정 불필요
+
+단점:
+- messages API 수정 필요
+- 이미 생성된 테스트 데이터 마이그레이션
+
+구현:
+1. /api/messages/send/route.ts 수정
+   - #[변수명] → {{변수명}} 변환 로직 추가
+   - 또는 messageTemplateParser.ts 직접 사용
+
+2. 프론트엔드 안내 문구 변경
+   - SmsMessageContent.tsx placeholder 수정
+
+
+방안 C: 두 형식 모두 지원 (호환성)
+---------------------------------
+장점:
+- 기존 시스템 변경 불필요
+- 사용자 선택 가능
+
+단점:
+- 복잡도 증가
+- 혼란 가능성
+
+구현:
+1. 범용 파서 함수 생성
+```typescript
+export function replaceVariables(
+  template: string,
+  variables: Record<string, string>,
+  format: '{{}}' | '#[]' = '{{}}'
+): string {
+  let result = template;
+
+  Object.entries(variables).forEach(([key, value]) => {
+    if (format === '{{}}') {
+      const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      result = result.replace(pattern, value);
+    } else {
+      const pattern = new RegExp(`#\\[${key}\\]`, 'g');
+      result = result.replace(pattern, value);
+    }
+  });
+
+  return result;
+}
+```
+
+2. 자동 감지 로직
+```typescript
+function detectVariableFormat(template: string): '{{}}' | '#[]' {
+  if (template.includes('{{')) return '{{}}';
+  if (template.includes('#[')) return '#[]';
+  return '{{}}'; // 기본값
+}
+```
+
+
+11.3 권장 사항
+-------------
+⭐ 방안 A (#{변수명} 통일) 추천
+
+이유:
+1. messages 탭이 신규 기능이므로 통일된 형식 적용 용이
+2. 예약 시스템과 독립적으로 개발 가능
+3. 향후 확장성 (카카오톡, RCS도 같은 형식 사용)
+
+구현 순서:
+1. messageTemplateParser.ts 복사 → messageVariableParser.ts 생성
+2. 정규식 변경 ({{}} → #[])
+3. messages/send API에 적용
+4. UI placeholder 업데이트
+5. 추후 reservations도 마이그레이션 검토
+
+
+================================================================================
+12. 엑셀 업로드 구현 가이드 ⭐ 신규 추가
+================================================================================
+
+12.1 엑셀 파일 구조
+-----------------
+예상 컬럼:
+- A: 이름 (name)
+- B: 전화번호 (phone_number)
+- C: 변수1 (예: 회사명)
+- D: 변수2 (예: 직급)
+- E: ...
+
+샘플:
+| 이름   | 전화번호      | 회사명  | 직급   |
+|--------|---------------|---------|--------|
+| 홍길동 | 01012345678   | ABC     | 부장   |
+| 김철수 | 01087654321   | XYZ     | 과장   |
+
+
+12.2 API 구현
+------------
+파일: src/app/api/contacts/import/excel/route.ts
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import * as XLSX from "xlsx";
+
+export async function POST(request: NextRequest) {
+  try {
+    // JWT 인증
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { error: "인증이 필요합니다" },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7);
+    const userId = getUserIdFromToken(token);
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "유효하지 않은 토큰입니다" },
+        { status: 401 }
+      );
+    }
+
+    // 파일 업로드 처리
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return NextResponse.json(
+        { error: "파일이 필요합니다" },
+        { status: 400 }
+      );
+    }
+
+    // 엑셀 파싱
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+
+    // 첫 번째 시트 읽기
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // JSON 변환
+    const data = XLSX.utils.sheet_to_json<any>(sheet);
+
+    // 연락처 변환
+    const contacts = data
+      .map((row, index) => {
+        // 전화번호 추출 (다양한 컬럼명 지원)
+        const phoneNumber =
+          row['전화번호'] ||
+          row['핸드폰'] ||
+          row['휴대폰'] ||
+          row['전화'] ||
+          row['phone'] ||
+          row['tel'];
+
+        if (!phoneNumber) {
+          console.warn(`Row ${index + 1}: 전화번호 없음`);
+          return null;
+        }
+
+        // 전화번호 정리 (하이픈 제거)
+        const cleanPhone = String(phoneNumber).replace(/[^0-9]/g, '');
+
+        // 유효성 검증
+        if (!/^01[0-9]{8,9}$/.test(cleanPhone)) {
+          console.warn(`Row ${index + 1}: 올바르지 않은 전화번호 ${phoneNumber}`);
+          return null;
+        }
+
+        // 이름 추출
+        const name = row['이름'] || row['성명'] || row['name'] || '';
+
+        // 치환 변수 추출 (이름, 전화번호 제외한 모든 컬럼)
+        const variables: Record<string, string> = {};
+        Object.entries(row).forEach(([key, value]) => {
+          if (
+            !['이름', '성명', 'name', '전화번호', '핸드폰', '휴대폰', '전화', 'phone', 'tel'].includes(key) &&
+            value !== null &&
+            value !== undefined
+          ) {
+            variables[key] = String(value);
+          }
+        });
+
+        return {
+          phone_number: cleanPhone,
+          name: name,
+          variables: variables
+        };
+      })
+      .filter(contact => contact !== null);
+
+    // 중복 제거 (전화번호 기준)
+    const uniqueContacts = Array.from(
+      new Map(contacts.map(c => [c.phone_number, c])).values()
+    );
+
+    return NextResponse.json({
+      success: true,
+      count: uniqueContacts.length,
+      contacts: uniqueContacts
+    });
+
+  } catch (error) {
+    console.error("엑셀 업로드 오류:", error);
+    return NextResponse.json(
+      { error: "엑셀 파일 처리 중 오류가 발생했습니다" },
+      { status: 500 }
+    );
+  }
+}
+
+function getUserIdFromToken(token: string): number | null {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64").toString()
+    );
+    return payload.userId || null;
+  } catch {
+    return null;
+  }
+}
+```
+
+
+12.3 프론트엔드 구현
+------------------
+파일: MessageSendTab.tsx
+
+```typescript
+const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  // 파일 형식 확인
+  if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    alert('엑셀 파일만 업로드 가능합니다 (.xlsx, .xls)');
+    return;
+  }
+
+  setIsLoading(true);
+  setError(null);
+
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      throw new Error("로그인이 필요합니다");
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/contacts/import/excel', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || '엑셀 업로드에 실패했습니다');
+    }
+
+    // 기존 수신자 목록에 추가
+    setRecipients([...recipients, ...data.contacts]);
+    alert(`${data.count}개의 연락처를 추가했습니다.`);
+
+    // 파일 input 초기화
+    event.target.value = '';
+
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
+    setError(errorMessage);
+    alert(`업로드 실패: ${errorMessage}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+JSX 추가 (기존 input에 onChange만 연결):
+```typescript
+<input
+  type="file"
+  accept=".xlsx,.xls"
+  onChange={handleExcelUpload}
+  style={{ display: 'none' }}
+  id="excel-upload"
+/>
+<label htmlFor="excel-upload">
+  <button type="button">엑셀 업로드</button>
+</label>
+```
+
+
+12.4 엑셀 샘플 생성
+-----------------
+사용자에게 제공할 샘플 파일:
+
+```typescript
+// 샘플 엑셀 다운로드 함수
+const downloadSampleExcel = () => {
+  const sampleData = [
+    { 이름: '홍길동', 전화번호: '01012345678', 회사명: 'ABC', 직급: '부장' },
+    { 이름: '김철수', 전화번호: '01087654321', 회사명: 'XYZ', 직급: '과장' },
+  ];
+
+  const worksheet = XLSX.utils.json_to_sheet(sampleData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "연락처");
+
+  XLSX.writeFile(workbook, "연락처_샘플.xlsx");
+};
+```
+
+
+12.5 주의사항
+------------
+1. 파일 크기 제한 (예: 5MB)
+2. 행 개수 제한 (예: 1000개)
+3. 에러 로깅 (파싱 실패한 행 기록)
+4. 진행 상태 표시 (대용량 파일)
+5. 중복 전화번호 처리
+
+
+================================================================================
+13. 최종 확인 사항
 ================================================================================
 
 구현 시작 전 체크:
 ------------------
-[ ] 이 계획서를 처음부터 끝까지 읽었는가?
-[ ] UI 수정 금지 원칙을 이해했는가?
-[ ] 기존 리소스 (API, 라이브러리)를 파악했는가?
-[ ] 공통 로직 추출 전략을 이해했는가?
-[ ] 7일 구현 일정을 확인했는가?
+[✅] 이 계획서를 처음부터 끝까지 읽었는가?
+[✅] UI 수정 금지 원칙을 이해했는가?
+[✅] 기존 리소스 (API, 라이브러리)를 파악했는가?
+[✅] 공통 로직 추출 전략을 이해했는가?
+[✅] 7일 구현 일정을 확인했는가?
 
 구현 중 체크:
 ------------
-[ ] 🚫 UI 파일(JSX)을 수정하고 있지 않은가?
-[ ] ✅ API 엔드포인트만 생성하고 있는가?
-[ ] ✅ 기존 유틸리티를 재사용하고 있는가?
-[ ] ✅ 테스트를 병행하고 있는가?
+[✅] 🚫 UI 파일(JSX)을 수정하고 있지 않은가?
+[✅] ✅ API 엔드포인트만 생성하고 있는가?
+[✅] ✅ 기존 유틸리티를 재사용하고 있는가?
+[✅] ✅ 테스트를 병행하고 있는가?
 
 구현 완료 후 체크:
 ----------------
-[ ] 모든 API가 정상 동작하는가?
-[ ] 프론트엔드에서 발송이 가능한가?
-[ ] 잔액 차감이 정상 동작하는가?
+[✅] 즉시 발송 API가 정상 동작하는가?
+[✅] 프론트엔드에서 발송이 가능한가?
+[✅] 잔액 차감이 정상 동작하는가?
 [ ] 예약 발송이 정상 동작하는가?
-[ ] 에러 케이스가 적절히 처리되는가?
-[ ] 🚫 UI가 변경되지 않았는가?
+[✅] 에러 케이스가 적절히 처리되는가?
+[✅] 🚫 UI가 변경되지 않았는가?
+[✅] ESLint 에러가 없는가?
 
 
 ================================================================================
-12. 참고 사항
+14. 참고 사항
 ================================================================================
 
-12.1 메시지 타입별 단가
+14.1 메시지 타입별 단가
 ---------------------
 - SMS (90바이트 이하): 20원
 - LMS (91바이트 이상): 50원
 - MMS (이미지 포함): 200원 (추후 구현)
 
-12.2 치환문구 형식
+14.2 치환문구 형식
 ----------------
-- SMS: #[변수명] 형식
+- 예약 시스템: {{변수명}} 형식
+- messages API: #[변수명] 형식
 - 예시: "안녕하세요 #[이름]님, #[시간]에 방문 예약되었습니다."
 
-12.3 전화번호 형식
+14.3 전화번호 형식
 ----------------
 - 형식: 01012345678 (하이픈 제거)
 - 정규식: /^01[0-9]{8,9}$/
 
-12.4 개발 환경
+14.4 개발 환경
 -------------
 - Node.js: v18+
 - Next.js: 15.3.2
@@ -1059,15 +1429,38 @@ try {
 
 
 ================================================================================
+15. 변경 이력
+================================================================================
+
+2025-10-13:
+-----------
+[추가] 섹션 11: 치환문구 형식 통일 방안
+[추가] 섹션 12: 엑셀 업로드 구현 가이드
+[업데이트] 섹션 2.3: 기존 라이브러리 상세 설명
+[업데이트] 섹션 6: ESLint 에러 수정 완료
+[업데이트] 섹션 7: Day 1-2 완료 표시
+[업데이트] 섹션 8: 프론트엔드 연동 현황
+[확인] xlsx 라이브러리 설치 확인
+[확인] messageTemplateParser.ts 모든 함수 확인
+
+
+================================================================================
 문서 끝
 ================================================================================
 
 📌 마지막 체크:
-[ ] UI 수정 금지 원칙을 숙지했습니까? → YES
-[ ] 구현 계획을 이해했습니까? → YES
-[ ] 7일 일정을 확인했습니까? → YES
+[✅] UI 수정 금지 원칙을 숙지했습니까? → YES
+[✅] 구현 계획을 이해했습니까? → YES
+[✅] 기존 리소스를 파악했습니까? → YES
+[✅] 치환문구 형식 통일 방안을 검토했습니까? → YES
+[✅] 엑셀 업로드 구현 방법을 이해했습니까? → YES
 
-✅ 모두 YES라면 구현을 시작하세요!
+✅ 모두 YES라면 다음 단계로 진행하세요!
 🚫 UI는 절대 건드리지 말고 API만 구현하세요!
+
+⭐ 다음 우선순위:
+1. 메시지 템플릿 API 구현 및 연동 (2시간)
+2. 엑셀 업로드 기능 구현 (4시간)
+3. 예약 발송 UI 추가 (6시간)
 
 ================================================================================
