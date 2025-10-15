@@ -31,7 +31,7 @@
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.0.0",
-    "sharp": "^0.34.2",
+    "sharp": "^0.34.4",
     "tailwind-merge": "^3.3.0",
     "uuid": "^11.1.0",
     "xlsx": "^0.18.5"
@@ -39,7 +39,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.21",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

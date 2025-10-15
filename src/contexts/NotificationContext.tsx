@@ -60,7 +60,7 @@ export function NotificationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, getAccessToken } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pagination, setPagination] = useState<NotificationPagination | null>(
@@ -69,10 +69,10 @@ export function NotificationProvider({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // API 호출을 위한 공통 함수
+  // API 호출을 위한 공통 함수 (자동 토큰 갱신 포함)
   const makeApiCall = useCallback(
     async (url: string, options: RequestInit = {}) => {
-      const token = localStorage.getItem("accessToken");
+      const token = await getAccessToken();
       if (!token) {
         throw new Error("인증 토큰이 없습니다.");
       }
@@ -93,7 +93,7 @@ export function NotificationProvider({
 
       return response.json();
     },
-    []
+    [getAccessToken]
   );
 
   // 알림 목록 조회

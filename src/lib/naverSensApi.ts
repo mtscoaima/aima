@@ -40,7 +40,8 @@ export interface NaverSensResult {
 export async function sendNaverSMS(
   toNumber: string,
   message: string,
-  subject?: string
+  subject?: string,
+  fromNumber?: string
 ): Promise<NaverSensResult> {
   try {
     // 환경 변수 확인
@@ -80,6 +81,9 @@ export async function sendNaverSMS(
     // 메시지 타입 결정 (90자 이하면 SMS, 초과하거나 제목이 있으면 LMS)
     const messageType = message.length <= 90 && !subject ? "SMS" : "LMS";
 
+    // 발신번호 결정: fromNumber가 있으면 사용, 없으면 TEST_CALLING_NUMBER 사용
+    const callingNumber = fromNumber || TEST_CALLING_NUMBER;
+
     // 요청 본문
     const data: {
       type: string;
@@ -91,7 +95,7 @@ export async function sendNaverSMS(
     } = {
       type: messageType,
       countryCode: "82",
-      from: TEST_CALLING_NUMBER,
+      from: callingNumber,
       content: message,
       messages: [
         {
@@ -161,7 +165,8 @@ export async function sendNaverMMS(
   toNumber: string,
   message: string,
   subject: string,
-  fileIds: string[]
+  fileIds: string[],
+  fromNumber?: string
 ): Promise<NaverSensResult> {
   try {
     // 환경 변수 확인
@@ -196,11 +201,14 @@ export async function sendNaverMMS(
       "x-ncp-apigw-signature-v2": signature,
     };
 
+    // 발신번호 결정: fromNumber가 있으면 사용, 없으면 TEST_CALLING_NUMBER 사용
+    const callingNumber = fromNumber || TEST_CALLING_NUMBER;
+
     const data = {
       type: "MMS",
       contentType: "COMM",
       countryCode: "82",
-      from: TEST_CALLING_NUMBER,
+      from: callingNumber,
       subject: subject,
       content: message,
       messages: [
@@ -258,3 +266,4 @@ export async function sendNaverMMS(
     };
   }
 }
+

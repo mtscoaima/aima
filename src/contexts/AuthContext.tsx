@@ -209,13 +209,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 토큰 만료 전 자동 갱신 (55분마다)
+  // 토큰 만료 전 자동 갱신 (50분마다 - 1시간 만료 기준)
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const interval = setInterval(async () => {
-      await refreshAccessToken();
-    }, 55 * 60 * 1000); // 55분
+      const token = tokenManager.getAccessToken();
+      if (token && tokenManager.isTokenExpired(token)) {
+        await refreshAccessToken();
+      }
+    }, 50 * 60 * 1000); // 50분
 
     return () => clearInterval(interval);
   }, [isAuthenticated, refreshAccessToken]);

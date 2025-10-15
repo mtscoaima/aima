@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendNaverSMS } from "@/lib/naverSensApi";
-import { replaceTemplateVariables, determineMessageType } from "@/utils/messageTemplateParser";
+import { replaceTemplateVariables } from "@/utils/messageTemplateParser";
+import { sendMessage, scheduleMessage } from "@/lib/messageSender";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     let finalMessage = message;
     let recipientPhone = '';
     let recipientName = '';
+    let fromNumber: string | undefined;
 
     // 예약 정보가 있으면 조회
     if (reservationId) {
@@ -76,8 +77,7 @@ export async function POST(request: NextRequest) {
       recipientPhone = reservation.customer_phone;
       recipientName = reservation.customer_name;
 
-      // 호스트 연락처 조회 (별도 쿼리)
-      let hostContactNumber = null;
+      // 호스트 연락처 조회 (발신번호)
       if (reservation.spaces?.host_contact_number_id) {
         const { data: senderNumber } = await supabase
           .from('sender_numbers')
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
           .eq('id', reservation.spaces.host_contact_number_id)
           .single();
 
-        hostContactNumber = senderNumber?.phone_number || null;
+        fromNumber = senderNumber?.phone_number || undefined;
       }
 
       // 템플릿이 선택된 경우 변수 치환
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
             ...reservation,
             space: {
             ...reservation.spaces,
-            host_contact_number: hostContactNumber
+            host_contact_number: fromNumber
           }
           });
         }
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
           ...reservation,
           space: {
             ...reservation.spaces,
-            host_contact_number: hostContactNumber
+            host_contact_number: fromNumber
           }
         });
       }
@@ -125,90 +125,54 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "수신자 전화번호가 없습니다" }, { status: 400 });
     }
 
-    // 전화번호 포맷 정리 (하이픈 제거)
-    const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
-
-    // 메시지 타입 결정
-    const messageType = determineMessageType(finalMessage);
-
-    // 광고머니 비용 계산 (기존 시스템 활용)
-    const creditRequired = messageType === 'SMS' ? 20 : 50; // SMS 20원, LMS 50원
-
-    // 광고머니 잔액 확인 (transactions 기반)
-    const { data: transactions, error: transactionError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'completed')
-      .order('created_at', { ascending: false });
-
-    if (transactionError) {
-      console.error('트랜잭션 조회 오류:', transactionError);
-      return NextResponse.json({ error: "잔액 조회에 실패했습니다" }, { status: 500 });
-    }
-
-    // 광고머니 잔액 계산
-    let advertisingBalance = 0;
-    for (const transaction of transactions || []) {
-      const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
-
-      if (transaction.type === "charge") {
-        // 광고머니 충전만 계산 (포인트 제외)
-        if (!metadata?.isReward) {
-          advertisingBalance += transaction.amount;
-        }
-      } else if (transaction.type === "usage") {
-        // 광고머니 사용만 계산 (포인트 사용 제외)
-        if (metadata?.transactionType !== "point") {
-          advertisingBalance -= transaction.amount;
-        }
-      } else if (transaction.type === "refund") {
-        advertisingBalance += transaction.amount;
-      } else if (transaction.type === "penalty") {
-        advertisingBalance -= transaction.amount;
-      }
-    }
-
-    if (advertisingBalance < creditRequired) {
-      return NextResponse.json({
-        error: "광고머니가 부족합니다",
-        required: creditRequired,
-        balance: advertisingBalance
-      }, { status: 402 });
-    }
-
-    let sendResult;
-    let status = 'pending';
-    let errorMessage = null;
-
     // 즉시 발송
     if (sendType === 'immediate') {
-      sendResult = await sendNaverSMS(cleanPhone, finalMessage);
+      // 공통 로직 사용 (messageSender.ts)
+      const result = await sendMessage({
+        userId,
+        fromNumber,
+        toNumber: recipientPhone,
+        toName: recipientName,
+        message: finalMessage,
+        metadata: {
+          source: 'reservation',
+          reservation_id: reservationId,
+          template_id: templateId || null
+        }
+      });
 
-      if (sendResult.success) {
-        status = 'sent';
-
-        // 광고머니 차감 (usage 트랜잭션 생성)
-        await supabase.from('transactions').insert({
-          user_id: userId,
-          amount: creditRequired,
-          type: 'usage',
-          status: 'completed',
-          description: `예약 메시지 발송 (${messageType})`,
-          metadata: {
-            transactionType: 'advertising',
-            usage_type: 'message_send',
-            message_type: messageType,
-            reservation_id: reservationId
-          },
-          created_at: new Date().toISOString()
-        });
-      } else {
-        status = 'failed';
-        errorMessage = sendResult.error || '발송 실패';
+      if (!result.success) {
+        return NextResponse.json({
+          success: false,
+          error: result.error || '메시지 발송에 실패했습니다'
+        }, { status: 500 });
       }
-    } else if (sendType === 'scheduled') {
-      // 예약 발송 - reservation_scheduled_messages에 저장
+
+      // 예약 메시지 로그 기록 (기존 reservation_message_logs 테이블)
+      await supabase.from('reservation_message_logs').insert({
+        user_id: userId,
+        reservation_id: reservationId,
+        template_id: templateId || null,
+        to_number: recipientPhone.replace(/[^0-9]/g, ''),
+        to_name: recipientName,
+        message_content: finalMessage,
+        message_type: result.messageType,
+        sent_at: new Date().toISOString(),
+        status: 'sent',
+        error_message: null
+      });
+
+      return NextResponse.json({
+        success: true,
+        messageId: result.messageId,
+        logId: result.logId,
+        messageType: result.messageType,
+        creditUsed: result.creditUsed,
+        message: '메시지가 발송되었습니다'
+      });
+    }
+    // 예약 발송
+    else if (sendType === 'scheduled') {
       if (!scheduledAt) {
         return NextResponse.json({ error: "예약 시간이 필요합니다" }, { status: 400 });
       }
@@ -219,72 +183,40 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "예약 시간은 현재 시간 이후여야 합니다" }, { status: 400 });
       }
 
-      const { data: scheduledData, error: scheduledError } = await supabase
-        .from('reservation_scheduled_messages')
-        .insert({
-          user_id: userId,
-          reservation_id: reservationId,
-          template_id: templateId || null,
-          to_number: cleanPhone,
-          to_name: recipientName,
-          message_content: finalMessage,
-          scheduled_at: scheduledAt,
-          status: 'pending'
-        })
-        .select()
-        .single();
+      // 공통 로직 사용 (reservation_scheduled_messages 테이블에 저장)
+      const result = await scheduleMessage(
+        {
+          userId,
+          fromNumber,
+          toNumber: recipientPhone,
+          toName: recipientName,
+          message: finalMessage,
+          scheduledAt: scheduledAt,
+          metadata: {
+            source: 'reservation',
+            reservation_id: reservationId,
+            template_id: templateId || null
+          }
+        },
+        'reservation_scheduled_messages' // 테이블명 명시
+      );
 
-      if (scheduledError) {
-        console.error('예약 메시지 저장 실패:', scheduledError);
-        return NextResponse.json({ error: "예약 메시지 저장에 실패했습니다" }, { status: 500 });
+      if (!result.success) {
+        return NextResponse.json({
+          success: false,
+          error: result.error || '예약 메시지 저장에 실패했습니다'
+        }, { status: 500 });
       }
 
       return NextResponse.json({
         success: true,
-        scheduledId: scheduledData.id,
+        scheduledId: result.scheduledId,
         scheduledAt: scheduledAt,
         message: '메시지 예약이 완료되었습니다'
       });
     }
 
-    // 메시지 로그 기록
-    const { data: logData, error: logError } = await supabase
-      .from('reservation_message_logs')
-      .insert({
-        user_id: userId,
-        reservation_id: reservationId,
-        template_id: templateId || null,
-        to_number: cleanPhone,
-        to_name: recipientName,
-        message_content: finalMessage,
-        message_type: messageType,
-        sent_at: sendType === 'immediate' ? new Date().toISOString() : null,
-        status: status,
-        error_message: errorMessage
-      })
-      .select()
-      .single();
-
-    if (logError) {
-      console.error('메시지 로그 저장 실패:', logError);
-    }
-
-    if (status === 'sent') {
-      return NextResponse.json({
-        success: true,
-        messageId: sendResult?.requestId,
-        logId: logData?.id,
-        messageType: messageType,
-        creditUsed: creditRequired,
-        message: '메시지가 발송되었습니다'
-      });
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: errorMessage || '메시지 발송에 실패했습니다',
-        logId: logData?.id
-      }, { status: 500 });
-    }
+    return NextResponse.json({ error: "유효하지 않은 발송 타입입니다" }, { status: 400 });
 
   } catch (error) {
     console.error("메시지 발송 API 오류:", error);

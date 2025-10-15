@@ -47,9 +47,13 @@ async function getUserFromToken(request: NextRequest) {
       role: string;
     };
     return decoded;
-  } catch {
-      console.error("JWT 토큰 검증 실패: 유효하지 않은 토큰");
-    throw new Error("세션이 만료되었습니다. 다시 로그인해주세요.");
+  } catch (error) {
+    if (error instanceof Error && error.name === 'TokenExpiredError') {
+      console.error("JWT 토큰 만료됨:", error.message);
+      throw new Error("토큰이 만료되었습니다. 클라이언트에서 자동으로 갱신됩니다.");
+    }
+    console.error("JWT 토큰 검증 실패:", error);
+    throw new Error("유효하지 않은 토큰입니다. 다시 로그인해주세요.");
   }
 }
 

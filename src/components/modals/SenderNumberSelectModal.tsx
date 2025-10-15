@@ -7,12 +7,15 @@ interface SenderNumberSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onManageClick: () => void;
+  onSelect?: (phoneNumber: string) => void;
 }
 
 const SenderNumberSelectModal: React.FC<SenderNumberSelectModalProps> = ({
   isOpen,
   onClose,
   onManageClick,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onSelect,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 

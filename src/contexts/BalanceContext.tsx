@@ -79,6 +79,22 @@ const defaultBalanceData: BalanceData = {
   transactions: [],
 };
 
+// API 호출 시 자동 토큰 갱신을 위한 헬퍼 함수
+async function getValidToken(): Promise<string | null> {
+  const token = tokenManager.getAccessToken();
+  if (!token) {
+    return null;
+  }
+
+  // 토큰이 만료되었는지 확인
+  if (tokenManager.isTokenExpired(token)) {
+    // 토큰 갱신 시도 - AuthContext의 갱신 로직이 자동으로 처리
+    return null;
+  }
+
+  return token;
+}
+
 const transactionAPI = {
   async getTransactions(
     limit = 50,
@@ -90,7 +106,7 @@ const transactionAPI = {
     availableBalance: number;
     total: number;
   }> {
-    const token = tokenManager.getAccessToken();
+    const token = await getValidToken();
     if (!token) {
       throw new Error("로그인이 필요합니다. 다시 로그인해주세요.");
     }
@@ -126,7 +142,7 @@ const transactionAPI = {
     reservedAmount: number;
     availableBalance: number;
   }> {
-    const token = tokenManager.getAccessToken();
+    const token = await getValidToken();
     if (!token) {
       throw new Error("로그인이 필요합니다. 다시 로그인해주세요.");
     }

@@ -1,11 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Headset, HelpCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, HelpCircle } from "lucide-react";
 
 interface SaveContentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentContent?: {
+    subject?: string;
+    content: string;
+    isAd?: boolean;
+  };
+  onSaveSuccess?: () => void;
 }
 
 interface CheckedItems {
@@ -24,8 +31,12 @@ interface CheckedItems {
 const SaveContentModal: React.FC<SaveContentModalProps> = ({
   isOpen,
   onClose,
+  currentContent,
+  onSaveSuccess,
 }) => {
+  const router = useRouter();
   const [saveName, setSaveName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [checkedItems, setCheckedItems] = useState<CheckedItems>({
     messageContent: true,
     currentSenderNumber: true,
@@ -46,6 +57,58 @@ const SaveContentModal: React.FC<SaveContentModalProps> = ({
       ...prev,
       [key]: !prev[key]
     }));
+  };
+
+  const handleSave = async () => {
+    if (!saveName.trim()) {
+      alert("저장 이름을 입력하세요.");
+      return;
+    }
+
+    if (!currentContent || !currentContent.content.trim()) {
+      alert("저장할 메시지 내용이 없습니다.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("로그인이 필요합니다");
+      }
+
+      const response = await fetch("/api/sms-templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: saveName.trim(),
+          content: currentContent.content.trim(),
+          subject: currentContent.subject?.trim() || "",
+          isPrivate: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "템플릿 저장에 실패했습니다");
+      }
+
+      alert("템플릿이 저장되었습니다.");
+      setSaveName("");
+      onSaveSuccess?.();
+      onClose();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "알 수 없는 오류";
+      alert(`저장 실패: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -186,17 +249,22 @@ const SaveContentModal: React.FC<SaveContentModalProps> = ({
             </div>
           </div>
 
-          <button className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600">
-            내용저장하기
+          <button
+            onClick={handleSave}
+            disabled={isLoading || !saveName.trim()}
+            className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "저장 중..." : "내용저장하기"}
           </button>
         </div>
 
         {/* 하단 */}
         <div className="flex items-center justify-end p-4 border-t bg-gray-50">
-          <button className="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-            <Headset className="w-4 h-4" />
-            채팅 문의
-            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+          <button
+            onClick={() => router.push("/support?tab=contact")}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            문의
           </button>
           <button
             onClick={onClose}

@@ -40,16 +40,30 @@ export function validateAuth(request: NextRequest): AuthValidationResult {
     const token = authHeader.substring(7);
 
     // JWT 토큰 검증
-    let decodedToken: { userId: string | number; role: string };
+    let decodedToken: { userId: string | number; role: string; exp?: number };
     try {
-      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string | number; role: string };
+      decodedToken = jwt.verify(token, JWT_SECRET) as { userId: string | number; role: string; exp?: number };
     } catch (error) {
+      if (error instanceof Error && error.name === 'TokenExpiredError') {
+        console.error("JWT 토큰 만료됨:", error.message);
+        return {
+          isValid: false,
+          error: "토큰이 만료되었습니다. 클라이언트에서 자동으로 갱신됩니다.",
+          errorResponse: NextResponse.json(
+            {
+              error: "토큰이 만료되었습니다. 클라이언트에서 자동으로 갱신됩니다.",
+              code: "TOKEN_EXPIRED"
+            },
+            { status: 401 }
+          )
+        };
+      }
       console.error("JWT 토큰 검증 실패:", error);
       return {
         isValid: false,
-        error: "세션이 만료되었습니다. 다시 로그인해주세요.",
+        error: "유효하지 않은 토큰입니다. 다시 로그인해주세요.",
         errorResponse: NextResponse.json(
-          { error: "세션이 만료되었습니다. 다시 로그인해주세요." },
+          { error: "유효하지 않은 토큰입니다. 다시 로그인해주세요." },
           { status: 401 }
         )
       };
