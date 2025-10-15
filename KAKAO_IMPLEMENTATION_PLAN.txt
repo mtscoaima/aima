@@ -1,0 +1,900 @@
+================================================================================
+카카오톡 메시지 발송 기능 구현 계획서 (상세)
+================================================================================
+작성일: 2025-10-15
+대상: 카카오 알림톡/친구톡/브랜드 메시지
+구현 방식: 직접 연동 (카카오 비즈니스 API)
+
+
+================================================================================
+목차
+================================================================================
+1. 카카오 비즈니스 계정 준비
+2. 데이터베이스 스키마
+3. API 엔드포인트 설계
+4. 단계별 구현 계획
+5. 알림톡 구현 상세
+6. 친구톡 구현 상세
+7. 브랜드 메시지 구현 상세
+8. 테스트 시나리오
+9. 트러블슈팅
+
+
+================================================================================
+1. 카카오 비즈니스 계정 준비
+================================================================================
+
+1.1 필수 준비 사항
+-----------------
+⚠️ 구현 시작 전 반드시 완료해야 합니다!
+
+[ ] 카카오 비즈니스 가입 (https://business.kakao.com/)
+    └─ 사업자 등록증 필요
+    └─ 대표자 본인 인증
+
+[ ] 카카오톡 채널 개설
+    └─ 비즈니스 > 카카오톡 채널 > 새 채널 만들기
+    └─ 채널명, 프로필 이미지 설정
+    └─ 검색용 ID 설정
+
+[ ] 발신 프로필 등록 및 심사 (1-3일 소요)
+    └─ 관리 > 발신 프로필 > 프로필 만들기
+    └─ 카카오 심사팀 승인 대기
+
+[ ] 알림톡 템플릿 최소 1개 등록 및 승인 (2-3일 소요)
+    └─ 메시지 > 알림톡 > 템플릿 등록
+    └─ 템플릿 코드 발급 받기
+
+
+1.2 필요한 정보 수집
+------------------
+구현에 필요한 값들을 미리 준비하세요:
+
+✅ Sender Key (발신 프로필 키)
+   위치: 관리 > 발신 프로필 > 프로필 상세
+   예시: abc1234567890def
+
+✅ Channel ID
+   위치: 관리 > 내 채널 > 채널 홈 URL의 마지막 부분
+   예시: _abc1234
+
+✅ REST API Key
+   위치: Kakao Developers > 내 애플리케이션 > 앱 키
+   예시: 1234567890abcdef1234567890abcdef
+
+✅ 승인된 템플릿 코드
+   위치: 메시지 > 알림톡 > 템플릿 관리
+   예시: template_001
+
+
+1.3 환경변수 설정
+----------------
+.env.local에 추가:
+
+```env
+# ===== 카카오 비즈니스 메시지 =====
+KAKAO_BIZM_API_KEY=your_rest_api_key
+KAKAO_BIZM_SENDER_KEY=abc1234567890def
+KAKAO_BIZM_API_URL=https://kapi.kakao.com/v2/api/talk/memo/default/send
+KAKAO_CHANNEL_ID=_abc1234
+KAKAO_CHANNEL_UUID=your_channel_uuid
+```
+
+
+================================================================================
+2. 데이터베이스 스키마
+================================================================================
+
+2.1 kakao_channels (카카오 채널 정보)
+------------------------------------
+```sql
+CREATE TABLE kakao_channels (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  channel_id VARCHAR(100) NOT NULL UNIQUE,       -- 카카오 채널 ID (_abc1234)
+  channel_name VARCHAR(200) NOT NULL,             -- 채널명
+  sender_key VARCHAR(100),                        -- 발신 프로필 키
+  category VARCHAR(50),                           -- 카테고리
+  profile_image_url TEXT,                         -- 프로필 이미지
+  status VARCHAR(20) DEFAULT 'pending',           -- 'pending', 'approved', 'rejected'
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_kakao_channels_user_id ON kakao_channels(user_id);
+CREATE INDEX idx_kakao_channels_status ON kakao_channels(status);
+```
+
+
+2.2 kakao_channel_groups (카카오 채널 그룹)
+------------------------------------------
+```sql
+CREATE TABLE kakao_channel_groups (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  group_name VARCHAR(200) NOT NULL,
+  description TEXT,
+  channel_ids INTEGER[] DEFAULT '{}',             -- 그룹에 속한 채널 ID 배열
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_kakao_groups_user_id ON kakao_channel_groups(user_id);
+```
+
+
+2.3 kakao_templates (카카오 템플릿)
+----------------------------------
+```sql
+CREATE TABLE kakao_templates (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  channel_id INTEGER REFERENCES kakao_channels(id),
+  template_type VARCHAR(20) NOT NULL,             -- 'alimtalk', 'friendtalk', 'brand'
+  template_code VARCHAR(100),                     -- 알림톡 템플릿 코드
+  template_name VARCHAR(200) NOT NULL,
+  template_content TEXT NOT NULL,
+  template_variables JSONB DEFAULT '[]',          -- [{name: "고객명", type: "string"}]
+  buttons JSONB DEFAULT '[]',                     -- 버튼 정보
+  image_url TEXT,                                 -- 친구톡/브랜드 이미지
+  image_link_url VARCHAR(100),                    -- 친구톡 이미지 링크 URL
+  brand_template_type VARCHAR(50),                -- 'text', 'image', 'wide', etc.
+  status VARCHAR(20) DEFAULT 'pending',           -- 'pending', 'approved', 'rejected'
+  rejection_reason TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_kakao_templates_user_id ON kakao_templates(user_id);
+CREATE INDEX idx_kakao_templates_type ON kakao_templates(template_type);
+CREATE INDEX idx_kakao_templates_status ON kakao_templates(status);
+```
+
+
+2.4 kakao_message_logs (카카오 발송 로그)
+----------------------------------------
+```sql
+CREATE TABLE kakao_message_logs (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  message_type VARCHAR(20) NOT NULL,              -- 'alimtalk', 'friendtalk', 'brand'
+  template_id INTEGER REFERENCES kakao_templates(id),
+  channel_id INTEGER REFERENCES kakao_channels(id),
+  to_number VARCHAR(20) NOT NULL,
+  to_name VARCHAR(100),
+  message_content TEXT NOT NULL,
+  subject VARCHAR(100),
+  template_variables JSONB,                       -- 실제 치환된 변수값
+  sent_at TIMESTAMP,
+  status VARCHAR(20) NOT NULL,                    -- 'sent', 'failed', 'pending'
+  error_message TEXT,
+  credit_used INTEGER,
+  fallback_to_sms BOOLEAN DEFAULT false,
+  metadata JSONB,                                 -- 버튼, 이미지 등
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_kakao_logs_user_id ON kakao_message_logs(user_id);
+CREATE INDEX idx_kakao_logs_type ON kakao_message_logs(message_type);
+CREATE INDEX idx_kakao_logs_sent_at ON kakao_message_logs(sent_at);
+CREATE INDEX idx_kakao_logs_status ON kakao_message_logs(status);
+```
+
+
+================================================================================
+3. API 엔드포인트 설계
+================================================================================
+
+3.1 채널 관리 API
+----------------
+
+📍 POST /api/kakao/channels
+설명: 카카오 채널 등록
+요청:
+```json
+{
+  "channelId": "_abc1234",
+  "channelName": "우리 회사 채널",
+  "senderKey": "abc1234567890def",
+  "category": "서비스"
+}
+```
+응답:
+```json
+{
+  "success": true,
+  "channel": {
+    "id": 1,
+    "channelId": "_abc1234",
+    "channelName": "우리 회사 채널",
+    "status": "approved"
+  }
+}
+```
+
+📍 GET /api/kakao/channels
+설명: 카카오 채널 목록 조회
+쿼리: ?search=검색어
+응답:
+```json
+{
+  "channels": [
+    {
+      "id": 1,
+      "channelId": "_abc1234",
+      "channelName": "우리 회사 채널",
+      "senderKey": "abc1234567890def",
+      "status": "approved"
+    }
+  ],
+  "total": 1
+}
+```
+
+📍 DELETE /api/kakao/channels/:id
+설명: 카카오 채널 삭제
+
+
+3.2 채널 그룹 관리 API
+---------------------
+
+📍 POST /api/kakao/channel-groups
+설명: 채널 그룹 생성
+요청:
+```json
+{
+  "groupName": "마케팅팀",
+  "description": "마케팅 전용 채널",
+  "channelIds": [1, 2, 3]
+}
+```
+
+📍 GET /api/kakao/channel-groups
+설명: 그룹 목록 조회
+
+📍 DELETE /api/kakao/channel-groups/:id
+설명: 그룹 삭제
+
+
+3.3 템플릿 관리 API
+------------------
+
+📍 POST /api/kakao/templates
+설명: 카카오 템플릿 등록
+요청:
+```json
+{
+  "channelId": 1,
+  "templateType": "alimtalk",
+  "templateCode": "template_001",
+  "templateName": "배송 알림",
+  "templateContent": "#{고객명}님, 주문하신 상품이 #{시간}에 배송됩니다.",
+  "templateVariables": [
+    {"name": "고객명", "type": "string"},
+    {"name": "시간", "type": "string"}
+  ],
+  "buttons": [
+    {"name": "배송조회", "type": "WL", "url": "https://example.com/track"}
+  ]
+}
+```
+
+📍 GET /api/kakao/templates
+설명: 템플릿 목록 조회
+쿼리: ?type=alimtalk&search=검색어&status=approved
+
+📍 GET /api/kakao/templates/:id
+설명: 템플릿 상세 조회
+
+📍 DELETE /api/kakao/templates/:id
+설명: 템플릿 삭제
+
+
+3.4 메시지 발송 API
+------------------
+
+📍 POST /api/kakao/send/alimtalk
+설명: 알림톡 발송
+요청:
+```json
+{
+  "templateCode": "template_001",
+  "recipients": [
+    {
+      "phone_number": "01012345678",
+      "name": "홍길동",
+      "variables": {
+        "고객명": "홍길동",
+        "시간": "14:00"
+      }
+    }
+  ],
+  "fallbackToSms": true
+}
+```
+응답:
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "recipient": "01012345678",
+      "success": true,
+      "messageId": "msg_123456"
+    }
+  ]
+}
+```
+
+📍 POST /api/kakao/send/friendtalk
+설명: 친구톡 발송
+요청:
+```json
+{
+  "channelId": 1,
+  "recipients": [
+    {
+      "phone_number": "01012345678",
+      "name": "홍길동"
+    }
+  ],
+  "message": "안녕하세요! 신제품 출시 안내드립니다.",
+  "imageUrl": "https://example.com/image.jpg",
+  "imageLinkUrl": "https://example.com/product",
+  "buttons": [
+    {"name": "자세히보기", "type": "WL", "url": "https://example.com"}
+  ],
+  "isAd": true
+}
+```
+
+📍 POST /api/kakao/send/brand
+설명: 브랜드 메시지 발송
+
+📍 POST /api/kakao/upload/image
+설명: 카카오 이미지 업로드 (Supabase Storage 사용)
+
+
+================================================================================
+4. 단계별 구현 계획
+================================================================================
+
+Week 1: 채널 관리 및 기본 구조
+-------------------------------
+Day 1-2:
+[ ] DB 마이그레이션 파일 생성 (4개 테이블)
+[ ] Supabase에 테이블 생성 및 RLS 정책 설정
+[ ] 카카오 API 클라이언트 유틸리티 함수 작성
+    └─ src/lib/kakao-api.ts
+
+Day 3-4:
+[ ] POST /api/kakao/channels 구현
+[ ] GET /api/kakao/channels 구현
+[ ] DELETE /api/kakao/channels/:id 구현
+[ ] KakaoChannelTab UI 연동
+    └─ 채널 연동 버튼
+    └─ 채널 목록 렌더링
+    └─ 검색 기능
+
+Day 5:
+[ ] POST /api/kakao/channel-groups 구현
+[ ] GET /api/kakao/channel-groups 구현
+[ ] DELETE /api/kakao/channel-groups/:id 구현
+[ ] KakaoChannelTab 그룹 관리 UI 연동
+
+
+Week 2: 알림톡 구현
+-------------------
+Day 1-2:
+[ ] POST /api/kakao/templates (알림톡) 구현
+[ ] GET /api/kakao/templates?type=alimtalk 구현
+[ ] KakaoAlimtalkTab UI 연동
+    └─ 템플릿 등록 모달
+    └─ 템플릿 목록
+    └─ 템플릿 미리보기
+
+Day 3-4:
+[ ] POST /api/kakao/send/alimtalk 구현
+[ ] KakaoMessageContent (알림톡 탭) UI 연동
+    └─ 채널 드롭다운
+    └─ 템플릿 드롭다운
+    └─ 템플릿 내용 자동 로드
+    └─ 변수 치환 로직
+
+Day 5:
+[ ] 대체발송 로직 구현 (SMS fallback)
+[ ] 발송 로그 저장
+[ ] 에러 처리
+[ ] 테스트
+
+
+Week 3: 친구톡 구현
+------------------
+Day 1-2:
+[ ] POST /api/kakao/upload/image 구현
+    └─ Supabase Storage 업로드
+    └─ 500KB 제한, 500x250px 이상 검증
+[ ] KakaoMessageContent (친구톡 탭) 이미지 업로드 연동
+
+Day 3-4:
+[ ] POST /api/kakao/send/friendtalk 구현
+    └─ 메시지 내용 (최대 1,000자)
+    └─ 이미지 첨부
+    └─ 이미지 링크 URL
+    └─ 버튼 추가
+[ ] 광고메시지 자동 표기 ("(광고)" prefix)
+
+Day 5:
+[ ] KakaoMessageContent (친구톡 탭) UI 연동
+[ ] 버튼 추가 모달 구현
+[ ] 테스트
+
+
+Week 4: 브랜드 메시지 구현
+-------------------------
+Day 1-2:
+[ ] POST /api/kakao/templates (브랜드) 구현
+    └─ 8가지 템플릿 타입 처리
+[ ] GET /api/kakao/templates?type=brand 구현
+[ ] KakaoBrandTab UI 연동
+
+Day 3-4:
+[ ] POST /api/kakao/send/brand 구현
+    └─ 수신대상 필터링 (채널친구만)
+[ ] KakaoMessageContent (브랜드 탭) UI 연동
+    └─ 템플릿 타입 선택
+    └─ 템플릿 미리보기 이미지 로드
+
+Day 5:
+[ ] 통합 테스트
+[ ] 버그 수정
+[ ] 문서화
+
+
+================================================================================
+5. 알림톡 구현 상세
+================================================================================
+
+5.1 알림톡 특징
+--------------
+✅ 사전 승인된 템플릿만 사용 가능
+✅ 템플릿 내용 수정 불가 (변수 치환만 가능)
+✅ 발송 성공률 높음
+✅ 광고 아님 (수신거부 불필요)
+✅ 카카오톡 앱 푸시 알림
+
+
+5.2 템플릿 등록 절차
+-------------------
+1. 카카오 비즈니스 > 메시지 > 알림톡 > 템플릿 등록
+2. 템플릿 내용 작성
+   - 변수: #{변수명} 형식
+   - 최대 1,000자
+3. 카테고리 선택
+4. 템플릿 심사 신청
+5. 승인 대기 (2-3일)
+6. 승인 후 템플릿 코드 발급
+
+
+5.3 발송 API 구현 예시
+---------------------
+src/app/api/kakao/send/alimtalk/route.ts
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from '@/lib/auth';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(request: NextRequest) {
+  try {
+    // JWT 인증
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+    const userId = await verifyToken(token);
+    if (!userId) {
+      return NextResponse.json({ error: '인증 실패' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { templateCode, recipients, fallbackToSms } = body;
+
+    // 템플릿 조회
+    const { data: template, error: templateError } = await supabase
+      .from('kakao_templates')
+      .select('*, kakao_channels(sender_key)')
+      .eq('template_code', templateCode)
+      .eq('template_type', 'alimtalk')
+      .eq('status', 'approved')
+      .single();
+
+    if (templateError || !template) {
+      return NextResponse.json({ error: '승인되지 않은 템플릿' }, { status: 400 });
+    }
+
+    // 카카오 비즈니스 API 호출
+    const results = [];
+    for (const recipient of recipients) {
+      try {
+        const response = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `KakaoAK ${process.env.KAKAO_BIZM_API_KEY!}`
+          },
+          body: JSON.stringify({
+            template_object: {
+              object_type: 'text',
+              text: template.template_content,
+              button_title: '확인'
+            }
+          })
+        });
+
+        const data = await response.json();
+        const success = response.ok && data.result_code === 0;
+
+        results.push({
+          recipient: recipient.phone_number,
+          success: success,
+          messageId: success ? data.message_id : null
+        });
+
+        // 로그 저장
+        await supabase.from('kakao_message_logs').insert({
+          user_id: userId,
+          message_type: 'alimtalk',
+          template_id: template.id,
+          channel_id: template.channel_id,
+          to_number: recipient.phone_number,
+          to_name: recipient.name,
+          message_content: template.template_content,
+          template_variables: recipient.variables,
+          status: success ? 'sent' : 'failed',
+          error_message: success ? null : data.msg,
+          credit_used: 15 // 알림톡 단가
+        });
+
+        // 대체발송 (실패 시)
+        if (!success && fallbackToSms) {
+          // SMS 발송 API 호출
+          await sendFallbackSms(recipient, template.template_content);
+        }
+
+      } catch (error) {
+        results.push({
+          recipient: recipient.phone_number,
+          success: false
+        });
+      }
+    }
+
+    return NextResponse.json({ success: true, results });
+  } catch (error) {
+    console.error('알림톡 발송 오류:', error);
+    return NextResponse.json({ error: '발송 실패' }, { status: 500 });
+  }
+}
+
+async function sendFallbackSms(recipient: any, content: string) {
+  // SMS 발송 로직 (기존 Naver SENS API 사용)
+  // TODO: 구현
+}
+```
+
+
+5.4 변수 치환 로직
+-----------------
+클라이언트 사이드 (KakaoMessageContent.tsx):
+
+```typescript
+function replaceVariables(template: string, variables: Record<string, string>) {
+  let result = template;
+  Object.entries(variables).forEach(([key, value]) => {
+    const regex = new RegExp(`#{${key}}`, 'g');
+    result = result.replace(regex, value);
+  });
+  return result;
+}
+
+// 사용 예시
+const templateContent = "#{고객명}님, 주문하신 상품이 #{시간}에 배송됩니다.";
+const variables = { "고객명": "홍길동", "시간": "14:00" };
+const finalMessage = replaceVariables(templateContent, variables);
+// 결과: "홍길동님, 주문하신 상품이 14:00에 배송됩니다."
+```
+
+
+================================================================================
+6. 친구톡 구현 상세
+================================================================================
+
+6.1 친구톡 특징
+--------------
+✅ 내용 자유 작성 (템플릿 사전 승인 불필요)
+✅ 친구 추가한 사용자에게만 발송 가능
+✅ 이미지 첨부 가능 (500KB 이하, 500x250px 이상)
+✅ 버튼 추가 가능
+✅ 광고성 메시지 가능 (자동 "(광고)" 표기)
+
+
+6.2 이미지 업로드 구현
+--------------------
+src/app/api/kakao/upload/image/route.ts
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+
+    if (!file) {
+      return NextResponse.json({ error: '파일이 없습니다' }, { status: 400 });
+    }
+
+    // 파일 크기 검증 (500KB)
+    if (file.size > 500 * 1024) {
+      return NextResponse.json({ error: '이미지는 500KB 이하여야 합니다' }, { status: 400 });
+    }
+
+    // 파일 형식 검증
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      return NextResponse.json({ error: 'JPG, PNG 형식만 지원합니다' }, { status: 400 });
+    }
+
+    // Supabase Storage 업로드
+    const fileName = `kakao/${Date.now()}_${file.name}`;
+    const { data, error } = await supabase.storage
+      .from('message-images')
+      .upload(fileName, file);
+
+    if (error) {
+      throw error;
+    }
+
+    // Public URL 생성
+    const { data: { publicUrl } } = supabase.storage
+      .from('message-images')
+      .getPublicUrl(fileName);
+
+    return NextResponse.json({
+      success: true,
+      imageUrl: publicUrl,
+      fileName: file.name,
+      fileSize: file.size
+    });
+
+  } catch (error) {
+    console.error('이미지 업로드 오류:', error);
+    return NextResponse.json({ error: '업로드 실패' }, { status: 500 });
+  }
+}
+```
+
+
+6.3 광고메시지 자동 표기
+-----------------------
+```typescript
+function formatAdMessage(message: string, isAd: boolean): string {
+  if (!isAd) return message;
+
+  // 이미 "(광고)"가 있으면 중복 추가 방지
+  if (message.startsWith('(광고)')) return message;
+
+  return `(광고) ${message}`;
+}
+```
+
+
+6.4 버튼 JSON 구조
+-----------------
+```json
+{
+  "buttons": [
+    {
+      "name": "자세히보기",
+      "type": "WL",
+      "url": "https://example.com/product"
+    },
+    {
+      "name": "전화하기",
+      "type": "AC",
+      "url": "tel:0212345678"
+    }
+  ]
+}
+```
+
+버튼 타입:
+- WL: 웹 링크
+- AL: 앱 링크
+- AC: 전화걸기
+
+
+================================================================================
+7. 브랜드 메시지 구현 상세
+================================================================================
+
+7.1 브랜드 메시지 특징
+--------------------
+✅ 8가지 템플릿 타입 지원
+✅ 리치 미디어 (이미지, 비디오)
+✅ 수신대상 필터링 (채널친구만)
+✅ 템플릿 사전 등록 필요
+
+
+7.2 8가지 템플릿 타입
+--------------------
+1. 텍스트형 (text)
+2. 이미지형 (image)
+3. 와이드형 (wide)
+4. 와이드리스트형 (widelist)
+5. 캐러셀피드형 (carousel_feed)
+6. 커머스형 (commerce)
+7. 캐러셀커머스형 (carousel_commerce)
+8. 프리미엄동영상 (premium_video) - 비활성
+
+
+7.3 수신대상 필터링
+------------------
+- 전체: 모든 수신자 (비활성)
+- 수신동의자만: 마케팅 수신 동의한 사용자 (비활성)
+- 채널친구만: 카카오톡 채널 친구 추가한 사용자 (활성)
+
+
+================================================================================
+8. 테스트 시나리오
+================================================================================
+
+8.1 채널 관리 테스트
+-------------------
+[ ] 채널 연동 버튼 클릭
+[ ] 채널 정보 입력 (Channel ID, Sender Key)
+[ ] 채널 등록 성공 확인
+[ ] 채널 목록에 표시 확인
+[ ] 채널 검색 기능 확인
+[ ] 그룹 생성 테스트
+[ ] 그룹에 채널 추가
+[ ] 채널 삭제 테스트
+
+
+8.2 알림톡 테스트
+----------------
+[ ] 템플릿 등록 (카카오 비즈니스에서)
+[ ] 템플릿 DB 저장
+[ ] 템플릿 목록 조회
+[ ] 템플릿 미리보기 확인
+[ ] 발송 페이지에서 채널 선택
+[ ] 템플릿 선택
+[ ] 변수 매칭 확인
+[ ] 수신번호 추가
+[ ] 발송 테스트
+[ ] 발송 로그 확인
+[ ] 대체발송 테스트 (의도적 실패)
+
+
+8.3 친구톡 테스트
+----------------
+[ ] 채널 선택
+[ ] 메시지 작성 (1,000자 이하)
+[ ] 치환문구 추가 테스트
+[ ] 이미지 업로드 (500KB 이하)
+[ ] 이미지 링크 URL 입력
+[ ] 버튼 추가 (웹 링크)
+[ ] 광고메시지 체크 시 "(광고)" 자동 추가 확인
+[ ] 발송 테스트
+[ ] 발송 로그 확인
+
+
+8.4 브랜드 메시지 테스트
+-----------------------
+[ ] 브랜드 템플릿 등록
+[ ] 템플릿 타입 선택 (와이드형)
+[ ] 템플릿 미리보기 이미지 확인
+[ ] 수신대상 "채널친구만" 선택
+[ ] 발송 테스트
+[ ] 발송 로그 확인
+
+
+================================================================================
+9. 트러블슈팅
+================================================================================
+
+9.1 자주 발생하는 오류
+--------------------
+
+❌ "승인되지 않은 템플릿"
+원인: 템플릿 심사가 완료되지 않음
+해결: 카카오 비즈니스에서 템플릿 상태 확인, 심사 대기 중이면 승인 후 재시도
+
+❌ "발신 프로필 키가 유효하지 않음"
+원인: Sender Key 오타 또는 만료
+해결: 카카오 비즈니스 > 관리 > 발신 프로필에서 Sender Key 재확인
+
+❌ "친구 추가하지 않은 사용자"
+원인: 친구톡/브랜드는 채널 친구만 가능
+해결: 수신자에게 채널 친구 추가 요청 또는 알림톡 사용
+
+❌ "이미지 업로드 실패"
+원인: 파일 크기 또는 형식 문제
+해결: 500KB 이하, JPG/PNG 형식 확인
+
+❌ "변수 치환 실패"
+원인: 템플릿과 변수명 불일치
+해결: 템플릿의 #{변수명}과 전달하는 변수명 일치 확인
+
+
+9.2 디버깅 팁
+-------------
+1. 카카오 비즈니스 > 메시지 > 발송 내역에서 실패 사유 확인
+2. 발송 로그 테이블에서 error_message 확인
+3. 카카오 API 응답 코드 참고:
+   - 0: 성공
+   - -1: 시스템 오류
+   - -2: 파라미터 오류
+   - -401: 인증 실패
+
+
+9.3 성능 최적화
+--------------
+- 대량 발송 시 배치 처리 (100명씩)
+- API 호출 제한 준수 (초당 최대 100건)
+- DB 쿼리 인덱스 활용
+- 이미지는 CDN 사용 권장
+
+
+================================================================================
+체크리스트
+================================================================================
+
+구현 전:
+--------
+[ ] 카카오 비즈니스 계정 생성 완료
+[ ] 카카오톡 채널 개설 완료
+[ ] 발신 프로필 심사 승인 완료
+[ ] Sender Key 확보
+[ ] 알림톡 템플릿 최소 1개 승인 완료
+[ ] 환경변수 설정 완료
+
+구현 중:
+--------
+[ ] DB 테이블 4개 생성
+[ ] 채널 관리 API 3개 구현
+[ ] 그룹 관리 API 3개 구현
+[ ] 템플릿 관리 API 4개 구현
+[ ] 알림톡 발송 API 구현
+[ ] 친구톡 발송 API 구현
+[ ] 브랜드 메시지 발송 API 구현
+[ ] 이미지 업로드 API 구현
+[ ] UI 연동 (7개 컴포넌트)
+
+구현 후:
+--------
+[ ] 전체 테스트 시나리오 통과
+[ ] 발송 로그 정상 저장 확인
+[ ] 대체발송 동작 확인
+[ ] 에러 처리 검증
+[ ] 성능 테스트
+[ ] 문서화
+
+
+================================================================================
+문서 끝
+================================================================================
+
+⏱️ 예상 구현 기간: 4주
+💰 예상 비용: 알림톡 15원/건, 친구톡 18원/건, 브랜드 25원/건
+📌 난이도: ⭐⭐⭐⭐ (높음)
+
+================================================================================
