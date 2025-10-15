@@ -152,6 +152,29 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
     onClose();
   };
 
+  // UTC 시간을 한국 시간(Asia/Seoul)으로 변환하는 헬퍼 함수
+  const formatToKoreaTime = (dateString: string, includeTime = false) => {
+    // DB의 timestamp는 UTC 기준이므로 명시적으로 UTC로 파싱
+    // 타임존 정보가 없으면 'Z'를 붙여서 UTC로 강제 파싱
+    const utcString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    const utcDate = new Date(utcString);
+
+    const koreaDate = new Date(utcDate.getTime() + (9 * 60 * 60 * 1000));
+
+    const year = koreaDate.getUTCFullYear();
+    const month = String(koreaDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(koreaDate.getUTCDate()).padStart(2, '0');
+
+    if (!includeTime) {
+      return `${year}-${month}-${day}`;
+    }
+
+    const hours = String(koreaDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(koreaDate.getUTCMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  };
+
   const handleDeleteTemplate = async (templateId: number) => {
     if (!confirm("이 템플릿을 삭제하시겠습니까?")) {
       return;
@@ -338,7 +361,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
                         {/* 우측: 날짜, 버튼 영역 */}
                         <div className="flex flex-col gap-2 items-end flex-shrink-0">
                           <span className="text-xs text-gray-400 whitespace-nowrap">
-                            {new Date(template.created_at).toLocaleDateString()}
+                            {formatToKoreaTime(template.created_at)}
                           </span>
                           <div className="flex items-center gap-2">
                             <button
@@ -423,7 +446,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
                         {/* 우측: 발송일시, 버튼 영역 */}
                         <div className="flex flex-col gap-2 items-end flex-shrink-0">
                           <span className="text-xs text-gray-400 whitespace-nowrap">
-                            {new Date(log.sent_at).toLocaleString()}
+                            {formatToKoreaTime(log.sent_at, true)}
                           </span>
                           <button
                             onClick={() => handleSelectLog(log)}

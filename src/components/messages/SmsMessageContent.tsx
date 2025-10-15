@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import SimpleContentSaveModal from "../modals/SimpleContentSaveModal";
 import LoadContentModal from "../modals/LoadContentModal";
+import ScheduledMessagesModal from "../modals/ScheduledMessagesModal";
 import VariableSelectModal from "../modals/VariableSelectModal";
 
 interface MessageData {
@@ -43,6 +44,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [isScheduledModalOpen, setIsScheduledModalOpen] = useState(false);
   const [loadModalActiveTab, setLoadModalActiveTab] = useState("saved");
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
@@ -292,7 +294,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
               </button>
               <button
                 className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
-                onClick={() => alert('예약 내역 기능 개발 중입니다')}
+                onClick={() => setIsScheduledModalOpen(true)}
               >
                 예약내역
               </button>
@@ -464,6 +466,10 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
         isOpen={isVariableModalOpen}
         onClose={() => setIsVariableModalOpen(false)}
         onSelect={handleVariableSelect}
+      />
+      <ScheduledMessagesModal
+        isOpen={isScheduledModalOpen}
+        onClose={() => setIsScheduledModalOpen(false)}
       />
     </>
   );
