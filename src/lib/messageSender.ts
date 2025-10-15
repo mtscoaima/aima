@@ -45,6 +45,7 @@ export interface ScheduleMessageParams {
   message: string;
   subject?: string;
   scheduledAt: string;
+  imageFileIds?: string[]; // MMS용 이미지 파일 ID
   metadata?: Record<string, string | number | boolean>;
 }
 
@@ -182,7 +183,7 @@ export async function scheduleMessage(
   params: ScheduleMessageParams,
   tableName: string = 'scheduled_messages'
 ): Promise<ScheduleMessageResult> {
-  const { userId, fromNumber, toNumber, toName, message, subject, scheduledAt, metadata } = params;
+  const { userId, fromNumber, toNumber, toName, message, subject, scheduledAt, imageFileIds, metadata } = params;
 
   // 과거 시간 체크
   const scheduledTime = new Date(scheduledAt);
@@ -207,7 +208,12 @@ export async function scheduleMessage(
   }
 
   // 메시지 타입 결정
-  const messageType = determineMessageType(message);
+  let messageType: 'SMS' | 'LMS' | 'MMS';
+  if (imageFileIds && imageFileIds.length > 0) {
+    messageType = 'MMS';
+  } else {
+    messageType = determineMessageType(message);
+  }
 
   try {
     const { data, error } = await supabase
@@ -224,7 +230,8 @@ export async function scheduleMessage(
           ...metadata,
           message_type: messageType,
           source: 'sms_tab',
-          from_number: fromNumber
+          from_number: fromNumber,
+          image_file_ids: imageFileIds && imageFileIds.length > 0 ? JSON.stringify(imageFileIds) : null
         }
       })
       .select()

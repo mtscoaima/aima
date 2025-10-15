@@ -36,6 +36,7 @@ interface MessageData {
   subject: string;
   content: string;
   isAd: boolean;
+  imageFileIds?: string[];
 }
 
 const MessageSendTab = () => {
@@ -60,12 +61,14 @@ const MessageSendTab = () => {
   const [messageData, setMessageData] = useState<MessageData>({
     subject: "",
     content: "",
-    isAd: false
+    isAd: false,
+    imageFileIds: []
   });
 
   // 로딩 및 에러 상태
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isImageUploading, setIsImageUploading] = useState(false);
 
   // 탭별 테마색 정의
   const getThemeColor = (tab: string) => {
@@ -89,6 +92,31 @@ const MessageSendTab = () => {
   };
   const handleManageModalClose = () => setIsManageModalOpen(false);
 
+  // 주소록에서 전화번호로 그룹명 조회
+  const fetchGroupNameByPhone = async (phoneNumber: string): Promise<string | undefined> => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return undefined;
+
+      const response = await fetch(`/api/address-book/contacts?phone=${phoneNumber}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) return undefined;
+
+      const data = await response.json();
+      if (data.contacts && data.contacts.length > 0) {
+        return data.contacts[0].group_name;
+      }
+      return undefined;
+    } catch (error) {
+      console.error("그룹명 조회 오류:", error);
+      return undefined;
+    }
+  };
+
   // 주소록에서 선택한 연락처 추가
     const handleAddressBookSelect = (contacts: Recipient[]) => {
       const newRecipients = contacts.map(c => ({
@@ -108,11 +136,17 @@ const MessageSendTab = () => {
     };
 
     // 엑셀 파일 업로드 처리
-    const handleExcelUpload = (contacts: Recipient[]) => {
-      const newRecipients = contacts.map(c => ({
-        phone_number: c.phone_number,
-        name: c.name
-      }));
+    const handleExcelUpload = async (contacts: Recipient[]) => {
+      const newRecipients = await Promise.all(
+        contacts.map(async (c) => {
+          const groupName = await fetchGroupNameByPhone(c.phone_number);
+          return {
+            phone_number: c.phone_number,
+            name: c.name,
+            variables: groupName ? { "그룹명": groupName } : undefined
+          };
+        })
+      );
 
       const uniqueRecipients = [...recipients];
       newRecipients.forEach(newRecipient => {
@@ -126,37 +160,48 @@ const MessageSendTab = () => {
     };
   
     // 텍스트 입력 처리
-    const handleTextUpload = (text: string) => {
+    const handleTextUpload = async (text: string) => {
       const lines = text.split('\n').filter(line => line.trim());
-      const newRecipients: Recipient[] = [];
-  
+      const tempRecipients: Array<{ phone_number: string; name?: string }> = [];
+
       lines.forEach(line => {
         const trimmed = line.trim();
         const parts = trimmed.split(/\s+/);
         const phoneRaw = parts[0].replace(/-/g, '');
         const name = parts.length > 1 ? parts.slice(1).join(' ') : undefined;
-  
+
         if (/^01[0-9]{8,9}$/.test(phoneRaw)) {
-          newRecipients.push({
+          tempRecipients.push({
             phone_number: phoneRaw,
             name: name
           });
         }
       });
-  
+
+      const newRecipients = await Promise.all(
+        tempRecipients.map(async (c) => {
+          const groupName = await fetchGroupNameByPhone(c.phone_number);
+          return {
+            phone_number: c.phone_number,
+            name: c.name,
+            variables: groupName ? { "그룹명": groupName } : undefined
+          };
+        })
+      );
+
       const uniqueRecipients = [...recipients];
       newRecipients.forEach(newRecipient => {
         if (!uniqueRecipients.some(r => r.phone_number === newRecipient.phone_number)) {
           uniqueRecipients.push(newRecipient);
         }
       });
-  
+
       setRecipients(uniqueRecipients);
       alert(`${newRecipients.length}개의 연락처가 추가되었습니다.`);
     };
 
   // 수신번호 추가
-  const handleAddRecipient = () => {
+  const handleAddRecipient = async () => {
     const trimmed = recipientInput.trim();
     if (!trimmed) return;
 
@@ -174,9 +219,12 @@ const MessageSendTab = () => {
     }
 
     const name = recipientNameInput.trim();
+    const groupName = await fetchGroupNameByPhone(phoneNumber);
+
     setRecipients([...recipients, {
       phone_number: phoneNumber,
-      name: name || undefined
+      name: name || undefined,
+      variables: groupName ? { "그룹명": groupName } : undefined
     }]);
     setRecipientInput("");
     setRecipientNameInput("");
@@ -237,7 +285,8 @@ const MessageSendTab = () => {
           message: messageData.content,
           subject: messageData.subject || undefined,
           sendType: "immediate",
-          isAd: messageData.isAd
+          isAd: messageData.isAd,
+          imageFileIds: messageData.imageFileIds || []
         })
       });
 
@@ -296,7 +345,8 @@ const MessageSendTab = () => {
           subject: messageData.subject || undefined,
           sendType: "scheduled",
           scheduledAt: scheduledDateTime.toISOString(),
-          isAd: messageData.isAd
+          isAd: messageData.isAd,
+          imageFileIds: messageData.imageFileIds || []
         })
       });
 
@@ -325,6 +375,7 @@ const MessageSendTab = () => {
           <SmsMessageContent
             messageData={messageData}
             onMessageDataChange={handleMessageDataChange}
+            onUploadingChange={setIsImageUploading}
           />
         );
       case "kakao":
@@ -338,6 +389,7 @@ const MessageSendTab = () => {
           <SmsMessageContent
             messageData={messageData}
             onMessageDataChange={handleMessageDataChange}
+            onUploadingChange={setIsImageUploading}
           />
         );
     }
@@ -580,11 +632,11 @@ const MessageSendTab = () => {
         <div className="mt-6">
           <button
             onClick={handleSendPrepare}
-            disabled={isLoading}
+            disabled={isLoading || isImageUploading}
             className="w-full text-white py-2 rounded-lg text-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             style={{ backgroundColor: getThemeColor(activeMessageTab) }}
           >
-            {isLoading ? "전송 중..." : "전송/예약 준비"}
+            {isImageUploading ? "이미지 업로드 중..." : isLoading ? "전송 중..." : "전송/예약 준비"}
           </button>
           <div className="text-center font-semibold mt-2 text-sm text-gray-600">
             &quot;전송 준비&quot;는 잔액이 차감되지 않습니다.

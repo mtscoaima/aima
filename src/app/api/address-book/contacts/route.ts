@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const groupId = searchParams.get("groupId");
     const query = searchParams.get("query");
+    const phone = searchParams.get("phone");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -41,8 +42,12 @@ export async function GET(request: NextRequest) {
       dbQuery = dbQuery.eq("group_id", parseInt(groupId));
     }
 
+    // 전화번호로 정확한 조회
+    if (phone) {
+      dbQuery = dbQuery.eq("phone_number", phone);
+    }
     // 검색어 필터링
-    if (query) {
+    else if (query) {
       dbQuery = dbQuery.or(`name.ilike.%${query}%,phone_number.ilike.%${query}%`);
     }
 

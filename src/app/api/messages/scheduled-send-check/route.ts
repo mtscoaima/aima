@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendNaverSMS } from "@/lib/naverSensApi";
+import { sendNaverSMS, sendNaverMMS } from "@/lib/naverSensApi";
 import { determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -112,9 +112,32 @@ export async function POST(request: NextRequest) {
       results.checked++;
 
       try {
-        // 메시지 타입 결정
-        const messageType = determineMessageType(msg.message_content);
-        const creditRequired = messageType === "SMS" ? 20 : 50;
+        // metadata에서 이미지 파일 ID 추출
+        const metadata = msg.metadata || {};
+        let imageFileIds: string[] = [];
+
+        if (metadata.image_file_ids) {
+          try {
+            // JSON 문자열로 저장된 경우 파싱
+            if (typeof metadata.image_file_ids === 'string') {
+              imageFileIds = JSON.parse(metadata.image_file_ids);
+            } else if (Array.isArray(metadata.image_file_ids)) {
+              imageFileIds = metadata.image_file_ids;
+            }
+          } catch (e) {
+            console.error('이미지 파일 ID 파싱 오류:', e);
+          }
+        }
+
+        // 메시지 타입 결정 (이미지가 있으면 MMS)
+        let messageType: 'SMS' | 'LMS' | 'MMS';
+        if (imageFileIds && imageFileIds.length > 0) {
+          messageType = 'MMS';
+        } else {
+          messageType = determineMessageType(msg.message_content);
+        }
+
+        const creditRequired = messageType === "SMS" ? 20 : messageType === "LMS" ? 50 : 200;
 
         // 광고머니 잔액 확인
         const balance = await calculateAdvertisingBalance(msg.user_id, supabase);
@@ -135,8 +158,19 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Naver SENS API 호출
-        const result = await sendNaverSMS(msg.to_number, msg.message_content, msg.subject);
+        // Naver SENS API 호출 (MMS 또는 SMS/LMS)
+        let result;
+        if (messageType === 'MMS' && imageFileIds.length > 0) {
+          result = await sendNaverMMS(
+            msg.to_number,
+            msg.message_content,
+            msg.subject || '',
+            imageFileIds,
+            metadata.from_number
+          );
+        } else {
+          result = await sendNaverSMS(msg.to_number, msg.message_content, msg.subject, metadata.from_number);
+        }
 
         if (result.success) {
           // 발송 성공
