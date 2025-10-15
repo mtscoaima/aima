@@ -347,7 +347,7 @@ const RcsMessageContent = () => {
       <SimpleContentSaveModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
-        currentContent={messageContent}
+        currentContent={{ content: messageContent }}
       />
       <LoadContentModal
         isOpen={isLoadModalOpen}

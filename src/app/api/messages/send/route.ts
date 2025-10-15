@@ -15,6 +15,13 @@ import {
   scheduleMessage,
   SendMessageParams,
 } from "@/lib/messageSender";
+import { replaceVariables } from "@/utils/messageVariables";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // ============================================================================
 // JWT 인증
@@ -122,27 +129,57 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. 광고 메시지 처리
+    // 4. 사용자 정보 조회 (변수 치환용)
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("phone_number, name, company_info")
+      .eq("id", userId)
+      .single();
+
+    if (userError) {
+      console.error("사용자 정보 조회 실패:", userError);
+    }
+
+    // 사용자 정보 추출
+    const userInfo = {
+      phone: userData?.phone_number || "",
+      name: userData?.name || "",
+      companyName: userData?.company_info?.companyName || "",
+    };
+
+    // 5. 광고 메시지 처리
     let finalMessage = message;
     if (isAd && !message.includes("(광고)")) {
       // 광고 표기 자동 추가
       finalMessage = `(광고)\n${message}`;
     }
 
-    // 5. 즉시 발송 처리
+    // 6. 즉시 발송 처리
     if (sendType === "immediate") {
       const results = [];
       let successCount = 0;
       let failCount = 0;
 
       for (const recipient of recipients) {
-        // 치환문구 처리
-        let personalizedMessage = finalMessage;
+        // 자동 변수 치환 (수신자 정보, 날짜/시간, 발신자 정보)
+        let personalizedMessage = replaceVariables(
+          finalMessage,
+          {
+            name: recipient.name,
+            phone: recipient.phone_number,
+            groupName: recipient.variables?.["그룹명"],
+          },
+          userInfo
+        );
+
+        // 커스텀 변수 추가 치환 (recipient.variables에 정의된 다른 변수들)
         if (recipient.variables) {
           for (const [key, value] of Object.entries(recipient.variables)) {
-            // #[변수명] 형식 치환
-            const pattern = new RegExp(`#\\[${key}\\]`, "g");
-            personalizedMessage = personalizedMessage.replace(pattern, value);
+            // 기본 변수가 아닌 커스텀 변수만 치환
+            if (!["이름", "전화번호", "그룹명"].includes(key)) {
+              const pattern = new RegExp(`#\\[${key}\\]`, "g");
+              personalizedMessage = personalizedMessage.replace(pattern, value);
+            }
           }
         }
 
@@ -188,19 +225,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 6. 예약 발송 처리
+    // 7. 예약 발송 처리
     else if (sendType === "scheduled") {
       const results = [];
       let scheduledCount = 0;
       let failCount = 0;
 
       for (const recipient of recipients) {
-        // 치환문구 처리
-        let personalizedMessage = finalMessage;
+        // 자동 변수 치환 (수신자 정보, 날짜/시간, 발신자 정보)
+        let personalizedMessage = replaceVariables(
+          finalMessage,
+          {
+            name: recipient.name,
+            phone: recipient.phone_number,
+            groupName: recipient.variables?.["그룹명"],
+          },
+          userInfo
+        );
+
+        // 커스텀 변수 추가 치환
         if (recipient.variables) {
           for (const [key, value] of Object.entries(recipient.variables)) {
-            const pattern = new RegExp(`#\\[${key}\\]`, "g");
-            personalizedMessage = personalizedMessage.replace(pattern, value);
+            if (!["이름", "전화번호", "그룹명"].includes(key)) {
+              const pattern = new RegExp(`#\\[${key}\\]`, "g");
+              personalizedMessage = personalizedMessage.replace(pattern, value);
+            }
           }
         }
 

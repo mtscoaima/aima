@@ -38,7 +38,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState(initialActiveTab);
-  const [onlyMine, setOnlyMine] = useState(false);
+  const [sortOldest, setSortOldest] = useState(false); // false: 최신순, true: 오래된순
   const [templates, setTemplates] = useState<Template[]>([]);
   const [messageLogs, setMessageLogs] = useState<MessageLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -185,18 +185,31 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
     }
   };
 
-  const filteredTemplates = templates.filter(
-    (template) =>
-      template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      template.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 필터링 및 정렬
+  const filteredTemplates = templates
+    .filter(
+      (template) =>
+        template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        template.content.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return sortOldest ? dateA - dateB : dateB - dateA; // 오래된순/최신순
+    });
 
-  const filteredLogs = messageLogs.filter(
-    (log) =>
-      log.message_content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.to_name && log.to_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      log.to_number.includes(searchTerm)
-  );
+  const filteredLogs = messageLogs
+    .filter(
+      (log) =>
+        log.message_content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (log.to_name && log.to_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        log.to_number.includes(searchTerm)
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.sent_at).getTime();
+      const dateB = new Date(b.sent_at).getTime();
+      return sortOldest ? dateA - dateB : dateB - dateA; // 오래된순/최신순
+    });
 
   if (!isOpen) return null;
 
@@ -232,18 +245,18 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
                 <div className="relative">
                   <input
                     type="checkbox"
-                    checked={onlyMine}
-                    onChange={(e) => setOnlyMine(e.target.checked)}
+                    checked={sortOldest}
+                    onChange={(e) => setSortOldest(e.target.checked)}
                     className="sr-only"
                   />
                   <div
                     className={`w-10 h-6 rounded-full transition-colors ${
-                      onlyMine ? 'bg-blue-500' : 'bg-gray-300'
+                      sortOldest ? 'bg-blue-500' : 'bg-gray-300'
                     }`}
                   >
                     <div
                       className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform translate-y-1 ${
-                        onlyMine ? 'translate-x-5' : 'translate-x-1'
+                        sortOldest ? 'translate-x-5' : 'translate-x-1'
                       }`}
                     />
                   </div>

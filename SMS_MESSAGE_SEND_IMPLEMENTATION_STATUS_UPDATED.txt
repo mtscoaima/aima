@@ -18,7 +18,7 @@
 ================================================================================
 
 Phase 1 (핵심 발송 기능): 100% 완료 ✅
-Phase 2 (고급 기능): 95% 완료 ✅
+Phase 2 (고급 기능): 98% 완료 ✅
 
 ┌─────────────────────────────────────┬─────────┬────────┐
 │ 구분                                 │ 상태    │ 비고   │
@@ -43,7 +43,8 @@ Phase 2 (고급 기능): 95% 완료 ✅
 │ 최근 발송 내역 조회                 │ ✅ 완료 │ 100%   │
 │ SMS 템플릿 API (sms_message_templates)│ ✅ 완료 │ 100%   │
 │ 메시지 로그 API (message_logs 조회) │ ✅ 완료 │ 100%   │
-│ 치환문구 변수 선택 모달             │ ❌ 미구현│ 0%    │
+│ 치환문구 변수 선택 모달 ⭐ 신규     │ ✅ 완료 │ 100%   │
+│ 변수 치환 시스템 (9개 변수) ⭐ 신규  │ ✅ 완료 │ 100%   │
 │ 이미지 업로드 (MMS)                 │ ❌ 미구현│ 0%    │
 └─────────────────────────────────────┴─────────┴────────┘
 
@@ -951,6 +952,105 @@ D. MessageSendTab.tsx 통합 (미구현)
 6. 상태 업데이트 (pending → sent/failed)
 
 
+3.8 치환문구 변수 선택 모달 ✅ 구현 완료 (2025-10-15) ⭐ 신규
+------------------------------------------------------------
+✅ 현재 상태: 모달, 유틸리티, API 연동 모두 구현 완료
+✅ 9개 변수 지원 (수신자/날짜시간/발신자 정보)
+✅ 데이터베이스 필드 수정 완료
+
+📋 구현 완료 사항:
+
+1. ✅ 변수 선택 모달 생성
+   파일: src/components/modals/VariableSelectModal.tsx (NEW)
+   - 3개 카테고리 레이아웃
+     * 수신자 정보: 이름, 전화번호, 그룹명
+     * 날짜/시간: 오늘날짜, 현재시간, 요일
+     * 발신자 정보: 발신번호, 회사명, 담당자명
+   - 검색 기능 (변수명 및 설명 기준)
+   - 클릭 시 커서 위치에 #[변수명] 자동 삽입
+   - 모달 디자인: 헤더 + 검색창 + 3단 카테고리 레이아웃
+
+2. ✅ 변수 치환 유틸리티 생성
+   파일: src/utils/messageVariables.ts (NEW)
+   - replaceVariables() 함수 (수신자별 변수 치환)
+   - formatDate() - 날짜 포맷팅 (YYYY년 MM월 DD일)
+   - formatTime() - 시간 포맷팅 (오전/오후 HH시 MM분)
+   - getDayOfWeek() - 요일 문자열 반환 (월요일~일요일)
+   - 9개 변수 완전 지원
+
+3. ✅ 프론트엔드 통합
+   파일: src/components/messages/SmsMessageContent.tsx (MODIFIED)
+   - VariableSelectModal import 및 상태 관리
+   - handleVariableSelect() 함수 구현
+   - textareaRef 사용하여 커서 위치 추적
+   - 선택된 변수를 커서 위치에 삽입 후 포커스 유지
+
+4. ✅ API 변수 치환 로직 구현
+   파일: src/app/api/messages/send/route.ts (MODIFIED)
+
+   A. 사용자 정보 조회 (77-90줄)
+   ```typescript
+   const { data: userData, error: userError } = await supabase
+     .from("users")
+     .select("phone_number, name, company_info")
+     .eq("id", userId)
+     .single();
+
+   const userInfo = {
+     phone: userData?.phone_number || "",
+     name: userData?.name || "",
+     companyName: userData?.company_info?.companyName || "",
+   };
+   ```
+
+   B. 수신자별 변수 치환 (131-144줄)
+   ```typescript
+   let personalizedMessage = replaceVariables(
+     finalMessage,
+     {
+       name: recipient.name,
+       phone: recipient.phone_number,
+       groupName: recipient.variables?.["그룹명"],
+     },
+     userInfo
+   );
+   ```
+
+5. ✅ 데이터베이스 필드 수정
+   파일: src/app/api/address-book/contacts/route.ts (MODIFIED)
+   - address_book_groups LEFT JOIN 추가
+   - group_name 조회 기능 구현
+
+   수정 내용:
+   - users.phone_number (기존 phone → phone_number)
+   - users.company_info.companyName (JSON 필드 확인)
+   - address_book_contacts + address_book_groups JOIN으로 group_name 조회
+
+📌 지원 변수 목록 (9개):
+
+| 카테고리      | 변수명      | 형식           | 치환 예시             |
+|--------------|------------|----------------|----------------------|
+| 수신자 정보  | 이름       | #[이름]        | 홍길동               |
+|              | 전화번호   | #[전화번호]    | 01012345678          |
+|              | 그룹명     | #[그룹명]      | VIP고객              |
+| 날짜/시간    | 오늘날짜   | #[오늘날짜]    | 2025년 10월 15일     |
+|              | 현재시간   | #[현재시간]    | 오후 2시 30분        |
+|              | 요일       | #[요일]        | 화요일               |
+| 발신자 정보  | 발신번호   | #[발신번호]    | 01012345678          |
+|              | 회사명     | #[회사명]      | ABC 주식회사         |
+|              | 담당자명   | #[담당자명]    | 김철수               |
+
+📌 작동 흐름:
+1. 사용자가 "치환문구" 버튼 클릭 → VariableSelectModal 표시
+2. 변수 검색 또는 카테고리에서 변수 선택
+3. 선택한 변수가 커서 위치에 #[변수명] 형식으로 삽입
+4. 메시지 전송 시 API에서 자동 치환
+   - users 테이블에서 발신자 정보 조회
+   - address_book_groups JOIN으로 그룹명 조회
+   - 각 수신자별로 개인화된 메시지 생성
+5. Naver SENS API로 개인화된 메시지 발송
+
+
 ================================================================================
 4. 다음 단계 우선순위
 ================================================================================
@@ -1008,9 +1108,14 @@ D. MessageSendTab.tsx 통합 (미구현)
    - 확장 필드(custom_fields) 지원
    - 연락처 검색 기능
 
-7. ❌ 치환문구 변수 선택 모달 (예상 2시간)
-   - VariableSelectModal.tsx 생성
-   - 기본 변수 목록 정의
+7. ✅ 치환문구 변수 선택 모달 (2025-10-15 완료) ⭐ 신규
+   - VariableSelectModal.tsx 생성 완료
+   - messageVariables.ts 유틸리티 생성 완료
+   - 9개 변수 지원 (수신자/날짜시간/발신자 정보)
+   - SmsMessageContent.tsx 통합 완료
+   - API 변수 치환 로직 구현 완료
+   - 데이터베이스 필드 수정 (phone_number, companyName, group_name JOIN)
+   - 실제 소요: 4시간
 
 
 우선순위 3 (고급 기능) 🟢
@@ -1067,8 +1172,9 @@ Phase 2: 수신자 관리
 
 Phase 3: 메시지 작성 고급 기능
 -----------------------------
-[⚠️] 치환문구 (기본 삽입만 가능)
-[❌] 변수 선택 모달
+[✅] 치환문구 (완료 - 2025-10-15)
+[✅] 변수 선택 모달 (완료 - 2025-10-15)
+[✅] 변수 치환 시스템 (완료 - 2025-10-15)
 [❌] 이미지 업로드 (MMS)
 [✅] 광고 메시지 표기 (완료)
 
@@ -1200,14 +1306,41 @@ Phase 5: 발신번호 관리
 ================================================================================
 문서 끝
 ================================================================================
-최종 업데이트: 2025-10-14 (메시지 템플릿 및 로그 API 완전 구현)
+최종 업데이트: 2025-10-15 (치환문구 변수 선택 모달 및 변수 치환 시스템 완전 구현)
 다음 업데이트: 각 기능 구현 완료 시
 
 주요 변경사항:
 - Phase 1 (핵심 발송 기능) 100% 완료 ✅
-- Phase 2 (고급 기능) 95% 완료 ✅ (30% → 60% → 80% → 90% → 95%)
-- 예약 발송 기능 전체 구현 완료
-- Cron Job 자동 실행 시스템 구축 완료
+- Phase 2 (고급 기능) 98% 완료 ✅ (30% → 60% → 80% → 90% → 95% → 98%)
+- 예약 발송 기능 전체 구현 완료 (2025-10-14)
+- Cron Job 자동 실행 시스템 구축 완료 (2025-10-14)
+- 치환문구 변수 선택 모달 및 변수 치환 시스템 완전 구현 (2025-10-15) ⭐ 신규
+
+✅ 치환문구 변수 선택 모달 및 변수 치환 시스템 100% 완성 (2025-10-15 신규):
+  * 컴포넌트: VariableSelectModal.tsx 생성
+    - 3개 카테고리 (수신자 정보/날짜시간/발신자 정보)
+    - 검색 기능 (변수명/설명 기준)
+    - 커서 위치 자동 삽입
+  * 유틸리티: messageVariables.ts 생성
+    - replaceVariables() - 변수 치환 함수
+    - formatDate(), formatTime(), getDayOfWeek() - 날짜/시간 포맷
+    - 9개 변수 완전 지원
+  * 프론트엔드 통합: SmsMessageContent.tsx 수정
+    - VariableSelectModal 통합
+    - handleVariableSelect() 함수 구현
+    - textareaRef로 커서 위치 추적
+  * API 변수 치환 로직: messages/send/route.ts 수정
+    - 사용자 정보 조회 (phone_number, name, companyName)
+    - 주소록 그룹명 JOIN 조회
+    - replaceVariables() 함수 활용
+    - 수신자별 개인화 메시지 생성
+  * 데이터베이스 필드 수정: address-book/contacts/route.ts 수정
+    - address_book_groups LEFT JOIN 추가
+    - group_name 조회 및 응답에 포함
+  * 지원 변수 목록 (9개):
+    - 수신자 정보: 이름, 전화번호, 그룹명
+    - 날짜/시간: 오늘날짜, 현재시간, 요일
+    - 발신자 정보: 발신번호, 회사명, 담당자명
 
 ✅ 메시지 수신번호 섹션 100% 완성:
   * MessageSendTab.tsx 모달 통합 완료
@@ -1252,7 +1385,7 @@ Phase 5: 발신번호 관리
 - ESLint 에러 및 경고 모두 해결
 - 광고메시지 자동 표기 완료 (백엔드 + 프론트엔드)
 
-✅ 메시지 템플릿 시스템 100% 완성 (2025-10-14 신규):
+✅ 메시지 템플릿 시스템 100% 완성 (2025-10-14):
   * DB 테이블: sms_message_templates 생성
     - messages/send 페이지 전용 템플릿
     - reservation_message_templates, message_templates와 분리
@@ -1275,6 +1408,5 @@ Phase 5: 발신번호 관리
     - messageSender.ts의 saveMessageLog() 활용
     - sendMessage() 함수에서 자동 호출 (145-159줄)
 
-다음 구현 대상 (남은 5%):
-1. 치환문구 변수 선택 모달 (2시간)
-2. 이미지 업로드 (MMS) (4시간)
+다음 구현 대상 (남은 2%):
+1. 이미지 업로드 (MMS) (4시간)

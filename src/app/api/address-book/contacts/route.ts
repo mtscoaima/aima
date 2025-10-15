@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
 
     let dbQuery = supabase
       .from("address_book_contacts")
-      .select("*")
+      .select(`
+        *,
+        address_book_groups(group_name)
+      `)
       .eq("user_id", decoded.userId);
 
     // 그룹 필터링
@@ -52,7 +55,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "주소록 연락처 조회 실패" }, { status: 500 });
     }
 
-    return NextResponse.json({ contacts }, { status: 200 });
+    // 그룹명을 평탄화하여 반환
+    const formattedContacts = contacts?.map(contact => ({
+      ...contact,
+      group_name: contact.address_book_groups?.group_name || null
+    }));
+
+    return NextResponse.json({ contacts: formattedContacts }, { status: 200 });
   } catch (error) {
     console.error("주소록 연락처 조회 에러:", error);
     return NextResponse.json({ error: "서버 오류" }, { status: 500 });

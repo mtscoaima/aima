@@ -32,6 +32,7 @@ interface AddressBookModalProps {
   onClose: () => void;
   onSelect: (contacts: Contact[]) => void;
   currentRecipients: Contact[]; // 현재 MessageSendTab에 추가된 수신번호 목록
+  onClearRecipients?: () => void; // 수신번호 전체 비우기 콜백
 }
 
 const AddressBookModal: React.FC<AddressBookModalProps> = ({
@@ -39,6 +40,7 @@ const AddressBookModal: React.FC<AddressBookModalProps> = ({
   onClose,
   onSelect,
   currentRecipients,
+  onClearRecipients,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [contactSearchQuery, setContactSearchQuery] = useState(""); // 연락처 검색
@@ -650,8 +652,9 @@ const AddressBookModal: React.FC<AddressBookModalProps> = ({
                 <button
                   onClick={() => {
                     if (confirm('모든 수신번호를 비우시겠습니까?')) {
-                      // MessageSendTab의 비우기 기능을 호출해야 하므로 onSelect로 빈 배열 전달
-                      onSelect([]);
+                      if (onClearRecipients) {
+                        onClearRecipients();
+                      }
                     }
                   }}
                   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"

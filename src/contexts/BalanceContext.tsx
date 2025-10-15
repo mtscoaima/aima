@@ -89,7 +89,6 @@ async function getValidToken(): Promise<string | null> {
   // 토큰이 만료되었는지 확인
   if (tokenManager.isTokenExpired(token)) {
     // 토큰 갱신 시도 - AuthContext의 갱신 로직이 자동으로 처리
-    console.log("토큰 만료됨, 자동 갱신 필요");
     return null;
   }
 

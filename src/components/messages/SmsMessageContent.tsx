@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import SimpleContentSaveModal from "../modals/SimpleContentSaveModal";
 import LoadContentModal from "../modals/LoadContentModal";
+import VariableSelectModal from "../modals/VariableSelectModal";
 
 interface MessageData {
   subject: string;
@@ -33,6 +34,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange }: SmsMessageConte
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
   const [loadModalActiveTab, setLoadModalActiveTab] = useState("saved");
+  const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -58,21 +60,23 @@ const SmsMessageContent = ({ messageData, onMessageDataChange }: SmsMessageConte
   const placeholderText = `이곳에 문자 내용을 입력합니다.
 치환문구 예시) #[이름]님 #[시간]시 방문 예약입니다.`;
 
-  const addReplaceText = () => {
+  const handleVariableSelect = (variable: string) => {
     const textarea = textareaRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newText = messageContent.slice(0, start) + "#[변수 A]" + messageContent.slice(end);
-      setMessageContent(newText);
-      setMessageLength(newText.length);
-      notifyParent(subject, newText, isAd);
+    if (!textarea) return;
 
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + 7, start + 7);
-      }, 0);
-    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = messageContent.slice(0, start) + variable + messageContent.slice(end);
+
+    setMessageContent(newText);
+    setMessageLength(newText.length);
+    notifyParent(subject, newText, isAd);
+
+    // 커서를 삽입된 변수 뒤로 이동
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + variable.length, start + variable.length);
+    }, 0);
   };
 
   const handleSavedContentClick = () => {
@@ -136,7 +140,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange }: SmsMessageConte
               {/* 아이콘 버튼들 */}
               <button
                 className="p-2 text-gray-500 hover:text-gray-700"
-                onClick={addReplaceText}
+                onClick={() => setIsVariableModalOpen(true)}
                 title="치환문구 추가"
               >
                 <FileText className="w-4 h-4" />
@@ -277,6 +281,11 @@ const SmsMessageContent = ({ messageData, onMessageDataChange }: SmsMessageConte
           setIsAd(content.isAd || false);
           notifyParent(content.subject || "", content.content, content.isAd || false);
         }}
+      />
+      <VariableSelectModal
+        isOpen={isVariableModalOpen}
+        onClose={() => setIsVariableModalOpen(false)}
+        onSelect={handleVariableSelect}
       />
     </>
   );

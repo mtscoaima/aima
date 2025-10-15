@@ -9,7 +9,6 @@ import {
   FileText,
   Upload,
   Plus,
-  Edit,
   Download,
   X
 } from "lucide-react";
@@ -29,6 +28,7 @@ import SendConfirmModal from "../modals/SendConfirmModal";
 interface Recipient {
   phone_number: string;
   name?: string;
+  group_name?: string;
   variables?: Record<string, string>;
 }
 
@@ -93,7 +93,8 @@ const MessageSendTab = () => {
     const handleAddressBookSelect = (contacts: Recipient[]) => {
       const newRecipients = contacts.map(c => ({
         phone_number: c.phone_number,
-        name: c.name
+        name: c.name,
+        variables: c.group_name ? { "그룹명": c.group_name } : undefined
       }));
 
       const uniqueRecipients = [...recipients];
@@ -458,9 +459,9 @@ const MessageSendTab = () => {
             </div>
           ) : (
             <div className="max-h-60 overflow-y-auto space-y-2">
-              {recipients.map((recipient, index) => (
+              {recipients.map((recipient) => (
                 <div
-                  key={index}
+                  key={recipient.phone_number}
                   className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
                 >
                   <div className="flex-1">
@@ -506,13 +507,6 @@ const MessageSendTab = () => {
                 >
                   <Plus className="w-4 h-4" />
                   새로 저장
-                </button>
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-gray-400 rounded text-sm cursor-not-allowed"
-                  disabled
-                >
-                  <Edit className="w-4 h-4" />
-                  덮어 쓰기
                 </button>
                 <button
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-blue-500 text-blue-500 rounded text-sm hover:bg-blue-50"
@@ -640,6 +634,7 @@ const MessageSendTab = () => {
         onClose={() => setIsAddressBookModalOpen(false)}
         onSelect={handleAddressBookSelect}
         currentRecipients={recipients}
+        onClearRecipients={handleClearRecipients}
       />
       <ExcelUploadModal
         isOpen={isExcelUploadModalOpen}

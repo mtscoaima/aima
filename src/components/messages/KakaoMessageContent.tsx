@@ -690,7 +690,7 @@ const KakaoMessageContent = () => {
       <SimpleContentSaveModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
-        currentContent={friendTalkContent}
+        currentContent={{ content: friendTalkContent }}
       />
       <LoadContentModal
         isOpen={isLoadModalOpen}

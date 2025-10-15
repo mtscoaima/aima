@@ -216,7 +216,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(async () => {
       const token = tokenManager.getAccessToken();
       if (token && tokenManager.isTokenExpired(token)) {
-        console.log("토큰이 만료되었습니다. 자동 갱신 시도...");
         await refreshAccessToken();
       }
     }, 50 * 60 * 1000); // 50분
