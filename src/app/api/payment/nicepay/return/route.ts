@@ -89,26 +89,25 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    let approveData;
-
+    // 승인 API 실패 시 에러 처리
     if (!approveResponse.ok) {
       const errorData = await approveResponse.text();
       console.error("❌ 승인 API 실패:", errorData);
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=${encodeURIComponent("승인 API 호출 실패")}`,
+        303
+      );
+    }
 
-      // 샌드박스 테스트를 위한 임시 처리: 승인 실패해도 크레딧 충전 진행
-      approveData = {
-        resultCode: "0000",
-        resultMsg: "샌드박스 테스트 승인",
-        tid: tid,
-        orderId: orderId,
-        amount: parseInt(amount),
-        status: "paid",
-        payMethod: "card",
-        cardName: "테스트카드",
-        approveNo: "TEST000",
-      };
-    } else {
-      approveData = await approveResponse.json();
+    const approveData = await approveResponse.json();
+
+    // 승인 결과 코드 검증
+    if (approveData.resultCode !== "0000") {
+      console.error("❌ 승인 결과 실패:", approveData);
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/credit-management?payment=failed&message=${encodeURIComponent(approveData.resultMsg || "승인 실패")}`,
+        303
+      );
     }
 
     // 결제 완료 처리를 위해 confirm API로 포워딩
