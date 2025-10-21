@@ -93,8 +93,7 @@ interface CreateCampaignRequest {
   cardAmountMax?: number | null;
   cardTimeStart?: string | null;
   cardTimeEnd?: string | null;
-  targetIndustryTopLevel?: string | null;
-  targetIndustrySpecific?: string | null;
+  campaignIndustryId?: number | null;
   unitCost?: number;
   estimatedTotalCost?: number;
   expertReviewRequested?: boolean;
@@ -420,8 +419,7 @@ export async function POST(request: NextRequest) {
       card_amount_max: cardAmountMax,
       card_time_start: cardTimeStart,
       card_time_end: cardTimeEnd,
-      target_industry_top_level: campaignData.targetIndustryTopLevel,
-      target_industry_specific: campaignData.targetIndustrySpecific,
+      campaign_industry_id: campaignData.campaignIndustryId,
       unit_cost: campaignData.unitCost || 0,
       estimated_total_cost: campaignData.estimatedTotalCost || campaignData.estimatedCost || 0,
       expert_review_requested: campaignData.expertReviewRequested || false,
@@ -551,7 +549,7 @@ export async function GET(request: NextRequest) {
 
     const userId = authResult.userInfo!.userId;
 
-    // 사용자의 캠페인 목록 조회 (템플릿 정보와 함께)
+    // 사용자의 캠페인 목록 조회 (템플릿 정보 및 업종 정보와 함께)
     const { data: campaigns, error: campaignsError } = await supabase
       .from("campaigns")
       .select(
@@ -564,6 +562,10 @@ export async function GET(request: NextRequest) {
           category,
           template_code,
           buttons
+        ),
+        campaign_industries (
+          id,
+          name
         )
       `
       )

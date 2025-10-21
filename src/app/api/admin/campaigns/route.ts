@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 각 캠페인에 대해 사용자 정보와 템플릿 정보를 추가로 조회
+    // 각 캠페인에 대해 사용자 정보, 템플릿 정보, 업종 정보를 추가로 조회
     const enrichedCampaigns = await Promise.all(
       (campaigns || []).map(async (campaign) => {
         // 사용자 정보 조회
@@ -49,10 +49,20 @@ export async function GET(request: NextRequest) {
               .single()
           : { data: null };
 
+        // 업종 정보 조회
+        const { data: industry } = campaign.campaign_industry_id
+          ? await supabase
+              .from("campaign_industries")
+              .select("id, name")
+              .eq("id", campaign.campaign_industry_id)
+              .single()
+          : { data: null };
+
         return {
           ...campaign,
           users: user,
           message_templates: template,
+          campaign_industries: industry,
         };
       })
     );

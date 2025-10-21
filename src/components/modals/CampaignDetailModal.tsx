@@ -10,7 +10,6 @@ import {
   isOldLocationStructure,
   isSimpleLocationStructure
 } from "@/types/targetMarketing";
-import IndustrySelectModal from "@/components/modals/IndustrySelectModal";
 // formatLocations 대신 간단한 함수 사용
 import { BUTTON_CONSTRAINTS } from "@/constants/targetMarketing";
 
@@ -45,8 +44,7 @@ interface RealCampaign {
   card_amount_max?: number;
   card_time_start?: string;
   card_time_end?: string;
-  target_industry_top_level?: string;
-  target_industry_specific?: string;
+  campaign_industry_id?: number | null;
   unit_cost?: number;
   estimated_total_cost?: number;
   expert_review_requested?: boolean;
@@ -85,8 +83,7 @@ interface EditableCampaignData {
   card_amount_max?: number | null;
   card_time_start?: string;
   card_time_end?: string;
-  target_industry_top_level?: string;
-  target_industry_specific?: string;
+  campaign_industry_id?: number | null;
   buttons?: DynamicButton[];
   message_templates?: {
     name?: string;
@@ -95,12 +92,6 @@ interface EditableCampaignData {
     category?: string;
   };
   template_id?: number | null;
-}
-
-// 업종 이름 상태 타입
-interface IndustryNames {
-  topLevel: string;
-  specific: string;
 }
 
 // 타겟 기준 정보 타입
@@ -140,18 +131,34 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   // 편집 가능한 필드들의 상태
   const [editedData, setEditedData] = useState<EditableCampaignData>({});
   const [,setEditedName] = useState("");
-  const [industryNames, setIndustryNames] = useState<IndustryNames>({topLevel: '', specific: ''});
-  const [isIndustryModalOpen, setIsIndustryModalOpen] = useState(false);
+  const [selectedIndustryId, setSelectedIndustryId] = useState<number | null>(null);
+  const [campaignIndustries, setCampaignIndustries] = useState<Array<{ id: number; order_number: number; name: string }>>([]);
 
-  // 업종 선택 핸들러
-  const handleIndustrySelect = (industry: { topLevel: string; specific: string; code: string; name: string }) => {
-    setIndustryNames({ topLevel: industry.topLevel, specific: industry.specific });
-    setEditedData({
-      ...editedData,
-      target_industry_top_level: industry.topLevel,
-      target_industry_specific: industry.specific
-    });
-  };
+  // 업종 목록 로드
+  useEffect(() => {
+    const fetchCampaignIndustries = async () => {
+      try {
+        const response = await fetch('/api/campaign-industries');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.industries) {
+            setCampaignIndustries(result.industries);
+          }
+        }
+      } catch (error) {
+        console.error('업종 목록 로드 실패:', error);
+      }
+    };
+
+    fetchCampaignIndustries();
+  }, []);
+
+  // 캠페인 데이터 초기화 (업종 ID 포함)
+  useEffect(() => {
+    if (campaign?.campaign_industry_id) {
+      setSelectedIndustryId(campaign.campaign_industry_id);
+    }
+  }, [campaign]);
 
   // 드롭다운 및 업로드 관련 상태
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
@@ -203,8 +210,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
         card_amount_max: campaign.card_amount_max || null,
         card_time_start: campaign.card_time_start || '',
         card_time_end: campaign.card_time_end || '',
-        target_industry_top_level: campaign.target_industry_top_level || '',
-        target_industry_specific: campaign.target_industry_specific || '',
+        campaign_industry_id: campaign.campaign_industry_id || null,
         buttons: campaign.message_templates?.buttons || [],
         message_templates: campaign.message_templates || {},
         template_id: campaign.template_id || null
@@ -237,70 +243,6 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
       };
     }
   }, [isAgeDropdownOpen, isLocationDropdownOpen, isGenderDropdownOpen, isIndustryDropdownOpen]);
-
-  // 업종 이름 가져오기
-  useEffect(() => {
-    const fetchIndustryNames = async () => {
-      if (campaign && (campaign.target_industry_top_level || campaign.target_industry_specific)) {
-        try {
-          let topLevelName = '';
-          let specificName = '';
-
-          // 대분류 이름 가져오기
-          if (campaign.target_industry_top_level) {
-            const topLevelResponse = await fetch('/api/industries');
-            if (topLevelResponse.ok) {
-              const responseData = await topLevelResponse.json();
-              
-              // API 응답에서 rawData 사용 (code, name 직접 매칭)
-              const topLevelData = responseData.rawData || [];
-              
-              // code로 매칭
-              const topLevelIndustry = topLevelData.find((industry: { code: string; name: string }) => 
-                industry.code === campaign.target_industry_top_level || 
-                industry.code === String(campaign.target_industry_top_level)
-              );
-              
-              topLevelName = topLevelIndustry?.name || campaign.target_industry_top_level;
-            }
-          }
-
-          // 세부업종 이름 가져오기
-          if (campaign.target_industry_specific && campaign.target_industry_top_level) {
-            const specificResponse = await fetch(`/api/industries?top_level_code=${campaign.target_industry_top_level}`);
-            if (specificResponse.ok) {
-              const responseData = await specificResponse.json();
-              
-              // API 응답에서 rawData 사용 (code, name 직접 매칭)
-              const specificData = responseData.rawData || [];
-              
-              // code로 매칭
-              const specificIndustry = specificData.find((industry: { code: string; name: string }) => 
-                industry.code === campaign.target_industry_specific ||
-                industry.code === String(campaign.target_industry_specific)
-              );
-              
-              specificName = specificIndustry?.name || campaign.target_industry_specific;
-            }
-          }
-
-          setIndustryNames({ topLevel: topLevelName, specific: specificName });
-        } catch (error) {
-          console.error('Failed to fetch industry names:', error);
-          // 에러 시 원래 값 사용
-          setIndustryNames({
-            topLevel: campaign.target_industry_top_level || '',
-            specific: campaign.target_industry_specific || ''
-          });
-        }
-      } else {
-        // campaign이나 industry 정보가 없으면 초기화
-        setIndustryNames({ topLevel: '', specific: '' });
-      }
-    };
-
-    fetchIndustryNames();
-  }, [campaign?.target_industry_top_level, campaign?.target_industry_specific, campaign]);
 
   // 시/도 목록 로드
   useEffect(() => {
@@ -763,27 +705,13 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
       }).join(', ');
     };
 
-    // 업종 변환 - target_industry_top_level과 target_industry_specific 사용
+    // 업종 변환 - campaign_industry_id 사용
     const formatIndustry = () => {
-      const topLevel = industryNames.topLevel;
-      const specific = industryNames.specific;
-            
-      if (topLevel && specific) {
-        return `${topLevel}, ${specific}`;
-      } else if (topLevel) {
-        return topLevel;
-      } else if (specific) {
-        return specific;
+      if (campaign.campaign_industry_id) {
+        const industry = campaignIndustries.find(i => i.id === campaign.campaign_industry_id);
+        return industry ? `${industry.order_number}. ${industry.name}` : '전체';
       }
-      
-      // 백업: 원래 값들 사용
-      const originalTopLevel = campaign.target_industry_top_level;
-      const originalSpecific = campaign.target_industry_specific;
-      
-      if (originalTopLevel && originalSpecific) {
-        return `${originalTopLevel} > ${originalSpecific}`;
-      }
-      return originalTopLevel || originalSpecific || '전체';
+      return '전체';
     };
 
     // 카드 승인 금액 - card_amount_max 사용
@@ -1514,39 +1442,25 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">결제 업종</span>
                         {isEditMode ? (
-                          <div className="flex flex-col gap-2 max-w-xs">
-                            {/* 선택된 업종 표시 */}
-                            {(industryNames.topLevel || industryNames.specific) && (
-                              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-blue-900">
-                                    {industryNames.topLevel}
-                                    {industryNames.topLevel && industryNames.specific && ' > '}
-                                    {industryNames.specific}
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      setIndustryNames({ topLevel: '', specific: '' });
-                                      setEditedData({
-                                        ...editedData,
-                                        target_industry_top_level: '',
-                                        target_industry_specific: ''
-                                      });
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800 ml-2"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                            <button
-                              onClick={() => setIsIndustryModalOpen(true)}
-                              className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
-                            >
-                              {industryNames.topLevel || industryNames.specific ? '업종 변경' : '업종 선택'}
-                            </button>
-                          </div>
+                          <select
+                            value={selectedIndustryId || ""}
+                            onChange={(e) => {
+                              const newId = e.target.value ? Number(e.target.value) : null;
+                              setSelectedIndustryId(newId);
+                              setEditedData({
+                                ...editedData,
+                                campaign_industry_id: newId
+                              });
+                            }}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">업종 선택</option>
+                            {campaignIndustries.map((industry) => (
+                              <option key={industry.id} value={industry.id}>
+                                {industry.order_number}. {industry.name}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
                           <span className="text-sm text-gray-900">{targetInfo.cardUsageIndustry || '-'}</span>
                         )}
@@ -1789,13 +1703,6 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
         </div>
       </div>
 
-      {/* 업종 선택 모달 */}
-      <IndustrySelectModal
-        isOpen={isIndustryModalOpen}
-        onClose={() => setIsIndustryModalOpen(false)}
-        onSelect={handleIndustrySelect}
-        title="결제 업종 선택"
-      />
     </div>
   );
 };

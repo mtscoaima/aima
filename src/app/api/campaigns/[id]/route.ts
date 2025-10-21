@@ -492,8 +492,7 @@ export async function PATCH(
         card_amount_max?: number;
         card_time_start?: string;
         card_time_end?: string;
-        target_industry_top_level?: string;
-        target_industry_specific?: string;
+        campaign_industry_id?: number | null;
         unit_cost?: number;
         estimated_total_cost?: number;
         expert_review_requested?: boolean;
@@ -597,7 +596,7 @@ export async function GET(
 
     const userId = authResult.userInfo!.userId.toString();
 
-    // 캠페인 조회 (템플릿 정보와 함께)
+    // 캠페인 조회 (템플릿 정보 및 업종 정보와 함께)
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
       .select(`
@@ -609,6 +608,10 @@ export async function GET(
           category,
           template_code,
           buttons
+        ),
+        campaign_industries (
+          id,
+          name
         )
       `)
       .eq("id", campaignId)
