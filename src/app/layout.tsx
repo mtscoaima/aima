@@ -18,9 +18,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MTS마케팅 - SaaS 마케팅 플랫폼",
+  title: "에이마 - AI실시간타겟마케팅",
   description:
-    "AI 기반 타깃 마케팅 솔루션으로 효과적인 마케팅 캠페인을 만들어보세요",
+    "CRM 마케팅의 새로운 패러다임! AI와 마케팅전문가가 최적의 효율을 찾아냅니다.",
+  openGraph: {
+    title: "에이마 - AI실시간타겟마케팅",
+    description: "CRM 마케팅의 새로운 패러다임! AI와 마케팅전문가가 최적의 효율을 찾아냅니다.",
+  },
   other: {
     "naver-site-verification": "2acbc824d4bda0f427257226955d03ff9ce9dd6b",
   },
@@ -38,7 +42,7 @@ export default function RootLayout({
       >
         {/* Google Analytics - GA4 추적 태그 */}
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=YOUR_GA_MEASUREMENT_ID"
+          src="https://www.googletagmanager.com/gtag/js?id=G-FYDV0W98J7"
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -46,7 +50,7 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'YOUR_GA_MEASUREMENT_ID', {
+            gtag('config', 'G-FYDV0W98J7', {
               page_title: document.title,
               page_location: window.location.href,
             });
