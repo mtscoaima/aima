@@ -114,7 +114,8 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
 
     // settings 객체로 전달된 경우 처리 (CommissionSettings에서 사용)
-    let { firstLevelCommissionRate, nthLevelDenominator, menuSettings, siteSettings } = body;
+    let { firstLevelCommissionRate, nthLevelDenominator } = body;
+    const { menuSettings, siteSettings } = body;
 
     if (body.settings) {
       firstLevelCommissionRate = body.settings.firstLevelCommissionRate;

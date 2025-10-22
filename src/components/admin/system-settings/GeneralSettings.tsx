@@ -29,9 +29,7 @@ interface GeneralSettingsProps {
 
 export default function GeneralSettings({
   settings,
-  siteSettings,
   onSettingChange,
-  onSiteSettingChange,
   onSave,
   isSaving,
   onGenerateApiKey

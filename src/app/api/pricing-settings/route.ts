@@ -45,7 +45,7 @@ async function isAdmin(userId: string): Promise<boolean> {
 }
 
 // GET: 모든 차등 단가 설정 조회
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { data, error } = await supabase
       .from("pricing_settings")

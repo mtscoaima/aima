@@ -97,7 +97,6 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         logging: false,
         width: actualWidth,
         height: actualHeight,
-        scale: 1,
       });
 
       // 6) 640×960 캔버스에 비율 유지하며 중앙 정렬

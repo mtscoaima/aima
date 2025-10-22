@@ -16,7 +16,7 @@ export async function PUT(
     const body = await request.json();
     const { order_number, name, is_active } = body;
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, number | string | boolean> = {};
     if (order_number !== undefined) updateData.order_number = order_number;
     if (name !== undefined) updateData.name = name;
     if (is_active !== undefined) updateData.is_active = is_active;

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Map을 배열로 변환
-    let customIndustries = Array.from(stats.entries())
+    const customIndustries = Array.from(stats.entries())
       .map(([name, { count, lastUsed }]) => ({
         name,
         count,

@@ -359,8 +359,6 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
           card_amount_max: campaign.card_amount_max || null,
           card_time_start: campaign.card_time_start || '',
           card_time_end: campaign.card_time_end || '',
-          target_industry_top_level: campaign.target_industry_top_level || '',
-          target_industry_specific: campaign.target_industry_specific || '',
           buttons: campaign.message_templates?.buttons || [],
           message_templates: campaign.message_templates || {},
           template_id: campaign.template_id || null

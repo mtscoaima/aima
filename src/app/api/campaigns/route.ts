@@ -608,7 +608,7 @@ export async function GET(request: NextRequest) {
     }
 
     // custom_campaign_industries 배열을 custom_industry_name 문자열로 변환
-    const formattedCampaigns = (campaigns || []).map((campaign: any) => {
+    const formattedCampaigns = (campaigns || []).map((campaign: { custom_campaign_industries?: Array<{ custom_name: string }>; [key: string]: unknown }) => {
       const customIndustryName = campaign.custom_campaign_industries?.[0]?.custom_name || null;
       return {
         ...campaign,

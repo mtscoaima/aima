@@ -69,6 +69,7 @@ export default function CampaignIndustriesPage() {
     if (activeTab === 'custom') {
       fetchCustomIndustries();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, sortBy, sortOrder]);
 
   const fetchIndustries = async () => {
@@ -516,7 +517,7 @@ export default function CampaignIndustriesPage() {
                 <label className="text-sm text-gray-700">정렬:</label>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => setSortBy(e.target.value as 'name' | 'count' | 'lastUsed')}
                   className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="name">업종명</option>
