@@ -9,6 +9,7 @@ import ApprovalRequestComplete from "@/components/approval/ApprovalRequestComple
 import { PaymentModal } from "@/components/credit/PaymentModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePricing } from "@/contexts/PricingContext";
 import { saveCampaignDraft, clearCampaignDraft, fileToBase64, type CampaignDraft } from "@/lib/campaignDraft";
 import {
   targetOptions,
@@ -259,6 +260,7 @@ function TargetMarketingDetailContent({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { getAllTimeOptions, getSelectedAgeDisplay } = useTargetOptions();
   const { calculateUnitCost, calculateTotalCost, calculateRequiredCredits } = useCalculations();
+  const { getPriceByType } = usePricing();
 
   // 📡 사이트 설정 로드
   useEffect(() => {
@@ -2755,14 +2757,17 @@ function TargetMarketingDetailContent({
 
   const unitCost = React.useMemo(() => {
     return calculateUnitCost({
+      selectedLocations,
       gender: targetGender,
       ages: targetAge,
       hasLocationFilter,
       hasIndustryFilter,
       hasAmountFilter,
+      hasTimeFilter: cardStartTime !== '00:00' || cardEndTime !== '23:59',
       carouselFirst: false, // UI 미지원, 필요 시 true 처리
+      getPriceByType,
     });
-  }, [targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, calculateUnitCost]);
+  }, [selectedLocations, targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, cardStartTime, cardEndTime, calculateUnitCost, getPriceByType]);
 
   // 마지막 어시스턴트 메시지 인덱스 (표는 마지막 답변에만 표시)
   const lastAssistantIndex = React.useMemo(() => {
@@ -3945,16 +3950,74 @@ function TargetMarketingDetailContent({
                   <span className="text-sm text-gray-700">광고 단가(발송 건 당)</span>
                   <span className="text-sm font-semibold text-gray-900">{unitCost}원/건</span>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {(() => {
-                    const parts: string[] = ["기본 100"];
-                    if (hasLocationFilter) parts.push("위치 50");
-                    if (targetGender !== 'all') parts.push("성별 50");
-                    if (!(targetAge.length === 1 && targetAge[0] === 'all') && targetAge.length > 0) parts.push("나이대 50");
-                    if (hasAmountFilter) parts.push("승인금액 50");
-                    if (hasIndustryFilter) parts.push("업종 50");
-                    return parts.join(" + ");
-                  })()}
+
+                {/* 상세 계산 설명 */}
+                <div className="bg-gray-50 p-3 rounded-md space-y-2 text-xs">
+                  <div className="font-semibold text-gray-700 mb-2">💰 단가 계산 내역</div>
+
+                  {/* 기본 단가 */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">기본 단가</span>
+                    <span className="font-medium text-gray-900">{getPriceByType('기본단가')}원</span>
+                  </div>
+
+                  {/* 위치 필터 */}
+                  {hasLocationFilter && selectedLocations.length > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600"> 결제 위치 ({selectedLocations.length})</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedLocations.length} × {getPriceByType('위치')}원 = {selectedLocations.length * getPriceByType('위치')}원
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 성별 필터 */}
+                  {targetGender !== 'all' && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">성별 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('성별')}원</span>
+                    </div>
+                  )}
+
+                  {/* 나이 필터 */}
+                  {!(targetAge.length === 1 && targetAge[0] === 'all') && targetAge.length > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">나이 ({targetAge.length})</span>
+                      <span className="font-medium text-gray-900">
+                        {targetAge.length} × {getPriceByType('나이')}원 = {targetAge.length * getPriceByType('나이')}원
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 업종 필터 */}
+                  {hasIndustryFilter && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">업종 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('업종')}원</span>
+                    </div>
+                  )}
+
+                  {/* 승인금액 필터 */}
+                  {hasAmountFilter && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">결제 금액 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('결제금액')}원</span>
+                    </div>
+                  )}
+
+                  {/* 시간 필터 */}
+                  {(cardStartTime !== '00:00' || cardEndTime !== '23:59') && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">결제 시간 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('결제이력')}원</span>
+                    </div>
+                  )}
+
+                  {/* 총합 */}
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-300">
+                    <span className="font-semibold text-gray-700">총 단가</span>
+                    <span className="font-bold text-blue-600">{unitCost}원</span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center border-t border-gray-200 pt-2">
                   <span className="text-base font-semibold text-gray-900">합계</span>

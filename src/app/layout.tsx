@@ -5,6 +5,7 @@ import Layout from "../components/Layout";
 import { AuthProvider } from "../contexts/AuthContext";
 import { BalanceProvider } from "../contexts/BalanceContext";
 import { NotificationProvider } from "../contexts/NotificationContext";
+import { PricingProvider } from "../contexts/PricingContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -72,7 +73,9 @@ export default function RootLayout({
         <AuthProvider>
           <BalanceProvider>
             <NotificationProvider>
-              <Layout>{children}</Layout>
+              <PricingProvider>
+                <Layout>{children}</Layout>
+              </PricingProvider>
             </NotificationProvider>
           </BalanceProvider>
         </AuthProvider>

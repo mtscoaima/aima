@@ -467,25 +467,60 @@ export const useTargetOptions = () => {
 export const useCalculations = () => {
   // 단가 계산: 선택된 타겟 조건에 따라 차등가 적용
   const calculateUnitCost = useCallback((params: {
-    gender: string; // 'all' | 'male' | 'female'
-    ages: string[]; // 포함 시 50원
-    hasLocationFilter: boolean; // true면 위치 차등가 적용
-    hasIndustryFilter: boolean; // true면 업종 차등가 적용
-    hasAmountFilter: boolean; // true면 승인금액 차등가 적용
-    carouselFirst?: boolean; // RCS 첫번째 노출
+    selectedLocations?: Array<unknown>; // 위치 선택된 위치들
+    gender: string;                      // 성별
+    ages: string[];                      // 나이대 배열
+    hasLocationFilter?: boolean;         // 위치 필터 여부 (옵션)
+    hasIndustryFilter: boolean;          // 업종 필터 여부
+    hasAmountFilter: boolean;            // 금액 필터 여부
+    hasTimeFilter?: boolean;             // 시간 필터 여부 (옵션)
+    carouselFirst?: boolean;             // 캐러셀 옵션 (옵션)
+    getPriceByType?: (type: string) => number;  // Context에서 제공 (선택)
   }) => {
-    let unit = PRICING_STEPS.base;
+    // Context에서 getPriceByType이 제공되지 않으면 기본값 사용
+    const getPrice = params.getPriceByType || ((type: string) => {
+      if (type === '기본단가') return PRICING_STEPS.base;
+      if (type === '위치') return 20;
+      if (type === '성별') return 0;
+      if (type === '나이') return 20;
+      if (type === '결제금액') return 0;
+      if (type === '업종') return 20;
+      if (type === '결제이력') return 20;
+      return 0;
+    });
 
-    if (params.hasLocationFilter) unit += PRICING_STEPS.increments.location;
-    if (params.gender && params.gender !== "all") unit += PRICING_STEPS.increments.gender;
-    if (Array.isArray(params.ages) && params.ages.length > 0 && !(params.ages.length === 1 && params.ages[0] === "all")) {
-      unit += PRICING_STEPS.increments.age;
+    // 기본단가
+    let unitCost = getPrice('기본단가');
+
+    // 위치 (N * 단가) - 선택한 위치 개수만큼 곱함
+    if (params.selectedLocations && params.selectedLocations.length > 0) {
+      const worknetPrice = getPrice('위치');
+      unitCost += params.selectedLocations.length * worknetPrice;
     }
-    if (params.hasAmountFilter) unit += PRICING_STEPS.increments.amount;
-    if (params.hasIndustryFilter) unit += PRICING_STEPS.increments.industry;
-    if (params.carouselFirst) unit += PRICING_STEPS.increments.carouselFirst;
 
-    return unit;
+    // 성별 (0원이므로 추가 없음)
+    // const genderPrice = getPrice('성별');
+
+    // 나이 (N * 단가) - 선택한 연령대 개수만큼 곱함
+    if (Array.isArray(params.ages) && params.ages.length > 0 && !(params.ages.length === 1 && params.ages[0] === "all")) {
+      const agePrice = getPrice('나이');
+      unitCost += params.ages.length * agePrice;
+    }
+
+    // 업종
+    if (params.hasIndustryFilter) {
+      unitCost += getPrice('업종');
+    }
+
+    // 결제금액 (0원)
+    // const amountPrice = getPrice('결제금액');
+
+    // 결제이력/시간
+    if (params.hasTimeFilter) {
+      unitCost += getPrice('결제이력');
+    }
+
+    return unitCost;
   }, []);
 
   // ✅ 새로운 계산 로직: 캠페인 전체 예산 기준

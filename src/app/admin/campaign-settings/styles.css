@@ -1,0 +1,69 @@
+/* 캠페인 예산 설정 페이지 스타일 */
+.campaigns-page {
+  flex: 1;
+  background: #f5f7fa;
+  margin-top: 64px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.campaigns-main-container {
+  padding: 2rem;
+  color: #333333;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: auto;
+}
+
+.campaigns-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.campaigns-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333333;
+  margin: 0;
+}
+
+/* 관리자 레이아웃 */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f7fa;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.campaigns-page {
+  margin-left: 250px;
+  margin-top: 64px;
+  transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 769px) {
+  .campaigns-page {
+    margin-left: 250px;
+    margin-top: 64px;
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .campaigns-page {
+    margin-left: 0;
+    margin-top: 64px;
+  }
+
+  .campaigns-main-container {
+    padding: 1rem;
+  }
+}

@@ -3,6 +3,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { AdminGuard } from "@/components/RoleGuard";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminSidebar from "@/components/admin/AdminSidebar";
+import "./styles.css";
 
 interface CampaignIndustry {
   id: number;
@@ -22,6 +26,7 @@ interface CustomIndustry {
 export default function CampaignIndustriesPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'official' | 'custom'>('official');
 
   // Official industries state
@@ -46,6 +51,11 @@ export default function CampaignIndustriesPage() {
   const [searchKeyword, setSearchKeyword] = useState<string>("");
   const [sortBy, setSortBy] = useState<'name' | 'count' | 'lastUsed'>('count');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // 페이지네이션 state
+  const [officialCurrentPage, setOfficialCurrentPage] = useState(1);
+  const [customCurrentPage, setCustomCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   useEffect(() => {
     if (user && user.role !== "ADMIN") {
@@ -116,6 +126,38 @@ export default function CampaignIndustriesPage() {
       industry.name.toLowerCase().includes(searchKeyword.toLowerCase())
     );
   }, [customIndustries, searchKeyword]);
+
+  // 페이지네이션 계산 - 정식 업종
+  const officialTotalPages = Math.ceil(industries.length / ITEMS_PER_PAGE);
+  const officialStartIndex = (officialCurrentPage - 1) * ITEMS_PER_PAGE;
+  const officialEndIndex = officialStartIndex + ITEMS_PER_PAGE;
+  const paginatedOfficialIndustries = industries.slice(officialStartIndex, officialEndIndex);
+
+  // 페이지네이션 계산 - 커스텀 업종
+  const customTotalPages = Math.ceil(filteredCustomIndustries.length / ITEMS_PER_PAGE);
+  const customStartIndex = (customCurrentPage - 1) * ITEMS_PER_PAGE;
+  const customEndIndex = customStartIndex + ITEMS_PER_PAGE;
+  const paginatedCustomIndustries = filteredCustomIndustries.slice(customStartIndex, customEndIndex);
+
+  // 페이지 변경 핸들러
+  const handleOfficialPageChange = (page: number) => {
+    setOfficialCurrentPage(page);
+  };
+
+  const handleCustomPageChange = (page: number) => {
+    setCustomCurrentPage(page);
+  };
+
+  // 검색 시 첫 페이지로 이동
+  useEffect(() => {
+    setCustomCurrentPage(1);
+  }, [searchKeyword]);
+
+  // 탭 변경 시 페이지 초기화
+  useEffect(() => {
+    setOfficialCurrentPage(1);
+    setCustomCurrentPage(1);
+  }, [activeTab]);
 
   const handleCreate = () => {
     const nextOrderNumber = industries.length > 0
@@ -268,12 +310,15 @@ export default function CampaignIndustriesPage() {
     }
   };
 
-  // 전체 선택/해제
+  // 전체 선택/해제 (현재 페이지만)
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedCustomNames(filteredCustomIndustries.map(i => i.name));
+      const currentPageNames = paginatedCustomIndustries.map(i => i.name);
+      const newSelected = [...new Set([...selectedCustomNames, ...currentPageNames])];
+      setSelectedCustomNames(newSelected);
     } else {
-      setSelectedCustomNames([]);
+      const currentPageNames = paginatedCustomIndustries.map(i => i.name);
+      setSelectedCustomNames(selectedCustomNames.filter(name => !currentPageNames.includes(name)));
     }
   };
 
@@ -290,10 +335,18 @@ export default function CampaignIndustriesPage() {
     return null;
   }
 
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">캠페인 업종 관리</h1>
+    <div className="admin-layout">
+      <AdminHeader onToggleSidebar={toggleSidebar} />
+      <AdminSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+      <div className="campaigns-page">
+        <div className="campaigns-main-container">
+          <AdminGuard>
+            <div className="campaigns-header">
+              <h1>캠페인 업종 관리</h1>
         {activeTab === 'official' && (
           <button
             onClick={handleCreate}
@@ -355,7 +408,7 @@ export default function CampaignIndustriesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {industries.map((industry) => (
+                  {paginatedOfficialIndustries.map((industry) => (
                     <tr key={industry.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {industry.order_number}
@@ -392,6 +445,42 @@ export default function CampaignIndustriesPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* 페이지네이션 */}
+          {!isLoading && industries.length > 0 && (
+            <div className="pagination-container">
+              <div className="pagination-left">
+                <div className="pagination-info">
+                  총 {industries.length}개 중 {officialStartIndex + 1}-{Math.min(officialEndIndex, industries.length)}
+                </div>
+              </div>
+              <div className="pagination-buttons">
+                <button
+                  onClick={() => handleOfficialPageChange(officialCurrentPage - 1)}
+                  disabled={officialCurrentPage === 1}
+                  className="pagination-button nav-button"
+                >
+                  ‹
+                </button>
+                {Array.from({ length: officialTotalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handleOfficialPageChange(page)}
+                    className={`pagination-button ${officialCurrentPage === page ? 'active' : ''}`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handleOfficialPageChange(officialCurrentPage + 1)}
+                  disabled={officialCurrentPage === officialTotalPages}
+                  className="pagination-button nav-button"
+                >
+                  ›
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -472,8 +561,8 @@ export default function CampaignIndustriesPage() {
                       <input
                         type="checkbox"
                         checked={
-                          filteredCustomIndustries.length > 0 &&
-                          filteredCustomIndustries.every(i => selectedCustomNames.includes(i.name))
+                          paginatedCustomIndustries.length > 0 &&
+                          paginatedCustomIndustries.every(i => selectedCustomNames.includes(i.name))
                         }
                         onChange={(e) => handleSelectAll(e.target.checked)}
                         className="cursor-pointer"
@@ -494,7 +583,7 @@ export default function CampaignIndustriesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredCustomIndustries.map((customIndustry, index) => (
+                  {paginatedCustomIndustries.map((customIndustry, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-4">
                         <input
@@ -525,6 +614,42 @@ export default function CampaignIndustriesPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* 페이지네이션 */}
+          {!isCustomLoading && filteredCustomIndustries.length > 0 && (
+            <div className="pagination-container">
+              <div className="pagination-left">
+                <div className="pagination-info">
+                  총 {filteredCustomIndustries.length}개 중 {customStartIndex + 1}-{Math.min(customEndIndex, filteredCustomIndustries.length)}
+                </div>
+              </div>
+              <div className="pagination-buttons">
+                <button
+                  onClick={() => handleCustomPageChange(customCurrentPage - 1)}
+                  disabled={customCurrentPage === 1}
+                  className="pagination-button nav-button"
+                >
+                  ‹
+                </button>
+                {Array.from({ length: customTotalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handleCustomPageChange(page)}
+                    className={`pagination-button ${customCurrentPage === page ? 'active' : ''}`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handleCustomPageChange(customCurrentPage + 1)}
+                  disabled={customCurrentPage === customTotalPages}
+                  className="pagination-button nav-button"
+                >
+                  ›
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -685,6 +810,9 @@ export default function CampaignIndustriesPage() {
           </div>
         </div>
       )}
+          </AdminGuard>
+        </div>
+      </div>
     </div>
   );
 }
