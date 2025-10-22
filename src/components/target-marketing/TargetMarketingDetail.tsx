@@ -146,7 +146,8 @@ function TargetMarketingDetailContent({
   // 업종 선택 상태
   const [selectedIndustryId, setSelectedIndustryId] = useState<number | null>(null);
   const [campaignIndustries, setCampaignIndustries] = useState<Array<{ id: number; order_number: number; name: string }>>([]);
-  
+  const [customIndustryName, setCustomIndustryName] = useState<string>("");
+
   const [cardAmount, setCardAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT);
   const [customAmount, setCustomAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CUSTOM_AMOUNT);
   const [cardAmountInput, setCardAmountInput] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT_INPUT);
@@ -2630,6 +2631,12 @@ function TargetMarketingDetailContent({
       }
     }
 
+    // 커스텀 업종명 유효성 검사
+    if (selectedIndustryId === 14 && !customIndustryName.trim()) {
+      alert("기타 업종을 선택하셨습니다. 업종명을 입력해주세요.");
+      return;
+    }
+
     // 크레딧 잔액 확인
     const totalCost = calculateTotalCost(sendPolicy, campaignBudget);
     const requiredCredits = calculateRequiredCredits(totalCost, userCredits);
@@ -2694,6 +2701,7 @@ function TargetMarketingDetailContent({
         cardTimeStart: cardStartTime,
         cardTimeEnd: cardEndTime,
         campaignIndustryId: selectedIndustryId,
+        customIndustryName: selectedIndustryId === 14 ? customIndustryName : null,
         unitCost: unitCost,
         estimatedTotalCost: totalCost,
         expertReviewRequested: expertReviewRequested,
@@ -2738,8 +2746,8 @@ function TargetMarketingDetailContent({
   }, [selectedLocations, targetCity, targetDistrict]);
 
   const hasIndustryFilter = React.useMemo(() => {
-    return targetTopLevelIndustryText.trim() !== '' || targetIndustryText.trim() !== '';
-  }, [targetTopLevelIndustryText, targetIndustryText]);
+    return selectedIndustryId !== null;
+  }, [selectedIndustryId]);
 
   const hasAmountFilter = React.useMemo(() => {
     return cardAmount !== 'all';
@@ -3501,7 +3509,14 @@ function TargetMarketingDetailContent({
                  </label>
                  <select
                    value={selectedIndustryId || ""}
-                   onChange={(e) => setSelectedIndustryId(e.target.value ? Number(e.target.value) : null)}
+                   onChange={(e) => {
+                     const newId = e.target.value ? Number(e.target.value) : null;
+                     setSelectedIndustryId(newId);
+                     // 14번 업종이 아니면 커스텀 업종명 초기화
+                     if (newId !== 14) {
+                       setCustomIndustryName("");
+                     }
+                   }}
                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                  >
                    <option value="">업종 선택</option>
@@ -3512,6 +3527,23 @@ function TargetMarketingDetailContent({
                    ))}
                  </select>
                </div>
+
+               {/* 커스텀 업종명 입력 (14번 업종 선택 시) */}
+               {selectedIndustryId === 14 && (
+                 <div className="mb-4">
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                     업종명 (직접입력)
+                   </label>
+                   <input
+                     type="text"
+                     value={customIndustryName}
+                     onChange={(e) => setCustomIndustryName(e.target.value)}
+                     placeholder="업종명을 입력해주세요"
+                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     maxLength={100}
+                   />
+                 </div>
+               )}
 
               {/* 카드 승인 금액 */}
                <div className="mb-4">

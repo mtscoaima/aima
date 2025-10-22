@@ -94,6 +94,7 @@ interface CreateCampaignRequest {
   cardTimeStart?: string | null;
   cardTimeEnd?: string | null;
   campaignIndustryId?: number | null;
+  customIndustryName?: string | null;
   unitCost?: number;
   estimatedTotalCost?: number;
   expertReviewRequested?: boolean;
@@ -156,6 +157,14 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { success: false, message: "필수 정보가 누락되었습니다." },
+        { status: 400 }
+      );
+    }
+
+    // 커스텀 업종 검증 (14번 선택 시)
+    if (campaignData.campaignIndustryId === 14 && !campaignData.customIndustryName?.trim()) {
+      return NextResponse.json(
+        { success: false, message: "기타 업종을 선택하셨습니다. 업종명을 입력해주세요." },
         { status: 400 }
       );
     }
@@ -521,6 +530,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 커스텀 업종 저장 (14번 선택 시)
+    if (campaignData.campaignIndustryId === 14 && campaignData.customIndustryName) {
+      const { error: customIndustryError } = await supabase
+        .from('custom_campaign_industries')
+        .insert({
+          campaign_id: newCampaign.id,
+          custom_name: campaignData.customIndustryName.trim()
+        });
+
+      if (customIndustryError) {
+        console.error('커스텀 업종 저장 오류:', customIndustryError);
+        // 캠페인은 이미 생성되었으므로 경고만 표시
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "캠페인이 성공적으로 저장되었습니다.",
@@ -566,6 +590,9 @@ export async function GET(request: NextRequest) {
         campaign_industries (
           id,
           name
+        ),
+        custom_campaign_industries (
+          custom_name
         )
       `
       )
@@ -580,9 +607,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // custom_campaign_industries 배열을 custom_industry_name 문자열로 변환
+    const formattedCampaigns = (campaigns || []).map((campaign: any) => {
+      const customIndustryName = campaign.custom_campaign_industries?.[0]?.custom_name || null;
+      return {
+        ...campaign,
+        custom_industry_name: customIndustryName,
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      campaigns: campaigns || [],
+      campaigns: formattedCampaigns,
     });
   } catch (error) {
     console.error("캠페인 조회 오류:", error);

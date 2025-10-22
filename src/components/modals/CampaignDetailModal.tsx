@@ -45,6 +45,7 @@ interface RealCampaign {
   card_time_start?: string;
   card_time_end?: string;
   campaign_industry_id?: number | null;
+  custom_industry_name?: string | null;
   unit_cost?: number;
   estimated_total_cost?: number;
   expert_review_requested?: boolean;
@@ -84,6 +85,7 @@ interface EditableCampaignData {
   card_time_start?: string;
   card_time_end?: string;
   campaign_industry_id?: number | null;
+  custom_industry_name?: string | null;
   buttons?: DynamicButton[];
   message_templates?: {
     name?: string;
@@ -132,6 +134,7 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   const [editedData, setEditedData] = useState<EditableCampaignData>({});
   const [,setEditedName] = useState("");
   const [selectedIndustryId, setSelectedIndustryId] = useState<number | null>(null);
+  const [customIndustryName, setCustomIndustryName] = useState<string>("");
   const [campaignIndustries, setCampaignIndustries] = useState<Array<{ id: number; order_number: number; name: string }>>([]);
 
   // 업종 목록 로드
@@ -153,10 +156,13 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
     fetchCampaignIndustries();
   }, []);
 
-  // 캠페인 데이터 초기화 (업종 ID 포함)
+  // 캠페인 데이터 초기화 (업종 ID 및 커스텀 업종명 포함)
   useEffect(() => {
     if (campaign?.campaign_industry_id) {
       setSelectedIndustryId(campaign.campaign_industry_id);
+    }
+    if (campaign?.custom_industry_name) {
+      setCustomIndustryName(campaign.custom_industry_name);
     }
   }, [campaign]);
 
@@ -709,7 +715,14 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
     const formatIndustry = () => {
       if (campaign.campaign_industry_id) {
         const industry = campaignIndustries.find(i => i.id === campaign.campaign_industry_id);
-        return industry ? `${industry.order_number}. ${industry.name}` : '전체';
+        if (industry) {
+          // 14번 업종이고 커스텀 업종명이 있으면 함께 표시
+          if (industry.id === 14 && campaign.custom_industry_name) {
+            return `${industry.order_number}. ${industry.name} (${campaign.custom_industry_name})`;
+          }
+          return `${industry.order_number}. ${industry.name}`;
+        }
+        return '전체';
       }
       return '전체';
     };
@@ -1442,29 +1455,57 @@ const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">결제 업종</span>
                         {isEditMode ? (
-                          <select
-                            value={selectedIndustryId || ""}
-                            onChange={(e) => {
-                              const newId = e.target.value ? Number(e.target.value) : null;
-                              setSelectedIndustryId(newId);
-                              setEditedData({
-                                ...editedData,
-                                campaign_industry_id: newId
-                              });
-                            }}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">업종 선택</option>
-                            {campaignIndustries.map((industry) => (
-                              <option key={industry.id} value={industry.id}>
-                                {industry.order_number}. {industry.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex-1 ml-2">
+                            <select
+                              value={selectedIndustryId || ""}
+                              onChange={(e) => {
+                                const newId = e.target.value ? Number(e.target.value) : null;
+                                setSelectedIndustryId(newId);
+                                // 14번 업종이 아니면 커스텀 업종명 초기화
+                                if (newId !== 14) {
+                                  setCustomIndustryName("");
+                                }
+                                setEditedData({
+                                  ...editedData,
+                                  campaign_industry_id: newId,
+                                  custom_industry_name: newId === 14 ? customIndustryName : null
+                                });
+                              }}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">업종 선택</option>
+                              {campaignIndustries.map((industry) => (
+                                <option key={industry.id} value={industry.id}>
+                                  {industry.order_number}. {industry.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         ) : (
                           <span className="text-sm text-gray-900">{targetInfo.cardUsageIndustry || '-'}</span>
                         )}
                       </div>
+
+                      {/* 커스텀 업종명 입력 (14번 업종 선택 시, 편집 모드에서만) */}
+                      {isEditMode && selectedIndustryId === 14 && (
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-sm font-medium text-gray-700">업종명 (직접입력)</span>
+                          <input
+                            type="text"
+                            value={customIndustryName}
+                            onChange={(e) => {
+                              setCustomIndustryName(e.target.value);
+                              setEditedData({
+                                ...editedData,
+                                custom_industry_name: e.target.value
+                              });
+                            }}
+                            placeholder="업종명을 입력해주세요"
+                            className="flex-1 ml-2 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            maxLength={100}
+                          />
+                        </div>
+                      )}
 
                       {/* 결제 승인 금액 */}
                       <div className="flex items-center justify-between">

@@ -58,11 +58,21 @@ export async function GET(request: NextRequest) {
               .single()
           : { data: null };
 
+        // 커스텀 업종 정보 조회 (업종 ID가 14번인 경우)
+        const { data: customIndustry } = campaign.campaign_industry_id === 14
+          ? await supabase
+              .from("custom_campaign_industries")
+              .select("custom_name")
+              .eq("campaign_id", campaign.id)
+              .single()
+          : { data: null };
+
         return {
           ...campaign,
           users: user,
           message_templates: template,
           campaign_industries: industry,
+          custom_industry_name: customIndustry?.custom_name || null,
         };
       })
     );

@@ -221,7 +221,10 @@ export async function PATCH(
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { name, requestApproval, cancelApprovalRequest, updateTargetCriteria, status, ...updateData } = body;
+    const { name, requestApproval, cancelApprovalRequest, updateTargetCriteria, status, customIndustryName, custom_industry_name, ...updateData } = body;
+
+    // custom_industry_name과 customIndustryName 둘 다 지원 (언더스코어/카멜케이스)
+    const finalCustomIndustryName = customIndustryName || custom_industry_name;
 
     // 승인 요청인 경우, 승인 요청 취소인 경우, 타깃 조건 수정인 경우, 이름 수정인 경우 구분
     if (requestApproval) {
@@ -504,6 +507,10 @@ export async function PATCH(
 
       const finalUpdateData: CampaignUpdateData = { ...updateData };
 
+      // custom_industry_name은 campaigns 테이블이 아닌 custom_campaign_industries 테이블에 저장
+      // 따라서 finalUpdateData에서 제거
+      delete finalUpdateData.custom_industry_name;
+
       // 이름 처리
       if (name) {
         if (typeof name !== "string" || !name.trim()) {
@@ -549,6 +556,72 @@ export async function PATCH(
           { success: false, message: "캠페인 수정에 실패했습니다." },
           { status: 500 }
         );
+      }
+
+      // 커스텀 업종 처리 (업종 ID가 14번인 경우)
+      const oldIndustryId = campaign.campaign_industry_id;
+      const newIndustryId = finalUpdateData.campaign_industry_id !== undefined
+        ? finalUpdateData.campaign_industry_id
+        : oldIndustryId;
+
+      // 업종이 14번에서 다른 업종으로 변경된 경우: 커스텀 업종 삭제
+      if (oldIndustryId === 14 && newIndustryId !== 14) {
+        await supabase
+          .from('custom_campaign_industries')
+          .delete()
+          .eq('campaign_id', campaignId);
+      }
+
+      // 업종이 14번으로 변경되었거나 14번 유지 중인 경우
+      if (newIndustryId === 14) {
+        // 커스텀 업종명이 제공되지 않았다면 에러 (신규 생성 시)
+        if (oldIndustryId !== 14 && !finalCustomIndustryName) {
+          return NextResponse.json(
+            { success: false, message: "기타 업종을 선택하셨습니다. 업종명을 입력해주세요." },
+            { status: 400 }
+          );
+        }
+
+        // 커스텀 업종명이 제공된 경우 업데이트/삽입
+        if (finalCustomIndustryName !== undefined && finalCustomIndustryName !== null) {
+          if (!finalCustomIndustryName.trim()) {
+            return NextResponse.json(
+              { success: false, message: "기타 업종을 선택하셨습니다. 업종명을 입력해주세요." },
+              { status: 400 }
+            );
+          }
+
+          // 기존 커스텀 업종이 있는지 확인
+          const { data: existingCustom } = await supabase
+            .from('custom_campaign_industries')
+            .select('id')
+            .eq('campaign_id', campaignId)
+            .single();
+
+          if (existingCustom) {
+            // 업데이트
+            const { error: updateError } = await supabase
+              .from('custom_campaign_industries')
+              .update({ custom_name: finalCustomIndustryName.trim() })
+              .eq('campaign_id', campaignId);
+
+            if (updateError) {
+              console.error('커스텀 업종 업데이트 오류:', updateError);
+            }
+          } else {
+            // 신규 삽입
+            const { error: insertError } = await supabase
+              .from('custom_campaign_industries')
+              .insert({
+                campaign_id: campaignId,
+                custom_name: finalCustomIndustryName.trim()
+              });
+
+            if (insertError) {
+              console.error('커스텀 업종 삽입 오류:', insertError);
+            }
+          }
+        }
       }
 
       return NextResponse.json({
@@ -612,6 +685,9 @@ export async function GET(
         campaign_industries (
           id,
           name
+        ),
+        custom_campaign_industries (
+          custom_name
         )
       `)
       .eq("id", campaignId)
@@ -625,9 +701,16 @@ export async function GET(
       );
     }
 
+    // custom_campaign_industries 배열을 custom_industry_name 문자열로 변환
+    const customIndustryName = campaign.custom_campaign_industries?.[0]?.custom_name || null;
+    const formattedCampaign = {
+      ...campaign,
+      custom_industry_name: customIndustryName,
+    };
+
     return NextResponse.json({
       success: true,
-      campaign: campaign,
+      campaign: formattedCampaign,
     });
   } catch (error) {
     console.error("캠페인 조회 API 오류:", error);
