@@ -6,8 +6,8 @@ const NAVER_ACCESS_KEY_ID = process.env.NAVER_ACCESS_KEY_ID;
 const NAVER_SECRET_KEY = process.env.NAVER_SECRET_KEY;
 const TEST_CALLING_NUMBER = process.env.TEST_CALLING_NUMBER;
 
-// 서명 생성 함수
-function makeSignature(
+// 서명 생성 함수 (다른 파일에서도 사용 가능하도록 export)
+export function makeSignature(
   method: string,
   url: string,
   timestamp: string,
