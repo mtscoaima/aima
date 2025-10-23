@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
 import { getKSTISOString } from "@/lib/utils";
+import { triggerNotification } from "@/lib/notificationService";
+import { NotificationEventType } from "@/types/notificationEvents";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -295,6 +297,27 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // 발신번호 검수요청 알림 발송
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, company_info')
+        .eq('id', userId)
+        .single();
+
+      await triggerNotification({
+        eventType: NotificationEventType.SENDER_NUMBER_REGISTERED,
+        userId: parseInt(userId),
+        data: {
+          companyName: userData?.company_info?.company_name || '미등록',
+          userName: userData?.name || '사용자',
+        }
+      });
+    } catch (notificationError) {
+      console.error("발신번호 검수요청 알림 발송 실패:", notificationError);
+      // 알림 실패해도 발신번호 등록은 성공으로 처리
     }
 
     return NextResponse.json(

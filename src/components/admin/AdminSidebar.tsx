@@ -56,6 +56,12 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       href: "/admin/customer-support",
     },
     {
+      id: "notifications",
+      label: "알림 관리",
+      icon: "🔔",
+      href: "/admin/notifications",
+    },
+    {
       id: "system-settings",
       label: "설정관리",
       icon: "⚙️",
@@ -80,7 +86,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     if (window.innerWidth <= 768) {
       onClose();
     }
-    // 회원관리, 포인트 충전 관리, 캠페인 관리, 캠페인 업종 관리, 캠페인 예산 설정, 기업정보관리, 고객지원 관리, 설정관리, 통계 관리, 세금계산서 관리 페이지는 실제로 이동 가능
+    // 회원관리, 포인트 충전 관리, 캠페인 관리, 캠페인 업종 관리, 캠페인 예산 설정, 기업정보관리, 고객지원 관리, 알림 관리, 설정관리, 통계 관리, 세금계산서 관리 페이지는 실제로 이동 가능
     if (
       href === "/admin/user-management" ||
       href === "/admin/point-charge-management" ||
@@ -89,6 +95,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       href === "/admin/campaign-settings" ||
       href === "/admin/member-approval" ||
       href === "/admin/customer-support" ||
+      href === "/admin/notifications" ||
       href === "/admin/system-settings" ||
       href === "/admin/statistics" ||
       href === "/admin/tax-invoices"

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateAuthWithSuccess } from "@/utils/authUtils";
+import { triggerNotification } from "@/lib/notificationService";
+import { NotificationEventType } from "@/types/notificationEvents";
 
 // Supabase 클라이언트 생성 (서버 사이드용 Service Role Key 사용)
 const supabase = createClient(
@@ -543,6 +545,31 @@ export async function POST(request: NextRequest) {
         console.error('커스텀 업종 저장 오류:', customIndustryError);
         // 캠페인은 이미 생성되었으므로 경고만 표시
       }
+    }
+
+    // 캠페인 검수요청 알림 발송
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, company_info')
+        .eq('id', userId)
+        .single();
+
+      // company_info는 JSONB 타입으로 companyName 필드를 가짐
+      const companyInfo = userData?.company_info as { companyName?: string } | null;
+
+      await triggerNotification({
+        eventType: NotificationEventType.CAMPAIGN_CREATED,
+        userId: parseInt(userId),
+        data: {
+          companyName: companyInfo?.companyName || '미등록',
+          userName: userData?.name || '사용자',
+          campaignName: campaign.name,
+        }
+      });
+    } catch (notificationError) {
+      console.error("캠페인 검수요청 알림 발송 실패:", notificationError);
+      // 알림 실패해도 캠페인 생성은 성공으로 처리
     }
 
     return NextResponse.json({
