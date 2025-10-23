@@ -2639,14 +2639,8 @@ function TargetMarketingDetailContent({
       return;
     }
 
-    // 크레딧 잔액 확인
-    const totalCost = calculateTotalCost(sendPolicy, campaignBudget);
-    const requiredCredits = calculateRequiredCredits(totalCost, userCredits);
-
-    if (requiredCredits > 0) {
-      alert(ERROR_MESSAGES.INSUFFICIENT_CREDITS);
-      return;
-    }
+    // ✅ 크레딧 잔액 확인은 서버에서 처리 (예약금 로직 때문에 클라이언트 검증 제거)
+    // 서버가 needCharge 플래그와 함께 에러를 반환하면 충전 페이지로 안내
 
     setIsSubmittingApproval(true);
 
@@ -2727,11 +2721,21 @@ function TargetMarketingDetailContent({
         throw new Error(result.message || "캠페인 저장에 실패했습니다.");
       }
     } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : "승인 신청 중 오류가 발생했습니다."
-      );
+      const errorMessage = error instanceof Error
+        ? error.message
+        : "승인 신청 중 오류가 발생했습니다.";
+
+      // ✅ 잔액 부족 메시지이면 충전 페이지로 이동 안내
+      if (errorMessage.includes("잔액이 부족") || errorMessage.includes("충전이 필요")) {
+        const shouldRedirect = confirm(
+          `${errorMessage}\n\n충전 페이지로 이동하시겠습니까?`
+        );
+        if (shouldRedirect) {
+          window.location.href = "/credit-management";
+        }
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       setIsSubmittingApproval(false);
     }

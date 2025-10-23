@@ -84,7 +84,7 @@ function NotificationsContent() {
   ];
 
   // Fetch Templates
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setTemplatesLoading(true);
       const response = await fetch('/api/admin/sms-templates', {
@@ -105,10 +105,10 @@ function NotificationsContent() {
     } finally {
       setTemplatesLoading(false);
     }
-  };
+  }, []);
 
   // Fetch Logs
-  const fetchLogs = async (currentPage: number = page, filter: string = eventTypeFilter) => {
+  const fetchLogs = useCallback(async (currentPage: number = page, filter: string = eventTypeFilter) => {
     try {
       setLogsLoading(true);
       const params = new URLSearchParams({
@@ -140,7 +140,7 @@ function NotificationsContent() {
     } finally {
       setLogsLoading(false);
     }
-  };
+  }, [page, eventTypeFilter]);
 
   useEffect(() => {
     if (activeTab === 'templates') {
@@ -148,7 +148,7 @@ function NotificationsContent() {
     } else {
       fetchLogs();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchTemplates, fetchLogs]);
 
   // Template handlers
   const handleToggle = async (templateId: number, currentStatus: boolean) => {

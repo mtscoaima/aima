@@ -216,45 +216,10 @@ export async function POST(request: NextRequest) {
     // 사용 가능한 크레딧 확인 (transaction 기반)
     const currentBalance = await calculateCreditBalance(userId);
 
-    // 예약 크레딧 계산
-    const { data: reserveData, error: reserveError } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .eq("type", "reserve")
-      .eq("status", "completed");
-
-    if (reserveError) {
-      console.error("예약 크레딧 조회 오류:", reserveError);
-      return NextResponse.json(
-        { success: false, message: "예약 크레딧 조회에 실패했습니다." },
-        { status: 500 }
-      );
-    }
-
-    const reserveTotal =
-      reserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
-
-    // 예약 해제 크레딧 계산
-    const { data: unreserveData, error: unreserveError } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .eq("type", "unreserve")
-      .eq("status", "completed");
-
-    if (unreserveError) {
-      console.error("예약 해제 크레딧 조회 오류:", unreserveError);
-      return NextResponse.json(
-        { success: false, message: "예약 해제 크레딧 조회에 실패했습니다." },
-        { status: 500 }
-      );
-    }
-
-    const unreserveTotal =
-      unreserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
-    const reservedAmount = Math.max(0, reserveTotal - unreserveTotal);
-    const availableBalance = currentBalance - reservedAmount;
+    // ✅ 승인 신청 시에는 예약금을 고려하지 않음
+    // 전체 가용금액 기준으로 승인 신청 가능 (승인 대기 캠페인 수와 무관)
+    // 관리자가 캠페인을 승인하면 그때 실제 차감됨
+    const availableBalance = currentBalance;
 
     // 포인트 + 광고머니 총 사용 가능 금액 검증
     const totalAvailable = availablePoints + availableBalance;
@@ -262,7 +227,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: `사용 가능한 잔액이 부족합니다. 포인트: ${availablePoints.toLocaleString()}P, 광고머니: ${availableBalance.toLocaleString()}원, 필요 금액: ${campaignCost.toLocaleString()}원`,
+          message: `사용 가능한 잔액이 부족합니다. 충전이 필요합니다.\n필요 금액: ${campaignCost.toLocaleString()}원\n보유 금액: 포인트 ${availablePoints.toLocaleString()}P + 광고머니 ${availableBalance.toLocaleString()}원 = 총 ${totalAvailable.toLocaleString()}원`,
+          needCharge: true, // 프론트엔드에서 충전 페이지 유도
         },
         { status: 400 }
       );
@@ -560,7 +526,7 @@ export async function POST(request: NextRequest) {
 
       await triggerNotification({
         eventType: NotificationEventType.CAMPAIGN_CREATED,
-        userId: parseInt(userId),
+        userId: userId,
         data: {
           companyName: companyInfo?.companyName || '미등록',
           userName: userData?.name || '사용자',
