@@ -1,0 +1,182 @@
+/* 캠페인 업종 관리 페이지 스타일 */
+.campaigns-page {
+  flex: 1;
+  background: #f5f7fa;
+  margin-top: 64px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.campaigns-main-container {
+  padding: 2rem;
+  color: #333333;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: auto;
+}
+
+.campaigns-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.campaigns-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333333;
+  margin: 0;
+}
+
+/* 관리자 레이아웃 */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f7fa;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.campaigns-page {
+  margin-left: 250px;
+  margin-top: 64px;
+  transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 769px) {
+  .campaigns-page {
+    margin-left: 250px;
+    margin-top: 64px;
+  }
+}
+
+/* 페이지네이션 스타일 */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e5e8ec;
+  gap: 1rem;
+  margin-top: 1rem;
+  border-radius: 0 0 8px 8px;
+}
+
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pagination-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #495057;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.pagination-button.active {
+  background-color: #0066ff;
+  border-color: #0066ff;
+  color: white;
+}
+
+.pagination-button.active:hover {
+  background-color: #0052cc;
+  border-color: #0052cc;
+}
+
+.pagination-button:disabled {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination-button.nav-button {
+  min-width: 32px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .campaigns-page {
+    margin-left: 0;
+    margin-top: 64px;
+  }
+
+  .campaigns-main-container {
+    padding: 1rem;
+  }
+
+  /* 페이지네이션 모바일 반응형 */
+  .pagination-container {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .pagination-left {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .pagination-info {
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .pagination-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .pagination-button {
+    min-width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .pagination-button.nav-button {
+    min-width: 28px;
+    font-size: 14px;
+  }
+}

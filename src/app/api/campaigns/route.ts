@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateAuthWithSuccess } from "@/utils/authUtils";
+import { triggerNotification } from "@/lib/notificationService";
+import { NotificationEventType } from "@/types/notificationEvents";
 
 // Supabase 클라이언트 생성 (서버 사이드용 Service Role Key 사용)
 const supabase = createClient(
@@ -93,8 +95,8 @@ interface CreateCampaignRequest {
   cardAmountMax?: number | null;
   cardTimeStart?: string | null;
   cardTimeEnd?: string | null;
-  targetIndustryTopLevel?: string | null;
-  targetIndustrySpecific?: string | null;
+  campaignIndustryId?: number | null;
+  customIndustryName?: string | null;
   unitCost?: number;
   estimatedTotalCost?: number;
   expertReviewRequested?: boolean;
@@ -161,6 +163,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 커스텀 업종 검증 (14번 선택 시)
+    if (campaignData.campaignIndustryId === 14 && !campaignData.customIndustryName?.trim()) {
+      return NextResponse.json(
+        { success: false, message: "기타 업종을 선택하셨습니다. 업종명을 입력해주세요." },
+        { status: 400 }
+      );
+    }
+
     // 예상 비용 계산
     const campaignCost = campaignData.estimatedCost || 0;
 
@@ -206,45 +216,10 @@ export async function POST(request: NextRequest) {
     // 사용 가능한 크레딧 확인 (transaction 기반)
     const currentBalance = await calculateCreditBalance(userId);
 
-    // 예약 크레딧 계산
-    const { data: reserveData, error: reserveError } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .eq("type", "reserve")
-      .eq("status", "completed");
-
-    if (reserveError) {
-      console.error("예약 크레딧 조회 오류:", reserveError);
-      return NextResponse.json(
-        { success: false, message: "예약 크레딧 조회에 실패했습니다." },
-        { status: 500 }
-      );
-    }
-
-    const reserveTotal =
-      reserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
-
-    // 예약 해제 크레딧 계산
-    const { data: unreserveData, error: unreserveError } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .eq("type", "unreserve")
-      .eq("status", "completed");
-
-    if (unreserveError) {
-      console.error("예약 해제 크레딧 조회 오류:", unreserveError);
-      return NextResponse.json(
-        { success: false, message: "예약 해제 크레딧 조회에 실패했습니다." },
-        { status: 500 }
-      );
-    }
-
-    const unreserveTotal =
-      unreserveData?.reduce((sum, t) => sum + t.amount, 0) || 0;
-    const reservedAmount = Math.max(0, reserveTotal - unreserveTotal);
-    const availableBalance = currentBalance - reservedAmount;
+    // ✅ 승인 신청 시에는 예약금을 고려하지 않음
+    // 전체 가용금액 기준으로 승인 신청 가능 (승인 대기 캠페인 수와 무관)
+    // 관리자가 캠페인을 승인하면 그때 실제 차감됨
+    const availableBalance = currentBalance;
 
     // 포인트 + 광고머니 총 사용 가능 금액 검증
     const totalAvailable = availablePoints + availableBalance;
@@ -252,7 +227,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: `사용 가능한 잔액이 부족합니다. 포인트: ${availablePoints.toLocaleString()}P, 광고머니: ${availableBalance.toLocaleString()}원, 필요 금액: ${campaignCost.toLocaleString()}원`,
+          message: `사용 가능한 잔액이 부족합니다. 충전이 필요합니다.\n필요 금액: ${campaignCost.toLocaleString()}원\n보유 금액: 포인트 ${availablePoints.toLocaleString()}P + 광고머니 ${availableBalance.toLocaleString()}원 = 총 ${totalAvailable.toLocaleString()}원`,
+          needCharge: true, // 프론트엔드에서 충전 페이지 유도
         },
         { status: 400 }
       );
@@ -420,8 +396,7 @@ export async function POST(request: NextRequest) {
       card_amount_max: cardAmountMax,
       card_time_start: cardTimeStart,
       card_time_end: cardTimeEnd,
-      target_industry_top_level: campaignData.targetIndustryTopLevel,
-      target_industry_specific: campaignData.targetIndustrySpecific,
+      campaign_industry_id: campaignData.campaignIndustryId,
       unit_cost: campaignData.unitCost || 0,
       estimated_total_cost: campaignData.estimatedTotalCost || campaignData.estimatedCost || 0,
       expert_review_requested: campaignData.expertReviewRequested || false,
@@ -523,6 +498,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 커스텀 업종 저장 (14번 선택 시)
+    if (campaignData.campaignIndustryId === 14 && campaignData.customIndustryName) {
+      const { error: customIndustryError } = await supabase
+        .from('custom_campaign_industries')
+        .insert({
+          campaign_id: newCampaign.id,
+          custom_name: campaignData.customIndustryName.trim()
+        });
+
+      if (customIndustryError) {
+        console.error('커스텀 업종 저장 오류:', customIndustryError);
+        // 캠페인은 이미 생성되었으므로 경고만 표시
+      }
+    }
+
+    // 캠페인 검수요청 알림 발송
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name, company_info')
+        .eq('id', userId)
+        .single();
+
+      // company_info는 JSONB 타입으로 companyName 필드를 가짐
+      const companyInfo = userData?.company_info as { companyName?: string } | null;
+
+      await triggerNotification({
+        eventType: NotificationEventType.CAMPAIGN_CREATED,
+        userId: userId,
+        data: {
+          companyName: companyInfo?.companyName || '미등록',
+          userName: userData?.name || '사용자',
+          campaignName: campaign.name,
+        }
+      });
+    } catch (notificationError) {
+      console.error("캠페인 검수요청 알림 발송 실패:", notificationError);
+      // 알림 실패해도 캠페인 생성은 성공으로 처리
+    }
+
     return NextResponse.json({
       success: true,
       message: "캠페인이 성공적으로 저장되었습니다.",
@@ -551,7 +566,7 @@ export async function GET(request: NextRequest) {
 
     const userId = authResult.userInfo!.userId;
 
-    // 사용자의 캠페인 목록 조회 (템플릿 정보와 함께)
+    // 사용자의 캠페인 목록 조회 (템플릿 정보 및 업종 정보와 함께)
     const { data: campaigns, error: campaignsError } = await supabase
       .from("campaigns")
       .select(
@@ -564,6 +579,13 @@ export async function GET(request: NextRequest) {
           category,
           template_code,
           buttons
+        ),
+        campaign_industries (
+          id,
+          name
+        ),
+        custom_campaign_industries (
+          custom_name
         )
       `
       )
@@ -578,9 +600,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // custom_campaign_industries 배열을 custom_industry_name 문자열로 변환
+    const formattedCampaigns = (campaigns || []).map((campaign: { custom_campaign_industries?: Array<{ custom_name: string }>; [key: string]: unknown }) => {
+      const customIndustryName = campaign.custom_campaign_industries?.[0]?.custom_name || null;
+      return {
+        ...campaign,
+        custom_industry_name: customIndustryName,
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      campaigns: campaigns || [],
+      campaigns: formattedCampaigns,
     });
   } catch (error) {
     console.error("캠페인 조회 오류:", error);

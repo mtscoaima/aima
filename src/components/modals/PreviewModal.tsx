@@ -86,18 +86,55 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         } catch {}
       } 
 
-      // 5) 요소 실제 크기 기준으로 캔버스 생성 (여기가 '잘림' 방지 핵심)
-      const width = Math.ceil(el.scrollWidth);
-      const height = Math.ceil(el.scrollHeight);
+      // 5) 먼저 실제 크기로 캡처
+      const actualWidth = el.scrollWidth;
+      const actualHeight = el.scrollHeight;
 
-      const canvas = await html2canvas(el, {
+      const tempCanvas = await html2canvas(el, {
         background: '#ffffff',
         useCORS: true,
         allowTaint: true,
         logging: false,
-        width,
-        height,
+        width: actualWidth,
+        height: actualHeight,
       });
+
+      // 6) 640×960 캔버스에 비율 유지하며 중앙 정렬
+      const targetWidth = 640;
+      const targetHeight = 960;
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+
+      if (ctx) {
+        // 배경을 흰색으로 채우기
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+        // 이미지 비율 계산
+        const imgRatio = actualWidth / actualHeight;
+        const targetRatio = targetWidth / targetHeight;
+
+        let drawWidth, drawHeight, offsetX, offsetY;
+
+        if (imgRatio > targetRatio) {
+          // 이미지가 더 넓음 -> 가로 기준 맞춤
+          drawWidth = targetWidth;
+          drawHeight = targetWidth / imgRatio;
+          offsetX = 0;
+          offsetY = (targetHeight - drawHeight) / 2;
+        } else {
+          // 이미지가 더 김 -> 세로 기준 맞춤
+          drawHeight = targetHeight;
+          drawWidth = targetHeight * imgRatio;
+          offsetX = (targetWidth - drawWidth) / 2;
+          offsetY = 0;
+        }
+
+        // 중앙 정렬하여 그리기
+        ctx.drawImage(tempCanvas, offsetX, offsetY, drawWidth, drawHeight);
+      }
   
       // 복원
       setIsCapturing(false);
@@ -107,10 +144,10 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
         (el as HTMLElement).style.display = originalDisplayValues[i];
       });
 
-      // 파일 크기 최적화
+      // 파일 크기 최적화 (KB Pay 스펙: 5MB 이하)
       const optimizeImageSize = (
         canvas: HTMLCanvasElement,
-        maxSizeBytes: number = 3 * 1024 * 1024
+        maxSizeBytes: number = 5 * 1024 * 1024
       ) => {
         let quality = 0.9;
         let dataUrl = canvas.toDataURL("image/jpeg", quality);
@@ -157,10 +194,11 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
         <div className="p-6 overflow-y-auto max-h-[70vh] flex items-center justify-center">
           <div className="bg-gray-200 rounded-3xl p-3 shadow-2xl">
-            {/* 캡처 대상: 고정폭을 주면 결과가 더 안정적입니다. */}
+            {/* 캡처 대상: 640×960 비율 (2:3) */}
             <div
               ref={previewRef}
-              className="bg-white rounded-2xl p-4 w-[320px] max-w-full"
+              className="bg-white rounded-2xl p-4"
+              style={{ width: '320px', minHeight: '480px' }}
             >
               {currentGeneratedImage ? (
                 <>

@@ -321,33 +321,6 @@ export const districtsData: Record<string, TargetOption[]> = {
   ]
 };
 
-// API에서 업종 데이터를 가져오는 함수들
-export const fetchTopLevelIndustries = async (): Promise<TargetOption[]> => {
-  try {
-    const response = await fetch('/api/industries');
-    const data = await response.json();
-    return data.topLevelIndustries || [{ value: "all", label: "전체" }];
-  } catch (error) {
-    console.error('상위 업종 조회 오류:', error);
-    return [{ value: "all", label: "전체" }];
-  }
-};
-
-export const fetchIndustriesByTopLevel = async (topLevelCode: string): Promise<TargetOption[]> => {
-  if (topLevelCode === "all") {
-    return [{ value: "all", label: "전체" }];
-  }
-  
-  try {
-    const response = await fetch(`/api/industries?top_level_code=${topLevelCode}`);
-    const data = await response.json();
-    return data.industries || [{ value: "all", label: "전체" }];
-  } catch (error) {
-    console.error('세부 업종 조회 오류:', error);
-    return [{ value: "all", label: "전체" }];
-  }
-};
-
 // 선택된 도시에 따른 구/군 목록 반환 함수
 export const getDistrictsByCity = (cityValue: string): TargetOption[] => {
   if (cityValue === "all") {

@@ -112,46 +112,64 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { firstLevelCommissionRate, nthLevelDenominator, menuSettings, siteSettings } = body;
 
-    // 입력 값 검증
-    if (
-      typeof firstLevelCommissionRate !== "number" ||
-      firstLevelCommissionRate < 0 ||
-      firstLevelCommissionRate > 100
-    ) {
-      return NextResponse.json(
-        { error: "1차 수수료 비율은 0~100 사이의 숫자여야 합니다." },
-        { status: 400 }
-      );
+    // settings 객체로 전달된 경우 처리 (CommissionSettings에서 사용)
+    let { firstLevelCommissionRate, nthLevelDenominator } = body;
+    const { menuSettings, siteSettings } = body;
+
+    if (body.settings) {
+      firstLevelCommissionRate = body.settings.firstLevelCommissionRate;
+      nthLevelDenominator = body.settings.nthLevelDenominator;
     }
 
-    if (
-      typeof nthLevelDenominator !== "number" ||
-      nthLevelDenominator < 1 ||
-      nthLevelDenominator > 100 ||
-      !Number.isInteger(nthLevelDenominator)
-    ) {
-      return NextResponse.json(
-        { error: "분모는 1~100 사이의 정수여야 합니다." },
-        { status: 400 }
-      );
+    // 입력 값 검증 (값이 제공된 경우만)
+    if (firstLevelCommissionRate !== undefined) {
+      if (
+        typeof firstLevelCommissionRate !== "number" ||
+        firstLevelCommissionRate < 0 ||
+        firstLevelCommissionRate > 100
+      ) {
+        return NextResponse.json(
+          { error: "1차 수수료 비율은 0~100 사이의 숫자여야 합니다." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (nthLevelDenominator !== undefined) {
+      if (
+        typeof nthLevelDenominator !== "number" ||
+        nthLevelDenominator < 1 ||
+        nthLevelDenominator > 100 ||
+        !Number.isInteger(nthLevelDenominator)
+      ) {
+        return NextResponse.json(
+          { error: "분모는 1~100 사이의 정수여야 합니다." },
+          { status: 400 }
+        );
+      }
     }
 
     // 시스템 설정 업데이트 (첫 번째 레코드 업데이트)
     interface UpdateData {
-      first_level_commission_rate: number;
-      nth_level_denominator: number;
+      first_level_commission_rate?: number;
+      nth_level_denominator?: number;
       updated_at: string;
       menu_settings?: object;
       site_settings?: object;
     }
 
     const updateData: UpdateData = {
-      first_level_commission_rate: firstLevelCommissionRate,
-      nth_level_denominator: nthLevelDenominator,
       updated_at: new Date().toISOString()
     };
+
+    if (firstLevelCommissionRate !== undefined) {
+      updateData.first_level_commission_rate = firstLevelCommissionRate;
+    }
+
+    if (nthLevelDenominator !== undefined) {
+      updateData.nth_level_denominator = nthLevelDenominator;
+    }
 
     if (menuSettings) {
       updateData.menu_settings = menuSettings;

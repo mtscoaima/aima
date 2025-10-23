@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
+import { triggerNotification } from "@/lib/notificationService";
+import { NotificationEventType } from "@/types/notificationEvents";
 
 // Supabase 클라이언트 생성 (서버 사이드용 Service Role Key 사용)
 const supabase = createClient(
@@ -449,6 +451,22 @@ export async function POST(
     } catch (rewardError) {
       console.error("리워드 처리 중 오류:", rewardError);
       // 리워드 처리 실패해도 캠페인 승인은 성공으로 처리
+    }
+
+    // 6. 캠페인 검수완료 알림 발송
+    try {
+      await triggerNotification({
+        eventType: NotificationEventType.CAMPAIGN_APPROVED,
+        userId: campaignUserId,
+        data: {
+          campaignName: campaign.name,
+          startDate: campaign.validity_start_date || '미정',
+          endDate: campaign.validity_end_date || '미정',
+        }
+      });
+    } catch (notificationError) {
+      console.error("캠페인 승인 알림 발송 실패:", notificationError);
+      // 알림 실패해도 캠페인 승인은 성공으로 처리
     }
 
     return NextResponse.json({

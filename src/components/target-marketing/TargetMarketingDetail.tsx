@@ -7,14 +7,12 @@ import { Sparkles } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
 import ApprovalRequestComplete from "@/components/approval/ApprovalRequestComplete";
 import { PaymentModal } from "@/components/credit/PaymentModal";
-import IndustrySelectModal from "@/components/modals/IndustrySelectModal";
 import { useBalance } from "@/contexts/BalanceContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePricing } from "@/contexts/PricingContext";
 import { saveCampaignDraft, clearCampaignDraft, fileToBase64, type CampaignDraft } from "@/lib/campaignDraft";
 import {
   targetOptions,
-  fetchTopLevelIndustries,
-  fetchIndustriesByTopLevel,
 } from "@/lib/targetOptions";
 // Import separated types and hooks
 import {
@@ -146,22 +144,11 @@ function TargetMarketingDetailContent({
   // const [targetTopLevelIndustry, setTargetTopLevelIndustry] = useState("all");
   // const [targetIndustry, setTargetIndustry] = useState("all");
   
-  // 텍스트 입력용 업종 상태
-  const [targetTopLevelIndustryText, setTargetTopLevelIndustryText] = useState("");
-  const [targetIndustryText, setTargetIndustryText] = useState("");
+  // 업종 선택 상태
+  const [selectedIndustryId, setSelectedIndustryId] = useState<number | null>(null);
+  const [campaignIndustries, setCampaignIndustries] = useState<Array<{ id: number; order_number: number; name: string }>>([]);
+  const [customIndustryName, setCustomIndustryName] = useState<string>("");
 
-  // 업종 선택 모달 상태
-  const [isIndustryModalOpen, setIsIndustryModalOpen] = useState(false);
-
-  // 업종 선택 핸들러
-  const handleIndustrySelect = (industry: { topLevel: string; specific: string; code: string; name: string }) => {
-    setTargetTopLevelIndustryText(industry.topLevel);
-    setTargetIndustryText(industry.specific);
-  };
-  
-  // 동적 업종 데이터 상태 (하위 호환성을 위해 유지)
-  const [topLevelIndustries, setTopLevelIndustries] = useState([{ value: "all", label: "전체" }]);
-  // const [industries, setIndustries] = useState([{ value: "all", label: "전체" }]);
   const [cardAmount, setCardAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT);
   const [customAmount, setCustomAmount] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CUSTOM_AMOUNT);
   const [cardAmountInput, setCardAmountInput] = useState(CAMPAIGN_CONSTANTS.DEFAULT_CARD_AMOUNT_INPUT);
@@ -273,6 +260,7 @@ function TargetMarketingDetailContent({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { getAllTimeOptions, getSelectedAgeDisplay } = useTargetOptions();
   const { calculateUnitCost, calculateTotalCost, calculateRequiredCredits } = useCalculations();
+  const { getPriceByType } = usePricing();
 
   // 📡 사이트 설정 로드
   useEffect(() => {
@@ -294,6 +282,25 @@ function TargetMarketingDetailContent({
     };
 
     fetchSiteSettings();
+  }, []);
+
+  // 캠페인 업종 목록 로드
+  useEffect(() => {
+    const fetchCampaignIndustries = async () => {
+      try {
+        const response = await fetch('/api/campaign-industries');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.industries) {
+            setCampaignIndustries(result.industries);
+          }
+        }
+      } catch (error) {
+        console.error('업종 목록 로드 실패:', error);
+      }
+    };
+
+    fetchCampaignIndustries();
   }, []);
 
   // 드롭다운 외부 클릭 감지
@@ -585,19 +592,6 @@ function TargetMarketingDetailContent({
     });
   };
 
-  // 컴포넌트 마운트 시 상위 업종 데이터 로딩 (하위 호환성을 위해 유지)
-  useEffect(() => {
-    const loadTopLevelIndustries = async () => {
-      try {
-        const data = await fetchTopLevelIndustries();
-        setTopLevelIndustries(data);
-      } catch (error) {
-        console.error('상위 업종 로딩 오류:', error);
-      } 
-    };
-
-    loadTopLevelIndustries();
-  }, []);
 
   // 상위 업종 변경시 세부 업종 옵션 업데이트 (하위 호환성을 위해 유지)
   // useEffect(() => {
@@ -2586,43 +2580,10 @@ function TargetMarketingDetailContent({
         setTargetDong("all");
       }
 
-      // 업종 정보 설정 (하위 호환성 포함)
-      const processIndustryData = async () => {
-        const topLevelValue = campaignData.target_industry_top_level;
-        const specificValue = campaignData.target_industry_specific;
-
-        if (topLevelValue) {
-          // 숫자 형태인지 확인 (기존 코드 데이터)
-          if (/^\d+$/.test(topLevelValue.toString())) {
-            // 기존 코드인 경우 API에서 해당 텍스트를 찾아서 설정
-            const topLevelIndustry = topLevelIndustries.find(industry => industry.value === topLevelValue);
-            setTargetTopLevelIndustryText(topLevelIndustry?.label || topLevelValue.toString());
-
-            if (specificValue && /^\d+$/.test(specificValue.toString())) {
-              // 세부업종도 코드인 경우
-              try {
-                const industriesData = await fetchIndustriesByTopLevel(topLevelValue.toString());
-                const specificIndustry = industriesData.find(industry => industry.value === specificValue);
-                setTargetIndustryText(specificIndustry?.label || specificValue.toString());
-              } catch {
-                setTargetIndustryText(specificValue.toString());
-              }
-            } else {
-              // 세부업종이 이미 텍스트인 경우
-              setTargetIndustryText(specificValue?.toString() || "");
-            }
-          } else {
-            // 이미 텍스트 형태인 경우 (새 데이터)
-            setTargetTopLevelIndustryText(topLevelValue.toString());
-            setTargetIndustryText(specificValue?.toString() || "");
-          }
-        } else {
-          setTargetTopLevelIndustryText("");
-          setTargetIndustryText("");
-        }
-      };
-
-      processIndustryData();
+      // 업종 정보 설정
+      if (campaignData.campaign_industry_id) {
+        setSelectedIndustryId(campaignData.campaign_industry_id);
+      }
 
       // 카드 승인 금액 설정
       if (campaignData.card_amount_max) {
@@ -2672,14 +2633,14 @@ function TargetMarketingDetailContent({
       }
     }
 
-    // 크레딧 잔액 확인
-    const totalCost = calculateTotalCost(sendPolicy, campaignBudget);
-    const requiredCredits = calculateRequiredCredits(totalCost, userCredits);
-
-    if (requiredCredits > 0) {
-      alert(ERROR_MESSAGES.INSUFFICIENT_CREDITS);
+    // 커스텀 업종명 유효성 검사
+    if (selectedIndustryId === 14 && !customIndustryName.trim()) {
+      alert("기타 업종을 선택하셨습니다. 업종명을 입력해주세요.");
       return;
     }
+
+    // ✅ 크레딧 잔액 확인은 서버에서 처리 (예약금 로직 때문에 클라이언트 검증 제거)
+    // 서버가 needCharge 플래그와 함께 에러를 반환하면 충전 페이지로 안내
 
     setIsSubmittingApproval(true);
 
@@ -2735,8 +2696,8 @@ function TargetMarketingDetailContent({
         cardAmountMax: cardAmount === "all" ? null : parseInt(cardAmountInput) * 10000,
         cardTimeStart: cardStartTime,
         cardTimeEnd: cardEndTime,
-        targetIndustryTopLevel: targetTopLevelIndustryText.trim() || null,
-        targetIndustrySpecific: targetIndustryText.trim() || null,
+        campaignIndustryId: selectedIndustryId,
+        customIndustryName: selectedIndustryId === 14 ? customIndustryName : null,
         unitCost: unitCost,
         estimatedTotalCost: totalCost,
         expertReviewRequested: expertReviewRequested,
@@ -2760,11 +2721,21 @@ function TargetMarketingDetailContent({
         throw new Error(result.message || "캠페인 저장에 실패했습니다.");
       }
     } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : "승인 신청 중 오류가 발생했습니다."
-      );
+      const errorMessage = error instanceof Error
+        ? error.message
+        : "승인 신청 중 오류가 발생했습니다.";
+
+      // ✅ 잔액 부족 메시지이면 충전 페이지로 이동 안내
+      if (errorMessage.includes("잔액이 부족") || errorMessage.includes("충전이 필요")) {
+        const shouldRedirect = confirm(
+          `${errorMessage}\n\n충전 페이지로 이동하시겠습니까?`
+        );
+        if (shouldRedirect) {
+          window.location.href = "/credit-management";
+        }
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       setIsSubmittingApproval(false);
     }
@@ -2781,8 +2752,8 @@ function TargetMarketingDetailContent({
   }, [selectedLocations, targetCity, targetDistrict]);
 
   const hasIndustryFilter = React.useMemo(() => {
-    return targetTopLevelIndustryText.trim() !== '' || targetIndustryText.trim() !== '';
-  }, [targetTopLevelIndustryText, targetIndustryText]);
+    return selectedIndustryId !== null;
+  }, [selectedIndustryId]);
 
   const hasAmountFilter = React.useMemo(() => {
     return cardAmount !== 'all';
@@ -2790,14 +2761,17 @@ function TargetMarketingDetailContent({
 
   const unitCost = React.useMemo(() => {
     return calculateUnitCost({
+      selectedLocations,
       gender: targetGender,
       ages: targetAge,
       hasLocationFilter,
       hasIndustryFilter,
       hasAmountFilter,
+      hasTimeFilter: cardStartTime !== '00:00' || cardEndTime !== '23:59',
       carouselFirst: false, // UI 미지원, 필요 시 true 처리
+      getPriceByType,
     });
-  }, [targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, calculateUnitCost]);
+  }, [selectedLocations, targetGender, targetAge, hasLocationFilter, hasIndustryFilter, hasAmountFilter, cardStartTime, cardEndTime, calculateUnitCost, getPriceByType]);
 
   // 마지막 어시스턴트 메시지 인덱스 (표는 마지막 답변에만 표시)
   const lastAssistantIndex = React.useMemo(() => {
@@ -3539,46 +3513,46 @@ function TargetMarketingDetailContent({
 
                              {/* 타겟 업종 */}
                <div className="mb-4">
-                 <div className="text-sm font-medium text-gray-700 mb-2">결제 업종</div>
-                 <div className="space-y-2">
-                   {/* 선택된 업종 표시 */}
-                   {(targetTopLevelIndustryText || targetIndustryText) && (
-                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                       <div className="flex items-center justify-between">
-                         <div>
-                           <span className="text-sm font-medium text-blue-900">
-                             {targetTopLevelIndustryText}
-                           </span>
-                           {targetTopLevelIndustryText && targetIndustryText && (
-                             <span className="text-blue-700 mx-2">{'>'}</span>
-                           )}
-                           <span className="text-sm text-blue-800">
-                             {targetIndustryText}
-                           </span>
-                         </div>
-                         <button
-                           onClick={() => {
-                             setTargetTopLevelIndustryText("");
-                             setTargetIndustryText("");
-                           }}
-                           className="text-blue-600 hover:text-blue-800 text-sm"
-                         >
-                           제거
-                         </button>
-                       </div>
-                     </div>
-                   )}
-
-                   {/* 업종 선택 버튼 */}
-                   <button
-                     type="button"
-                     onClick={() => setIsIndustryModalOpen(true)}
-                     className="w-full px-4 py-3 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                   >
-                     {targetTopLevelIndustryText || targetIndustryText ? "업종 변경" : "업종 선택"}
-                   </button>
-                 </div>
+                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                   결제 업종
+                 </label>
+                 <select
+                   value={selectedIndustryId || ""}
+                   onChange={(e) => {
+                     const newId = e.target.value ? Number(e.target.value) : null;
+                     setSelectedIndustryId(newId);
+                     // 14번 업종이 아니면 커스텀 업종명 초기화
+                     if (newId !== 14) {
+                       setCustomIndustryName("");
+                     }
+                   }}
+                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                 >
+                   <option value="">업종 선택</option>
+                   {campaignIndustries.map((industry) => (
+                     <option key={industry.id} value={industry.id}>
+                       {industry.order_number}. {industry.name}
+                     </option>
+                   ))}
+                 </select>
                </div>
+
+               {/* 커스텀 업종명 입력 (14번 업종 선택 시) */}
+               {selectedIndustryId === 14 && (
+                 <div className="mb-4">
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                     업종명 (직접입력)
+                   </label>
+                   <input
+                     type="text"
+                     value={customIndustryName}
+                     onChange={(e) => setCustomIndustryName(e.target.value)}
+                     placeholder="업종명을 입력해주세요"
+                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     maxLength={100}
+                   />
+                 </div>
+               )}
 
               {/* 카드 승인 금액 */}
                <div className="mb-4">
@@ -3980,16 +3954,74 @@ function TargetMarketingDetailContent({
                   <span className="text-sm text-gray-700">광고 단가(발송 건 당)</span>
                   <span className="text-sm font-semibold text-gray-900">{unitCost}원/건</span>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {(() => {
-                    const parts: string[] = ["기본 100"];
-                    if (hasLocationFilter) parts.push("위치 50");
-                    if (targetGender !== 'all') parts.push("성별 50");
-                    if (!(targetAge.length === 1 && targetAge[0] === 'all') && targetAge.length > 0) parts.push("나이대 50");
-                    if (hasAmountFilter) parts.push("승인금액 50");
-                    if (hasIndustryFilter) parts.push("업종 50");
-                    return parts.join(" + ");
-                  })()}
+
+                {/* 상세 계산 설명 */}
+                <div className="bg-gray-50 p-3 rounded-md space-y-2 text-xs">
+                  <div className="font-semibold text-gray-700 mb-2">💰 단가 계산 내역</div>
+
+                  {/* 기본 단가 */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">기본 단가</span>
+                    <span className="font-medium text-gray-900">{getPriceByType('기본단가')}원</span>
+                  </div>
+
+                  {/* 위치 필터 */}
+                  {hasLocationFilter && selectedLocations.length > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600"> 결제 위치 ({selectedLocations.length})</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedLocations.length} × {getPriceByType('위치')}원 = {selectedLocations.length * getPriceByType('위치')}원
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 성별 필터 */}
+                  {targetGender !== 'all' && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">성별 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('성별')}원</span>
+                    </div>
+                  )}
+
+                  {/* 나이 필터 */}
+                  {!(targetAge.length === 1 && targetAge[0] === 'all') && targetAge.length > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">나이 ({targetAge.length})</span>
+                      <span className="font-medium text-gray-900">
+                        {targetAge.length} × {getPriceByType('나이')}원 = {targetAge.length * getPriceByType('나이')}원
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 업종 필터 */}
+                  {hasIndustryFilter && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">업종 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('업종')}원</span>
+                    </div>
+                  )}
+
+                  {/* 승인금액 필터 */}
+                  {hasAmountFilter && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">결제 금액 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('결제금액')}원</span>
+                    </div>
+                  )}
+
+                  {/* 시간 필터 */}
+                  {(cardStartTime !== '00:00' || cardEndTime !== '23:59') && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">결제 시간 필터</span>
+                      <span className="font-medium text-gray-900">{getPriceByType('결제이력')}원</span>
+                    </div>
+                  )}
+
+                  {/* 총합 */}
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-300">
+                    <span className="font-semibold text-gray-700">총 단가</span>
+                    <span className="font-bold text-blue-600">{unitCost}원</span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center border-t border-gray-200 pt-2">
                   <span className="text-base font-semibold text-gray-900">합계</span>
@@ -4167,14 +4199,6 @@ function TargetMarketingDetailContent({
         smsTextContent={smsTextContent}
         currentGeneratedImage={currentGeneratedImage}
         dynamicButtons={dynamicButtons}
-      />
-
-      {/* 업종 선택 모달 */}
-      <IndustrySelectModal
-        isOpen={isIndustryModalOpen}
-        onClose={() => setIsIndustryModalOpen(false)}
-        onSelect={handleIndustrySelect}
-        title="결제 업종 선택"
       />
     </div>
   );

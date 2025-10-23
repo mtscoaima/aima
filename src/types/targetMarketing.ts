@@ -87,6 +87,7 @@ export interface Campaign {
   card_time_end?: string;
   target_industry_top_level?: string;
   target_industry_specific?: string;
+  campaign_industry_id?: number;  // 캠페인 업종 ID
   unit_cost?: number;
   estimated_total_cost?: number;
   expert_review_requested?: boolean;

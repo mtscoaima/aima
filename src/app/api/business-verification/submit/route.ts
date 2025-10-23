@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateAuthWithSuccess } from "@/utils/authUtils";
+import { triggerNotification } from "@/lib/notificationService";
+import { NotificationEventType } from "@/types/notificationEvents";
 
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -219,6 +221,21 @@ export async function POST(request: NextRequest) {
     } catch (notificationErr) {
       console.error("알림 전송 중 오류:", notificationErr);
       // 알림 전송 실패는 전체 프로세스를 중단하지 않음
+    }
+
+    // 7. SMS 알림 발송 (관리자에게)
+    try {
+      await triggerNotification({
+        eventType: NotificationEventType.COMPANY_REGISTERED,
+        userId: parseInt(userId),
+        data: {
+          companyName: data.businessName,
+          userName: updateResult[0].name || updateResult[0].email || "사용자",
+        }
+      });
+    } catch (smsNotificationError) {
+      console.error("SMS 알림 발송 실패:", smsNotificationError);
+      // SMS 알림 실패는 전체 프로세스를 중단하지 않음
     }
 
     return NextResponse.json({
