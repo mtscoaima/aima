@@ -211,7 +211,7 @@ export default function ReservationListPage() {
           <div className="relative">
             <input
               type="text"
-              placeholder="고객명, 전화번호, 이메일, 공간명으로 검색..."
+              placeholder="고객명, 전화번호, 공간명으로 검색 가능합니다."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -354,17 +354,6 @@ export default function ReservationListPage() {
               ) : (
                 // Empty state
                 <div className="text-center py-16">
-                  <div className="text-gray-400 mb-4">
-                    <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1M8 7v13a2 2 0 002 2h4a2 2 0 002-2V7M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h1m10-6V7a2 2 0 00-2-2H9a2 2 0 00-2 2v6" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {searchQuery ? '검색 결과가 없습니다' : activeTab === 'imminent' ? '이용 예정인 예약이 없습니다' : '등록된 예약이 없습니다'}
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    {searchQuery ? '다른 검색어를 입력해보세요.' : activeTab === 'imminent' ? '7일 이내 예약이 없습니다.' : '첫 번째 예약을 추가해보세요!'}
-                  </p>
                   {activeTab === 'registration' && !searchQuery && (
                     <button
                       onClick={() => router.push('/messages/reservations/create')}
