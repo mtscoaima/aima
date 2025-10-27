@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import RoleGuard from "@/components/RoleGuard";
@@ -28,6 +28,9 @@ export default function MessageTemplatesPage() {
     category: "기타",
   });
   const [showPreview, setShowPreview] = useState(false);
+  const [expandedTemplateId, setExpandedTemplateId] = useState<number | null>(null);
+  const createTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 템플릿 목록 불러오기
   const fetchTemplates = async () => {
@@ -188,6 +191,50 @@ export default function MessageTemplatesPage() {
     setShowPreview(!showPreview);
   };
 
+  // 템플릿 펼침/접힘 토글
+  const handleToggleTemplate = (templateId: number) => {
+    setExpandedTemplateId(expandedTemplateId === templateId ? null : templateId);
+  };
+
+  // 변수 삽입 함수
+  const insertVariable = (variable: string, textareaRef: React.RefObject<HTMLTextAreaElement>) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentContent = formData.content;
+
+    const newContent =
+      currentContent.substring(0, start) +
+      variable +
+      currentContent.substring(end);
+
+    setFormData({ ...formData, content: newContent });
+
+    // 커서를 삽입된 변수 뒤로 이동
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + variable.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
+  // 변수 목록
+  const variables = [
+    { label: "고객명", value: "{{고객명}}" },
+    { label: "공간명", value: "{{공간명}}" },
+    { label: "예약날짜", value: "{{예약날짜}}" },
+    { label: "체크인시간", value: "{{체크인시간}}" },
+    { label: "체크아웃시간", value: "{{체크아웃시간}}" },
+    { label: "인원수", value: "{{인원수}}" },
+    { label: "총금액", value: "{{총금액}}" },
+    { label: "입금액", value: "{{입금액}}" },
+    { label: "잔금", value: "{{잔금}}" },
+    { label: "전화번호", value: "{{전화번호}}" },
+    { label: "특이사항", value: "{{특이사항}}" },
+  ];
+
   return (
     <RoleGuard allowedRoles={["USER"]}>
       <div className="container mx-auto px-4 py-8">
@@ -204,66 +251,100 @@ export default function MessageTemplatesPage() {
           ) : (
             <div className="space-y-4">
               {/* 템플릿 목록 */}
-              {templates.map((template) => (
-                <div
-                  key={template.id}
-                  className="bg-white rounded-lg border border-gray-200 p-4"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        {template.name}
-                      </h3>
-                      {template.category && (
-                        <span className="text-xs text-gray-500">
-                          {template.category}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEditTemplate(template)}
-                        className="text-gray-400 hover:text-gray-600"
+              {templates.map((template) => {
+                const isExpanded = expandedTemplateId === template.id;
+                return (
+                  <div
+                    key={template.id}
+                    className="bg-white rounded-lg border border-gray-200 p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => handleToggleTemplate(template.id)}
                       >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-gray-900">
+                            {template.name}
+                          </h3>
+                          {/* 펼침/접힘 아이콘 */}
+                          <svg
+                            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                              isExpanded ? 'transform rotate-180' : ''
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+                        {template.category && (
+                          <span className="text-xs text-gray-500">
+                            {template.category}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditTemplate(template);
+                          }}
+                          className="text-gray-400 hover:text-gray-600"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTemplate(template.id)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTemplate(template.id);
+                          }}
+                          className="text-gray-400 hover:text-red-500"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
+
+                    {/* 펼쳐진 경우에만 내용 표시 */}
+                    {isExpanded && (
+                      <div className="mt-3 text-sm text-gray-600 whitespace-pre-line bg-gray-50 p-3 rounded-md transition-all duration-200">
+                        {template.content}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-sm text-gray-600 whitespace-pre-line bg-gray-50 p-3 rounded-md">
-                    {template.content}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* 템플릿 만들기 버튼 */}
               <button
@@ -361,8 +442,8 @@ export default function MessageTemplatesPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="예약 확정 안내">예약 확정 안내</option>
-                    <option value="체크인 안내">체크인 안내</option>
-                    <option value="체크아웃 안내">체크아웃 안내</option>
+                    <option value="이용시작 안내">이용시작 안내</option>
+                    <option value="이용종료 안내">이용종료 안내</option>
                     <option value="예약 변경 안내">예약 변경 안내</option>
                     <option value="예약 취소 안내">예약 취소 안내</option>
                     <option value="기타">기타</option>
@@ -374,7 +455,27 @@ export default function MessageTemplatesPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     템플릿 내용<span className="text-red-500">*</span>
                   </label>
+
+                  {/* 변수 삽입 버튼들 */}
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-600 mb-2">템플릿 내 변수 사용 가능하도록 버튼형으로 기능추가</p>
+                    <div className="flex flex-wrap gap-2">
+                      {variables.map((variable) => (
+                        <button
+                          key={variable.label}
+                          type="button"
+                          onClick={() => insertVariable(variable.value, createTextareaRef)}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-md transition-colors duration-150 flex items-center gap-1"
+                        >
+                          <span>+</span>
+                          <span>{variable.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <textarea
+                    ref={createTextareaRef}
                     value={formData.content}
                     onChange={(e) =>
                       setFormData({ ...formData, content: e.target.value })
@@ -386,25 +487,6 @@ export default function MessageTemplatesPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     {formData.content.length} / 2000자
                   </p>
-                </div>
-
-                {/* 사용 가능한 변수 안내 */}
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    사용 가능한 변수:
-                  </p>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <p>
-                      {
-                        "{{고객명}}, {{공간명}}, {{예약날짜}}, {{체크인시간}}, {{체크아웃시간}}"
-                      }
-                    </p>
-                    <p>
-                      {
-                        "{{인원수}}, {{총금액}}, {{입금액}}, {{잔금}}, {{전화번호}}, {{특이사항}}"
-                      }
-                    </p>
-                  </div>
                 </div>
 
                 {/* 미리보기 */}
@@ -424,7 +506,7 @@ export default function MessageTemplatesPage() {
                   onClick={handleTogglePreview}
                   className="text-sm text-blue-500 hover:text-blue-700"
                 >
-                  {showPreview ? "미리보기 숨기기" : "미리보기 보기"}
+                  {showPreview ? "미리보기 숨기기" : "미리보기"}
                 </button>
               </div>
 
@@ -509,8 +591,8 @@ export default function MessageTemplatesPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="예약 확정 안내">예약 확정 안내</option>
-                    <option value="체크인 안내">체크인 안내</option>
-                    <option value="체크아웃 안내">체크아웃 안내</option>
+                    <option value="이용시작 안내">이용시작 안내</option>
+                    <option value="이용종료 안내">이용종료 안내</option>
                     <option value="예약 변경 안내">예약 변경 안내</option>
                     <option value="예약 취소 안내">예약 취소 안내</option>
                     <option value="기타">기타</option>
@@ -522,7 +604,27 @@ export default function MessageTemplatesPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     템플릿 내용<span className="text-red-500">*</span>
                   </label>
+
+                  {/* 변수 삽입 버튼들 */}
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-600 mb-2">템플릿 내 변수 사용 가능하도록 버튼형으로 기능추가</p>
+                    <div className="flex flex-wrap gap-2">
+                      {variables.map((variable) => (
+                        <button
+                          key={variable.label}
+                          type="button"
+                          onClick={() => insertVariable(variable.value, editTextareaRef)}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-md transition-colors duration-150 flex items-center gap-1"
+                        >
+                          <span>+</span>
+                          <span>{variable.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <textarea
+                    ref={editTextareaRef}
                     value={formData.content}
                     onChange={(e) =>
                       setFormData({ ...formData, content: e.target.value })
@@ -533,25 +635,6 @@ export default function MessageTemplatesPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     {formData.content.length} / 2000자
                   </p>
-                </div>
-
-                {/* 사용 가능한 변수 안내 */}
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    사용 가능한 변수:
-                  </p>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <p>
-                      {
-                        "{{고객명}}, {{공간명}}, {{예약날짜}}, {{체크인시간}}, {{체크아웃시간}}"
-                      }
-                    </p>
-                    <p>
-                      {
-                        "{{인원수}}, {{총금액}}, {{입금액}}, {{잔금}}, {{전화번호}}, {{특이사항}}"
-                      }
-                    </p>
-                  </div>
                 </div>
 
                 {/* 미리보기 */}
@@ -571,7 +654,7 @@ export default function MessageTemplatesPage() {
                   onClick={handleTogglePreview}
                   className="text-sm text-blue-500 hover:text-blue-700"
                 >
-                  {showPreview ? "미리보기 숨기기" : "미리보기 보기"}
+                  {showPreview ? "미리보기 숨기기" : "미리보기"}
                 </button>
               </div>
 
