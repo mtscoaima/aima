@@ -50,6 +50,7 @@ export default function ReservationCalendarPage() {
   const [statsMonth, setStatsMonth] = useState(new Date());
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [holidays, setHolidays] = useState<string[]>([]);
   const [, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
   const [viewSettings, setViewSettings] = useState<ViewSettings>({
@@ -58,6 +59,22 @@ export default function ReservationCalendarPage() {
     displayInfo: { 시간: true, 예약자명: true, 총금액: false, 예약채널: false },
     options: { 입실날짜만예약표시하기: true }
   });
+
+  // 공휴일 데이터 가져오기
+  const fetchHolidays = useCallback(async (year: number) => {
+    try {
+      const response = await fetch(`/api/holidays?year=${year}`);
+      const data = await response.json();
+
+      if (data.success && data.holidays) {
+        setHolidays(data.holidays);
+      }
+    } catch (error) {
+      console.error('Error fetching holidays:', error);
+      // 에러 시 빈 배열 유지
+      setHolidays([]);
+    }
+  }, []);
 
   // 공간 목록 가져오기
   const fetchSpaces = useCallback(async () => {
@@ -77,7 +94,7 @@ export default function ReservationCalendarPage() {
         const data = await response.json();
         const spacesList = data.spaces || [];
         setSpaces(spacesList);
-        
+
         // 공간 목록으로 viewSettings 초기화
         const spacesSettings: { [key: string]: boolean } = {};
         spacesList.forEach((space: Space) => {
@@ -213,13 +230,31 @@ export default function ReservationCalendarPage() {
     const endHour = endTime.getHours();
     const startMin = startTime.getMinutes();
     const endMin = endTime.getMinutes();
-    
+
     const formatTime = (hour: number, min: number) => {
       if (min === 0) return `${hour}`;
       return `${hour}:${min.toString().padStart(2, '0')}`;
     };
-    
+
     return `${formatTime(startHour, startMin)}~${formatTime(endHour, endMin)}`;
+  };
+
+  // 법정공휴일 여부 확인
+  const isHoliday = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    return holidays.includes(dateStr);
+  };
+
+  // 날짜 클릭 시 예약 생성 페이지로 이동
+  const handleDateClick = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    router.push(`/messages/reservations/create?date=${dateStr}`);
   };
 
   const handlePrevMonth = () => {
@@ -238,6 +273,12 @@ export default function ReservationCalendarPage() {
   useEffect(() => {
     fetchReservations();
   }, [currentMonth, fetchReservations]); // currentMonth 변경 시에만 실행
+
+  // 공휴일 데이터 로딩 (년도가 변경될 때마다)
+  useEffect(() => {
+    const year = currentMonth.getFullYear();
+    fetchHolidays(year);
+  }, [currentMonth, fetchHolidays]);
 
   const handleShareCalendar = () => {
     router.push('/messages/reservations/calendar/shared');
@@ -432,11 +473,12 @@ export default function ReservationCalendarPage() {
                     key={index}
                     className={`min-h-[120px] p-2 border-r border-b border-gray-100 ${
                       !isCurrentMonth ? 'bg-gray-50' : 'bg-white'
-                    }`}
+                    } ${isCurrentMonth ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors`}
+                    onClick={() => isCurrentMonth && handleDateClick(day)}
                   >
                     <div className={`text-sm font-medium mb-1 ${
                       !isCurrentMonth ? 'text-gray-400' :
-                      dayOfWeek === 0 ? 'text-red-500' :
+                      dayOfWeek === 0 || isHoliday(day) ? 'text-red-500' :
                       dayOfWeek === 6 ? 'text-blue-500' :
                       isToday ? 'text-blue-600 bg-blue-100 w-6 h-6 rounded-full flex items-center justify-center' :
                       'text-gray-900'
@@ -498,7 +540,7 @@ export default function ReservationCalendarPage() {
                           }
                           
                           return (
-                            <div 
+                            <div
                               key={reservation.id}
                               className={`text-xs px-1 py-1 ${borderRadius} truncate flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity ${
                                 reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' :
@@ -507,7 +549,10 @@ export default function ReservationCalendarPage() {
                                 'bg-yellow-100 text-yellow-800'
                               }`}
                               title={`${reservation.spaces?.name || ''} - ${reservation.customer_name} (${timeStr})`}
-                              onClick={() => router.push(`/reservations/detail?id=${reservation.id}`)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // 날짜 클릭 이벤트 전파 방지
+                                router.push(`/messages/reservations/detail?id=${reservation.id}`);
+                              }}
                             >
                               {/* 공간 아이콘 */}
                               <div 

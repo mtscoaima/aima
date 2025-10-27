@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
 
@@ -29,17 +29,29 @@ interface ReservationFormData {
 export default function CreateReservationPage() {
   const { getAccessToken } = useAuth();
   const router = useRouter();
-  
+  const searchParams = useSearchParams();
+
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loadingSpaces, setLoadingSpaces] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceData, setPriceData] = useState<{amount: string, notes: string} | null>(null);
-  
+
+  // URL에서 날짜 파라미터 가져오기
+  const dateParam = searchParams.get('date');
+  const initialDate = dateParam || new Date().toISOString().split('T')[0];
+
+  // 날짜 형식 변환 함수
+  const formatDisplayDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} (${days[date.getDay()]})`;
+  };
+
   const [formData, setFormData] = useState<ReservationFormData>({
     space_id: null,
     space: "",
-    date: new Date().toISOString().split('T')[0], // YYYY-MM-DD 형식
-    displayDate: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' }),
+    date: initialDate,
+    displayDate: formatDisplayDate(initialDate),
     startTime: "18",
     endTime: "20",
     channel: "",
