@@ -197,7 +197,7 @@ export default function MessageTemplatesPage() {
   };
 
   // 변수 삽입 함수
-  const insertVariable = (variable: string, textareaRef: React.RefObject<HTMLTextAreaElement>) => {
+  const insertVariable = (variable: string, textareaRef: React.RefObject<HTMLTextAreaElement | null>) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 

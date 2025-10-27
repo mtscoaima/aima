@@ -312,6 +312,7 @@ export default function CreateReservationPage() {
         const thirtyMinutes = 30 * 60 * 1000;
         if (Date.now() - parsed.timestamp < thirtyMinutes) {
           // timestamp 제거 후 폼 데이터 설정
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { timestamp, ...formDataWithoutTimestamp } = parsed;
           setFormData(formDataWithoutTimestamp);
         } else {

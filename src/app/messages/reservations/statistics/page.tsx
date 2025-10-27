@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import RoleGuard from "@/components/RoleGuard";
-import { useRouter } from 'next/navigation';
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Space {
@@ -44,7 +43,6 @@ interface StatisticsData {
 }
 
 export default function ReservationStatisticsPage() {
-  const router = useRouter();
   const { getAccessToken } = useAuth();
 
   const now = new Date();

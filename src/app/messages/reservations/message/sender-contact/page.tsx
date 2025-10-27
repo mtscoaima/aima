@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 import RoleGuard from "@/components/RoleGuard";
 
@@ -29,8 +28,6 @@ interface SenderNumber {
 }
 
 export default function MessageSenderContactPage() {
-  const router = useRouter();
-
   // 상태 관리
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);

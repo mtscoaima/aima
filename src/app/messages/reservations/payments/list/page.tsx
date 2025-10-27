@@ -2,10 +2,8 @@
 
 import React, { useState } from "react";
 import RoleGuard from "@/components/RoleGuard";
-import { useRouter } from 'next/navigation';
 
 export default function ReservationPaymentListPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState("전체");
 
   const tabs = [
