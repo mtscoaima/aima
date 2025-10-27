@@ -59,7 +59,7 @@ export default function ReservationCalendarPage() {
   const [viewSettings, setViewSettings] = useState<ViewSettings>({
     spaces: {},
     sortBy: "시간순",
-    displayInfo: { 시간: true, 예약자명: true, 총금액: false, 예약채널: false },
+    displayInfo: { 시간: true, 예약자명: true, 총금액: false, 예약채널: false, 메모: false },
     options: { 입실날짜만예약표시하기: true }
   });
 
@@ -143,13 +143,15 @@ export default function ReservationCalendarPage() {
         return;
       }
 
-      // 현재 월의 시작과 끝 날짜 계산
-      const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-      
+      // 현재 월의 시작과 끝 날짜 계산 (로컬 시간대 기준)
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1;
+      const firstDay = 1;
+      const lastDay = new Date(year, month, 0).getDate(); // 해당 월의 마지막 날
+
       const params = new URLSearchParams({
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0]
+        start_date: `${year}-${month.toString().padStart(2, '0')}-${firstDay.toString().padStart(2, '0')}`,
+        end_date: `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`
       });
 
       const response = await fetch(`/api/reservations/bookings?${params}`, {
@@ -176,21 +178,23 @@ export default function ReservationCalendarPage() {
 
   // 예약의 날짜 위치 정보 계산 (시작/중간/끝)
   const getReservationDatePosition = (reservation: Reservation, currentDate: Date) => {
-    const startDate = new Date(reservation.start_datetime);
-    const endDate = new Date(reservation.end_datetime);
-    
-    // 날짜만 비교하기 위해 시간 제거
-    const currentDateOnly = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-    const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-    const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-    
-    const isStart = currentDateOnly.getTime() === startDateOnly.getTime();
-    const isEnd = currentDateOnly.getTime() === endDateOnly.getTime();
-    const isMiddle = currentDateOnly > startDateOnly && currentDateOnly < endDateOnly;
-    
+    // ISO 문자열에서 날짜 부분만 추출 (UTC 파싱 문제 방지)
+    const startDateStr = reservation.start_datetime.split('T')[0]; // YYYY-MM-DD
+    const endDateStr = reservation.end_datetime.split('T')[0];
+
+    // 현재 날짜를 YYYY-MM-DD 형식으로 변환
+    const year = currentDate.getFullYear();
+    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = currentDate.getDate().toString().padStart(2, '0');
+    const currentDateStr = `${year}-${month}-${day}`;
+
+    const isStart = currentDateStr === startDateStr;
+    const isEnd = currentDateStr === endDateStr;
+    const isMiddle = currentDateStr > startDateStr && currentDateStr < endDateStr;
+
     return {
       isStart,
-      isEnd, 
+      isEnd,
       isMiddle,
       isSingleDay: isStart && isEnd
     };
@@ -203,37 +207,32 @@ export default function ReservationCalendarPage() {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    
+
     const filteredReservations = reservations.filter(reservation => {
-      // 예약 시작/종료 날짜를 로컬 시간 기준으로 추출
-      const startDate = new Date(reservation.start_datetime);
-      const endDate = new Date(reservation.end_datetime);
-      
-      const startYear = startDate.getFullYear();
-      const startMonth = (startDate.getMonth() + 1).toString().padStart(2, '0');
-      const startDay = startDate.getDate().toString().padStart(2, '0');
-      const startDateStr = `${startYear}-${startMonth}-${startDay}`;
-      
-      const endYear = endDate.getFullYear();
-      const endMonth = (endDate.getMonth() + 1).toString().padStart(2, '0');
-      const endDayNum = endDate.getDate();
-      const endDayStr = `${endYear}-${endMonth}-${endDayNum.toString().padStart(2, '0')}`;
-      
+      // ISO 문자열을 로컬 시간대로 파싱 (UTC 문제 방지)
+      // "2025-10-27T18:00:00" 형식을 로컬 시간대 기준으로 해석
+      const startDateTimeStr = reservation.start_datetime.replace('Z', ''); // Z 제거 (있다면)
+      const endDateTimeStr = reservation.end_datetime.replace('Z', '');
+
+      // 날짜 부분만 추출 (시간 부분 무시)
+      const startDateStr = startDateTimeStr.split('T')[0]; // YYYY-MM-DD
+      const endDateStr = endDateTimeStr.split('T')[0]; // YYYY-MM-DD
+
       // 입실 날짜만 표시하기 옵션이 켜져 있으면 시작 날짜만 확인
       if (viewSettings.options.입실날짜만예약표시하기) {
         return startDateStr === dateStr;
       }
-      
+
       // 그렇지 않으면 예약 기간에 포함되는지 확인 (퇴실 시간이 다음날이면 다음날까지 표시)
-      return startDateStr <= dateStr && endDayStr >= dateStr;
+      return startDateStr <= dateStr && endDateStr >= dateStr;
     }).filter(reservation => {
       // 선택된 공간만 표시
       return viewSettings.spaces[reservation.spaces?.name || ''] !== false;
     }).sort((a, b) => {
       // 정렬 옵션에 따라 정렬
       if (viewSettings.sortBy === "시간순") {
-        // 시작 시간 기준으로 오름차순 정렬
-        return new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime();
+        // 시작 시간 기준으로 오름차순 정렬 (문자열 비교로 충분)
+        return a.start_datetime.localeCompare(b.start_datetime);
       } else if (viewSettings.sortBy === "공간순") {
         // 공간명 기준으로 정렬
         const spaceA = a.spaces?.name || '';
@@ -242,18 +241,19 @@ export default function ReservationCalendarPage() {
       }
       return 0;
     });
-    
+
     return filteredReservations;
   };
 
   // 예약 시간 포맷팅
   const formatReservationTime = (reservation: Reservation) => {
-    const startTime = new Date(reservation.start_datetime);
-    const endTime = new Date(reservation.end_datetime);
-    const startHour = startTime.getHours();
-    const endHour = endTime.getHours();
-    const startMin = startTime.getMinutes();
-    const endMin = endTime.getMinutes();
+    // ISO 문자열에서 시간 추출 (UTC 파싱 문제 방지)
+    // "2025-10-27T18:00:00" -> ["18", "00"]
+    const startTimePart = reservation.start_datetime.split('T')[1] || '00:00:00';
+    const endTimePart = reservation.end_datetime.split('T')[1] || '00:00:00';
+
+    const [startHour, startMin] = startTimePart.split(':').map(Number);
+    const [endHour, endMin] = endTimePart.split(':').map(Number);
 
     const formatTime = (hour: number, min: number) => {
       if (min === 0) return `${hour}`;
@@ -547,11 +547,15 @@ export default function ReservationCalendarPage() {
                             if (position.isSingleDay) {
                               displayParts.push(timeStr); // 하루 예약은 전체 시간
                             } else if (position.isStart) {
-                              const startTime = new Date(reservation.start_datetime);
-                              displayParts.push(`${startTime.getHours()}시~`); // 시작일은 시작 시간만
+                              // ISO 문자열에서 시간 추출 (UTC 파싱 문제 방지)
+                              const startTimePart = reservation.start_datetime.split('T')[1] || '00:00:00';
+                              const startHour = parseInt(startTimePart.split(':')[0]);
+                              displayParts.push(`${startHour}시~`); // 시작일은 시작 시간만
                             } else if (position.isEnd) {
-                              const endTime = new Date(reservation.end_datetime);
-                              displayParts.push(`~${endTime.getHours()}시`); // 끝일은 끝 시간만
+                              // ISO 문자열에서 시간 추출 (UTC 파싱 문제 방지)
+                              const endTimePart = reservation.end_datetime.split('T')[1] || '00:00:00';
+                              const endHour = parseInt(endTimePart.split(':')[0]);
+                              displayParts.push(`~${endHour}시`); // 끝일은 끝 시간만
                             }
                             // 중간일은 시간 표시 안함
                           }
@@ -574,6 +578,9 @@ export default function ReservationCalendarPage() {
                                 break;
                             }
                             displayParts.push(channelDisplay);
+                          }
+                          if (viewSettings.displayInfo.메모 && reservation.special_requirements) {
+                            displayParts.push(reservation.special_requirements);
                           }
                           
                           // 연결된 예약 스타일 적용
@@ -729,7 +736,8 @@ export default function ReservationCalendarPage() {
                           { key: '시간', label: '시간' },
                           { key: '예약자명', label: '예약자명' },
                           { key: '총금액', label: '총 금액' },
-                          { key: '예약채널', label: '예약채널' }
+                          { key: '예약채널', label: '예약채널' },
+                          { key: '메모', label: '메모' }
                         ].map(item => (
                           <div key={item.key} className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">

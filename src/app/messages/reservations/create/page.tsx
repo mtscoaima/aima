@@ -42,9 +42,11 @@ export default function CreateReservationPage() {
   const dateParam = searchParams.get('date');
   const initialDate = dateParam || new Date().toISOString().split('T')[0];
 
-  // 날짜 형식 변환 함수
+  // 날짜 형식 변환 함수 (로컬 시간대 기준)
   const formatDisplayDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    // UTC 파싱 문제 방지: YYYY-MM-DD를 직접 파싱
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} (${days[date.getDay()]})`;
   };
@@ -214,20 +216,23 @@ export default function CreateReservationPage() {
         return;
       }
 
-      // 날짜와 시간을 ISO 문자열로 변환
-      const startDateTime = new Date(`${formData.date}T${formData.startTime.padStart(2, '0')}:00:00`);
-      
+      // 날짜와 시간을 ISO 문자열로 직접 생성 (UTC 변환 방지)
+      const startDateTimeStr = `${formData.date}T${formData.startTime.padStart(2, '0')}:00:00`;
+
       // 종료 시간 처리 (다음날 고려)
-      let endDateTime;
+      let endDateTimeStr;
       if (formData.endTime.startsWith('next_')) {
         const nextDayHour = parseInt(formData.endTime.replace('next_', ''));
-        const nextDate = new Date(formData.date);
-        nextDate.setDate(nextDate.getDate() + 1); // 다음날로 설정
-        const nextDateStr = nextDate.toISOString().split('T')[0]; // YYYY-MM-DD
-        endDateTime = new Date(`${nextDateStr}T${nextDayHour.toString().padStart(2, '0')}:00:00`);
+        // 다음날 날짜 계산 (로컬 시간대 기준)
+        const [year, month, day] = formData.date.split('-').map(Number);
+        const nextDate = new Date(year, month - 1, day + 1);
+        const nextYear = nextDate.getFullYear();
+        const nextMonth = (nextDate.getMonth() + 1).toString().padStart(2, '0');
+        const nextDay = nextDate.getDate().toString().padStart(2, '0');
+        endDateTimeStr = `${nextYear}-${nextMonth}-${nextDay}T${nextDayHour.toString().padStart(2, '0')}:00:00`;
       } else {
         const endHour = parseInt(formData.endTime);
-        endDateTime = new Date(`${formData.date}T${endHour.toString().padStart(2, '0')}:00:00`);
+        endDateTimeStr = `${formData.date}T${endHour.toString().padStart(2, '0')}:00:00`;
       }
 
       const reservationData = {
@@ -235,8 +240,8 @@ export default function CreateReservationPage() {
         customer_name: formData.customerName.trim(),
         customer_phone: formData.phoneNumber.trim(),
         customer_email: null, // 이메일 필드가 없으므로 null
-        start_datetime: startDateTime.toISOString(),
-        end_datetime: endDateTime.toISOString(),
+        start_datetime: startDateTimeStr,
+        end_datetime: endDateTimeStr,
         guest_count: parseInt(formData.people) || 1,
         total_amount: priceData?.amount ? parseInt(priceData.amount) : 0,
         deposit_amount: 0, // 기본값
@@ -334,15 +339,19 @@ export default function CreateReservationPage() {
     today.setHours(0, 0, 0, 0);
     const selectedDate = new Date(date);
     selectedDate.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       return;
     }
-    
+
     const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const isoDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    // 로컬 시간대 기준 YYYY-MM-DD 문자열 생성
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const isoDate = `${year}-${month}-${day}`;
     const displayDate = `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} (${days[date.getDay()]})`;
-    
+
     setFormData(prev => ({
       ...prev,
       date: isoDate,

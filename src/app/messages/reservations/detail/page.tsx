@@ -205,18 +205,24 @@ export default function ReservationDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // ISO 문자열에서 날짜 부분 추출 (UTC 파싱 문제 방지)
+    const datePart = dateString.split('T')[0]; // "2025-10-27"
+    const [year, month, day] = datePart.split('-').map(Number);
+
+    // 요일 계산을 위해 Date 객체 생성 (로컬 시간대 기준)
+    const dateObj = new Date(year, month - 1, day);
     const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const dayOfWeek = days[date.getDay()];
-    
-    return `2025.${month.toString().padStart(2, '0')}.${day.toString().padStart(2, '0')} (${dayOfWeek})`;
+    const dayOfWeek = days[dateObj.getDay()];
+
+    return `${year}.${month.toString().padStart(2, '0')}.${day.toString().padStart(2, '0')} (${dayOfWeek})`;
   };
 
   const formatTime = (dateTimeString: string) => {
-    const date = new Date(dateTimeString);
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    // ISO 문자열에서 시간 부분 추출 (UTC 파싱 문제 방지)
+    const timePart = dateTimeString.split('T')[1] || '00:00:00';
+    const [hours, minutes] = timePart.split(':').map(Number);
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -347,9 +353,8 @@ export default function ReservationDetailPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">메모</h2>
             <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">※ 이 예약은 샘플 예약입니다</p>
-              <p className="text-sm text-gray-600 mt-2">
-                Tip) 하단의 수정하기를 누르고 휴대폰 번호에 &apos;호스트님의 전화번호&apos;를 입력한 후 메시지 보내기를 테스트해보세요. 샘플 템플릿을 선택해서 보내고 직접 받아보세요 :)
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                {reservation.special_requirements || reservation.memo || '메모가 없습니다.'}
               </p>
             </div>
           </div>

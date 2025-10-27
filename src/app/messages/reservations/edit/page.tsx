@@ -184,26 +184,32 @@ export default function EditReservationPage() {
       if (response.ok) {
         const data = await response.json();
         const reservation: Reservation = data.reservation;
-        
-        // 날짜 및 시간 파싱
-        const startDate = new Date(reservation.start_datetime);
-        const endDate = new Date(reservation.end_datetime);
-        
+
+        // ISO 문자열에서 날짜/시간 추출 (UTC 파싱 문제 방지)
+        const startDateStr = reservation.start_datetime.split('T')[0]; // YYYY-MM-DD
+        const endDateStr = reservation.end_datetime.split('T')[0];
+        const startTimePart = reservation.start_datetime.split('T')[1] || '00:00:00';
+        const endTimePart = reservation.end_datetime.split('T')[1] || '00:00:00';
+
+        const startHour = parseInt(startTimePart.split(':')[0]);
+        const endHour = parseInt(endTimePart.split(':')[0]);
+
         // 다음날 종료 시간 확인
-        const isNextDay = endDate.getDate() !== startDate.getDate();
-        const endTimeValue = isNextDay ? `next_${endDate.getHours()}` : endDate.getHours().toString();
-        
+        const isNextDay = startDateStr !== endDateStr;
+        const endTimeValue = isNextDay ? `next_${endHour}` : endHour.toString();
+
+        // displayDate 생성 (로컬 시간대 기준)
+        const [year, month, day] = startDateStr.split('-').map(Number);
+        const dateObj = new Date(year, month - 1, day);
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        const displayDate = `${year}.${month}.${day} (${days[dateObj.getDay()]})`;
+
         const formattedData: ReservationFormData = {
           space_id: reservation.space_id,
           space: reservation.space_name,
-          date: startDate.toISOString().split('T')[0],
-          displayDate: startDate.toLocaleDateString('ko-KR', { 
-            year: 'numeric', 
-            month: 'numeric', 
-            day: 'numeric', 
-            weekday: 'short' 
-          }),
-          startTime: startDate.getHours().toString(),
+          date: startDateStr,
+          displayDate: displayDate,
+          startTime: startHour.toString(),
           endTime: endTimeValue,
           channel: getChannelDisplay(reservation.booking_channel),
           customerName: reservation.customer_name,
@@ -280,14 +286,16 @@ export default function EditReservationPage() {
   };
 
   const handleDateSelect = (date: Date) => {
-    const displayDate = date.toLocaleDateString('ko-KR', { 
-      year: 'numeric', 
-      month: 'numeric', 
-      day: 'numeric', 
-      weekday: 'short' 
-    });
-    
-    handleInputChange('date', date.toISOString().split('T')[0]);
+    // 로컬 시간대 기준 날짜 문자열 생성
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const displayDate = `${year}.${month}.${day} (${days[date.getDay()]})`;
+
+    handleInputChange('date', dateStr);
     handleInputChange('displayDate', displayDate);
     setShowDateCalendar(false);
   };
@@ -324,27 +332,30 @@ export default function EditReservationPage() {
       const token = await getAccessToken();
       if (!token) return;
 
-      // 시작 및 종료 datetime 생성
-      const startDateTime = new Date(`${formData.date}T${formData.startTime.padStart(2, '0')}:00:00`);
-      
-      let endDateTime;
+      // 시작 및 종료 datetime 생성 (로컬 시간대 기준)
+      const startDateTimeStr = `${formData.date}T${formData.startTime.padStart(2, '0')}:00:00`;
+
+      let endDateTimeStr;
       if (formData.endTime.startsWith('next_')) {
         const nextDayHour = parseInt(formData.endTime.replace('next_', ''));
-        const nextDate = new Date(formData.date);
-        nextDate.setDate(nextDate.getDate() + 1);
-        const nextDateStr = nextDate.toISOString().split('T')[0];
-        endDateTime = new Date(`${nextDateStr}T${nextDayHour.toString().padStart(2, '0')}:00:00`);
+        // 다음날 날짜 계산 (로컬 시간대 기준)
+        const [year, month, day] = formData.date.split('-').map(Number);
+        const nextDate = new Date(year, month - 1, day + 1);
+        const nextYear = nextDate.getFullYear();
+        const nextMonth = (nextDate.getMonth() + 1).toString().padStart(2, '0');
+        const nextDay = nextDate.getDate().toString().padStart(2, '0');
+        endDateTimeStr = `${nextYear}-${nextMonth}-${nextDay}T${nextDayHour.toString().padStart(2, '0')}:00:00`;
       } else {
         const endHour = parseInt(formData.endTime);
-        endDateTime = new Date(`${formData.date}T${endHour.toString().padStart(2, '0')}:00:00`);
+        endDateTimeStr = `${formData.date}T${endHour.toString().padStart(2, '0')}:00:00`;
       }
 
       const updateData = {
         space_id: formData.space_id,
         customer_name: formData.customerName,
         customer_phone: formData.phoneNumber,
-        start_datetime: startDateTime.toISOString(),
-        end_datetime: endDateTime.toISOString(),
+        start_datetime: startDateTimeStr,
+        end_datetime: endDateTimeStr,
         guest_count: parseInt(formData.people),
         booking_channel: getChannelValue(formData.channel),
         special_requirements: formData.memo || null
@@ -498,9 +509,13 @@ export default function EditReservationPage() {
                           const isPastDate = day < today && !isToday;
                           const dayOfWeek = day.getDay();
                           
-                          // 선택된 날짜 확인
-                          const selectedDate = formData.date ? new Date(formData.date) : null;
-                          const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
+                          // 선택된 날짜 확인 (문자열 비교로 UTC 문제 방지)
+                          const selectedDateStr = formData.date; // YYYY-MM-DD
+                          const dayYear = day.getFullYear();
+                          const dayMonth = (day.getMonth() + 1).toString().padStart(2, '0');
+                          const dayDay = day.getDate().toString().padStart(2, '0');
+                          const dayStr = `${dayYear}-${dayMonth}-${dayDay}`;
+                          const isSelected = selectedDateStr === dayStr;
 
                           return (
                             <button
