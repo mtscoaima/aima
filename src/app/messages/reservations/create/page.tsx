@@ -35,6 +35,7 @@ export default function CreateReservationPage() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loadingSpaces, setLoadingSpaces] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   const [priceData, setPriceData] = useState<{amount: string, notes: string} | null>(null);
 
   // URL에서 날짜 파라미터 가져오기
@@ -165,6 +166,11 @@ export default function CreateReservationPage() {
 
   // 예약 생성
   const handleSubmit = async () => {
+    // IME 조합 중이면 완료될 때까지 대기
+    if (isComposing) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     // 기본 유효성 검사
     if (!formData.space_id) {
       alert('공간을 선택해주세요.');
@@ -301,7 +307,7 @@ export default function CreateReservationPage() {
         const thirtyMinutes = 30 * 60 * 1000;
         if (Date.now() - parsed.timestamp < thirtyMinutes) {
           // timestamp 제거 후 폼 데이터 설정
-          const { ...formDataWithoutTimestamp } = parsed;
+          const { timestamp, ...formDataWithoutTimestamp } = parsed;
           setFormData(formDataWithoutTimestamp);
         } else {
           // 만료된 데이터 삭제
@@ -641,6 +647,8 @@ export default function CreateReservationPage() {
                   type="text"
                   value={formData.customerName}
                   onChange={(e) => handleInputChange("customerName", e.target.value)}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
                   placeholder="예약자 이름"
                   className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -674,8 +682,12 @@ export default function CreateReservationPage() {
                 <label className="block text-gray-900 font-medium mb-3">인원</label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={formData.people}
-                  onChange={(e) => handleInputChange("people", e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    handleInputChange("people", value);
+                  }}
                   placeholder="인원을 입력하세요."
                   className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -689,14 +701,17 @@ export default function CreateReservationPage() {
               <div>
                 <label className="block text-gray-900 font-medium mb-3">총 금액</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={priceData?.amount || ''}
-                  onChange={(e) => setPriceData({ amount: e.target.value, notes: priceData?.notes || '' })}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setPriceData({ amount: value, notes: priceData?.notes || '' });
+                  }}
                   placeholder="금액을 입력하세요 (원)"
-                  className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
-
               {priceData?.notes && (
                 <div className="text-sm text-gray-600">
                   {priceData.notes}
