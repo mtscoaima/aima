@@ -15,7 +15,12 @@ export default function ReservationsLayout({
   const isMainPage = pathname === "/messages/reservations";
 
   const handleBackToMenu = () => {
-    router.push("/messages/send?tab=reservations");
+    // 히스토리가 있으면 뒤로, 없으면 예약관리 메인으로
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/messages/reservations");
+    }
   };
 
   return (
@@ -40,7 +45,7 @@ export default function ReservationsLayout({
                   d="M10 19l-7-7m0 0l7-7m-7 7h18"
                 />
               </svg>
-              <span className="text-sm font-medium">예약관리 메뉴로</span>
+              <span className="text-sm font-medium">뒤로</span>
             </button>
           </div>
         </div>

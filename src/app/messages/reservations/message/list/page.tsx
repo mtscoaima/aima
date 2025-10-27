@@ -174,15 +174,7 @@ export default function MessageListPage() {
     <RoleGuard allowedRoles={["USER"]}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center mb-8">
-            <button
-              onClick={() => router.back()}
-              className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-            >
-              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+          <div className="mb-8">
             <h1 className="text-xl font-bold text-gray-900">보낸 메시지</h1>
           </div>
 

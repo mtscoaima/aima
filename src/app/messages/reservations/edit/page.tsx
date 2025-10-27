@@ -257,10 +257,6 @@ export default function EditReservationPage() {
     fetchReservation();
   }, [fetchSpaces, fetchReservation]);
 
-  const handleBackClick = () => {
-    router.back();
-  };
-
   const handleInputChange = (field: keyof ReservationFormData, value: string | number) => {
     setFormData(prev => {
       const updated = {
@@ -408,20 +404,10 @@ export default function EditReservationPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-6 max-w-2xl">
           {/* 헤더 */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <button 
-                onClick={handleBackClick}
-                className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-              >
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h1 className="text-xl font-bold text-gray-900">
-                예약 수정
-              </h1>
-            </div>
+          <div className="mb-6">
+            <h1 className="text-xl font-bold text-gray-900">
+              예약 수정
+            </h1>
           </div>
 
           {/* 메인 컨텐츠 */}

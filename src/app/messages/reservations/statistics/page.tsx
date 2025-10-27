@@ -55,10 +55,6 @@ export default function ReservationStatisticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [statistics, setStatistics] = useState<StatisticsData | null>(null);
 
-  const handleBack = () => {
-    router.back();
-  };
-
   const handlePrevMonth = () => {
     if (currentMonthNum === 1) {
       setCurrentYear(currentYear - 1);
@@ -194,15 +190,7 @@ export default function ReservationStatisticsPage() {
     <RoleGuard allowedRoles={["USER"]}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
-        <div className="flex items-center mb-8">
-          <button
-            onClick={handleBack}
-            className="mr-4 p-2"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-          </button>
+        <div className="mb-8">
           <h1 className="text-xl font-semibold text-gray-900">
             통계
           </h1>
