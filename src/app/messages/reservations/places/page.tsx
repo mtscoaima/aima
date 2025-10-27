@@ -137,16 +137,6 @@ export default function ReservationPlacesPage() {
           </h1>
         </div>
 
-        {/* Description */}
-        <div className="mb-8">
-          <div className="flex items-start mb-4">
-            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-            <p className="text-gray-600">
-              오프라인에서 보유 및 운영 중인 공간을 추가하세요.
-            </p>
-          </div>
-        </div>
-
         {/* Total spaces count */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -207,9 +197,6 @@ export default function ReservationPlacesPage() {
                       </div>
                       <div>
                         <span className="text-gray-900 font-medium">{space.name}</span>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {new Date(space.created_at).toLocaleDateString('ko-KR')}
-                        </p>
                       </div>
                     </div>
                     
@@ -233,7 +220,7 @@ export default function ReservationPlacesPage() {
                               onClick={() => handleRenameSpace(space.id)}
                               className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                             >
-                              공간 이름 바꾸기
+                              정보 변경하기
                             </button>
                             <button
                               onClick={() => handleDeleteSpace(space.id, space.name)}

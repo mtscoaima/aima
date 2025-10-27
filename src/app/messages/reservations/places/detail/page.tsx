@@ -21,7 +21,6 @@ export default function SpaceDetailPage() {
   const [space, setSpace] = useState<Space | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDevelopmentModal, setShowDevelopmentModal] = useState(false);
   const [showSenderInfo, setShowSenderInfo] = useState(false);
   const [showSenderNumberInfo, setShowSenderNumberInfo] = useState(false);
   const [showHostContactModal, setShowHostContactModal] = useState(false);
@@ -77,10 +76,6 @@ export default function SpaceDetailPage() {
 
   const handleEditName = () => {
     router.push(`/reservations/places/edit?id=${spaceId}`);
-  };
-
-  const handlePaymentLink = () => {
-    setShowDevelopmentModal(true);
   };
 
   const handleSenderInfo = () => {
@@ -181,19 +176,6 @@ export default function SpaceDetailPage() {
             </div>
           </div>
 
-          {/* 결제 링크 사용 등록하기 */}
-          <div>
-            <button
-              onClick={handlePaymentLink}
-              className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <span className="text-gray-900 font-medium">결제 링크 사용 등록하기</span>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
           {/* 메시지 발신자 정보 설정 */}
           <div>
             <button
@@ -201,13 +183,8 @@ export default function SpaceDetailPage() {
               className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <span className="text-gray-900 font-medium">메시지 발신자 정보 설정</span>
-              <svg 
-                className={`w-5 h-5 text-gray-400 transition-transform ${showSenderInfo ? 'rotate-180' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7 7" />
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
             
@@ -252,29 +229,6 @@ export default function SpaceDetailPage() {
             )}
           </div>
         </div>
-
-        {/* 개발중입니다 모달 */}
-        {showDevelopmentModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-              <div className="text-center">
-                <div className="mb-4">
-                  <svg className="mx-auto h-12 w-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.96-.833-2.73 0L3.084 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">개발중입니다</h3>
-                <p className="text-gray-600 mb-4">해당 기능은 현재 개발중입니다.</p>
-                <button
-                  onClick={() => setShowDevelopmentModal(false)}
-                  className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  확인
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 발신 전용 번호 정보 모달 */}
         {showSenderNumberInfo && (
