@@ -19,7 +19,7 @@ export default function ReservationManagementTab() {
             onClick={() => handleMenuClick('/messages/reservations/calendar')}
             className="bg-blue-500 text-white rounded-2xl p-8 cursor-pointer hover:bg-blue-600 transition-colors md:col-span-2 lg:col-span-1"
           >
-            <h2 className="text-xl font-semibold mb-6">스마트 캘린더</h2>
+            <h2 className="text-xl font-semibold mb-6">공간예약 캘린더</h2>
             <div className="flex justify-center">
               <div className="w-16 h-16 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                 <div className="w-12 h-12 bg-white rounded flex flex-col items-center justify-center">
@@ -43,7 +43,7 @@ export default function ReservationManagementTab() {
             onClick={() => handleMenuClick('/messages/reservations/message')}
             className="bg-gray-100 rounded-2xl p-8 cursor-pointer hover:bg-gray-200 transition-colors md:col-span-2 lg:col-span-1"
           >
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">메시지</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">예약메시지 템플릿</h2>
             <div className="flex justify-center">
               <div className="w-16 h-16 bg-blue-500 rounded-lg flex items-center justify-center">
                 <div className="w-8 h-6 bg-white rounded flex items-center justify-center">
