@@ -4,15 +4,18 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
+import * as Tooltip from '@radix-ui/react-tooltip';
+import ReservationTooltip from '@/components/ReservationTooltip';
 
-interface Space {
+
+export interface Space {
   id: number;
   name: string;
   icon_text: string;
   icon_color: string;
 }
 
-interface Reservation {
+export interface Reservation {
   id: number;
   user_id: number;
   space_id: number;
@@ -34,7 +37,7 @@ interface Reservation {
   spaces?: Space;
 }
 
-type ViewSettings = {
+export type ViewSettings = {
   spaces: { [key: string]: boolean };
   sortBy: string;
   displayInfo: { [key: string]: boolean };
@@ -59,6 +62,27 @@ export default function ReservationCalendarPage() {
     displayInfo: { 시간: true, 예약자명: true, 총금액: false, 예약채널: false },
     options: { 입실날짜만예약표시하기: true }
   });
+
+  // viewSettings 저장/불러오기 함수
+  const saveViewSettings = useCallback((settings: ViewSettings) => {
+    try {
+      localStorage.setItem('reservationCalendarViewSettings', JSON.stringify(settings));
+    } catch (error) {
+      console.error('Error saving view settings:', error);
+    }
+  }, []);
+
+  const loadViewSettings = useCallback((): ViewSettings | null => {
+    try {
+      const saved = localStorage.getItem('reservationCalendarViewSettings');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading view settings:', error);
+    }
+    return null;
+  }, []);
 
   // 공휴일 데이터 가져오기
   const fetchHolidays = useCallback(async (year: number) => {
@@ -280,6 +304,29 @@ export default function ReservationCalendarPage() {
     fetchHolidays(year);
   }, [currentMonth, fetchHolidays]);
 
+  // viewSettings 복원 (공간 목록 로드 후)
+  useEffect(() => {
+    if (spaces.length > 0) {
+      const savedSettings = loadViewSettings();
+      if (savedSettings) {
+        // 공간 설정 병합 (새 공간은 true로, 삭제된 공간은 제거)
+        const mergedSpaces: { [key: string]: boolean } = {};
+        spaces.forEach(space => {
+          if (savedSettings.spaces[space.name] !== undefined) {
+            mergedSpaces[space.name] = savedSettings.spaces[space.name];
+          } else {
+            mergedSpaces[space.name] = true; // 새 공간은 기본 체크
+          }
+        });
+        
+        setViewSettings({
+          ...savedSettings,
+          spaces: mergedSpaces
+        });
+      }
+    }
+  }, [spaces, loadViewSettings]);
+
   const handleShareCalendar = () => {
     router.push('/messages/reservations/calendar/shared');
   };
@@ -309,6 +356,7 @@ export default function ReservationCalendarPage() {
   };
 
   const handleCloseViewModal = () => {
+    saveViewSettings(viewSettings); // 설정 저장
     setShowViewModal(false);
   };
 
@@ -357,6 +405,7 @@ export default function ReservationCalendarPage() {
 
   return (
     <RoleGuard allowedRoles={["USER"]}>
+      <Tooltip.Provider delayDuration={300}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* 헤더 */}
@@ -471,7 +520,7 @@ export default function ReservationCalendarPage() {
                 return (
                   <div
                     key={index}
-                    className={`min-h-[120px] p-2 border-r border-b border-gray-100 ${
+                    className={`min-h-[140px] p-2 border-r border-b border-gray-100 ${
                       !isCurrentMonth ? 'bg-gray-50' : 'bg-white'
                     } ${isCurrentMonth ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors`}
                     onClick={() => isCurrentMonth && handleDateClick(day)}
@@ -540,33 +589,41 @@ export default function ReservationCalendarPage() {
                           }
                           
                           return (
-                            <div
+                            <ReservationTooltip
                               key={reservation.id}
-                              className={`text-xs px-1 py-1 ${borderRadius} truncate flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity ${
-                                reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                reservation.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                reservation.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}
-                              title={`${reservation.spaces?.name || ''} - ${reservation.customer_name} (${timeStr})`}
-                              onClick={(e) => {
-                                e.stopPropagation(); // 날짜 클릭 이벤트 전파 방지
-                                router.push(`/messages/reservations/detail?id=${reservation.id}`);
-                              }}
+                              reservation={reservation}
+                              viewSettings={viewSettings}
+                              timeStr={timeStr}
                             >
-                              {/* 공간 아이콘 */}
-                              <div 
-                                className="w-3 h-3 rounded-sm flex items-center justify-center text-white font-bold text-[8px] flex-shrink-0"
-                                style={{ backgroundColor: reservation.spaces?.icon_color || '#8BC34A' }}
+                              <div
+                                className={`text-sm px-2.5 py-2 ${borderRadius} cursor-pointer hover:scale-[1.01] hover:shadow-sm transition-all ${
+                                  reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                  reservation.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                  reservation.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  'bg-yellow-100 text-yellow-800'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // 날짜 클릭 이벤트 전파 방지
+                                  router.push(`/messages/reservations/detail?id=${reservation.id}`);
+                                }}
                               >
-                                {reservation.spaces?.icon_text || reservation.spaces?.name?.substring(0, 1) || '공'}
+                                {/* 공간 아이콘 + 예약 정보 (자동 줄바꿈) */}
+                                <div className="flex items-start space-x-1.5">
+                                  {/* 공간 아이콘 */}
+                                  <div
+                                    className="min-w-[28px] h-5 rounded-sm flex items-center justify-center text-white font-bold text-xs flex-shrink-0 px-1"
+                                    style={{ backgroundColor: reservation.spaces?.icon_color || '#8BC34A' }}
+                                  >
+                                    {reservation.spaces?.icon_text || reservation.spaces?.name?.substring(0, 1) || '공'}
+                                  </div>
+                                  
+                                  {/* 예약 정보 텍스트 (최대 2줄) */}
+                                  <span className="text-sm line-clamp-2 break-words leading-snug">
+                                    {displayParts.join(', ')}
+                                  </span>
+                                </div>
                               </div>
-                              
-                              {/* 예약 정보 텍스트 */}
-                              <span className="truncate">
-                                {displayParts.join(', ')}
-                              </span>
-                            </div>
+                            </ReservationTooltip>
                           );
                         })}
                         {dayReservations.length > 2 && (
@@ -825,6 +882,7 @@ export default function ReservationCalendarPage() {
           )}
         </div>
       </div>
+      </Tooltip.Provider>
     </RoleGuard>
   );
 }
