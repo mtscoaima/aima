@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RoleGuard from "@/components/RoleGuard";
+import ChannelSelectModal from "@/components/ChannelSelectModal";
 
 interface Space {
   id: number;
@@ -75,21 +76,6 @@ export default function EditReservationPage() {
   const [showChannelModal, setShowChannelModal] = useState(false);
   const [showDateCalendar, setShowDateCalendar] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  // 예약채널 목록
-  const channels = [
-    "아워플레이스",
-    "스페이스클라우드",
-    "여기어때",
-    "웨이닛",
-    "빌리오",
-    "카카오 채널",
-    "네이버 예약",
-    "전화",
-    "인스타그램",
-    "홈페이지",
-    "직접입력"
-  ];
 
   // 변경사항 확인
   const hasChanges = useCallback(() => {
@@ -321,6 +307,10 @@ export default function EditReservationPage() {
   const handleChannelSelect = (channel: string) => {
     handleInputChange('channel', channel);
     setShowChannelModal(false);
+  };
+
+  const handleBackClick = () => {
+    router.back();
   };
 
   const handleSubmit = async () => {
@@ -689,47 +679,12 @@ Tip) 하단의 수정하기를 누르고 휴대폰 번호에 '호스트님의 �
           </div>
 
           {/* 예약채널 선택 모달 */}
-          {showChannelModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl w-full max-w-sm mx-4 max-h-96 overflow-hidden">
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-900">예약채널 선택</h3>
-                  <button
-                    onClick={() => setShowChannelModal(false)}
-                    className="p-1 hover:bg-gray-100 rounded-lg"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="overflow-y-auto max-h-80">
-                  {channels.map((channel, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleChannelSelect(channel)}
-                      className={`w-full p-4 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-b-0 ${
-                        channel === formData.channel ? 'text-blue-600 bg-blue-50' : 'text-gray-900'
-                      }`}
-                    >
-                      <span>{channel}</span>
-                      {channel === formData.channel && (
-                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                  <div className="p-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-900 font-medium">내가 추가한 채널</span>
-                      <button className="text-blue-500 text-sm font-medium">+ 채널 추가</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <ChannelSelectModal
+            isOpen={showChannelModal}
+            onClose={() => setShowChannelModal(false)}
+            onSelect={handleChannelSelect}
+            selectedChannel={formData.channel}
+          />
         </div>
       </div>
     </RoleGuard>
