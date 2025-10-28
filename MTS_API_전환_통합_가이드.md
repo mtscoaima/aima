@@ -407,19 +407,24 @@ formData.append('image', imageFile);
 
 ## 작업 순서
 
-### Phase 0: 준비 (필수)
+### Phase 0: 준비 (필수) ✅ 완료
 ```
-1. ✅ MTS auth_code 발급 확인
+1. ✅ MTS auth_code 발급 확인 (필요 시 담당자 문의)
 2. ✅ 테스트 계정 준비
-3. ⬜ src/lib/mtsApi.ts 신규 작성
+3. ✅ src/lib/mtsApi.ts 신규 작성 완료
+4. ✅ .env 파일에 MTS API 환경 변수 추가 완료
 ```
 
-### Phase 1: 시스템 알림 SMS
+### Phase 1: 시스템 알림 SMS ✅ 완료
 ```
-4. ⬜ src/utils/smsNotification.ts 수정
+4. ✅ src/utils/smsNotification.ts 수정 완료
+   - sendNaverSMS → sendMtsSMS 변경
+   - sendNaverMMS → sendMtsMMS 변경
+   - fileIds → imageUrls 파라미터 변경
+   - 시스템 대표 발신번호 자동 조회 기능 추가
 5. ⬜ 사업자 인증 알림 테스트
 6. ⬜ 문의 답변 알림 테스트
-7. ⬜ 관리자 승인 알림 수정
+7. ⬜ 관리자 승인 알림 테스트
 ```
 
 ### Phase 2: 메시지 발송 API
@@ -634,16 +639,22 @@ POST /v2/sndng/ftk/sendMessages
 
 ## 테스트 체크리스트
 
-### ✅ Phase 0: 준비
-- [ ] MTS auth_code 발급 완료
-- [ ] 테스트 발신번호 등록 확인
-- [ ] 테스트 수신번호 준비
-- [ ] mtsApi.ts 작성 완료
+### ✅ Phase 0: 준비 (완료)
+- [x] MTS auth_code 발급 확인 (필요 시 담당자 문의)
+- [x] 테스트 발신번호 등록 확인
+- [x] 테스트 수신번호 준비
+- [x] mtsApi.ts 작성 완료
+- [x] ESLint 에러 수정 (5개 any → Record<string, unknown>)
+- [x] Buffer/Blob 타입 에러 수정 완료
+- [x] .env 환경 변수 설정 완료
+- [x] TypeScript 컴파일 에러 0개 확인
 
-### ✅ Phase 1: 시스템 알림
-- [ ] 사업자 인증 신청 → 관리자 SMS 수신 확인
-- [ ] 문의 답변 등록 → 사용자 SMS 수신 확인 (sms_notification=true)
-- [ ] 회원 승인 처리 → 사용자 SMS 수신 확인
+### ✅ Phase 1: 시스템 알림 (코드 완료, 테스트 대기)
+- [x] smsNotification.ts MTS API로 전환 완료
+- [x] 시스템 대표 발신번호 자동 조회 기능 구현
+- [ ] 사업자 인증 신청 → 관리자 SMS 수신 테스트
+- [ ] 문의 답변 등록 → 사용자 SMS 수신 테스트 (sms_notification=true)
+- [ ] 회원 승인 처리 → 사용자 SMS 수신 테스트
 - [ ] 에러 코드 3008 (전화번호 오류) 핸들링 확인
 
 ### ✅ Phase 2: 즉시 발송
@@ -757,6 +768,25 @@ TEST_CALLING_NUMBER=01012345678  # 테스트용 발신번호
 - 초기 통합 가이드 작성
 - 이전 문서 통합 완료
 
+**v1.3 (2025-10-28)**:
+- ✅ Phase 0 완료: mtsApi.ts 신규 작성 및 ESLint 에러 수정
+  - any 타입을 Record<string, unknown> 타입으로 변경
+  - 5개의 TypeScript ESLint 에러 수정 완료
+- ✅ Phase 1 완료: smsNotification.ts MTS API로 전환
+  - sendNaverSMS → sendMtsSMS 변경
+  - sendNaverMMS → sendMtsMMS 변경
+  - fileIds → imageUrls 파라미터 변경
+  - 시스템 대표 발신번호 자동 조회 기능 추가
+- ✅ .env 환경 변수 설정 완료
+
+**v1.4 (2025-10-28)**:
+- ✅ Buffer/Blob 타입 에러 수정
+  - uploadMtsImage 함수의 Buffer → Uint8Array → BlobPart 변환 로직 수정
+  - 타입 캐스팅을 통한 TypeScript 호환성 문제 해결
+  - 함수 시그니처 개선 (File | Buffer → Buffer, mimeType 파라미터 추가)
+- ✅ 모든 TypeScript 컴파일 에러 수정 완료
+
 ---
 
-**버전**: 1.2 (최종본)
+**버전**: 1.4 (최종본)
+

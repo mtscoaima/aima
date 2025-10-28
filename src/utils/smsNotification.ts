@@ -1,9 +1,9 @@
 /**
  * SMS 알림 발송 유틸리티
- * NAVER SENS API를 사용하여 SMS/LMS 발송
+ * MTS API를 사용하여 SMS/LMS/MMS 발송
  */
 
-import { sendNaverSMS, sendNaverMMS } from "@/lib/naverSensApi";
+import { sendMtsSMS, sendMtsMMS } from "@/lib/mtsApi";
 
 export interface SMSMessage {
   to: string; // 수신자 전화번호
@@ -11,7 +11,7 @@ export interface SMSMessage {
   from?: string; // 발신자 번호 (옵션)
   subject?: string; // 제목 (LMS의 경우)
   type?: "SMS" | "LMS" | "MMS"; // 메시지 타입
-  fileIds?: string[]; // MMS 파일 ID (MMS의 경우)
+  imageUrls?: string[]; // MMS 이미지 URL (MTS 업로드 후 받은 경로)
 }
 
 export interface SMSResult {
@@ -29,6 +29,34 @@ export interface SMSBatchResult {
 }
 
 /**
+ * 시스템 대표 발신번호 조회
+ * system_settings.site_settings.contact_phone 사용
+ * Fallback: 070-8824-1139 (Footer 대표번호)
+ */
+async function getSystemCallbackNumber(): Promise<string> {
+  try {
+    // Supabase 클라이언트를 동적으로 import하여 순환 참조 방지
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: settings } = await supabase
+      .from('system_settings')
+      .select('site_settings')
+      .limit(1)
+      .single();
+
+    const siteSettings = (settings?.site_settings as any) || {};
+    return siteSettings.contact_phone || '070-8824-1139';
+  } catch (error) {
+    console.error('시스템 발신번호 조회 오류:', error);
+    return '070-8824-1139'; // Fallback
+  }
+}
+
+/**
  * 단일 SMS 발송
  */
 export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
@@ -39,33 +67,37 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
       throw new Error("유효하지 않은 전화번호입니다.");
     }
 
+    // 발신번호 결정: message.from이 있으면 사용, 없으면 시스템 대표번호
+    const callbackNumber = message.from || await getSystemCallbackNumber();
+
     let result;
 
-    // MMS 발송 (파일이 있는 경우)
+    // MMS 발송 (이미지가 있는 경우)
     if (
       message.type === "MMS" &&
-      message.fileIds &&
-      message.fileIds.length > 0
+      message.imageUrls &&
+      message.imageUrls.length > 0
     ) {
-      result = await sendNaverMMS(
+      result = await sendMtsMMS(
         formattedPhoneNumber,
         message.message,
         message.subject || "",
-        message.fileIds
+        callbackNumber,
+        message.imageUrls
       );
     } else {
-      // SMS/LMS 발송
-      result = await sendNaverSMS(
+      // SMS/LMS 발송 (MTS API에서 자동 판단)
+      result = await sendMtsSMS(
         formattedPhoneNumber,
         message.message,
-        message.subject
+        callbackNumber
       );
     }
 
     if (result.success) {
       return {
         success: true,
-        messageId: result.requestId,
+        messageId: result.msgId,
         cost: calculateSMSCost(message.message, message.type),
       };
     } else {
@@ -131,6 +163,7 @@ export async function sendInquiryReplyNotification(
     to: formatPhoneNumber(phoneNumber),
     message,
     type: "SMS",
+    // from 없음: 시스템 대표번호 사용
   });
 }
 
@@ -150,6 +183,7 @@ export async function sendInquiryStatusNotification(
     to: formatPhoneNumber(phoneNumber),
     message,
     type: "SMS",
+    // from 없음: 시스템 대표번호 사용
   });
 }
 
@@ -170,7 +204,7 @@ function generateInquiryReplyMessage(
 }
 
 /**
- * 전화번호 형식 정규화 (Naver SENS API용)
+ * 전화번호 형식 정규화 (MTS API용 - 하이픈 제거)
  */
 function formatPhoneNumber(phoneNumber: string): string {
   // 모든 특수문자 제거
