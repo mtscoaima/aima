@@ -1,4 +1,4 @@
-# MTS Message 프로젝트 코드베이스 분석 (v2.0)
+# MTS Message 프로젝트 코드베이스 분석 (v2.3)
 
 ## 📊 프로젝트 개요
 
@@ -9,7 +9,9 @@
 - **인증**: JWT 기반 커스텀 인증 (Supabase Auth 미사용)
 - **스타일링**: Tailwind CSS 4, CSS Modules
 - **AI 통합**: OpenAI API (GPT-4, DALL-E 3)
-- **SMS/MMS**: Naver SENS API
+- **SMS/MMS**: MTS API (Naver SENS 전환 완료)
+- **카카오**: 알림톡, 친구톡 (MTS API)
+- **네이버**: 톡톡 스마트알림 (MTS API)
 - **결제**: NicePay (KG이니시스)
 - **파일 처리**: Sharp (이미지), xlsx (엑셀), html2canvas
 - **차트**: Chart.js, react-chartjs-2
@@ -23,7 +25,7 @@ API Routes (Next.js API)
     ↓ (Service Role Key)
 Supabase (PostgreSQL + Storage)
     ↓
-외부 서비스 (Naver SENS, OpenAI, NicePay, 공공데이터 API)
+외부 서비스 (MTS API, OpenAI, NicePay, 공공데이터 API)
 ```
 
 **핵심 아키텍처 원칙**:
@@ -33,11 +35,12 @@ Supabase (PostgreSQL + Storage)
 - JWT 토큰 기반 인증 (액세스 토큰: 1시간, 리프레시 토큰: 7일)
 - 폴링 기반 실시간 업데이트 (Supabase Realtime 미사용)
 
-### 프로젝트 통계 (2025-01-24 기준)
-- **총 TypeScript 파일**: 346개
-- **API 엔드포인트**: 151개
+### 프로젝트 통계 (2025-01-28 기준)
+- **총 TypeScript 파일**: 350+개
+- **API 엔드포인트**: 156개 (MTS API 통합 완료)
 - **페이지**: 63개
 - **컨텍스트**: 4개 (Auth, Balance, Notification, Pricing)
+- **MTS API 전환**: 97.9% 완료 (46/47 파일)
 
 ---
 
@@ -60,9 +63,63 @@ Supabase (PostgreSQL + Storage)
 
 ---
 
-## 🆕 최신 업데이트 (Phase 3 - SMS 알림 시스템)
+## 🆕 최신 업데이트
 
-### SMS 알림 시스템 개요
+### Phase 8: 네이버 톡톡 통합 (2025-01-28)
+
+**구현 내용**:
+- ✅ 네이버 톡톡 스마트알림 발송 기능
+- ✅ 템플릿 목록 조회 API
+- ✅ 발송 API (다중 수신자 지원)
+- ✅ UI 컴포넌트 (템플릿 선택, 발송)
+- ✅ 비용 계산 및 차감 (15원/건)
+
+**새로운 API 엔드포인트**:
+- `GET /api/naver/templates` - 네이버 톡톡 템플릿 목록 조회
+- `POST /api/messages/naver/talk/send` - 네이버 톡톡 발송
+
+**핵심 기능**:
+```typescript
+// 1. 템플릿 목록 조회
+await getNaverTalkTemplates(navertalkId, page, count);
+
+// 2. 스마트알림 발송
+await sendNaverTalk(
+  navertalkId,
+  templateCode,
+  toNumber,
+  text,
+  productCode, // 'INFORMATION' | 'BENEFIT' | 'CARDINFO'
+  buttons,
+  imageHashId,
+  sendDate
+);
+```
+
+**상품 코드 (Product Code)**:
+- `INFORMATION`: 정보성 - 알림
+- `BENEFIT`: 마케팅/광고 - 혜택
+- `CARDINFO`: 정보성 - 카드알림
+
+### Phase 7: 카카오 친구톡 (2025-01-27)
+
+**구현 내용**:
+- ✅ 카카오 친구톡 발송 기능
+- ✅ 와이드 이미지 업로드 지원
+- ✅ 버튼 템플릿 (웹링크, 앱링크)
+- ✅ 광고성 메시지 표기
+
+### Phase 6: 카카오 알림톡 (2025-01-27)
+
+**구현 내용**:
+- ✅ 카카오 알림톡 발송 기능
+- ✅ 템플릿 목록 조회 및 관리
+- ✅ 변수 치환 시스템
+- ✅ 버튼 템플릿 지원
+
+### Phase 3: SMS 알림 시스템 (2025-01-24)
+
+**SMS 알림 시스템 개요**:
 관리자에게 중요한 이벤트를 SMS로 자동 알림하는 시스템입니다.
 - **실제 SMS 발송 없음**: DB 로그 및 콘솔 출력만 수행 (테스트/추적용)
 - **관리자 대상**: role='ADMIN'인 모든 사용자에게 발송
@@ -220,9 +277,27 @@ await triggerNotification({
 
 ---
 
-## 📡 API 엔드포인트 (151개)
+## 📡 API 엔드포인트 (156개)
 
-### 🆕 SMS 알림 API
+### 🆕 MTS API 통합 (Phase 0-8)
+
+**네이버 톡톡 API** (Phase 8):
+- `GET /api/naver/templates`: 네이버 톡톡 템플릿 목록 조회
+- `POST /api/messages/naver/talk/send`: 네이버 톡톡 발송
+
+**카카오 API** (Phase 6-7):
+- `GET /api/kakao/alimtalk/templates`: 알림톡 템플릿 목록
+- `POST /api/messages/kakao/alimtalk/send`: 알림톡 발송
+- `POST /api/kakao/friendtalk/upload-image`: 친구톡 이미지 업로드
+- `POST /api/messages/kakao/friendtalk/send`: 친구톡 발송
+
+**SMS/LMS/MMS API** (Phase 0-5):
+- `POST /api/messages/send`: SMS/LMS/MMS 발송 (MTS API)
+- `POST /api/messages/upload-image`: MMS 이미지 업로드 (MTS API)
+- `GET /api/messages/scheduled`: 예약 메시지 조회
+- `POST /api/messages/scheduled-send-check`: 예약 발송 체크 (Cron)
+
+### SMS 알림 API (Phase 3)
 **관리자 전용**:
 - `GET /api/admin/sms-templates`: 템플릿 목록
 - `PUT /api/admin/sms-templates/[id]`: 템플릿 수정
@@ -258,10 +333,13 @@ await triggerNotification({
 - `upload-documents`: 문서 업로드
 
 ### 메시지 발송 (`/api/messages/`, `/api/message/`)
-- `send`: 즉시/예약 발송
+- `send`: 즉시/예약 발송 (SMS/LMS/MMS - MTS API)
 - `scheduled`: 예약 메시지 조회
 - `scheduled-send-check`: 예약 발송 체크 (Cron)
-- `upload-image`: 이미지 업로드
+- `upload-image`: 이미지 업로드 (MTS API)
+- `kakao/alimtalk/send`: 카카오 알림톡 발송
+- `kakao/friendtalk/send`: 카카오 친구톡 발송
+- `naver/talk/send`: 네이버 톡톡 발송
 - **템플릿 관리** (`templates/`): GET/POST, `[id]` (상세/수정/삭제)
 
 ### 캠페인 관리 (`/api/campaigns/`)
@@ -637,10 +715,10 @@ SUPABASE_SERVICE_ROLE_KEY=xxx
 # JWT
 JWT_SECRET=xxx
 
-# Naver SENS
-NAVER_SENS_SERVICE_ID=xxx
-NAVER_ACCESS_KEY_ID=xxx
-NAVER_SECRET_KEY=xxx
+# MTS API (Naver SENS 대체)
+MTS_AUTH_CODE=xxx
+MTS_API_URL=https://api.mtsco.co.kr
+MTS_TEMPLATE_API_URL=https://talks.mtsco.co.kr
 
 # OpenAI
 OPENAI_API_KEY=xxx
@@ -677,6 +755,21 @@ NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 
 ## 📝 최근 업데이트 히스토리
 
+### MTS API 전환 (Phase 0-8, 2025-01-25~28): 97.9% 완료
+- ✅ **Phase 0-2**: SMS/LMS/MMS 발송 (MTS API)
+- ✅ **Phase 3-5**: 이미지 업로드, 예약 발송
+- ✅ **Phase 6**: 카카오 알림톡
+- ✅ **Phase 7**: 카카오 친구톡
+- ✅ **Phase 8**: 네이버 톡톡
+- ⏳ **Phase 9**: 카카오 브랜드 메시지 (선택사항)
+- ⏳ **Phase 10**: 통합 테스트 (선택사항)
+
+**전환 상세**:
+- 총 47개 파일 중 46개 완료
+- 새로운 라이브러리: `src/lib/mtsApi.ts` (MTS API 통합)
+- Naver SENS 관련 코드 완전 제거
+- 모든 발송 API 엔드포인트 MTS로 전환
+
 ### Phase 3 (2025-01-24): SMS 알림 시스템
 - ✅ SMS 알림 템플릿 관리 시스템
 - ✅ 5가지 이벤트 알림 구현
@@ -693,7 +786,7 @@ NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 ### Phase 1 (2024-12~2025-01): 기본 시스템 구축
 - ✅ Next.js 15 + Supabase 기본 구조
 - ✅ JWT 인증 시스템
-- ✅ 메시지 발송 시스템 (Naver SENS)
+- ✅ 메시지 발송 시스템 (초기 Naver SENS)
 - ✅ AI 타겟 마케팅 (OpenAI)
 - ✅ 예약 관리 시스템
 - ✅ 추천인 시스템
@@ -703,17 +796,19 @@ NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 
 ## 📊 요약
 
-MTS Message는 **Next.js 15 + Supabase + JWT 인증**을 기반으로 한 종합 마케팅 플랫폼입니다.
+MTS Message는 **Next.js 15 + Supabase + JWT 인증 + MTS API**를 기반으로 한 종합 마케팅 플랫폼입니다.
 
 **핵심 기능**:
-1. **메시지 발송**: SMS/LMS/MMS 즉시/예약 발송
-2. **AI 타겟 마케팅**: OpenAI 기반 캠페인 자동 생성
-3. **예약 관리**: 공간 예약 및 자동 메시지
-4. **다중 역할**: 일반 사용자, 광고주, 영업사원, 관리자
-5. **추천인 시스템**: 2단계 수수료 구조
-6. **결제 시스템**: NicePay 연동 포인트 충전
-7. **업종별 차등 단가**: 정식 업종/커스텀 업종 관리
-8. **🆕 SMS 알림 시스템**: 관리자 알림 자동화
+1. **메시지 발송**: SMS/LMS/MMS 즉시/예약 발송 (MTS API)
+2. **카카오 메시징**: 알림톡, 친구톡 발송
+3. **네이버 메시징**: 톡톡 스마트알림 발송
+4. **AI 타겟 마케팅**: OpenAI 기반 캠페인 자동 생성
+5. **예약 관리**: 공간 예약 및 자동 메시지
+6. **다중 역할**: 일반 사용자, 광고주, 영업사원, 관리자
+7. **추천인 시스템**: 2단계 수수료 구조
+8. **결제 시스템**: NicePay 연동 포인트 충전
+9. **업종별 차등 단가**: 정식 업종/커스텀 업종 관리
+10. **SMS 알림 시스템**: 관리자 알림 자동화
 
 **아키텍처 특징**:
 - 클라이언트는 API Routes를 통해서만 데이터 접근
@@ -721,7 +816,16 @@ MTS Message는 **Next.js 15 + Supabase + JWT 인증**을 기반으로 한 종합
 - 폴링 기반 실시간 업데이트 (30초 간격)
 - JSONB 필드를 활용한 유연한 데이터 구조
 - 차등 단가 시스템으로 업종별 다른 가격 적용
-- 🆕 이벤트 기반 알림 시스템 (템플릿 변수 치환)
+- 이벤트 기반 알림 시스템 (템플릿 변수 치환)
+- **MTS API 통합**: Naver SENS 완전 대체 (97.9% 완료)
+
+**MTS API 통합 현황**:
+- SMS/LMS/MMS 발송: ✅ 완료
+- 카카오 알림톡: ✅ 완료
+- 카카오 친구톡: ✅ 완료
+- 네이버 톡톡: ✅ 완료
+- 카카오 브랜드: ⏳ 선택사항
+- 통합 테스트: ⏳ 선택사항
 
 **보안**:
 - Service Role Key는 서버 사이드에서만 사용
@@ -731,8 +835,9 @@ MTS Message는 **Next.js 15 + Supabase + JWT 인증**을 기반으로 한 종합
 
 ---
 
-**문서 버전**: v2.0
-**최종 업데이트**: 2025-01-24
+**문서 버전**: v2.3
+**최종 업데이트**: 2025-01-28
 **작성자**: Claude Code Analysis
+**주요 변경사항**: MTS API 전환 Phase 8 완료 (네이버 톡톡), 문서 업데이트
 
 이 문서는 코드베이스의 전체적인 구조와 주요 기능을 이해하는데 도움이 될 것입니다.

@@ -384,7 +384,12 @@ const MessageSendTab = () => {
           />
         );
       case "naver":
-        return <NaverTalkContent />;
+        return (
+          <NaverTalkContent
+            recipients={recipients}
+            selectedSenderNumber={selectedSenderNumber}
+          />
+        );
       default:
         return (
           <SmsMessageContent

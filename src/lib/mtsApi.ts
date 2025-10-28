@@ -812,3 +812,183 @@ export async function getMtsSenderProfiles(
     };
   }
 }
+
+/**
+ * 네이버 톡톡 템플릿 목록 조회
+ * @param navertalkId 네이버 톡톡 ID
+ * @param page 페이지 번호 (기본: 1)
+ * @param count 페이지당 개수 (기본: 100)
+ */
+export async function getNaverTalkTemplates(
+  navertalkId: string,
+  page: number = 1,
+  count: number = 100
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 요청 본문
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      navertalk_id: navertalkId,
+      page: page,
+      count: count,
+    };
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/naverTalk/nti/getTemplateList`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    // 성공 확인
+    if (result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '네이버 톡톡 템플릿 목록 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (네이버 톡톡 템플릿 목록 조회):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 네이버 톡톡 스마트알림 발송
+ * @param navertalkId 네이버 톡톡 ID
+ * @param templateCode 템플릿 코드
+ * @param toNumber 수신번호 (하이픈 없이)
+ * @param text 템플릿 내용 (변수 치환 완료된 텍스트)
+ * @param productCode 상품 코드 (INFORMATION: 정보성-알림, BENEFIT: 마케팅/광고-혜택, CARDINFO: 정보성-카드알림)
+ * @param buttons 버튼 정보 (선택, 최대 5개)
+ * @param imageHashId 이미지 해시 ID (선택)
+ * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
+ */
+export async function sendNaverTalk(
+  navertalkId: string,
+  templateCode: string,
+  toNumber: string,
+  text: string,
+  productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO',
+  buttons?: Array<{ type: 'WEB_LINK' | 'APP_LINK'; name: string; url?: string; mobileUrl?: string }>,
+  imageHashId?: string,
+  sendDate?: string
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 전화번호에서 하이픈 제거
+    const cleanToNumber = toNumber.replace(/-/g, '');
+
+    // 요청 본문
+    const requestBody: Record<string, unknown> = {
+      auth_code: MTS_AUTH_CODE,
+      navertalk_id: navertalkId,
+      code: templateCode,
+      phone_number: cleanToNumber,
+      text: text,
+      productCode: productCode,
+    };
+
+    // 버튼 추가
+    if (buttons && buttons.length > 0) {
+      requestBody.buttons = buttons;
+    }
+
+    // 이미지 해시 ID 추가
+    if (imageHashId) {
+      requestBody.sampleImageHashId = imageHashId;
+    }
+
+    // 예약 발송 시간이 있으면 추가
+    if (sendDate) {
+      requestBody.send_date = sendDate;
+    }
+
+    // API 호출
+    const response = await fetch(`${MTS_API_URL}/sndng/nti/sendMessage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    // 성공 확인 (1000: 네이버 톡톡 성공)
+    if (result.code === '1000') {
+      return {
+        success: true,
+        msgId: result.msg_id,
+        messageId: result.msg_id, // alias for compatibility
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '네이버 톡톡 발송 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (네이버 톡톡):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
