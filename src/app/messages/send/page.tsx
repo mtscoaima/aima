@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import MessageSendTab from "@/components/messages/MessageSendTab";
 import KakaoNaverRcsTab from "@/components/messages/KakaoNaverRcsTab";
+import ReservationManagementTab from "@/components/messages/ReservationManagementTab";
 
 const MessageSendPage = () => {
   const searchParams = useSearchParams();
@@ -14,7 +15,7 @@ const MessageSendPage = () => {
   // Initialize activeTab from URL parameters
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["message-send", "kakao-naver-rcs"].includes(tab)) {
+    if (tab && ["message-send", "kakao-naver-rcs", "reservations"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -25,6 +26,8 @@ const MessageSendPage = () => {
         return <MessageSendTab />;
       case "kakao-naver-rcs":
         return <KakaoNaverRcsTab />;
+      case "reservations":
+        return <ReservationManagementTab />;
       default:
         return null;
     }
@@ -57,6 +60,16 @@ const MessageSendPage = () => {
             onClick={() => setActiveTab("kakao-naver-rcs")}
           >
             카카오/네이버/RCS
+          </button>
+          <button
+            className={`bg-transparent border-none pb-3 px-1 text-base font-semibold cursor-pointer relative transition-colors duration-200 ${
+              activeTab === "reservations"
+                ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
+                : "text-gray-500 hover:text-blue-600"
+            }`}
+            onClick={() => setActiveTab("reservations")}
+          >
+            예약관리(공간관리용)
           </button>
         </div>
 

@@ -37,6 +37,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/reservations",
+        destination: "/messages/send?tab=reservations",
+        permanent: true,
+      },
+      {
+        source: "/reservations/:path*",
+        destination: "/messages/reservations/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

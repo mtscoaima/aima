@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (endDate) {
-      query = query.lte("start_datetime", endDate);
+      // 해당 날짜의 23:59:59까지 포함 (문자열 비교 문제 해결)
+      const endDateTime = `${endDate}T23:59:59`;
+      query = query.lte("start_datetime", endDateTime);
     }
 
     if (status) {
