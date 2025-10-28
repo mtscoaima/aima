@@ -992,3 +992,151 @@ export async function sendNaverTalk(
     };
   }
 }
+
+/**
+ * 카카오 브랜드 메시지 발송 (기본형: 전문방식)
+ *
+ * @param senderKey 발신 프로필 키
+ * @param templateCode 템플릿 코드
+ * @param toNumber 수신자 전화번호
+ * @param message 메시지 내용
+ * @param callbackNumber 발신 전화번호
+ * @param messageType 브랜드 메시지 타입 (TEXT, IMAGE, WIDE, WIDE_ITEM_LIST, CAROUSEL_FEED, PREMIUM_VIDEO)
+ * @param targeting 타겟팅 타입 (M: 전화번호, N: 국가코드+전화번호, I: 앱유저ID)
+ * @param attachment 첨부 내용 (버튼, 이미지, 쿠폰 등)
+ * @param tranType 전환전송 타입 (N: 전환안함, S: SMS, L: LMS, M: MMS)
+ * @param tranMessage 전환전송 메시지
+ * @param subject LMS 전송 시 제목
+ * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss)
+ * @returns MtsApiResult
+ */
+export async function sendKakaoBrand(
+  senderKey: string,
+  templateCode: string,
+  toNumber: string,
+  message: string,
+  callbackNumber: string,
+  messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' = 'TEXT',
+  targeting: 'M' | 'N' | 'I' = 'M',
+  attachment?: {
+    button?: Array<{
+      type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC';
+      url_mobile?: string;
+      url_pc?: string;
+    }>;
+    image?: {
+      img_url: string;
+      img_link?: string;
+    };
+    coupon?: {
+      description?: string;
+      url_pc?: string;
+      url_mobile?: string;
+    };
+    item?: {
+      list: Array<{
+        img_url: string;
+        url_mobile?: string;
+      }>;
+    };
+  },
+  tranType: 'N' | 'S' | 'L' | 'M' = 'N',
+  tranMessage?: string,
+  subject?: string,
+  sendDate?: string
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 전화번호에서 하이픈 제거
+    const cleanToNumber = toNumber.replace(/-/g, '');
+    const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
+
+    // 요청 본문
+    const requestBody: Record<string, unknown> = {
+      auth_code: MTS_AUTH_CODE,
+      sender_key: senderKey,
+      template_code: templateCode,
+      phone_number: cleanToNumber,
+      callback_number: cleanCallbackNumber,
+      message: message,
+      message_type: messageType,
+      send_mode: '3', // 3: 즉시발송
+      targeting: targeting,
+      tran_type: tranType,
+      country_code: '82',
+    };
+
+    // 첨부 내용 추가
+    if (attachment) {
+      requestBody.attachment = attachment;
+    }
+
+    // 전환 전송 메시지 추가
+    if (tranMessage && tranType !== 'N') {
+      requestBody.tran_message = tranMessage;
+    }
+
+    // LMS 제목 추가
+    if (subject && (tranType === 'L' || tranType === 'M')) {
+      requestBody.subject = subject;
+    }
+
+    // 예약 발송 시간이 있으면 추가
+    if (sendDate) {
+      requestBody.send_date = sendDate;
+    }
+
+    // API 호출
+    const response = await fetch(`${MTS_API_URL}/btalk/send/message/basic`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    // 성공 확인 (0000: 브랜드 메시지 성공)
+    if (result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        msgId: result.msg_id,
+        messageId: result.msg_id, // alias for compatibility
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '브랜드 메시지 발송 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (브랜드 메시지):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
