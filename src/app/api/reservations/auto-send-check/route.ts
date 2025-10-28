@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendNaverSMS } from "@/lib/naverSensApi";
+import { sendMtsSMS } from "@/lib/mtsApi";
 import { replaceTemplateVariables, determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -134,16 +134,17 @@ export async function POST(request: NextRequest) {
             continue; // 이미 발송됨
           }
 
-          // 5. 호스트 연락처 조회
-          let hostContactNumber = null;
-          if (rule.spaces?.host_contact_number_id) {
-            const { data: senderNumber } = await supabase
-              .from("sender_numbers")
-              .select("phone_number")
-              .eq("id", rule.spaces.host_contact_number_id)
-              .single();
+          // 5. 호스트 연락처 조회 (users.phone_number)
+          const { data: hostUserData } = await supabase
+            .from('users')
+            .select('phone_number')
+            .eq('id', rule.user_id)
+            .single();
 
-            hostContactNumber = senderNumber?.phone_number || null;
+          const hostContactNumber = hostUserData?.phone_number || null;
+
+          if (!hostContactNumber) {
+            throw new Error('발신번호를 찾을 수 없습니다');
           }
 
           // 6. 메시지 내용 생성 (변수 치환)
@@ -164,9 +165,9 @@ export async function POST(request: NextRequest) {
           // 전화번호 포맷 정리
           const cleanPhone = reservation.customer_phone.replace(/[^0-9]/g, "");
 
-          // 7. 네이버 SENS API로 메시지 발송
+          // 7. MTS API로 메시지 발송
           try {
-            const sendResult = await sendNaverSMS(cleanPhone, messageContent);
+            const sendResult = await sendMtsSMS(cleanPhone, messageContent, hostContactNumber);
 
             if (!sendResult.success) {
               throw new Error(sendResult.error || "발송 실패");

@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendNaverSMS, sendNaverMMS } from "@/lib/naverSensApi";
+import { sendMtsSMS, sendMtsMMS } from "@/lib/mtsApi";
 import { determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -112,26 +112,26 @@ export async function POST(request: NextRequest) {
       results.checked++;
 
       try {
-        // metadata에서 이미지 파일 ID 추출
+        // metadata에서 이미지 URL 추출 (MTS API는 이미지 URL 사용)
         const metadata = msg.metadata || {};
-        let imageFileIds: string[] = [];
+        let imageUrls: string[] = [];
 
-        if (metadata.image_file_ids) {
+        if (metadata.image_urls) {
           try {
             // JSON 문자열로 저장된 경우 파싱
-            if (typeof metadata.image_file_ids === 'string') {
-              imageFileIds = JSON.parse(metadata.image_file_ids);
-            } else if (Array.isArray(metadata.image_file_ids)) {
-              imageFileIds = metadata.image_file_ids;
+            if (typeof metadata.image_urls === 'string') {
+              imageUrls = JSON.parse(metadata.image_urls);
+            } else if (Array.isArray(metadata.image_urls)) {
+              imageUrls = metadata.image_urls;
             }
           } catch (e) {
-            console.error('이미지 파일 ID 파싱 오류:', e);
+            console.error('이미지 URL 파싱 오류:', e);
           }
         }
 
         // 메시지 타입 결정 (이미지가 있으면 MMS)
         let messageType: 'SMS' | 'LMS' | 'MMS';
-        if (imageFileIds && imageFileIds.length > 0) {
+        if (imageUrls && imageUrls.length > 0) {
           messageType = 'MMS';
         } else {
           messageType = determineMessageType(msg.message_content);
@@ -158,18 +158,46 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Naver SENS API 호출 (MMS 또는 SMS/LMS)
+        // 발신번호 조회 (users.phone_number)
+        let callbackNumber = metadata.from_number;
+        if (!callbackNumber) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('phone_number')
+            .eq('id', msg.user_id)
+            .single();
+
+          callbackNumber = userData?.phone_number || '';
+        }
+
+        if (!callbackNumber) {
+          throw new Error('발신번호를 찾을 수 없습니다');
+        }
+
+        // 예약 시간을 MTS API 날짜 형식으로 변환 (YYYYMMDDHHmmss)
+        const scheduledAt = msg.scheduled_at
+          ? new Date(msg.scheduled_at).toISOString().replace(/[-:T]/g, '').slice(0, 14)
+          : undefined;
+
+        // MTS API 호출 (MMS 또는 SMS/LMS)
         let result;
-        if (messageType === 'MMS' && imageFileIds.length > 0) {
-          result = await sendNaverMMS(
+        if (messageType === 'MMS' && imageUrls.length > 0) {
+          result = await sendMtsMMS(
             msg.to_number,
             msg.message_content,
             msg.subject || '',
-            imageFileIds,
-            metadata.from_number
+            imageUrls,
+            callbackNumber,
+            scheduledAt
           );
         } else {
-          result = await sendNaverSMS(msg.to_number, msg.message_content, msg.subject, metadata.from_number);
+          result = await sendMtsSMS(
+            msg.to_number,
+            msg.message_content,
+            callbackNumber,
+            msg.subject,
+            scheduledAt
+          );
         }
 
         if (result.success) {
@@ -205,7 +233,10 @@ export async function POST(request: NextRequest) {
             sent_at: sentAt,
             status: "sent",
             credit_used: creditRequired,
-            metadata: msg.metadata || {}
+            metadata: {
+              ...msg.metadata,
+              mts_msg_id: result.msgId || result.messageId
+            }
           });
 
           // 3) scheduled_messages 상태 변경

@@ -2,7 +2,7 @@
 
 > **프로젝트**: MTS Message Portal
 > **작성일**: 2025-10-28
-> **최종 수정**: 2025-10-28 (v1.2 - 시스템 알림 SMS 발신번호 추가)
+> **최종 수정**: 2025-10-28 (v1.6 - Phase 3 예약 Cron Job 전환 완료)
 > **목적**: Naver SENS API → MTS API 전환 작업 가이드
 
 ---
@@ -447,24 +447,38 @@ formData.append('image', imageFile);
 12. ⬜ 다중 수신자 발송 테스트
 ```
 
-### Phase 3: 예약 Cron Job
+### Phase 3: 예약 Cron Job ✅ 완료
 ```
-13. ⬜ /api/messages/scheduled-send-check 수정
-14. ⬜ /api/cron/send-scheduled-messages 수정
-15. ⬜ /api/reservations/auto-send-check 수정
+13. ✅ /api/messages/scheduled-send-check 수정 완료
+   - sendNaverSMS/sendNaverMMS → sendMtsSMS/sendMtsMMS 전환
+   - imageFileIds → imageUrls 파라미터 변경
+   - 발신번호 자동 조회 로직 추가 (users.phone_number)
+   - 예약 시간 날짜 형식 변환 (YYYYMMDDHHmmss)
+   - metadata에 mts_msg_id 필드 추가
+14. ✅ /api/cron/send-scheduled-messages 수정 완료
+   - sendNaverSMS → sendMtsSMS 전환
+   - 발신번호 자동 조회 로직 추가 (users.phone_number)
+   - 발신번호 누락 시 에러 처리 추가
+15. ✅ /api/reservations/auto-send-check 수정 완료
+   - sendNaverSMS → sendMtsSMS 전환
+   - 호스트 연락처 조회 방식 변경 (sender_numbers → users.phone_number)
+   - 발신번호 누락 시 에러 처리 추가
+16. ⬜ 예약 메시지 등록 및 발송 테스트
+17. ⬜ Cron Job 실행 테스트
+18. ⬜ 날짜 형식 변환 검증
 ```
 
 ### Phase 4: UI 정리
 ```
-16. ⬜ RCS 컴포넌트 삭제
-17. ⬜ 탭 명칭 변경 (카카오/네이버 톡톡)
+19. ⬜ RCS 컴포넌트 삭제
+20. ⬜ 탭 명칭 변경 (카카오/네이버 톡톡)
 ```
 
 ### Phase 5: 정리
 ```
-18. ⬜ naverSensApi.ts 삭제
-19. ⬜ /api/auth/send-verification 삭제
-20. ⬜ 환경변수 업데이트 (Naver SENS 제거)
+21. ⬜ naverSensApi.ts 삭제
+22. ⬜ /api/auth/send-verification 삭제
+23. ⬜ 환경변수 업데이트 (Naver SENS 제거)
 ```
 
 ---
@@ -683,16 +697,32 @@ POST /v2/sndng/ftk/sendMessages
 - [ ] 다중 수신자 발송 테스트
 - [ ] 이미지 업로드 응답 필드 (`images`) 확인
 
-### ✅ Phase 3: 예약 발송
-- [ ] 예약 메시지 등록
-- [ ] Cron Job 실행 (scheduled-send-check)
+### ✅ Phase 3: 예약 발송 (코드 완료, 테스트 대기)
+- [x] /api/messages/scheduled-send-check MTS API로 전환 완료
+  - [x] sendNaverSMS/sendNaverMMS → sendMtsSMS/sendMtsMMS 전환
+  - [x] imageFileIds → imageUrls 파라미터 변경
+  - [x] 발신번호 자동 조회 로직 추가 (users.phone_number)
+  - [x] 예약 시간 날짜 형식 변환 (YYYYMMDDHHmmss)
+  - [x] metadata에 mts_msg_id 필드 추가
+- [x] /api/cron/send-scheduled-messages MTS API로 전환 완료
+  - [x] sendNaverSMS → sendMtsSMS 전환
+  - [x] 발신번호 자동 조회 로직 추가
+  - [x] 발신번호 누락 시 에러 처리 추가
+- [x] /api/reservations/auto-send-check MTS API로 전환 완료
+  - [x] sendNaverSMS → sendMtsSMS 전환
+  - [x] 호스트 연락처 조회 방식 변경 (sender_numbers → users.phone_number)
+  - [x] 발신번호 누락 시 에러 처리 추가
+- [x] TypeScript 컴파일 에러 0개 확인
+- [ ] 예약 메시지 등록 테스트
+- [ ] Cron Job 실행 테스트 (scheduled-send-check)
 - [ ] 예약 시간 도래 시 자동 발송 확인
-- [ ] 날짜 형식 변환 (YYYYMMDDHHmmss) 확인
+- [ ] 날짜 형식 변환 검증 (YYYYMMDDHHmmss)
 
-### ✅ Phase 4: 예약관리 Cron
-- [ ] reservation_scheduled_messages 발송
-- [ ] reservation_auto_message_rules 자동 발송
-- [ ] 체크인/체크아웃 시점 메시지 발송
+### ✅ Phase 4: 예약관리 Cron (코드 완료, 테스트 대기)
+- [ ] reservation_scheduled_messages 발송 테스트
+- [ ] reservation_auto_message_rules 자동 발송 테스트
+- [ ] 체크인/체크아웃 시점 메시지 발송 테스트
+- [ ] 발신번호 누락 시 에러 처리 확인
 
 ### ✅ Phase 5: 카카오 서비스
 - [ ] 알림톡 템플릿 등록 및 조회
@@ -823,7 +853,31 @@ TEST_CALLING_NUMBER=01012345678  # 테스트용 발신번호
 - ✅ TypeScript 에러 수정
   - smsNotification.ts의 any 타입 → Record<string, unknown>로 변경
 
+**v1.6 (2025-10-28)**:
+- ✅ Phase 3 완료: 예약 메시지 Cron Job MTS 전환
+  - **/api/messages/scheduled-send-check** 전환 완료
+    - sendNaverSMS/sendNaverMMS → sendMtsSMS/sendMtsMMS
+    - imageFileIds → imageUrls 파라미터 변경
+    - 발신번호 자동 조회 로직 추가 (users.phone_number)
+    - 예약 시간 날짜 형식 변환 (YYYYMMDDHHmmss)
+    - metadata에 mts_msg_id 필드 추가
+  - **/api/cron/send-scheduled-messages** 전환 완료
+    - sendNaverSMS → sendMtsSMS 전환
+    - 발신번호 자동 조회 로직 추가 (users.phone_number)
+    - 발신번호 누락 시 에러 처리 추가
+  - **/api/reservations/auto-send-check** 전환 완료
+    - sendNaverSMS → sendMtsSMS 전환
+    - 호스트 연락처 조회 방식 변경 (sender_numbers → users.phone_number)
+    - 발신번호 누락 시 에러 처리 추가
+- ✅ TypeScript 컴파일 에러 0개
+  - sendMtsMMS 함수 파라미터 순서 수정
+  - 모든 타입 에러 해결 완료
+- ✅ 예약 발송 시스템 완전 전환
+  - scheduled_messages 테이블 처리 로직 MTS API 전환
+  - reservation_scheduled_messages 테이블 처리 로직 MTS API 전환
+  - reservation_auto_message_rules 테이블 처리 로직 MTS API 전환
+
 ---
 
-**버전**: 1.5 (최종본)
+**버전**: 1.6 (최종본)
 

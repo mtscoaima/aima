@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendNaverSMS } from "@/lib/naverSensApi";
+import { sendMtsSMS } from "@/lib/mtsApi";
 import { determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -109,8 +109,20 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Naver SENS API 호출
-        const result = await sendNaverSMS(msg.to_number, msg.message_content);
+        // 발신번호 조회 (users.phone_number)
+        const { data: userData } = await supabase
+          .from('users')
+          .select('phone_number')
+          .eq('id', msg.user_id)
+          .single();
+
+        const callbackNumber = userData?.phone_number;
+        if (!callbackNumber) {
+          throw new Error('발신번호를 찾을 수 없습니다');
+        }
+
+        // MTS API 호출
+        const result = await sendMtsSMS(msg.to_number, msg.message_content, callbackNumber);
 
         if (result.success) {
           // 발송 성공
