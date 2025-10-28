@@ -41,6 +41,26 @@ export interface AlimtalkSendRequest {
   scheduledAt?: string;
 }
 
+// 친구톡 발송 요청 타입
+export interface FriendtalkSendRequest {
+  senderKey: string;
+  recipients: string[];
+  message: string;
+  callbackNumber: string;
+  messageType: 'FT' | 'FI' | 'FW' | 'FL' | 'FC';
+  adFlag: 'Y' | 'N';
+  imageUrls?: string[];
+  buttons?: Array<{
+    name: string;
+    type: string;
+    url_mobile?: string;
+    url_pc?: string;
+  }>;
+  tranType?: 'SMS' | 'LMS' | 'MMS';
+  tranMessage?: string;
+  scheduledAt?: string;
+}
+
 /**
  * 발신 프로필 목록 조회
  */
@@ -143,6 +163,38 @@ export async function sendAlimtalk(request: AlimtalkSendRequest) {
     return result;
   } catch (error) {
     console.error('알림톡 발송 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 친구톡 V2 발송
+ */
+export async function sendFriendtalk(request: FriendtalkSendRequest) {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      throw new Error('로그인이 필요합니다.');
+    }
+
+    const response = await fetch('/api/messages/kakao/friendtalk/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '친구톡 발송 실패');
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('친구톡 발송 오류:', error);
     throw error;
   }
 }
