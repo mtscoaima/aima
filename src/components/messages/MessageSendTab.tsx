@@ -377,7 +377,12 @@ const MessageSendTab = () => {
           />
         );
       case "kakao":
-        return <KakaoMessageContent />;
+        return (
+          <KakaoMessageContent
+            recipients={recipients}
+            selectedSenderNumber={selectedSenderNumber}
+          />
+        );
       case "naver":
         return <NaverTalkContent />;
       default:

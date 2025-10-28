@@ -12,10 +12,21 @@ import {
 } from "lucide-react";
 import SimpleContentSaveModal from "../modals/SimpleContentSaveModal";
 import LoadContentModal from "../modals/LoadContentModal";
+import AlimtalkTab from "./AlimtalkTab";
+interface Recipient {
+  phone_number: string;
+  name?: string;
+}
 
-const KakaoMessageContent = () => {
+interface KakaoMessageContentProps {
+  recipients?: Recipient[];
+  selectedSenderNumber?: string;
+}
+const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
+  recipients = [],
+  selectedSenderNumber = "",
+}) => {
   const [activeKakaoTab, setActiveKakaoTab] = useState("alimtalk");
-  const [templateContent, setTemplateContent] = useState("");
   const [friendTalkContent, setFriendTalkContent] = useState("");
   const [friendTalkLength, setFriendTalkLength] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof templateTypes>("wide");
@@ -232,39 +243,10 @@ const KakaoMessageContent = () => {
 
       {/* 알림톡 탭 내용 */}
       {activeKakaoTab === "alimtalk" && (
-        <>
-          {/* 템플릿 내용 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 flex-1">
-            <textarea
-              placeholder="사용할 템플릿을 선택하면, 이곳에 템플릿 내용이 표시됩니다. (내용수정불가)"
-              className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[200px]"
-              value={templateContent}
-              onChange={(e) => setTemplateContent(e.target.value)}
-            />
-          </div>
-
-          {/* 문구 치환 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-medium text-gray-700">문구 치환</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Info className="w-4 h-4 text-blue-500" />
-              <span className="text-sm text-gray-600">내용에 변수가 없습니다.</span>
-            </div>
-          </div>
-
-          {/* 발송실패 시 문자대체발송 여부 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="smsBackup" className="rounded" />
-              <label htmlFor="smsBackup" className="text-sm text-gray-700">
-                발송실패 시 문자대체발송 여부
-              </label>
-              <HelpCircle className="w-4 h-4 text-gray-400" />
-            </div>
-          </div>
-        </>
+        <AlimtalkTab
+          recipients={recipients.map(r => r.phone_number)}
+          callbackNumber={selectedSenderNumber}
+        />
       )}
 
       {/* 친구톡 탭 내용 */}

@@ -740,3 +740,75 @@ export async function getMtsAlimtalkTemplate(
     };
   }
 }
+
+
+/**
+ * 카카오 발신 프로필 목록 조회
+ * @param page 페이지 번호 (기본: 1)
+ * @param count 페이지당 개수 (기본: 100)
+ */
+export async function getMtsSenderProfiles(
+  page: number = 1,
+  count: number = 100
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 요청 본문
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      page: page,
+      count: count,
+    };
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/sender/list`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    // 성공 확인
+    if (result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '발신 프로필 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (발신 프로필 조회):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}

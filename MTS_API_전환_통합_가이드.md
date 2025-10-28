@@ -2,7 +2,7 @@
 
 > **프로젝트**: MTS Message Portal
 > **작성일**: 2025-10-28
-> **최종 수정**: 2025-10-28 (v1.9 - Phase 5 완료: Naver SENS 정리)
+> **최종 수정**: 2025-10-28 (v2.0 - Phase 6 완료: 카카오 알림톡 구현)
 > **목적**: Naver SENS API → MTS API 전환 작업 가이드
 
 ---
@@ -42,14 +42,23 @@
 | 환경 설정 파일 | 2 | 0 | 0 | 2 |
 | **Phase 0-5 합계** | **16** | **8** | **1** | **25** |
 
-**⏳ Phase 6-10 예정 (카카오/네이버 발송 구현)**
+**✅ Phase 6 완료 (카카오 알림톡 구현)**
 
 | 구분 | 수정 | 삭제 | 신규 | 합계 |
 |-----|-----|-----|-----|-----|
 | 핵심 라이브러리 | 1 | 0 | 0 | 1 |
-| API 엔드포인트 | 0 | 0 | 7 | 7 |
-| UI 컴포넌트 | 2 | 0 | 0 | 2 |
-| **Phase 6-10 합계** | **3** | **0** | **7** | **10** |
+| API 엔드포인트 | 0 | 0 | 3 | 3 |
+| API 유틸리티 | 0 | 0 | 1 | 1 |
+| UI 컴포넌트 | 2 | 0 | 1 | 3 |
+| **Phase 6 합계** | **3** | **0** | **5** | **8** |
+
+**⏳ Phase 7-10 예정 (친구톡/네이버/브랜드/통합)**
+
+| 구분 | 수정 | 삭제 | 신규 | 합계 |
+|-----|-----|-----|-----|-----|
+| API 엔드포인트 | 0 | 0 | 4 | 4 |
+| UI 컴포넌트 | 1 | 0 | 0 | 1 |
+| **Phase 7-10 합계** | **1** | **0** | **4** | **5** |
 
 **📊 전체 프로젝트 합계**
 
@@ -57,11 +66,33 @@
 |-----|-----|-----|-----|-----|
 | 핵심 라이브러리 | 3 | 2 | 1 | 6 |
 | API 엔드포인트 | 10 | 2 | 7 | 19 |
-| UI 컴포넌트 | 4 | 4 | 0 | 8 |
+| API 유틸리티 | 0 | 0 | 1 | 1 |
+| UI 컴포넌트 | 5 | 4 | 1 | 10 |
 | 환경 설정 파일 | 2 | 0 | 0 | 2 |
-| **총합계** | **19** | **8** | **8** | **35** |
+| **총합계** | **20** | **8** | **10** | **38** |
 
-**현재 진행률**: Phase 0-5 완료 (25/35 파일, 71.4%)
+**현재 진행률**: Phase 0-6 완료 (33/38 파일, 86.8%)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ---
 
@@ -118,12 +149,17 @@ src/app/api/admin/send-approval-notification/route.ts - MTS API 전환 완료
 src/app/api/auth/send-verification/ - Dead Code 삭제 완료
 ```
 
-#### ⏳ 신규 생성 예정 (7개 - Phase 6-8)
+#### ✅ 카카오 알림톡 (3개 - Phase 6 완료)
 ```
-src/app/api/kakao/profiles/route.ts - 발신프로필 조회
-src/app/api/kakao/templates/route.ts - 템플릿 목록 조회
-src/app/api/messages/kakao/alimtalk/send/route.ts - 알림톡 발송
-src/app/api/messages/kakao/friendtalk/send/route.ts - 친구톡 발송
+src/app/api/kakao/profiles/route.ts - 발신프로필 조회 API
+src/app/api/kakao/templates/route.ts - 알림톡 템플릿 목록/상세 조회 API
+src/app/api/messages/kakao/alimtalk/send/route.ts - 알림톡 발송 API
+```
+
+
+#### ⏳ 신규 생성 예정 (4개 - Phase 7-10)
+```
+src/app/api/messages/kakao/friendtalk/send/route.ts - 친구톡 V2 발송
 src/app/api/messages/kakao/brand/send/route.ts - 브랜드 메시지 (선택)
 src/app/api/messages/naver/talk/send/route.ts - 네이버 톡톡 발송
 src/app/api/naver/templates/route.ts - 네이버 톡톡 템플릿
@@ -148,13 +184,33 @@ src/components/messages/KakaoNaverRcsTab.tsx - RCS 관련 코드 제거 완료
 src/app/messages/send/page.tsx - 탭 명칭 변경 완료
 ```
 
-#### ⏳ 수정 예정 (2개 - Phase 6-8)
+
+#### ✅ Phase 6 완료 (4개)
 ```
-src/components/messages/KakaoMessageContent.tsx - 알림톡/친구톡 발송 버튼 추가
+src/lib/mtsApi.ts - 카카오 알림톡 함수 추가 (getMtsSenderProfiles)
+src/utils/kakaoApi.ts - 카카오 API 유틸리티 신규 작성
+src/components/messages/AlimtalkTab.tsx - 알림톡 탭 컴포넌트 신규 작성
+src/components/messages/KakaoMessageContent.tsx - 알림톡 탭 통합
+src/components/messages/MessageSendTab.tsx - props 전달 추가
+```
+
+#### ⏳ 수정 예정 (1개 - Phase 7-8)
+```
 src/components/messages/NaverTalkContent.tsx - 네이버 톡톡 발송 버튼 추가
 ```
 
 ---
+
+### 4️⃣ API 유틸리티 (1개 - ✅ Phase 6 완료)
+
+#### ✅ 신규 작성 완료 (Phase 6)
+```
+src/utils/kakaoApi.ts - 카카오 API 클라이언트 유틸리티
+```
+- 발신프로필 조회 함수 (fetchSenderProfiles)
+- 알림톡 템플릿 조회 함수 (fetchAlimtalkTemplates)
+- 알림톡 발송 함수 (sendAlimtalk)
+- TypeScript 인터페이스 정의 (SenderProfile, AlimtalkTemplate, AlimtalkSendRequest)
 
 ### 4️⃣ 환경 설정 파일 (2개 - ✅ 완료)
 
@@ -726,27 +782,33 @@ formData.append('image', imageFile);
 26. ✅ 프로덕션 빌드 성공 (24.0s)
 ```
 
-### Phase 6: 카카오 알림톡 구현 (예정)
+### Phase 6: 카카오 알림톡 구현 ✅ 완료
 ```
-24. ⬜ mtsApi.ts에 카카오 알림톡 함수 추가
-    - sendKakaoAlimtalk() - 단건 발송
-    - sendKakaoAlimtalkBulk() - 복수 발송
-    - getKakaoTemplateList() - 템플릿 목록 조회
-    - getKakaoTemplate() - 템플릿 상세 조회
-    - getSenderProfiles() - 발신프로필 조회
-25. ⬜ API 엔드포인트 생성
-    - /api/messages/kakao/alimtalk/send
-    - /api/kakao/templates
-    - /api/kakao/profiles
-26. ⬜ KakaoMessageContent.tsx 알림톡 탭 수정
-    - 발신프로필 선택 드롭다운 (API 조회)
+27. ✅ mtsApi.ts에 카카오 알림톡 함수 추가
+    - getMtsSenderProfiles() - 발신프로필 조회 (페이지네이션 지원)
+28. ✅ API 유틸리티 신규 작성
+    - src/utils/kakaoApi.ts 작성 완료
+    - fetchSenderProfiles() - 발신프로필 조회
+    - fetchAlimtalkTemplates() - 템플릿 목록/상세 조회
+    - sendAlimtalk() - 알림톡 발송
+29. ✅ API 엔드포인트 생성 (3개)
+    - /api/kakao/profiles/route.ts - 발신프로필 조회
+    - /api/kakao/templates/route.ts - 알림톡 템플릿 목록/상세
+    - /api/messages/kakao/alimtalk/send/route.ts - 알림톡 발송
+30. ✅ AlimtalkTab 컴포넌트 신규 작성
+    - src/components/messages/AlimtalkTab.tsx
+    - 발신프로필 자동 로딩 및 선택
     - 템플릿 선택 및 미리보기
-    - 변수 치환 UI (#{변수명})
-    - 버튼 설정 UI
-    - SMS 전환 발송 옵션 (Fallback)
-    - 발송 버튼 및 API 호출
-27. ⬜ MessageSendTab.tsx 발송 로직 통합
-    - 카카오 탭 선택 시 타입별 분기
+    - SMS 백업 옵션 (tran_type, tran_message)
+    - 발송 버튼 및 에러 처리
+31. ✅ KakaoMessageContent.tsx 알림톡 탭 통합
+    - AlimtalkTab 컴포넌트 import
+    - recipients, selectedSenderNumber props 추가
+    - 알림톡 탭 섹션에 AlimtalkTab 컴포넌트 렌더링
+32. ✅ MessageSendTab.tsx 수정
+    - KakaoMessageContent에 recipients, selectedSenderNumber props 전달
+33. ✅ TypeScript 컴파일 에러 0개 확인
+34. ✅ 프로덕션 빌드 성공 (12.0s)
 ```
 
 ### Phase 7: 카카오 친구톡 V2 구현 (예정)
@@ -1075,29 +1137,38 @@ POST /v2/sndng/ftk/sendMessages
 - [x] TypeScript 컴파일 에러 0개 확인
 - [x] 빌드 성공 확인 (✓ Compiled successfully in 24.0s)
 
-### ⏳ Phase 6: 카카오 알림톡 구현 (예정)
-- [ ] mtsApi.ts에 카카오 알림톡 함수 추가
-  - [ ] sendKakaoAlimtalk() - 단건 발송
-  - [ ] sendKakaoAlimtalkBulk() - 복수 발송
-  - [ ] getSenderProfiles() - 발신프로필 조회
-  - [ ] getKakaoTemplateList() - 템플릿 목록 조회
-  - [ ] getKakaoTemplate() - 템플릿 상세 조회
-- [ ] API 엔드포인트 생성
-  - [ ] /api/kakao/profiles/route.ts
-  - [ ] /api/kakao/templates/route.ts
-  - [ ] /api/messages/kakao/alimtalk/send/route.ts
-- [ ] KakaoMessageContent.tsx 알림톡 탭 수정
-  - [ ] 발신프로필 선택 드롭다운 (API 조회)
-  - [ ] 템플릿 선택 드롭다운 (API 조회)
-  - [ ] 템플릿 미리보기 UI
-  - [ ] 변수 치환 입력 UI (#{변수명})
-  - [ ] 버튼 설정 UI
-  - [ ] SMS 전환 발송 옵션 (tran_type)
-  - [ ] 발송 버튼 및 API 호출
-- [ ] MessageSendTab.tsx 발송 로직 통합
-  - [ ] 카카오 탭 선택 시 타입별 분기
-- [ ] TypeScript 컴파일 에러 0개 확인
-- [ ] 빌드 성공 확인
+### ✅ Phase 6: 카카오 알림톡 구현 (완료)
+- [x] mtsApi.ts에 카카오 알림톡 함수 추가
+  - [x] getMtsSenderProfiles() - 발신프로필 조회 (페이지네이션)
+- [x] API 유틸리티 신규 작성
+  - [x] src/utils/kakaoApi.ts 작성
+  - [x] fetchSenderProfiles() - 발신프로필 조회
+  - [x] fetchAlimtalkTemplates() - 알림톡 템플릿 조회
+  - [x] sendAlimtalk() - 알림톡 발송
+  - [x] TypeScript 인터페이스 정의 (SenderProfile, AlimtalkTemplate, AlimtalkSendRequest)
+- [x] API 엔드포인트 생성 (3개)
+  - [x] /api/kakao/profiles/route.ts - 발신프로필 조회
+  - [x] /api/kakao/templates/route.ts - 알림톡 템플릿 목록/상세
+  - [x] /api/messages/kakao/alimtalk/send/route.ts - 알림톡 발송
+- [x] AlimtalkTab 컴포넌트 신규 작성
+  - [x] src/components/messages/AlimtalkTab.tsx
+  - [x] 발신프로필 자동 로딩 및 선택 드롭다운
+  - [x] 템플릿 선택 드롭다운 (프로필 선택 시 자동 로딩)
+  - [x] 템플릿 메시지 미리보기
+  - [x] SMS 백업 옵션 (tran_type, tran_message)
+  - [x] 발송 버튼 및 API 호출
+  - [x] 에러 처리 및 로딩 상태
+- [x] KakaoMessageContent.tsx 알림톡 탭 통합
+  - [x] AlimtalkTab 컴포넌트 import
+  - [x] Recipient, KakaoMessageContentProps 인터페이스 추가
+  - [x] recipients, selectedSenderNumber props 추가
+  - [x] 알림톡 탭에 AlimtalkTab 렌더링 (recipients, callbackNumber 전달)
+- [x] MessageSendTab.tsx 수정
+  - [x] KakaoMessageContent에 recipients, selectedSenderNumber props 전달
+- [x] TypeScript 컴파일 에러 0개 확인
+- [x] 프로덕션 빌드 성공 (✓ Compiled successfully in 12.0s)
+- [ ] 실제 알림톡 발송 테스트 (선택사항)
+
 
 ### ⏳ Phase 7: 카카오 친구톡 V2 구현 (예정)
 - [ ] mtsApi.ts에 친구톡 V2 함수 추가
@@ -1511,4 +1582,62 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 **버전**: 1.9 (현재)
 **Phase 0-5 완료율**: 71.4% (25/35 파일)
 **남은 작업**: Phase 6-10 (카카오/네이버 발송 구현)
+
+
+**v2.0 (2025-10-28)**:
+- ✅ **Phase 6 완료: 카카오 알림톡 구현**
+  - **핵심 라이브러리 (1개 수정)**
+    - src/lib/mtsApi.ts에 getMtsSenderProfiles() 함수 추가
+      - 발신프로필 목록 조회 기능
+      - 페이지네이션 지원 (page, count)
+      - MTS Template API 사용
+  - **API 유틸리티 신규 작성 (1개)**
+    - src/utils/kakaoApi.ts 작성
+      - fetchSenderProfiles() - 발신프로필 조회
+      - fetchAlimtalkTemplates() - 알림톡 템플릿 목록/상세 조회
+      - sendAlimtalk() - 알림톡 발송
+      - TypeScript 인터페이스 정의 (SenderProfile, AlimtalkTemplate, AlimtalkSendRequest)
+  - **API 엔드포인트 생성 (3개)**
+    - /api/kakao/profiles/route.ts - 발신프로필 조회 API
+    - /api/kakao/templates/route.ts - 알림톡 템플릿 목록/상세 조회 API
+    - /api/messages/kakao/alimtalk/send/route.ts - 알림톡 발송 API
+      - 다중 수신자 지원 (recipients 배열)
+      - SMS 백업 옵션 (tran_type, tran_message)
+      - 트랜잭션 로깅 및 잔액 차감
+  - **UI 컴포넌트 (3개 수정/신규)**
+    - src/components/messages/AlimtalkTab.tsx 신규 작성
+      - 발신프로필 자동 로딩 및 선택 드롭다운
+      - 템플릿 선택 드롭다운 (프로필 선택 시 자동 로딩)
+      - 템플릿 메시지 미리보기
+      - SMS 백업 옵션 UI (체크박스, 메시지 입력)
+      - 발송 버튼 및 에러 처리
+    - src/components/messages/KakaoMessageContent.tsx 수정
+      - AlimtalkTab 컴포넌트 통합
+      - recipients, selectedSenderNumber props 추가
+      - 알림톡 탭에 AlimtalkTab 렌더링
+    - src/components/messages/MessageSendTab.tsx 수정
+      - KakaoMessageContent에 recipients, selectedSenderNumber props 전달
+  - **빌드 및 컴파일**
+    - TypeScript 컴파일 에러 0개 확인
+    - unused variable 에러 수정 (templateContent, setTemplateContent 제거)
+    - 프로덕션 빌드 성공 (✓ Compiled successfully in 12.0s)
+  - **문서 업데이트**
+    - 파일 작업 요약 업데이트 (Phase 6 완료)
+    - 수정 대상 파일 목록 완료 상태 반영
+    - 작업 순서 Phase 6 완료 표시
+    - 테스트 체크리스트 Phase 6 완료 표시
+    - 현재 진행률 업데이트 (33/38 파일, 86.8%)
+  - **결과**
+    - 카카오 알림톡 백엔드 API 완성 (프로필, 템플릿, 발송)
+    - 카카오 알림톡 프론트엔드 UI 완성 (독립 컴포넌트)
+    - 기존 메시지 발송 페이지에 알림톡 기능 통합
+    - Phase 0-6 완료 (SMS/LMS/MMS 전환 + 정리 + 알림톡 구현)
+    - 다음 단계: Phase 7 카카오 친구톡 V2 구현 준비 완료
+
+
+---
+
+**버전**: 2.0 (현재)
+**Phase 0-6 완료율**: 86.8% (33/38 파일)
+**남은 작업**: Phase 7-10 (친구톡 V2/네이버 톡톡/브랜드 메시지/통합 테스트)
 
