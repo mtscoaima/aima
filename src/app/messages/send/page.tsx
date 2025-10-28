@@ -15,7 +15,7 @@ const MessageSendPage = () => {
   // Initialize activeTab from URL parameters
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["message-send", "kakao-naver-rcs", "reservations"].includes(tab)) {
+    if (tab && ["message-send", "kakao-naver", "reservations"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -24,7 +24,7 @@ const MessageSendPage = () => {
     switch (activeTab) {
       case "message-send":
         return <MessageSendTab />;
-      case "kakao-naver-rcs":
+      case "kakao-naver":
         return <KakaoNaverRcsTab />;
       case "reservations":
         return <ReservationManagementTab />;
@@ -53,13 +53,13 @@ const MessageSendPage = () => {
           </button>
           <button
             className={`bg-transparent border-none pb-3 px-1 text-base font-semibold cursor-pointer relative transition-colors duration-200 ${
-              activeTab === "kakao-naver-rcs"
+              activeTab === "kakao-naver"
                 ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
                 : "text-gray-500 hover:text-blue-600"
             }`}
-            onClick={() => setActiveTab("kakao-naver-rcs")}
+            onClick={() => setActiveTab("kakao-naver")}
           >
-            카카오/네이버/RCS
+            카카오/네이버 톡톡
           </button>
           <button
             className={`bg-transparent border-none pb-3 px-1 text-base font-semibold cursor-pointer relative transition-colors duration-200 ${

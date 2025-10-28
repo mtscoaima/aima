@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import SmsMessageContent from "./SmsMessageContent";
 import KakaoMessageContent from "./KakaoMessageContent";
-import RcsMessageContent from "./RcsMessageContent";
 import NaverTalkContent from "./NaverTalkContent";
 import SenderNumberSelectModal from "../modals/SenderNumberSelectModal";
 import SenderNumberManageModal from "../modals/SenderNumberManageModal";
@@ -75,7 +74,6 @@ const MessageSendTab = () => {
     switch (tab) {
       case "sms": return "#6a1b9a";
       case "kakao": return "#795548";
-      case "rcs": return "#2c398a";
       case "naver": return "#00a732";
       default: return "#6a1b9a";
     }
@@ -380,8 +378,6 @@ const MessageSendTab = () => {
         );
       case "kakao":
         return <KakaoMessageContent />;
-      case "rcs":
-        return <RcsMessageContent />;
       case "naver":
         return <NaverTalkContent />;
       default:
@@ -598,17 +594,6 @@ const MessageSendTab = () => {
             onClick={() => setActiveMessageTab("kakao")}
           >
             💬 카카오톡
-          </button>
-          <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
-              activeMessageTab === "rcs"
-                ? "border border-[#2c398a]"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-            style={activeMessageTab === "rcs" ? { backgroundColor: "#2c398a20", color: "#2c398a" } : {}}
-            onClick={() => setActiveMessageTab("rcs")}
-          >
-            🔵 RCS 문자
           </button>
           <button
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
