@@ -21,6 +21,7 @@ export function convertToMtsDateFormat(dateString: string): string {
 
 // MTS API 응답 타입
 export interface MtsApiResult {
+  messageId?: string; // msgId의 alias (호환성)
   success: boolean;
   msgId?: string;
   error?: string;
@@ -100,12 +101,14 @@ function getErrorMessage(code: string): string {
  * @param toNumber 수신번호 (하이픈 없이)
  * @param message 메시지 내용
  * @param callbackNumber 발신번호 (하이픈 없이)
+ * @param subject 제목 (LMS용, 선택)
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
  */
 export async function sendMtsSMS(
   toNumber: string,
   message: string,
   callbackNumber: string,
+  subject?: string,
   sendDate?: string
 ): Promise<MtsApiResult> {
   try {
@@ -130,6 +133,11 @@ export async function sendMtsSMS(
       message: message,
     };
 
+    // 제목이 있으면 추가 (LMS용)
+    if (subject) {
+      requestBody.subject = subject;
+    }
+
     // 예약 발송 시간이 있으면 추가
     if (sendDate) {
       requestBody.send_date = sendDate;
@@ -151,6 +159,7 @@ export async function sendMtsSMS(
       return {
         success: true,
         msgId: result.msg_id,
+        messageId: result.msg_id, // alias for compatibility
         responseData: result,
       };
     }
@@ -186,16 +195,16 @@ export async function sendMtsSMS(
  * @param toNumber 수신번호 (하이픈 없이)
  * @param message 메시지 내용
  * @param subject 제목
- * @param callbackNumber 발신번호 (하이픈 없이)
  * @param imageUrls 이미지 URL 배열 (MTS 업로드 후 받은 경로)
+ * @param callbackNumber 발신번호 (하이픈 없이)
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
  */
 export async function sendMtsMMS(
   toNumber: string,
   message: string,
   subject: string,
-  callbackNumber: string,
   imageUrls: string[],
+  callbackNumber: string,
   sendDate?: string
 ): Promise<MtsApiResult> {
   try {
@@ -245,6 +254,7 @@ export async function sendMtsMMS(
       return {
         success: true,
         msgId: result.msg_id,
+        messageId: result.msg_id, // alias for compatibility
         responseData: result,
       };
     }
@@ -429,6 +439,7 @@ export async function sendMtsAlimtalk(
       return {
         success: true,
         msgId: result.msg_id,
+        messageId: result.msg_id, // alias for compatibility
         responseData: result,
       };
     }
@@ -554,6 +565,7 @@ export async function sendMtsFriendtalk(
       return {
         success: true,
         msgId: result.msg_id,
+        messageId: result.msg_id, // alias for compatibility
         responseData: result,
       };
     }

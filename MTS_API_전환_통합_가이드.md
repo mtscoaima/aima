@@ -427,31 +427,44 @@ formData.append('image', imageFile);
 7. ⬜ 관리자 승인 알림 테스트
 ```
 
-### Phase 2: 메시지 발송 API
+### Phase 2: 메시지 발송 API ✅ 완료
 ```
-8. ⬜ src/lib/messageSender.ts 수정
-9. ⬜ /api/messages/send 테스트
-10. ⬜ /api/message/send 수정
+8. ✅ src/lib/messageSender.ts 수정 완료
+   - sendNaverSMS → sendMtsSMS 전환
+   - sendNaverMMS → sendMtsMMS 전환
+   - imageFileIds → imageUrls 파라미터 변경
+   - 발신번호 자동 조회 로직 추가 (users.phone_number)
+   - metadata 필드 변경: naver_request_id → mts_msg_id
+9. ✅ /api/messages/send 수정 완료
+   - imageFileIds → imageUrls 파라미터 변경
+10. ✅ /api/message/send 수정 완료
+   - sendNaverSMS → sendMtsSMS 전환
+   - sendNaverMMS → sendMtsMMS 전환
+   - fileIds → imageUrls 파라미터 변경
+   - callbackNumber 파라미터 필수 추가
+   - 응답 필드 변경: requestId → messageId
+11. ⬜ 즉시 발송 테스트
+12. ⬜ 다중 수신자 발송 테스트
 ```
 
 ### Phase 3: 예약 Cron Job
 ```
-11. ⬜ /api/messages/scheduled-send-check 수정
-12. ⬜ /api/cron/send-scheduled-messages 수정
-13. ⬜ /api/reservations/auto-send-check 수정
+13. ⬜ /api/messages/scheduled-send-check 수정
+14. ⬜ /api/cron/send-scheduled-messages 수정
+15. ⬜ /api/reservations/auto-send-check 수정
 ```
 
 ### Phase 4: UI 정리
 ```
-14. ⬜ RCS 컴포넌트 삭제
-15. ⬜ 탭 명칭 변경 (카카오/네이버 톡톡)
+16. ⬜ RCS 컴포넌트 삭제
+17. ⬜ 탭 명칭 변경 (카카오/네이버 톡톡)
 ```
 
 ### Phase 5: 정리
 ```
-16. ⬜ naverSensApi.ts 삭제
-17. ⬜ /api/auth/send-verification 삭제
-18. ⬜ 환경변수 업데이트
+18. ⬜ naverSensApi.ts 삭제
+19. ⬜ /api/auth/send-verification 삭제
+20. ⬜ 환경변수 업데이트 (Naver SENS 제거)
 ```
 
 ---
@@ -657,11 +670,17 @@ POST /v2/sndng/ftk/sendMessages
 - [ ] 회원 승인 처리 → 사용자 SMS 수신 테스트
 - [ ] 에러 코드 3008 (전화번호 오류) 핸들링 확인
 
-### ✅ Phase 2: 즉시 발송
-- [ ] SMS 즉시 발송 (90바이트 이하)
-- [ ] LMS 즉시 발송 (90바이트 초과)
-- [ ] MMS 즉시 발송 (이미지 첨부)
-- [ ] 다중 수신자 발송
+### ✅ Phase 2: 즉시 발송 (코드 완료, 테스트 대기)
+- [x] messageSender.ts MTS API로 전환 완료
+- [x] /api/messages/send 수정 완료
+- [x] /api/message/send 수정 완료
+- [x] MtsApiResult 타입에 messageId 필드 추가
+- [x] sendMtsSMS에 subject 파라미터 추가
+- [x] 발신번호 자동 조회 로직 구현 (users.phone_number)
+- [ ] SMS 즉시 발송 (90바이트 이하) 테스트
+- [ ] LMS 즉시 발송 (90바이트 초과) 테스트
+- [ ] MMS 즉시 발송 (이미지 첨부) 테스트
+- [ ] 다중 수신자 발송 테스트
 - [ ] 이미지 업로드 응답 필드 (`images`) 확인
 
 ### ✅ Phase 3: 예약 발송
@@ -786,7 +805,25 @@ TEST_CALLING_NUMBER=01012345678  # 테스트용 발신번호
   - 함수 시그니처 개선 (File | Buffer → Buffer, mimeType 파라미터 추가)
 - ✅ 모든 TypeScript 컴파일 에러 수정 완료
 
+**v1.5 (2025-10-28)**:
+- ✅ Phase 2 완료: 메시지 발송 API MTS 전환
+  - src/lib/messageSender.ts 전환 완료
+    - sendNaverSMS/sendNaverMMS → sendMtsSMS/sendMtsMMS
+    - imageFileIds → imageUrls 파라미터 변경
+    - 발신번호 자동 조회 로직 추가 (users.phone_number)
+    - metadata 필드명 변경: naver_request_id → mts_msg_id
+  - /api/messages/send 수정 완료
+  - /api/message/send 완전 재작성 완료
+- ✅ MtsApiResult 타입 개선
+  - messageId 필드 추가 (msgId의 alias, 호환성)
+  - 모든 성공 응답에 messageId 포함
+- ✅ sendMtsSMS/sendMtsMMS 함수 시그니처 개선
+  - sendMtsSMS에 subject 파라미터 추가 (LMS용)
+  - 파라미터 순서 통일 및 문서화
+- ✅ TypeScript 에러 수정
+  - smsNotification.ts의 any 타입 → Record<string, unknown>로 변경
+
 ---
 
-**버전**: 1.4 (최종본)
+**버전**: 1.5 (최종본)
 

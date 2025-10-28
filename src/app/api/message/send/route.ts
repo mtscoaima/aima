@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendNaverSMS, sendNaverMMS } from "@/lib/naverSensApi";
+import { sendMtsSMS, sendMtsMMS } from "@/lib/mtsApi";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { toNumber, toNumbers, subject, message, fileIds } = body;
+    const { toNumber, toNumbers, subject, message, imageUrls, callbackNumber } = body;
 
     // 필수 필드 검증
     if (!message) {
       return NextResponse.json(
         { error: "메시지 내용은 필수입니다." },
+        { status: 400 }
+      );
+    }
+
+    if (!callbackNumber) {
+      return NextResponse.json(
+        { error: "발신번호는 필수입니다." },
         { status: 400 }
       );
     }
@@ -35,23 +42,29 @@ export async function POST(request: NextRequest) {
 
       try {
         let result;
-        if (fileIds && fileIds.length > 0) {
-          // MMS 발송 (파일 첨부)
-          result = await sendNaverMMS(
+        if (imageUrls && imageUrls.length > 0) {
+          // MMS 발송 (이미지 첨부)
+          result = await sendMtsMMS(
             recipient,
             message,
             subject || "",
-            fileIds
+            imageUrls,
+            callbackNumber
           );
         } else {
-          // SMS/LMS 발송 (자동 타입 결정)
-          result = await sendNaverSMS(recipient, message, subject);
+          // SMS/LMS 발송 (MTS API가 자동으로 90바이트 기준 판단)
+          result = await sendMtsSMS(
+            recipient,
+            message,
+            callbackNumber,
+            subject
+          );
         }
 
         results.push({
           toNumber: recipient,
           success: result.success,
-          data: result.success ? { requestId: result.requestId } : undefined,
+          data: result.success ? { messageId: result.messageId } : undefined,
           error: result.success ? undefined : result.error,
         });
       } catch (error) {

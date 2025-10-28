@@ -48,8 +48,8 @@ async function getSystemCallbackNumber(): Promise<string> {
       .limit(1)
       .single();
 
-    const siteSettings = (settings?.site_settings as any) || {};
-    return siteSettings.contact_phone || '070-8824-1139';
+    const siteSettings = (settings?.site_settings as Record<string, unknown>) || {};
+    return (siteSettings.contact_phone as string) || '070-8824-1139';
   } catch (error) {
     console.error('시스템 발신번호 조회 오류:', error);
     return '070-8824-1139'; // Fallback
@@ -82,8 +82,8 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
         formattedPhoneNumber,
         message.message,
         message.subject || "",
-        callbackNumber,
-        message.imageUrls
+        message.imageUrls,
+        callbackNumber
       );
     } else {
       // SMS/LMS 발송 (MTS API에서 자동 판단)
