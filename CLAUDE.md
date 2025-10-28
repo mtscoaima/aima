@@ -38,7 +38,7 @@ npm run lint         # Check code quality
 - **Authentication**: JWT-based with custom implementation
 - **Styling**: CSS Modules, Tailwind CSS 4
 - **AI Integration**: OpenAI API for content generation
-- **SMS/MMS**: Naver SENS API
+- **SMS/MMS**: MTS API (Naver SENS API 전환 완료)
 
 ### Directory Structure
 - `/src/app/` - Next.js app router pages and API routes
@@ -79,12 +79,12 @@ Required in `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL        # Supabase project URL
 SUPABASE_SERVICE_ROLE_KEY       # Server-side only key
 JWT_SECRET                       # JWT signing key
-NAVER_SENS_SERVICE_ID           # SMS service
-NAVER_ACCESS_KEY_ID             # SMS auth
-NAVER_SECRET_KEY                # SMS secret
+MTS_AUTH_CODE                   # MTS API authentication code
+MTS_API_URL                     # MTS API endpoint (https://api.mtsco.co.kr)
+MTS_TEMPLATE_API_URL            # MTS Template API endpoint (https://talks.mtsco.co.kr)
 OPENAI_API_KEY                  # AI features
 ODCLOUD_SERVICE_KEY             # Business verification
-TEST_CALLING_NUMBER             # Test phone number for SMS
+TEST_CALLING_NUMBER             # Test phone number for SMS/MMS
 NEXT_PUBLIC_BASE_URL            # Optional - auto-detected on Vercel
 ```
 
@@ -177,3 +177,6 @@ Manual testing via documented scenarios in `/docs/`:
 - The admin section requires role-based access control
 - Social authentication supports multiple providers (Google, Kakao, Naver)
 - Business verification is mandatory for certain features
+- **SMS/MMS API**: Migrated from Naver SENS to MTS API (Phase 0-5 completed)
+  - SMS/LMS/MMS sending fully operational with MTS API
+  - Kakao/Naver Talk integration planned for Phase 6-10

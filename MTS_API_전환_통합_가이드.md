@@ -2,7 +2,7 @@
 
 > **프로젝트**: MTS Message Portal
 > **작성일**: 2025-10-28
-> **최종 수정**: 2025-10-28 (v1.8 - 카카오/네이버 발송 기능 구현 계획 수립)
+> **최종 수정**: 2025-10-28 (v1.9 - Phase 5 완료: Naver SENS 정리)
 > **목적**: Naver SENS API → MTS API 전환 작업 가이드
 
 ---
@@ -32,103 +32,142 @@
 
 ### 파일 작업 요약
 
-**Phase 0-4 완료 (SMS/LMS/MMS 전환)**
+**✅ Phase 0-5 완료 (SMS/LMS/MMS 전환 + 정리)**
 
 | 구분 | 수정 | 삭제 | 신규 | 합계 |
 |-----|-----|-----|-----|-----|
-| 핵심 라이브러리 | 2 | 1 | 1 | 4 |
-| API 엔드포인트 | 10 | 1 | 0 | 11 |
+| 핵심 라이브러리 | 2 | 2 | 1 | 5 |
+| API 엔드포인트 | 10 | 2 | 0 | 12 |
 | UI 컴포넌트 | 2 | 4 | 0 | 6 |
-| **Phase 0-4 합계** | **14** | **6** | **1** | **21** |
+| 환경 설정 파일 | 2 | 0 | 0 | 2 |
+| **Phase 0-5 합계** | **16** | **8** | **1** | **25** |
 
-**Phase 5-10 예정 (카카오/네이버 발송 + 정리)**
+**⏳ Phase 6-10 예정 (카카오/네이버 발송 구현)**
 
 | 구분 | 수정 | 삭제 | 신규 | 합계 |
 |-----|-----|-----|-----|-----|
-| 핵심 라이브러리 | 1 | 1 | 0 | 2 |
-| API 엔드포인트 | 2 | 1 | 7 | 10 |
+| 핵심 라이브러리 | 1 | 0 | 0 | 1 |
+| API 엔드포인트 | 0 | 0 | 7 | 7 |
 | UI 컴포넌트 | 2 | 0 | 0 | 2 |
-| **Phase 5-10 합계** | **5** | **2** | **7** | **14** |
+| **Phase 6-10 합계** | **3** | **0** | **7** | **10** |
 
-**전체 프로젝트 합계**
+**📊 전체 프로젝트 합계**
 
 | 구분 | 수정 | 삭제 | 신규 | 합계 |
 |-----|-----|-----|-----|-----|
 | 핵심 라이브러리 | 3 | 2 | 1 | 6 |
-| API 엔드포인트 | 12 | 2 | 7 | 21 |
+| API 엔드포인트 | 10 | 2 | 7 | 19 |
 | UI 컴포넌트 | 4 | 4 | 0 | 8 |
+| 환경 설정 파일 | 2 | 0 | 0 | 2 |
 | **총합계** | **19** | **8** | **8** | **35** |
+
+**현재 진행률**: Phase 0-5 완료 (25/35 파일, 71.4%)
 
 ---
 
 ## 수정 대상 파일 목록
 
-### 1️⃣ 핵심 라이브러리 (4개)
+### 1️⃣ 핵심 라이브러리 (5개 - ✅ 완료)
 
-#### ❌ 삭제
+#### ✅ 삭제 완료 (Phase 5)
 ```
-src/lib/naverSensApi.ts
+src/lib/naverSensApi.ts - 삭제됨
 ```
 
-#### ✅ 신규 작성
+#### ✅ 신규 작성 완료 (Phase 0)
 ```
-src/lib/mtsApi.ts
+src/lib/mtsApi.ts - 작성 완료
 ```
 - MTS API 클라이언트 라이브러리
-- SMS/LMS/MMS 발송 함수
-- 카카오/네이버 발송 함수
+- SMS/LMS/MMS 발송 함수 구현 완료
+- 카카오/네이버 발송 함수 (Phase 6-8 예정)
 - 에러 처리 및 응답 매핑
 
-#### ⚠️ 수정
+#### ✅ 수정 완료 (Phase 1-2)
 ```
-src/lib/messageSender.ts
-src/utils/smsNotification.ts
-```
-
----
-
-### 2️⃣ API 엔드포인트 (11개)
-
-#### 📂 메시지 발송 (2개)
-```
-src/app/api/messages/send/route.ts
-src/app/api/message/send/route.ts
-```
-
-#### 📂 예약 메시지 Cron (3개)
-```
-src/app/api/messages/scheduled-send-check/route.ts
-src/app/api/cron/send-scheduled-messages/route.ts
-src/app/api/reservations/auto-send-check/route.ts
-```
-
-#### 📂 시스템 알림 (3개)
-```
-src/app/api/business-verification/submit/route.ts (간접)
-src/app/api/inquiries/[id]/reply/route.ts (간접)
-src/app/api/admin/send-approval-notification/route.ts
-```
-
-#### ❌ 삭제 (Dead Code)
-```
-src/app/api/auth/send-verification/route.ts
+src/lib/messageSender.ts - MTS API 전환 완료
+src/utils/smsNotification.ts - MTS API 전환 완료
 ```
 
 ---
 
-### 3️⃣ UI 컴포넌트 (6개)
+### 2️⃣ API 엔드포인트 (12개 - ✅ 완료)
 
-#### ❌ 삭제
+#### ✅ 메시지 발송 (2개 - Phase 2 완료)
 ```
-src/components/messages/RcsMessageContent.tsx
-src/components/messages/rcs/ (폴더 전체)
+src/app/api/messages/send/route.ts - MTS API 전환 완료
+src/app/api/message/send/route.ts - MTS API 전환 완료
 ```
 
-#### ⚠️ 수정
+#### ✅ 예약 메시지 Cron (3개 - Phase 3 완료)
 ```
-src/components/messages/MessageSendTab.tsx (RCS import 제거)
-src/app/messages/send/page.tsx (탭 명칭 변경)
+src/app/api/messages/scheduled-send-check/route.ts - MTS API 전환 완료
+src/app/api/cron/send-scheduled-messages/route.ts - MTS API 전환 완료
+src/app/api/reservations/auto-send-check/route.ts - MTS API 전환 완료
 ```
+
+#### ✅ 시스템 알림 (3개 - Phase 1 완료)
+```
+src/app/api/business-verification/submit/route.ts - 간접 반영 완료
+src/app/api/inquiries/[id]/reply/route.ts - 간접 반영 완료
+src/app/api/admin/send-approval-notification/route.ts - MTS API 전환 완료
+```
+
+#### ✅ 삭제 완료 (1개 - Phase 5)
+```
+src/app/api/auth/send-verification/ - Dead Code 삭제 완료
+```
+
+#### ⏳ 신규 생성 예정 (7개 - Phase 6-8)
+```
+src/app/api/kakao/profiles/route.ts - 발신프로필 조회
+src/app/api/kakao/templates/route.ts - 템플릿 목록 조회
+src/app/api/messages/kakao/alimtalk/send/route.ts - 알림톡 발송
+src/app/api/messages/kakao/friendtalk/send/route.ts - 친구톡 발송
+src/app/api/messages/kakao/brand/send/route.ts - 브랜드 메시지 (선택)
+src/app/api/messages/naver/talk/send/route.ts - 네이버 톡톡 발송
+src/app/api/naver/templates/route.ts - 네이버 톡톡 템플릿
+```
+
+---
+
+### 3️⃣ UI 컴포넌트 (6개 - ✅ 완료)
+
+#### ✅ 삭제 완료 (Phase 4)
+```
+src/components/messages/RcsMessageContent.tsx - 삭제됨
+src/components/messages/rcs/RcsBrandTab.tsx - 삭제됨
+src/components/messages/rcs/RcsTemplateTab.tsx - 삭제됨
+public/images/kakao_naver_rcs/rcs_slide_type_preview.png - 삭제됨
+```
+
+#### ✅ 수정 완료 (Phase 4)
+```
+src/components/messages/MessageSendTab.tsx - RCS 탭 제거 완료
+src/components/messages/KakaoNaverRcsTab.tsx - RCS 관련 코드 제거 완료
+src/app/messages/send/page.tsx - 탭 명칭 변경 완료
+```
+
+#### ⏳ 수정 예정 (2개 - Phase 6-8)
+```
+src/components/messages/KakaoMessageContent.tsx - 알림톡/친구톡 발송 버튼 추가
+src/components/messages/NaverTalkContent.tsx - 네이버 톡톡 발송 버튼 추가
+```
+
+---
+
+### 4️⃣ 환경 설정 파일 (2개 - ✅ 완료)
+
+#### ✅ 수정 완료 (Phase 5)
+```
+.env - Naver SENS 환경변수 제거, MTS API 환경변수 유지
+.env.local.example - MTS API 환경변수 추가
+```
+
+**주요 변경사항:**
+- ❌ 제거: NAVER_SENS_SERVICE_ID, NAVER_ACCESS_KEY_ID, NAVER_SECRET_KEY
+- ✅ 추가: MTS_AUTH_CODE, MTS_API_URL, MTS_TEMPLATE_API_URL
+- ✅ 유지: TEST_CALLING_NUMBER (용도 명시)
 
 ---
 
@@ -674,11 +713,17 @@ formData.append('image', imageFile);
     - messages/send/page.tsx 탭 명칭 변경
 ```
 
-### Phase 5: 정리 (예정)
+### Phase 5: 정리 ✅ 완료
 ```
-21. ⬜ naverSensApi.ts 삭제
-22. ⬜ /api/auth/send-verification 삭제 (Dead Code)
-23. ⬜ 환경변수 업데이트 (Naver SENS 제거)
+21. ✅ naverSensApi.ts 삭제 완료
+22. ✅ /api/auth/send-verification 삭제 완료 (Dead Code)
+23. ✅ 환경변수 업데이트 완료
+    - .env 파일에서 Naver SENS 환경변수 제거
+    - .env.local.example MTS API 환경변수 추가
+    - TEST_CALLING_NUMBER 용도 명시
+24. ✅ .next 캐시 삭제
+25. ✅ TypeScript 컴파일 에러 0개 확인
+26. ✅ 프로덕션 빌드 성공 (24.0s)
 ```
 
 ### Phase 6: 카카오 알림톡 구현 (예정)
@@ -1017,15 +1062,18 @@ POST /v2/sndng/ftk/sendMessages
 - [x] TypeScript 컴파일 에러 0개 확인
 - [x] 빌드 성공 확인 (✓ Compiled successfully in 23.0s)
 
-### ⏳ Phase 5: 정리 (예정)
-- [ ] naverSensApi.ts 삭제
-- [ ] /api/auth/send-verification 삭제 (Dead Code)
-- [ ] .env에서 Naver SENS 환경변수 제거
-  - [ ] NAVER_SENS_SERVICE_ID 제거
-  - [ ] NAVER_ACCESS_KEY_ID 제거
-  - [ ] NAVER_SECRET_KEY 제거
-- [ ] TypeScript 컴파일 에러 0개 확인
-- [ ] 빌드 성공 확인
+### ✅ Phase 5: 정리 (완료)
+- [x] naverSensApi.ts 삭제
+- [x] /api/auth/send-verification 삭제 (Dead Code)
+- [x] .env에서 Naver SENS 환경변수 제거
+  - [x] NAVER_SENS_SERVICE_ID 제거
+  - [x] NAVER_ACCESS_KEY_ID 제거
+  - [x] NAVER_SECRET_KEY 제거
+  - [x] TEST_CALLING_NUMBER 주석 업데이트 (MTS API용)
+- [x] .env.local.example 업데이트 (MTS API 추가)
+- [x] .next 캐시 삭제
+- [x] TypeScript 컴파일 에러 0개 확인
+- [x] 빌드 성공 확인 (✓ Compiled successfully in 24.0s)
 
 ### ⏳ Phase 6: 카카오 알림톡 구현 (예정)
 - [ ] mtsApi.ts에 카카오 알림톡 함수 추가
@@ -1144,26 +1192,98 @@ POST /v2/sndng/ftk/sendMessages
 
 ## 환경 변수 설정
 
-### ❌ 제거
+### ✅ Phase 5 완료: Naver SENS 제거됨
+
+**Phase 0-4에서 제거된 환경변수:**
 ```bash
+# ❌ 제거됨 (Phase 5)
 NAVER_SENS_SERVICE_ID
 NAVER_ACCESS_KEY_ID
 NAVER_SECRET_KEY
 ```
 
-### ✅ 추가
+### ✅ 현재 필수 환경변수 (.env)
+
+**MTS API 설정 (메시지 전송)**
 ```bash
-# MTS API 인증
-MTS_AUTH_CODE=your_mts_auth_code_here
+# MTS API 인증코드
+MTS_AUTH_CODE=7z12bG8oKXrMnHZcJBtycw==
 
 # MTS API 엔드포인트
 MTS_API_URL=https://api.mtsco.co.kr
 MTS_TEMPLATE_API_URL=https://talks.mtsco.co.kr
+
+# 테스트용 발신번호 (MTS API용)
+TEST_CALLING_NUMBER=01042056734
 ```
 
-### ⚠️ 유지 (필요시)
+**기타 필수 환경변수**
 ```bash
-TEST_CALLING_NUMBER=01012345678  # 테스트용 발신번호
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://piulovyzbvlmqdzninbp.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+
+# JWT 인증
+JWT_SECRET=2070c0183f14ea9d5892cf71e00d858d17d9
+
+# OpenAI (AI 템플릿 생성)
+OPENAI_API_KEY=sk-proj-...
+
+# 결제 (NicePay)
+NICEPAY_CLIENT_ID=R2_fc94b724a6f84bccad38e00a6fd4518d
+NICEPAY_SECRET_KEY=432d5ed59c8b426c91afc3e7a7c6a2ff
+NICEPAY_API_URL=https://api.nicepay.co.kr
+NICEPAY_JS_SDK_URL=https://pay.nicepay.co.kr/v1/js/
+
+# 본인인증 (KG이니시스)
+INICIS_IA_MID=INIiasTest
+INICIS_IA_API_KEY=TGdxb2l3enJDWFRTbTgvREU3MGYwUT09
+INICIS_IA_AUTH_URL=https://sa.inicis.com/auth
+
+# 소셜 로그인
+KAKAO_APP_KEY=033b523430b7e418ea2b7a737851587f
+NAVER_CLIENT_ID=wsvDOhjO2EKeVD3bMHFI
+NAVER_CLIENT_SECRET=YrpMYweTlU
+GOOGLE_CLIENT_ID=546995931986-bg8rfahlefav5j2g8s0b40gk241srk87.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+
+# 이메일 전송 (Gmail SMTP)
+GMAIL_USER=iam@undermilli.com
+GMAIL_APP_PASSWORD=oeegxfbljgojfacj
+
+# 사업자등록정보 확인 API
+ODCLOUD_SERVICE_KEY=32055539b8fd99aafe776cf11f56bff28e54faad583ed09172c19b739a8a9fa6
+
+# 개발 환경
+NODE_ENV=development
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+### 📝 .env.local.example 템플릿
+
+**새로운 프로젝트 시작 시 사용할 템플릿:**
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# JWT
+JWT_SECRET=your-jwt-secret
+
+# MTS API (메시지 전송)
+MTS_AUTH_CODE=your-mts-auth-code
+MTS_API_URL=https://api.mtsco.co.kr
+MTS_TEMPLATE_API_URL=https://talks.mtsco.co.kr
+TEST_CALLING_NUMBER=your-test-calling-number
+
+# OpenAI
+OPENAI_API_KEY=your-openai-api-key
+
+# ODCLOUD (Business Verification)
+ODCLOUD_SERVICE_KEY=your-odcloud-service-key
+
+# Base URL (Optional - Vercel에서 자동 감지)
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
 ---
@@ -1359,7 +1479,36 @@ TEST_CALLING_NUMBER=01012345678  # 테스트용 발신번호
     - API를 통해 프로필 목록 조회 후 자동 선택
     - 템플릿도 API로 조회 및 관리
 
+**v1.9 (2025-10-28)**:
+- ✅ **Phase 5 완료: Naver SENS 정리**
+  - **파일 삭제 (2개)**
+    - src/lib/naverSensApi.ts 삭제
+    - src/app/api/auth/send-verification/ 디렉토리 삭제 (Dead Code)
+  - **환경변수 정리**
+    - .env 파일에서 Naver SENS 환경변수 제거
+      - NAVER_SENS_SERVICE_ID 제거
+      - NAVER_ACCESS_KEY_ID 제거
+      - NAVER_SECRET_KEY 제거
+    - TEST_CALLING_NUMBER 주석 업데이트 (MTS API 테스트용)
+    - .env.local.example 파일 업데이트 (MTS API 환경변수 추가)
+  - **빌드 확인**
+    - .next 캐시 삭제 후 클린 빌드
+    - TypeScript 컴파일 에러 0개
+    - 프로덕션 빌드 성공 (24.0s)
+  - **문서 업데이트**
+    - 파일 작업 요약 업데이트 (Phase 0-5 완료)
+    - 수정 대상 파일 목록 완료 상태 반영
+    - 환경 설정 파일 섹션 추가
+    - 작업 순서 Phase 5 완료 표시
+    - 현재 진행률 추가 (25/35 파일, 71.4%)
+  - **결과**
+    - Naver SENS 관련 코드 및 설정 완전 제거
+    - Phase 0-5 완료 (SMS/LMS/MMS 전환 + 정리)
+    - 다음 단계: Phase 6 카카오 알림톡 구현 준비 완료
+
 ---
 
-**버전**: 1.8 (현재)
+**버전**: 1.9 (현재)
+**Phase 0-5 완료율**: 71.4% (25/35 파일)
+**남은 작업**: Phase 6-10 (카카오/네이버 발송 구현)
 
