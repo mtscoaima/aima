@@ -752,6 +752,8 @@ export async function getMtsAlimtalkTemplate(
  * @param page 페이지 번호 (기본: 1)
  * @param count 페이지당 개수 (기본: 100)
  */
+// [DEPRECATED] MTS API does not provide this endpoint
+// Use database query instead: GET /api/kakao/profiles
 export async function getMtsSenderProfiles(
   page: number = 1,
   count: number = 100
@@ -1138,6 +1140,182 @@ export async function sendKakaoBrand(
       };
     }
 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 카카오 발신프로필 카테고리 전체 조회
+ * @returns 카테고리 목록
+ */
+export async function getMtsCategoryList(): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // multipart/form-data로 전송하기 위한 FormData 생성
+    const formData = new FormData();
+    formData.append('authCode', MTS_AUTH_CODE);
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/category/all`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    // 성공 확인 (200 코드)
+    if (result.code === '200') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: result.message || '카테고리 목록 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (카테고리 조회):', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 카카오 발신프로필 인증 토큰 요청
+ * @param yellowId 카카오톡 채널 ID (예: @example)
+ * @param phoneNumber 관리자 전화번호
+ * @returns 토큰 요청 결과
+ */
+export async function requestMtsSenderToken(
+  yellowId: string,
+  phoneNumber: string
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // multipart/form-data로 전송하기 위한 FormData 생성
+    const formData = new FormData();
+    formData.append('authCode', MTS_AUTH_CODE);
+    formData.append('yellowId', yellowId);
+    formData.append('phoneNumber', phoneNumber);
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/sender/token`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    // 성공 확인 (200 코드)
+    if (result.code === '200') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: result.message || '인증 토큰 요청 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (토큰 요청):', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 카카오 발신프로필 등록
+ * @param token 카카오톡으로 받은 인증 토큰
+ * @param phoneNumber 관리자 전화번호
+ * @param yellowId 카카오톡 채널 ID
+ * @param categoryCode 카테고리 코드
+ * @returns 발신프로필 등록 결과 (senderKey 포함)
+ */
+export async function registerMtsSenderProfile(
+  token: string,
+  phoneNumber: string,
+  yellowId: string,
+  categoryCode: string
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // multipart/form-data로 전송하기 위한 FormData 생성
+    const formData = new FormData();
+    formData.append('authCode', MTS_AUTH_CODE);
+    formData.append('token', token);
+    formData.append('phoneNumber', phoneNumber);
+    formData.append('yellowId', yellowId);
+    formData.append('categoryCode', categoryCode);
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/create/new/senderKey`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    // 성공 확인 (200 코드)
+    if (result.code === '200') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: result.message || '발신프로필 등록 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (발신프로필 등록):', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',

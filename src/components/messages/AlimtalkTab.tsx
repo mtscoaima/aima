@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Info, HelpCircle, RefreshCw, Send } from "lucide-react";
+import { Info, HelpCircle, RefreshCw, Send, Plus } from "lucide-react";
 import {
   fetchSenderProfiles,
   fetchAlimtalkTemplates,
@@ -9,6 +9,7 @@ import {
   type SenderProfile,
   type AlimtalkTemplate,
 } from "@/utils/kakaoApi";
+import ChannelRegistrationModal from "../kakao/ChannelRegistrationModal";
 
 interface AlimtalkTabProps {
   recipients?: string[]; // 상위 컴포넌트에서 전달받는 수신자 목록
@@ -32,6 +33,8 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
   const [enableSmsBackup, setEnableSmsBackup] = useState(false);
   const [smsBackupMessage, setSmsBackupMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  // 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
@@ -197,8 +200,15 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
                   ))}
                 </select>
               ) : (
-                <div className="text-center py-2 text-gray-500 text-sm">
-                  연동된 채널이 없습니다.
+                <div className="text-center py-6">
+                  <p className="text-gray-500 text-sm mb-3">연동된 채널이 없습니다.</p>
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    채널 연동하기
+                  </button>
                 </div>
               )}
             </div>
@@ -321,6 +331,16 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
           )}
         </button>
       </div>
+
+      {/* 채널 연동 모달 */}
+      <ChannelRegistrationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          loadSenderProfiles();
+        }}
+      />
     </>
   );
 };
