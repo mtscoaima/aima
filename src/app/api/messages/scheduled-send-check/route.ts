@@ -3,19 +3,39 @@
  * POST /api/messages/scheduled-send-check
  * Cron Job으로 주기적으로 호출되어 예약 시간이 도래한 메시지를 발송합니다.
  *
- * scheduled_messages 테이블 구조 (create_scheduled_messages.sql 참고):
- * - to_number: 단일 수신번호
+ * scheduled_messages 테이블 구조:
+ * - message_type: SMS, LMS, MMS, KAKAO_ALIMTALK, KAKAO_FRIENDTALK, NAVER_TALK, KAKAO_BRAND
+ * - to_number: 수신번호
  * - message_content: 메시지 내용
- * - 기존 reservation 시스템과 동일한 구조
+ * - metadata: 타입별 추가 정보 (senderKey, templateCode, buttons 등)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendMtsSMS, sendMtsMMS } from "@/lib/mtsApi";
+import {
+  sendMtsSMS,
+  sendMtsMMS,
+  sendMtsAlimtalk,
+  sendMtsFriendtalk,
+  sendNaverTalk,
+  sendKakaoBrand,
+  MtsApiResult
+} from "@/lib/mtsApi";
 import { determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// 메시지 타입별 단가 (원)
+const MESSAGE_COSTS: Record<string, number> = {
+  SMS: 20,
+  LMS: 50,
+  MMS: 200,
+  KAKAO_ALIMTALK: 15,
+  KAKAO_FRIENDTALK: 30,
+  NAVER_TALK: 15,
+  KAKAO_BRAND: 15,
+};
 
 // 광고머니 잔액 계산 함수
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,7 +46,7 @@ async function calculateAdvertisingBalance(userId: number, supabase: any): Promi
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'completed')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false});
 
     if (error) {
       console.error('트랜잭션 조회 오류:', error);
@@ -112,32 +132,35 @@ export async function POST(request: NextRequest) {
       results.checked++;
 
       try {
-        // metadata에서 이미지 URL 추출 (MTS API는 이미지 URL 사용)
         const metadata = msg.metadata || {};
-        let imageUrls: string[] = [];
 
-        if (metadata.image_urls) {
-          try {
-            // JSON 문자열로 저장된 경우 파싱
-            if (typeof metadata.image_urls === 'string') {
-              imageUrls = JSON.parse(metadata.image_urls);
-            } else if (Array.isArray(metadata.image_urls)) {
-              imageUrls = metadata.image_urls;
+        // 메시지 타입 결정 (metadata.message_type 또는 msg.message_type 우선)
+        let messageType = metadata.message_type || msg.message_type;
+
+        // 레거시 지원: message_type이 없으면 자동 판단
+        if (!messageType) {
+          let imageUrls: string[] = [];
+          if (metadata.image_urls) {
+            try {
+              if (typeof metadata.image_urls === 'string') {
+                imageUrls = JSON.parse(metadata.image_urls);
+              } else if (Array.isArray(metadata.image_urls)) {
+                imageUrls = metadata.image_urls;
+              }
+            } catch (e) {
+              console.error('이미지 URL 파싱 오류:', e);
             }
-          } catch (e) {
-            console.error('이미지 URL 파싱 오류:', e);
+          }
+
+          if (imageUrls && imageUrls.length > 0) {
+            messageType = 'MMS';
+          } else {
+            messageType = determineMessageType(msg.message_content);
           }
         }
 
-        // 메시지 타입 결정 (이미지가 있으면 MMS)
-        let messageType: 'SMS' | 'LMS' | 'MMS';
-        if (imageUrls && imageUrls.length > 0) {
-          messageType = 'MMS';
-        } else {
-          messageType = determineMessageType(msg.message_content);
-        }
-
-        const creditRequired = messageType === "SMS" ? 20 : messageType === "LMS" ? 50 : 200;
+        // 단가 계산
+        const creditRequired = MESSAGE_COSTS[messageType] || 20;
 
         // 광고머니 잔액 확인
         const balance = await calculateAdvertisingBalance(msg.user_id, supabase);
@@ -158,8 +181,8 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // 발신번호 조회 (users.phone_number)
-        let callbackNumber = metadata.from_number;
+        // 발신번호 조회
+        let callbackNumber = metadata.from_number || metadata.callback_number;
         if (!callbackNumber) {
           const { data: userData } = await supabase
             .from('users')
@@ -179,25 +202,162 @@ export async function POST(request: NextRequest) {
           ? new Date(msg.scheduled_at).toISOString().replace(/[-:T]/g, '').slice(0, 14)
           : undefined;
 
-        // MTS API 호출 (MMS 또는 SMS/LMS)
-        let result;
-        if (messageType === 'MMS' && imageUrls.length > 0) {
-          result = await sendMtsMMS(
-            msg.to_number,
-            msg.message_content,
-            msg.subject || '',
-            imageUrls,
-            callbackNumber,
-            scheduledAt
-          );
-        } else {
-          result = await sendMtsSMS(
-            msg.to_number,
-            msg.message_content,
-            callbackNumber,
-            msg.subject,
-            scheduledAt
-          );
+        // MTS API 호출 (타입별 분기)
+        let result: MtsApiResult;
+
+        switch (messageType) {
+          case 'KAKAO_ALIMTALK': {
+            // 카카오 알림톡
+            const senderKey = metadata.sender_key || metadata.senderKey;
+            const templateCode = metadata.template_code || metadata.templateCode;
+            const buttons = metadata.buttons || [];
+            const tranType = metadata.tran_type;
+            const tranMessage = metadata.tran_message;
+
+            if (!senderKey || !templateCode) {
+              throw new Error('알림톡 발송에 필요한 정보가 부족합니다 (senderKey, templateCode)');
+            }
+
+            result = await sendMtsAlimtalk(
+              senderKey,
+              templateCode,
+              msg.to_number,
+              msg.message_content,
+              callbackNumber,
+              buttons,
+              tranType,
+              tranMessage,
+              scheduledAt
+            );
+            break;
+          }
+
+          case 'KAKAO_FRIENDTALK': {
+            // 카카오 친구톡
+            const senderKey = metadata.sender_key || metadata.senderKey;
+            const messageTypeKakao = metadata.messageType || 'FT';
+            const adFlag = metadata.ad_flag || 'N';
+            const imageUrls = metadata.image_urls || [];
+            const buttons = metadata.buttons || [];
+            const tranType = metadata.tran_type;
+            const tranMessage = metadata.tran_message;
+
+            if (!senderKey) {
+              throw new Error('친구톡 발송에 필요한 정보가 부족합니다 (senderKey)');
+            }
+
+            result = await sendMtsFriendtalk(
+              senderKey,
+              msg.to_number,
+              msg.message_content,
+              callbackNumber,
+              messageTypeKakao,
+              adFlag,
+              imageUrls,
+              buttons,
+              tranType,
+              tranMessage,
+              scheduledAt
+            );
+            break;
+          }
+
+          case 'NAVER_TALK': {
+            // 네이버 톡톡
+            const navertalkId = metadata.navertalk_id || metadata.navertalkId;
+            const templateCode = metadata.template_code || metadata.templateCode;
+            const productCode = metadata.product_code || 'INFORMATION';
+            const buttons = metadata.buttons;
+            const imageHashId = metadata.image_hash_id;
+
+            if (!navertalkId || !templateCode) {
+              throw new Error('네이버 톡톡 발송에 필요한 정보가 부족합니다 (navertalkId, templateCode)');
+            }
+
+            result = await sendNaverTalk(
+              navertalkId,
+              templateCode,
+              msg.to_number,
+              msg.message_content,
+              productCode,
+              buttons,
+              imageHashId,
+              scheduledAt
+            );
+            break;
+          }
+
+          case 'KAKAO_BRAND': {
+            // 카카오 브랜드 메시지
+            const senderKey = metadata.sender_key || metadata.senderKey;
+            const templateCode = metadata.template_code || metadata.templateCode;
+            const messageTypeBrand = metadata.messageType || 'TEXT';
+            const targeting = metadata.targeting || 'M';
+            const attachment = metadata.attachment;
+            const tranType = metadata.tran_type;
+            const tranMessage = metadata.tran_message;
+            const subject = metadata.subject;
+
+            if (!senderKey || !templateCode) {
+              throw new Error('브랜드 메시지 발송에 필요한 정보가 부족합니다 (senderKey, templateCode)');
+            }
+
+            result = await sendKakaoBrand(
+              senderKey,
+              templateCode,
+              msg.to_number,
+              msg.message_content,
+              callbackNumber,
+              messageTypeBrand,
+              targeting,
+              attachment,
+              tranType,
+              tranMessage,
+              subject,
+              scheduledAt
+            );
+            break;
+          }
+
+          case 'MMS': {
+            // MMS 발송
+            let imageUrls: string[] = [];
+            if (metadata.image_urls) {
+              try {
+                if (typeof metadata.image_urls === 'string') {
+                  imageUrls = JSON.parse(metadata.image_urls);
+                } else if (Array.isArray(metadata.image_urls)) {
+                  imageUrls = metadata.image_urls;
+                }
+              } catch (e) {
+                console.error('이미지 URL 파싱 오류:', e);
+              }
+            }
+
+            result = await sendMtsMMS(
+              msg.to_number,
+              msg.message_content,
+              msg.subject || '',
+              imageUrls,
+              callbackNumber,
+              scheduledAt
+            );
+            break;
+          }
+
+          case 'SMS':
+          case 'LMS':
+          default: {
+            // SMS/LMS 발송 (자동 판단)
+            result = await sendMtsSMS(
+              msg.to_number,
+              msg.message_content,
+              callbackNumber,
+              msg.subject,
+              scheduledAt
+            );
+            break;
+          }
         }
 
         if (result.success) {
