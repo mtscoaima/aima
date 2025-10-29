@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Phone,
   Users,
@@ -15,8 +15,6 @@ import {
 import SmsMessageContent from "./SmsMessageContent";
 import KakaoMessageContent from "./KakaoMessageContent";
 import NaverTalkContent from "./NaverTalkContent";
-import SenderNumberSelectModal from "../modals/SenderNumberSelectModal";
-import SenderNumberManageModal from "../modals/SenderNumberManageModal";
 import SaveContentModal from "../modals/SaveContentModal";
 import LoadContentModal from "../modals/LoadContentModal";
 import AddressBookModal from "../modals/AddressBookModal";
@@ -40,8 +38,6 @@ interface MessageData {
 
 const MessageSendTab = () => {
   const [activeMessageTab, setActiveMessageTab] = useState("sms");
-  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isAddressBookModalOpen, setIsAddressBookModalOpen] = useState(false);
   const [isExcelUploadModalOpen, setIsExcelUploadModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -50,8 +46,8 @@ const MessageSendTab = () => {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
 
-  // 발신번호 및 수신번호 상태
-  const [selectedSenderNumber, setSelectedSenderNumber] = useState<string>("");
+  // 사용자 발신번호 및 수신번호 상태
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string>("");
   const [recipientInput, setRecipientInput] = useState("");
   const [recipientNameInput, setRecipientNameInput] = useState(""); // 이름 입력
   const [recipients, setRecipients] = useState<Recipient[]>([]);
@@ -69,6 +65,42 @@ const MessageSendTab = () => {
   const [error, setError] = useState<string | null>(null);
   const [isImageUploading, setIsImageUploading] = useState(false);
 
+  // 컴포넌트 마운트 시 사용자 전화번호 조회
+  useEffect(() => {
+    const fetchUserPhone = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        const response = await fetch("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.phoneNumber) {
+          setUserPhoneNumber(data.phoneNumber);
+        }
+      } catch (error) {
+        console.error("전화번호 조회 오류:", error);
+      }
+    };
+
+    fetchUserPhone();
+  }, []);
+
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      return cleaned.slice(0, 3) + '-' + cleaned.slice(3, 7) + '-' + cleaned.slice(7);
+    }
+    return phone;
+  };
+
   // 탭별 테마색 정의
   const getThemeColor = (tab: string) => {
     switch (tab) {
@@ -78,17 +110,6 @@ const MessageSendTab = () => {
       default: return "#6a1b9a";
     }
   };
-
-  // 모달 핸들러
-  const handleSelectModalOpen = () => {
-    alert("발신번호 선택 기능은 개발 중입니다.\n현재는 테스트 발신번호로 전송됩니다.");
-  };
-  const handleSelectModalClose = () => setIsSelectModalOpen(false);
-  const handleManageModalOpen = () => {
-    setIsSelectModalOpen(false);
-    setIsManageModalOpen(true);
-  };
-  const handleManageModalClose = () => setIsManageModalOpen(false);
 
   // 주소록에서 전화번호로 그룹명 조회
   const fetchGroupNameByPhone = async (phoneNumber: string): Promise<string | undefined> => {
@@ -278,7 +299,6 @@ const MessageSendTab = () => {
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          from_number: selectedSenderNumber,
           recipients: recipients,
           message: messageData.content,
           subject: messageData.subject || undefined,
@@ -337,7 +357,6 @@ const MessageSendTab = () => {
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          from_number: selectedSenderNumber,
           recipients: recipients,
           message: messageData.content,
           subject: messageData.subject || undefined,
@@ -380,14 +399,14 @@ const MessageSendTab = () => {
         return (
           <KakaoMessageContent
             recipients={recipients}
-            selectedSenderNumber={selectedSenderNumber}
+            selectedSenderNumber={userPhoneNumber}
           />
         );
       case "naver":
         return (
           <NaverTalkContent
             recipients={recipients}
-            selectedSenderNumber={selectedSenderNumber}
+            selectedSenderNumber={userPhoneNumber}
           />
         );
       default:
@@ -411,17 +430,29 @@ const MessageSendTab = () => {
             <Phone className="w-4 h-4 text-gray-600" />
             <span className="font-medium text-gray-700">메시지 발신번호</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500 text-sm">
-              {selectedSenderNumber || "선택된 발신번호 없음"}
-            </span>
-            <button
-              className="text-white px-4 py-2 rounded text-sm hover:opacity-90"
-              style={{ backgroundColor: getThemeColor(activeMessageTab) }}
-              onClick={handleSelectModalOpen}
-            >
-              선택
-            </button>
+          <div className="flex items-center gap-2">
+            {userPhoneNumber ? (
+              <>
+                <span className="text-gray-900 text-sm font-medium">
+                  {formatPhoneNumber(userPhoneNumber)}
+                </span>
+                <span className="text-xs text-gray-500">
+                  (프로필에서 변경 가능)
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-500 text-sm">
+                  전화번호 미등록
+                </span>
+                <a
+                  href="/my-site/advertiser/profile"
+                  className="text-xs text-blue-500 hover:underline"
+                >
+                  프로필에서 등록하기 →
+                </a>
+              </>
+            )}
           </div>
         </div>
 
@@ -643,16 +674,6 @@ const MessageSendTab = () => {
       </div>
 
       {/* 모달들 */}
-      <SenderNumberSelectModal
-        isOpen={isSelectModalOpen}
-        onClose={handleSelectModalClose}
-        onManageClick={handleManageModalOpen}
-        onSelect={(phoneNumber) => setSelectedSenderNumber(phoneNumber)}
-      />
-      <SenderNumberManageModal
-        isOpen={isManageModalOpen}
-        onClose={handleManageModalClose}
-      />
       <SaveContentModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
