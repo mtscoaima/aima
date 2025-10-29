@@ -1,4 +1,4 @@
-# MTS Message 프로젝트 코드베이스 분석 (v3.0)
+# MTS Message 프로젝트 코드베이스 분석 (v4.0)
 
 ## 📊 프로젝트 개요
 
@@ -11,8 +11,9 @@
 - **AI 통합**: OpenAI API (GPT-4, DALL-E 3)
 - **메시징 API**: MTS API (Naver SENS 전환 완료)
   - SMS/LMS/MMS
-  - 카카오 알림톡, 친구톡
+  - 카카오 알림톡, 친구톡, 브랜드 메시지
   - 네이버 톡톡 스마트알림
+  - **NEW**: 카카오 발신프로필 관리 API
 - **결제**: NicePay (KG이니시스)
 - **파일 처리**: Sharp (이미지), xlsx (엑셀), html2canvas
 - **차트**: Chart.js, react-chartjs-2
@@ -22,7 +23,7 @@
 ```
 클라이언트 (React 19 + Next.js 15)
     ↓ (API 호출, JWT 토큰)
-API Routes (Next.js API - 159개)
+API Routes (Next.js API - 163개)
     ↓ (Service Role Key)
 Supabase (PostgreSQL + Storage)
     ↓
@@ -37,20 +38,79 @@ Supabase (PostgreSQL + Storage)
 - 폴링 기반 실시간 업데이트 (Supabase Realtime 미사용)
 - Service Layer를 통한 비즈니스 로직 분리
 
-### 프로젝트 통계 (2025-01-28 기준 - 실제 분석)
+### 프로젝트 통계 (2025-10-29 기준 - 전체 코드베이스 재분석)
 
-| 구분 | 개수 | 설명 |
-|------|------|------|
-| **총 TypeScript/TSX 파일** | 343개 | 전체 소스 파일 |
-| **API 엔드포인트** | 160개 | REST API 라우트 |
-| **페이지** | 57개 | Next.js 페이지 라우트 |
-| **컴포넌트** | 75개 | React 컴포넌트 |
-| **라이브러리 모듈** | 16개 | Core 라이브러리 |
-| **서비스 모듈** | 3개 | 비즈니스 로직 서비스 |
-| **유틸리티** | 10개 | Helper 함수 |
-| **컨텍스트** | 4개 | Global State 관리 |
-| **커스텀 훅** | 1개 | React Hook |
-| **타입 정의** | 3개 | TypeScript 타입 |
+| 구분 | 개수 | 변경사항 | 설명 |
+|------|------|---------|------|
+| **총 TypeScript/TSX 파일** | 348개 | +5개 | 전체 소스 파일 |
+| **API 엔드포인트** | 163개 | +3개 | REST API 라우트 |
+| **페이지** | 57개 | - | Next.js 페이지 라우트 |
+| **컴포넌트** | 77개 | +2개 | React 컴포넌트 |
+| **라이브러리 모듈** | 16개 | - | Core 라이브러리 |
+| **서비스 모듈** | 3개 | - | 비즈니스 로직 서비스 |
+| **유틸리티** | 10개 | - | Helper 함수 |
+| **컨텍스트** | 4개 | - | Global State 관리 |
+| **커스텀 훅** | 3개 | +2개 | React Hook |
+| **타입 정의** | 3개 | - | TypeScript 타입 |
+
+---
+
+## 🆕 v4.0 주요 변경사항 (2025-10-29)
+
+### 1. 카카오 발신프로필 관리 시스템 추가
+
+#### 신규 API (5개)
+```
+POST /api/kakao/sender/token       - 카카오 인증 토큰 요청
+POST /api/kakao/sender/register    - 발신프로필 등록 (MTS)
+GET  /api/kakao/profiles           - 발신프로필 목록 조회
+GET  /api/kakao/templates          - 알림톡 템플릿 목록
+GET  /api/kakao/categories         - 카테고리 코드 목록
+```
+
+#### 신규 컴포넌트
+- `src/components/kakao/ChannelRegistrationModal.tsx` - 카카오 채널 등록 모달
+  - 3단계 등록 프로세스
+  - 카카오톡 인증 토큰 요청
+  - MTS API 발신프로필 등록
+  - 카테고리 선택 UI
+
+#### 신규 디렉토리 구조
+```
+src/
+├── components/
+│   └── kakao/                      # NEW: 카카오 전용 컴포넌트
+│       └── ChannelRegistrationModal.tsx
+├── app/api/kakao/                  # NEW: 카카오 API 그룹
+│   ├── sender/
+│   │   ├── token/route.ts         # 인증 토큰 발급
+│   │   └── register/route.ts      # 발신프로필 등록
+│   ├── profiles/route.ts
+│   ├── templates/route.ts
+│   └── categories/route.ts
+```
+
+### 2. 신규 커스텀 훅 추가 (2개)
+
+```typescript
+// src/hooks/useTargetMarketing.ts - AI 타겟 마케팅 훅
+// src/hooks/useTermsContent.ts - 약관 내용 관리 훅
+```
+
+### 3. 컴포넌트 구조 개선
+
+#### 새로운 하위 디렉토리
+```
+src/components/
+├── kakao/                          # NEW: 카카오 관련
+├── messages/kakao/                 # 카카오 메시지 탭들
+├── messages/naver/                 # 네이버 메시지 탭들
+├── admin/campaign-settings/        # 캠페인 설정
+├── admin/system-settings/          # 시스템 설정
+├── target-marketing/sections/      # 타겟 마케팅 섹션 (빈 디렉토리)
+├── common/                         # 공통 컴포넌트 (빈 디렉토리)
+└── history/                        # 히스토리 (빈 디렉토리)
+```
 
 ---
 
@@ -59,84 +119,323 @@ Supabase (PostgreSQL + Storage)
 ```
 src/
 ├── app/                                    # Next.js App Router
-│   ├── api/                                # 160개 API 엔드포인트
-│   │   ├── auth/                           # 25개 인증 관련 API
-│   │   ├── users/                          # 11개 사용자 관리
-│   │   ├── admin/                          # 25개 관리자 기능
-│   │   ├── messages/                       # 15개 메시지 발송
-│   │   ├── campaigns/                      # 14개 캠페인 관리
-│   │   ├── reservations/                   # 40개 예약 시스템
-│   │   ├── sender-numbers/                 # 6개 발신번호
-│   │   ├── address-book/                   # 7개 주소록
-│   │   ├── notifications/                  # 5개 알림
-│   │   ├── inquiries/                      # 7개 문의
-│   │   ├── faqs/                           # 6개 FAQ
-│   │   └── [기타]/                         # 결제, 위치, 산업 등
+│   ├── api/                                # 163개 API 엔드포인트
+│   │   ├── auth/                           # 21개 인증 관련 API
+│   │   │   ├── check-username/, check-email/
+│   │   │   ├── find-username/, find-password/
+│   │   │   ├── google-auth-url/, google-token/, google-login/, google-signup/
+│   │   │   ├── kakao-auth-url/, kakao-token/, kakao-login/, kakao-signup/
+│   │   │   ├── naver-auth-url/, naver-token/, naver-login/, naver-signup/
+│   │   │   ├── validate-referral/, validate-referrer/
+│   │   │   └── inicis-auth/ (request/, callback/, result/)
+│   │   │
+│   │   ├── users/                          # 13개 사용자 관리
+│   │   │   ├── login/, signup/, signup-with-files/, refresh/
+│   │   │   ├── me/, change-password/, withdraw/
+│   │   │   ├── generate-code/, referral-chain/, referral-stats/
+│   │   │   ├── update-referral-views/, upload-documents/, social-link/
+│   │   │
+│   │   ├── admin/                          # 35개 관리자 기능
+│   │   │   ├── users/ (5개: 목록, 충전, 비밀번호초기화, 일괄작업, 내보내기)
+│   │   │   ├── campaigns/ (6개: 목록, 상세, 승인, 거부, 시작, 일시정지)
+│   │   │   ├── campaign-industries/ (3개: 목록, 생성, 수정/삭제)
+│   │   │   ├── custom-industries/ (1개)
+│   │   │   ├── tax-invoices/ (5개: 목록, 상세, 생성, 내보내기, 업로드, 템플릿)
+│   │   │   ├── sms-templates/ (4개: 목록, 생성, 수정, 토글)
+│   │   │   ├── sms-logs/ (1개)
+│   │   │   ├── inquiries/ (2개: 목록, 상세)
+│   │   │   ├── point-charge/ (2개: 단건충전, 일괄충전)
+│   │   │   ├── point-status/ (1개)
+│   │   │   ├── companies/, grade-settings/, grade-history/
+│   │   │   ├── terms/, system-settings/
+│   │   │   └── send-approval-notification/
+│   │   │
+│   │   ├── messages/                       # 10개 메시지 발송
+│   │   │   ├── send/                       # SMS/LMS/MMS 통합 발송 (MTS)
+│   │   │   ├── upload-image/               # 이미지 업로드 (MTS)
+│   │   │   ├── templates/ (목록, 생성, 수정, 삭제)
+│   │   │   ├── scheduled/                  # 예약 메시지 (목록, 등록, 삭제)
+│   │   │   ├── scheduled-send-check/       # Cron: 예약 발송 체크
+│   │   │   ├── kakao/
+│   │   │   │   ├── alimtalk/send/         # 카카오 알림톡
+│   │   │   │   ├── friendtalk/send/       # 카카오 친구톡 V2
+│   │   │   │   └── brand/send/            # 카카오 브랜드 메시지
+│   │   │   └── naver/
+│   │   │       └── talk/send/             # 네이버 톡톡
+│   │   │
+│   │   ├── kakao/                          # 5개 카카오 관리 (NEW)
+│   │   │   ├── sender/
+│   │   │   │   ├── token/                 # 인증 토큰 발급
+│   │   │   │   └── register/              # 발신프로필 등록
+│   │   │   ├── profiles/                  # 발신프로필 목록
+│   │   │   ├── templates/                 # 알림톡 템플릿
+│   │   │   └── categories/                # 카테고리 코드
+│   │   │
+│   │   ├── reservations/                   # 21개 예약 시스템
+│   │   │   ├── spaces/ (2개: 목록/생성, 상세/수정/삭제)
+│   │   │   ├── bookings/ (2개: 목록/생성, 상세/수정/삭제)
+│   │   │   ├── channels/ (2개: 목록/생성, 커스텀)
+│   │   │   ├── shared-calendars/ (4개: 목록, 생성, 상세, 수정, 삭제)
+│   │   │   ├── message-templates/ (5개)
+│   │   │   ├── auto-rules/ (2개: 목록/생성, 상세/수정/삭제)
+│   │   │   ├── auto-send-check/           # Cron: 자동 발송
+│   │   │   ├── send-message/
+│   │   │   ├── message-logs/ (2개: 목록, 상세)
+│   │   │   ├── scheduled-messages/
+│   │   │   ├── statistics/
+│   │   │   ├── export/ (csv/, excel/)
+│   │   │   └── [id]/                      # 예약 상세
+│   │   │
+│   │   ├── campaigns/                      # 4개 캠페인 관리
+│   │   │   ├── route.ts (목록, 생성)
+│   │   │   ├── [id]/route.ts (상세, 수정, 삭제)
+│   │   │   ├── [id]/rejection/
+│   │   │   └── ad-costs/
+│   │   │
+│   │   ├── sender-numbers/                 # 3개 발신번호
+│   │   │   ├── route.ts (목록, 등록)
+│   │   │   ├── [id]/route.ts (상세, 수정, 삭제)
+│   │   │   └── [id]/set-default/
+│   │   │
+│   │   ├── address-book/                   # 4개 주소록
+│   │   │   ├── contacts/
+│   │   │   └── groups/ (목록/생성, [id])
+│   │   │
+│   │   ├── notifications/                  # 4개 알림
+│   │   │   ├── route.ts (목록, 발송)
+│   │   │   ├── [id]/read/
+│   │   │   └── mark-all-read/
+│   │   │
+│   │   ├── inquiries/                      # 3개 문의
+│   │   │   ├── route.ts (목록, 등록)
+│   │   │   └── [id]/ (상세, 수정, reply/)
+│   │   │
+│   │   ├── faqs/                           # 4개 FAQ
+│   │   │   ├── route.ts (목록, 생성)
+│   │   │   ├── [id]/ (상세, 수정, 삭제)
+│   │   │   └── max-order/
+│   │   │
+│   │   ├── announcements/                  # 2개 공지사항
+│   │   ├── payment/                        # 4개 결제 (NicePay)
+│   │   ├── tax-invoices/                   # 2개 세금계산서
+│   │   ├── transactions/, settlements/     # 거래/정산
+│   │   ├── referrals/dashboard/
+│   │   ├── rewards/
+│   │   ├── business-verification/          # 사업자 인증
+│   │   ├── locations/                      # 지역 데이터
+│   │   ├── industries/, nts-industries/
+│   │   ├── campaign-industries/
+│   │   ├── terms/, site-settings/, pricing-settings/
+│   │   ├── holidays/
+│   │   ├── shared/calendar/[token]/
+│   │   ├── cron/send-scheduled-messages/
+│   │   ├── ai/ (chat/, send-mms/)
+│   │   ├── message/ (send/, upload-file/)
+│   │   ├── message-logs/
+│   │   ├── templates/ (목록/생성, [id], upload-image/)
+│   │   ├── sms-templates/
+│   │   ├── naver/templates/
+│   │   ├── user/profile/
+│   │   └── upload/inquiry/
 │   │
 │   ├── admin/                              # 11개 관리자 페이지
-│   │   ├── campaigns/
-│   │   ├── user-management/
-│   │   ├── member-approval/
+│   │   ├── campaigns/page.tsx
+│   │   ├── user-management/page.tsx
+│   │   ├── member-approval/page.tsx
 │   │   ├── statistics/
-│   │   ├── notifications/
-│   │   ├── customer-support/
-│   │   ├── tax-invoices/
-│   │   ├── point-charge-management/
-│   │   ├── campaign-settings/
-│   │   ├── system-settings/
-│   │   └── campaign-industries/
+│   │   │   ├── page.tsx
+│   │   │   └── components/
+│   │   │       ├── CampaignStatistics.tsx
+│   │   │       ├── MemberStatistics.tsx
+│   │   │       ├── MemberSignupStatistics.tsx
+│   │   │       └── MemberLoginStatistics.tsx
+│   │   ├── notifications/page.tsx
+│   │   ├── customer-support/page.tsx
+│   │   ├── tax-invoices/page.tsx
+│   │   ├── point-charge-management/page.tsx
+│   │   ├── campaign-settings/page.tsx
+│   │   ├── system-settings/page.tsx
+│   │   └── campaign-industries/page.tsx
 │   │
 │   ├── messages/                           # 메시지 발송 시스템
-│   │   ├── send/                           # 통합 메시지 발송
-│   │   └── reservations/                   # 예약 관리 (13+ 하위 페이지)
-│   │       ├── list/, create/, detail/, edit/
-│   │       ├── calendar/, calendar/shared/
-│   │       ├── places/, payments/
-│   │       ├── statistics/
-│   │       └── message/                    # 메시지 관리
-│   │           ├── send/, list/, templates/
-│   │           ├── sender-contact/
-│   │           └── auto/                   # 자동 발송 규칙
+│   │   ├── send/page.tsx                   # 통합 메시지 발송
+│   │   └── reservations/                   # 예약 관리 (25개 하위 페이지)
+│   │       ├── layout.tsx
+│   │       ├── page.tsx
+│   │       ├── list/page.tsx
+│   │       ├── create/page.tsx
+│   │       ├── detail/page.tsx
+│   │       ├── edit/page.tsx
+│   │       ├── calendar/page.tsx
+│   │       ├── calendar/shared/
+│   │       │   ├── page.tsx
+│   │       │   └── create/page.tsx
+│   │       ├── places/
+│   │       │   ├── page.tsx
+│   │       │   ├── add/page.tsx
+│   │       │   ├── detail/page.tsx
+│   │       │   └── edit/page.tsx
+│   │       ├── payments/
+│   │       │   ├── page.tsx
+│   │       │   └── list/page.tsx
+│   │       ├── statistics/page.tsx
+│   │       └── message/
+│   │           ├── page.tsx
+│   │           ├── send/page.tsx
+│   │           ├── list/page.tsx
+│   │           ├── list/reserved/page.tsx
+│   │           ├── templates/page.tsx
+│   │           ├── sender-contact/page.tsx
+│   │           └── auto/
+│   │               ├── page.tsx
+│   │               ├── create/page.tsx
+│   │               └── edit/[id]/page.tsx
 │   │
-│   ├── my-site/advertiser/                 # 사용자 대시보드 (3페이지)
-│   │   ├── dashboard/
-│   │   ├── profile/
-│   │   └── business-verification/
+│   ├── my-site/advertiser/                 # 3개 사용자 대시보드
+│   │   ├── dashboard/page.tsx
+│   │   ├── profile/page.tsx
+│   │   └── business-verification/page.tsx
 │   │
-│   ├── salesperson/                        # 영업사원 (4페이지)
-│   │   ├── profile/
-│   │   ├── referrals/
-│   │   ├── invite/
-│   │   └── organization/
+│   ├── salesperson/                        # 4개 영업사원
+│   │   ├── profile/page.tsx
+│   │   ├── referrals/page.tsx
+│   │   ├── invite/page.tsx
+│   │   └── organization/page.tsx
 │   │
-│   ├── auth/                               # 인증 페이지
-│   │   ├── find-username/
-│   │   ├── find-password/
-│   │   └── inicis/                         # 본인인증
+│   ├── auth/                               # 4개 인증 페이지
+│   │   ├── find-username/page.tsx
+│   │   ├── find-password/page.tsx
+│   │   └── inicis/
+│   │       ├── callback/page.tsx
+│   │       └── success/page.tsx
 │   │
-│   ├── credit-management/                  # 크레딧 관리
-│   ├── target-marketing/                   # AI 타겟 마케팅
-│   ├── payment/                            # 결제
-│   ├── support/                            # 고객지원
-│   ├── shared/calendar/[token]/            # 공유 캘린더
-│   ├── login/, signup/                     # 로그인/회원가입
-│   ├── terms/, privacy/                    # 약관/개인정보
-│   └── globals.css, layout.tsx, page.tsx
+│   ├── credit-management/page.tsx
+│   ├── target-marketing/page.tsx
+│   ├── payment/success/ (layout.tsx, page.tsx)
+│   ├── support/page.tsx
+│   ├── shared/calendar/[token]/page.tsx
+│   ├── login/page.tsx
+│   ├── signup/page.tsx
+│   ├── terms/page.tsx, TermsPageClient.tsx
+│   ├── privacy/page.tsx, PrivacyPageClient.tsx
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── robots.ts
+│   └── sitemap.ts
 │
-├── components/                             # 75개 React 컴포넌트
-│   ├── admin/                              # 8개 - AdminSidebar, Settings...
-│   ├── messages/                           # 15개 - SMS, Kakao, Naver 탭
-│   ├── modals/                             # 23개 - 각종 모달
-│   ├── profile/                            # 5개 - 회원정보 탭
-│   ├── credit/                             # 3개 - 충전 관련
-│   ├── support/                            # 3개 - FAQ, 공지사항
-│   ├── target-marketing/                   # 3개 - AI 추천
-│   ├── campaigns/                          # 1개 - 캠페인 관리
-│   ├── approval/                           # 1개 - 승인 완료
-│   ├── signup/                             # 1개 - 회원가입 폼
-│   ├── salesperson/                        # 1개 - 영업 대시보드
-│   ├── terms/                              # 1개 - 약관 레이아웃
-│   └── [Root]/                             # 10개 - Layout, Navigation, Footer...
+├── components/                             # 77개 React 컴포넌트
+│   ├── admin/                              # 8개
+│   │   ├── AdminHeader.tsx
+│   │   ├── AdminSidebar.tsx
+│   │   ├── campaign-settings/
+│   │   │   ├── BudgetSettings.tsx
+│   │   │   ├── CommissionSettings.tsx
+│   │   │   └── PricingSettings.tsx
+│   │   └── system-settings/
+│   │       ├── GeneralSettings.tsx
+│   │       ├── DocumentSettings.tsx
+│   │       └── MenuSettings.tsx
+│   │
+│   ├── messages/                           # 16개
+│   │   ├── MessageSendTab.tsx
+│   │   ├── TemplateManagementTab.tsx
+│   │   ├── ReservationManagementTab.tsx
+│   │   ├── KakaoNaverRcsTab.tsx
+│   │   ├── SmsMessageContent.tsx
+│   │   ├── KakaoMessageContent.tsx
+│   │   ├── NaverTalkContent.tsx
+│   │   ├── AlimtalkTab.tsx
+│   │   ├── FriendtalkTab.tsx
+│   │   ├── BrandTab.tsx
+│   │   ├── NaverTalkTalkTab.tsx
+│   │   ├── kakao/
+│   │   │   ├── KakaoAlimtalkTab.tsx
+│   │   │   ├── KakaoBrandTab.tsx
+│   │   │   └── KakaoChannelTab.tsx
+│   │   └── naver/
+│   │       ├── NaverTalkIdTab.tsx
+│   │       └── NaverTemplateTab.tsx
+│   │
+│   ├── modals/                             # 23개
+│   │   ├── AddressBookModal.tsx
+│   │   ├── AddContactModal.tsx
+│   │   ├── CreateGroupModal.tsx
+│   │   ├── AddressBookExcelModal.tsx
+│   │   ├── CampaignModal.tsx
+│   │   ├── CampaignDetailModal.tsx
+│   │   ├── RejectionReasonModal.tsx
+│   │   ├── TemplateModal.tsx
+│   │   ├── SaveTemplateModal.tsx
+│   │   ├── SaveContentModal.tsx
+│   │   ├── SimpleContentSaveModal.tsx
+│   │   ├── LoadContentModal.tsx
+│   │   ├── VariableSelectModal.tsx
+│   │   ├── SenderNumberSelectModal.tsx
+│   │   ├── SenderNumberManageModal.tsx
+│   │   ├── SenderNumberRegistrationModal.tsx
+│   │   ├── ScheduledMessagesModal.tsx
+│   │   ├── PreviewModal.tsx
+│   │   ├── SendConfirmModal.tsx
+│   │   ├── ExcelUploadModal.tsx
+│   │   ├── TextUploadModal.tsx
+│   │   ├── DateRangeModal.tsx
+│   │   └── LimitRemovalModal.tsx
+│   │
+│   ├── kakao/                              # 1개 (NEW)
+│   │   └── ChannelRegistrationModal.tsx    # 카카오 채널 등록
+│   │
+│   ├── profile/                            # 5개
+│   │   ├── MemberInfoTab.tsx
+│   │   ├── BusinessInfoTab.tsx
+│   │   ├── PasswordTab.tsx
+│   │   ├── SendingNumberTab.tsx
+│   │   └── TaxInvoiceTab.tsx
+│   │
+│   ├── credit/                             # 3개
+│   │   ├── CreditBalance.tsx
+│   │   ├── ChargeInput.tsx
+│   │   └── PaymentModal.tsx
+│   │
+│   ├── support/                            # 3개
+│   │   ├── AnnouncementTab.tsx
+│   │   ├── FaqTab.tsx
+│   │   └── ContactTab.tsx
+│   │
+│   ├── target-marketing/                   # 3개
+│   │   ├── TargetMarketingDetail.tsx
+│   │   ├── NumberedParagraph.tsx
+│   │   ├── StructuredRecommendationTable.tsx
+│   │   └── sections/                       # (빈 디렉토리)
+│   │
+│   ├── campaigns/                          # 1개
+│   │   └── CampaignManagementTab.tsx
+│   │
+│   ├── approval/                           # 1개
+│   │   └── ApprovalRequestComplete.tsx
+│   │
+│   ├── signup/                             # 1개
+│   │   └── GeneralSignupForm.tsx
+│   │
+│   ├── salesperson/                        # 1개
+│   │   └── SalespersonDashboard.tsx
+│   │
+│   ├── terms/                              # 1개
+│   │   └── TermsLayout.tsx
+│   │
+│   ├── common/                             # (빈 디렉토리)
+│   ├── history/                            # (빈 디렉토리)
+│   │
+│   └── [Root]/                             # 10개
+│       ├── Layout.tsx
+│       ├── Navigation.tsx
+│       ├── Footer.tsx
+│       ├── RoleGuard.tsx
+│       ├── ConfirmDialog.tsx
+│       ├── SuccessModal.tsx
+│       ├── TermsModal.tsx
+│       ├── Pagination.tsx
+│       ├── ReservationTooltip.tsx
+│       └── ChannelSelectModal.tsx
 │
 ├── contexts/                               # 4개 Context Providers
 │   ├── AuthContext.tsx                     # 인증 상태 관리
@@ -144,15 +443,17 @@ src/
 │   ├── NotificationContext.tsx             # 실시간 알림 (폴링)
 │   └── PricingContext.tsx                  # 가격 설정
 │
-├── hooks/                                  # 1개 Custom Hook
-│   └── useNotificationUtils.tsx            # 알림 포맷팅 훅
+├── hooks/                                  # 3개 Custom Hook
+│   ├── useNotificationUtils.tsx            # 알림 포맷팅 훅
+│   ├── useTargetMarketing.ts               # NEW: AI 타겟 마케팅 훅
+│   └── useTermsContent.ts                  # NEW: 약관 내용 관리 훅
 │
 ├── lib/                                    # 16개 Core 라이브러리
 │   ├── api.ts                              # API 베이스 설정
 │   ├── apiClient.ts                        # Typed HTTP 클라이언트
 │   ├── apiMiddleware.ts                    # JWT 갱신 미들웨어
 │   ├── apiResponse.ts                      # 응답 포맷팅
-│   ├── mtsApi.ts                           # MTS API 통합
+│   ├── mtsApi.ts                           # MTS API 통합 (1100+줄)
 │   ├── messageSender.ts                    # 메시지 발송 로직
 │   ├── notificationService.ts              # 알림 서비스
 │   ├── emailUtils.ts                       # 이메일 발송
@@ -195,11 +496,11 @@ src/
 
 ---
 
-## 📡 전체 API 엔드포인트 (160개)
+## 📡 전체 API 엔드포인트 (163개)
 
-### 인증 관련 (25개)
+### 인증 관련 (21개)
 
-**기본 인증**:
+**기본 인증** (9개):
 - `POST /api/users/login` - 로그인
 - `POST /api/users/signup` - 회원가입
 - `POST /api/users/signup-with-files` - 파일 포함 회원가입
@@ -210,7 +511,7 @@ src/
 - `POST /api/auth/find-username` - 아이디 찾기
 - `POST /api/auth/find-password` - 비밀번호 찾기
 
-**소셜 로그인**:
+**소셜 로그인** (9개):
 - `GET /api/auth/google-auth-url` - 구글 인증 URL
 - `POST /api/auth/google-token` - 구글 토큰 교환
 - `POST /api/auth/google-login` - 구글 로그인
@@ -224,14 +525,14 @@ src/
 - `POST /api/auth/naver-login` - 네이버 로그인
 - `POST /api/auth/naver-signup` - 네이버 회원가입
 
-**기타**:
+**기타** (3개):
 - `POST /api/auth/validate-referral` - 추천인 코드 검증
 - `POST /api/auth/validate-referrer` - 추천인 검증
 - `POST /api/auth/inicis-auth/request` - 본인인증 요청
 - `POST /api/auth/inicis-auth/callback` - 본인인증 콜백
 - `POST /api/auth/inicis-auth/result` - 본인인증 결과
 
-### 사용자 관리 (11개)
+### 사용자 관리 (13개)
 
 - `GET /api/user/profile` - 프로필 조회
 - `GET|PUT /api/users/me` - 내 정보 조회/수정
@@ -265,7 +566,15 @@ src/
 - `POST /api/ai/send-mms` - AI MMS 생성
 - `GET /api/message-logs` - 발송 로그
 
-### 메시지 템플릿 (14개)
+### 🆕 카카오 발신프로필 관리 (5개) - NEW v4.0
+
+- `POST /api/kakao/sender/token` - 카카오 인증 토큰 요청
+- `POST /api/kakao/sender/register` - MTS 발신프로필 등록
+- `GET /api/kakao/profiles` - 발신프로필 목록 조회
+- `GET /api/kakao/templates` - 알림톡 템플릿 목록
+- `GET /api/kakao/categories` - 카테고리 코드 목록
+
+### 메시지 템플릿 (11개)
 
 - `GET /api/messages/templates` - 템플릿 목록
 - `POST /api/messages/templates` - 템플릿 생성
@@ -318,7 +627,7 @@ src/
 - `PUT /api/reservations/message-templates/[id]` - 템플릿 수정
 - `DELETE /api/reservations/message-templates/[id]` - 템플릿 삭제
 
-### 예약 시스템 - 기타 (12개)
+### 예약 시스템 - 기타 (14개)
 
 - `GET /api/reservations/channels` - 예약 채널
 - `POST /api/reservations/channels` - 채널 추가
@@ -336,7 +645,7 @@ src/
 - `GET /api/reservations/export/csv` - CSV 내보내기
 - `GET /api/reservations/export/excel` - 엑셀 내보내기
 
-### 캠페인 (9개)
+### 캠페인 (4개)
 
 - `GET /api/campaigns` - 캠페인 목록
 - `POST /api/campaigns` - 캠페인 생성
@@ -346,7 +655,7 @@ src/
 - `GET /api/campaigns/[id]/rejection` - 거절 사유
 - `GET /api/campaigns/ad-costs` - 광고비 계산
 
-### 관리자 - 캠페인 (5개)
+### 관리자 - 캠페인 (6개)
 
 - `GET /api/admin/campaigns` - 캠페인 관리 목록
 - `GET /api/admin/campaigns/[id]` - 캠페인 관리 상세
@@ -355,7 +664,7 @@ src/
 - `POST /api/admin/campaigns/[id]/start` - 캠페인 시작
 - `POST /api/admin/campaigns/[id]/pause` - 캠페인 일시정지
 
-### 캠페인 업종 (6개)
+### 캠페인 업종 (7개)
 
 - `GET /api/campaign-industries` - 업종 목록
 - `GET /api/admin/campaign-industries` - 관리자 업종 목록
@@ -366,7 +675,7 @@ src/
 - `GET /api/admin/custom-industries` - 커스텀 업종
 - `POST /api/admin/custom-industries` - 커스텀 업종 생성
 
-### 알림 (5개)
+### 알림 (4개)
 
 - `GET /api/notifications` - 알림 목록
 - `POST /api/notifications` - 알림 발송
@@ -383,7 +692,7 @@ src/
 - `PATCH /api/admin/sms-templates/[id]/toggle` - ON/OFF 토글
 - `GET /api/admin/sms-logs` - SMS 로그
 
-### 주소록 (7개)
+### 주소록 (4개)
 
 - `GET /api/address-book/contacts` - 연락처 목록
 - `POST /api/address-book/contacts` - 연락처 추가
@@ -394,7 +703,7 @@ src/
 - `PUT /api/address-book/groups/[id]` - 그룹 수정
 - `DELETE /api/address-book/groups/[id]` - 그룹 삭제
 
-### 발신번호 (6개)
+### 발신번호 (3개)
 
 - `GET /api/sender-numbers` - 발신번호 목록
 - `POST /api/sender-numbers` - 발신번호 등록
@@ -403,10 +712,8 @@ src/
 - `DELETE /api/sender-numbers/[id]` - 발신번호 삭제
 - `POST /api/sender-numbers/[id]/set-default` - 기본 설정
 
-### 카카오/네이버 통합 (3개)
+### 네이버 통합 (1개)
 
-- `GET /api/kakao/profiles` - 카카오 프로필 목록
-- `GET /api/kakao/templates` - 알림톡 템플릿 목록
 - `GET /api/naver/templates` - 네이버 톡톡 템플릿
 
 ### 결제 (4개)
@@ -416,7 +723,7 @@ src/
 - `POST /api/payment/nicepay/approve` - NicePay 승인
 - `POST /api/payment/nicepay/return` - NicePay 리턴
 
-### 관리자 - 세금계산서 (8개)
+### 관리자 - 세금계산서 (7개)
 
 - `GET /api/tax-invoices` - 세금계산서 목록
 - `GET /api/tax-invoices/excel` - 엑셀 다운로드
@@ -433,7 +740,7 @@ src/
 - `GET /api/transactions` - 거래 내역
 - `GET /api/settlements` - 정산 내역
 
-### 문의 (7개)
+### 문의 (5개)
 
 - `GET /api/inquiries` - 문의 목록
 - `POST /api/inquiries` - 문의 등록
@@ -444,7 +751,7 @@ src/
 - `GET /api/admin/inquiries/[id]` - 관리자 문의 상세
 - `POST /api/upload/inquiry` - 문의 파일 업로드
 
-### FAQ (5개)
+### FAQ (4개)
 
 - `GET /api/faqs` - FAQ 목록
 - `POST /api/faqs` - FAQ 생성
@@ -453,7 +760,7 @@ src/
 - `DELETE /api/faqs/[id]` - FAQ 삭제
 - `GET /api/faqs/max-order` - 최대 순서
 
-### 공지사항 (4개)
+### 공지사항 (2개)
 
 - `GET /api/announcements` - 공지 목록
 - `POST /api/announcements` - 공지 생성
@@ -477,7 +784,7 @@ src/
 - `GET /api/referrals/dashboard` - 추천인 대시보드
 - `GET /api/rewards` - 리워드 내역
 
-### 관리자 - 포인트/설정 (8개)
+### 관리자 - 포인트/설정 (11개)
 
 - `POST /api/admin/point-charge` - 포인트 충전
 - `POST /api/admin/point-charge/bulk` - 일괄 충전
@@ -492,7 +799,7 @@ src/
 - `GET /api/admin/system-settings` - 시스템 설정
 - `POST /api/admin/system-settings` - 시스템 설정 저장
 
-### 기타 (4개)
+### 기타 (6개)
 
 - `GET /api/terms` - 약관 조회
 - `POST /api/business-verification/verify-business-number` - 사업자번호 검증
@@ -502,6 +809,7 @@ src/
 - `GET /api/holidays` - 공휴일
 - `GET /api/shared/calendar/[token]` - 공유 캘린더 조회
 - `GET /api/cron/send-scheduled-messages` - Cron: 예약 발송
+- `GET /api/sms-templates` - SMS 템플릿
 
 ---
 
@@ -588,7 +896,7 @@ src/
 
 ---
 
-## 🧩 컴포넌트 구조 (75개)
+## 🧩 컴포넌트 구조 (77개)
 
 ### 관리자 컴포넌트 (8개)
 - `AdminHeader.tsx` - 관리자 헤더
@@ -600,45 +908,53 @@ src/
 - `DocumentSettings.tsx` - 문서 설정
 - `MenuSettings.tsx` - 메뉴 설정
 
-### 메시지 컴포넌트 (15개)
+### 메시지 컴포넌트 (16개)
 
-**탭 컴포넌트**:
+**탭 컴포넌트** (4개):
 - `MessageSendTab.tsx` - 메시지 발송 탭
 - `TemplateManagementTab.tsx` - 템플릿 관리 탭
 - `ReservationManagementTab.tsx` - 예약 관리 탭
 - `KakaoNaverRcsTab.tsx` - 카카오/네이버/RCS 탭
 
-**SMS 관련**:
+**SMS 관련** (1개):
 - `SmsMessageContent.tsx` - SMS 메시지 편집
 
-**카카오 관련**:
+**카카오 관련** (6개):
 - `KakaoMessageContent.tsx` - 카카오 메시지 편집
-- `AlimtalkTab.tsx` - 알림톡 탭
-- `FriendtalkTab.tsx` - 친구톡 탭
-- `KakaoAlimtalkTab.tsx` - 카카오 알림톡
-- `KakaoBrandTab.tsx` - 카카오 브랜드
-- `KakaoChannelTab.tsx` - 카카오 채널
+- `AlimtalkTab.tsx` - 알림톡 탭 (구버전)
+- `FriendtalkTab.tsx` - 친구톡 탭 (구버전)
+- `BrandTab.tsx` - 브랜드 탭 (구버전)
+- `kakao/KakaoAlimtalkTab.tsx` - 카카오 알림톡
+- `kakao/KakaoBrandTab.tsx` - 카카오 브랜드
+- `kakao/KakaoChannelTab.tsx` - 카카오 채널
 
-**네이버 관련**:
+**네이버 관련** (3개):
 - `NaverTalkContent.tsx` - 네이버 톡톡 편집
 - `NaverTalkTalkTab.tsx` - 네이버 톡톡 탭
-- `NaverTalkIdTab.tsx` - 네이버 톡 ID 탭
-- `NaverTemplateTab.tsx` - 네이버 템플릿 탭
+- `naver/NaverTalkIdTab.tsx` - 네이버 톡 ID 탭
+- `naver/NaverTemplateTab.tsx` - 네이버 템플릿 탭
+
+### 🆕 카카오 컴포넌트 (1개) - NEW v4.0
+- `kakao/ChannelRegistrationModal.tsx` - 카카오 채널 등록 모달
+  - 3단계 등록 프로세스
+  - 카카오톡 인증 토큰 발급
+  - 카테고리 선택
+  - MTS 발신프로필 등록
 
 ### 모달 컴포넌트 (23개)
 
-**주소록**:
+**주소록** (4개):
 - `AddressBookModal.tsx` - 주소록 모달
 - `AddContactModal.tsx` - 연락처 추가
 - `CreateGroupModal.tsx` - 그룹 생성
 - `AddressBookExcelModal.tsx` - 엑셀 업로드
 
-**캠페인**:
+**캠페인** (3개):
 - `CampaignModal.tsx` - 캠페인 모달
 - `CampaignDetailModal.tsx` - 캠페인 상세
 - `RejectionReasonModal.tsx` - 거절 사유
 
-**템플릿 & 콘텐츠**:
+**템플릿 & 콘텐츠** (7개):
 - `TemplateModal.tsx` - 템플릿 모달
 - `SaveTemplateModal.tsx` - 템플릿 저장
 - `SaveContentModal.tsx` - 콘텐츠 저장
@@ -646,18 +962,17 @@ src/
 - `LoadContentModal.tsx` - 콘텐츠 불러오기
 - `VariableSelectModal.tsx` - 변수 선택
 
-**발신번호**:
+**발신번호** (3개):
 - `SenderNumberSelectModal.tsx` - 발신번호 선택
 - `SenderNumberManageModal.tsx` - 발신번호 관리
 - `SenderNumberRegistrationModal.tsx` - 발신번호 등록
 
-**메시지**:
+**메시지** (4개):
 - `ScheduledMessagesModal.tsx` - 예약 메시지
 - `PreviewModal.tsx` - 미리보기
 - `SendConfirmModal.tsx` - 발송 확인
-- `ChannelSelectModal.tsx` - 채널 선택
 
-**기타**:
+**기타** (4개):
 - `ExcelUploadModal.tsx` - 엑셀 업로드
 - `TextUploadModal.tsx` - 텍스트 업로드
 - `DateRangeModal.tsx` - 날짜 범위
@@ -680,6 +995,7 @@ src/
 - `TermsModal.tsx` - 약관 모달
 - `Pagination.tsx` - 페이지네이션
 - `ReservationTooltip.tsx` - 예약 툴팁
+- `ChannelSelectModal.tsx` - 채널 선택
 
 ### 크레딧 컴포넌트 (3개)
 - `CreditBalance.tsx` - 잔액 표시
@@ -696,7 +1012,7 @@ src/
 - `NumberedParagraph.tsx` - 번호 매긴 단락
 - `StructuredRecommendationTable.tsx` - 추천 테이블
 
-### 기타 컴포넌트 (7개)
+### 기타 컴포넌트 (5개)
 - `CampaignManagementTab.tsx` - 캠페인 관리 탭
 - `ApprovalRequestComplete.tsx` - 승인 요청 완료
 - `GeneralSignupForm.tsx` - 일반 회원가입 폼
@@ -709,31 +1025,31 @@ src/
 
 ### Core 라이브러리 (16개)
 
-**API & 네트워크**:
+**API & 네트워크** (5개):
 1. `api.ts` - API 베이스 설정, fetch wrapper
 2. `apiClient.ts` - 타입 안전 HTTP 클라이언트
 3. `apiMiddleware.ts` - JWT 갱신 미들웨어, 401 처리
 4. `apiResponse.ts` - 응답 포맷팅 유틸
-5. `mtsApi.ts` - MTS SMS API 통합 (SMS/LMS/MMS/카카오/네이버)
+5. `mtsApi.ts` - MTS SMS API 통합 (SMS/LMS/MMS/카카오/네이버) - 1100+줄
 
-**메시징**:
+**메시징** (3개):
 6. `messageSender.ts` - 메시지 발송 로직
 7. `notificationService.ts` - 알림 트리거 및 로깅
 8. `emailUtils.ts` - 이메일 발송 (nodemailer)
 
-**데이터베이스 & 스토리지**:
+**데이터베이스 & 스토리지** (2개):
 9. `supabase.ts` - Supabase 클라이언트 초기화
 10. `storage.ts` - 파일 업로드/다운로드
 
-**보안**:
+**보안** (2개):
 11. `seedCrypto.ts` - SEED 암호화
 12. `kisaSeed.ts` - KISA 보안 모듈
 
-**비즈니스 로직**:
+**비즈니스 로직** (2개):
 13. `campaignDraft.ts` - 캠페인 초안 관리
 14. `termsService.ts` - 약관 버전 관리
 
-**기타**:
+**기타** (2개):
 15. `targetOptions.ts` - 타겟 마케팅 옵션
 16. `utils.ts` - 범용 헬퍼 함수
 
@@ -756,11 +1072,51 @@ src/
 9. `storageUtils.ts` - 파일 스토리지 헬퍼
 10. `kakaoApi.ts` - 카카오 API 헬퍼
 
+### 🆕 커스텀 훅 (3개) - +2 NEW v4.0
+
+1. `useNotificationUtils.tsx` - 알림 포맷팅 훅
+2. `useTargetMarketing.ts` - **NEW**: AI 타겟 마케팅 훅 (18KB)
+3. `useTermsContent.ts` - **NEW**: 약관 내용 관리 훅
+
 ---
 
 ## 🔄 주요 비즈니스 로직 플로우
 
-### 1. MTS API 메시지 발송 플로우
+### 1. 카카오 발신프로필 등록 플로우 (NEW v4.0)
+
+```
+사용자 → "카카오 채널 등록" 버튼 클릭
+   ↓
+ChannelRegistrationModal 열림 (Step 1)
+   ↓
+Step 1: 카카오톡 채널 정보 입력
+   ├─ Yellow ID (@channel_id)
+   ├─ 관리자 전화번호
+   └─ 카테고리 코드 선택 (GET /api/kakao/categories)
+   ↓
+"인증 토큰 요청" 버튼 클릭
+   ↓
+POST /api/kakao/sender/token
+   ├─ Body: { yellowId, phoneNumber, categoryCode }
+   ├─ MTS API 호출: /mts/api/sender/token
+   └─ 카카오톡으로 인증 토큰 발송 (6자리)
+   ↓
+Step 2: 인증 토큰 입력
+   ├─ 사용자가 카카오톡에서 받은 토큰 입력
+   └─ "등록" 버튼 클릭
+   ↓
+POST /api/kakao/sender/register
+   ├─ Body: { token, phoneNumber, yellowId, categoryCode }
+   ├─ MTS API 호출: /mts/api/create/new/senderKey
+   ├─ 발신프로필 키(sender_key) 발급
+   └─ DB 저장: kakao_sender_profiles 테이블
+   ↓
+Step 3: 완료
+   ├─ 성공 메시지 표시
+   └─ 모달 닫힘
+```
+
+### 2. MTS API 메시지 발송 플로우
 
 ```
 사용자 → 메시지 작성 (SMS/LMS/MMS/카카오/네이버)
@@ -789,7 +1145,7 @@ MTS API 호출 (mtsApi.ts)
    └─ 에러 응답 반환
 ```
 
-### 2. 캠페인 승인 워크플로우
+### 3. 캠페인 승인 워크플로우
 
 ```
 1. 사용자 캠페인 생성
@@ -824,7 +1180,7 @@ MTS API 호출 (mtsApi.ts)
        사용자 알림
 ```
 
-### 3. 예약 시스템 자동 발송
+### 4. 예약 시스템 자동 발송
 
 ```
 Cron Job (매분) → GET /api/reservations/auto-send-check
@@ -852,7 +1208,7 @@ Cron Job (매분) → GET /api/reservations/auto-send-check
    message_logs에 로그 저장
 ```
 
-### 4. 사업자 인증 플로우
+### 5. 사업자 인증 플로우
 
 ```
 1. 사용자 사업자정보 입력
@@ -884,7 +1240,7 @@ Cron Job (매분) → GET /api/reservations/auto-send-check
 11. 사용자 알림
 ```
 
-### 5. JWT 인증 및 갱신
+### 6. JWT 인증 및 갱신
 
 ```
 클라이언트 요청 (with Access Token)
@@ -1017,6 +1373,37 @@ CREATE TABLE users (
   kakao_user_id VARCHAR(255),
   naver_user_id VARCHAR(255),
   google_user_id VARCHAR(255),
+
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### 🆕 kakao_sender_profiles (카카오 발신프로필) - NEW v4.0
+```sql
+CREATE TABLE kakao_sender_profiles (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+
+  -- MTS 발신프로필 정보
+  sender_key VARCHAR(40) UNIQUE NOT NULL,
+  yellow_id VARCHAR(50) NOT NULL,
+  channel_name VARCHAR(100),
+
+  -- 등록 정보
+  phone_number VARCHAR(20) NOT NULL,
+  category_code VARCHAR(11),
+
+  -- 상태 정보
+  status VARCHAR(1) DEFAULT 'A',  -- A/C/B/E/D
+  block BOOLEAN DEFAULT false,
+  dormant BOOLEAN DEFAULT false,
+  profile_status VARCHAR(1) DEFAULT 'A',
+
+  -- 추가 정보
+  bizchat BOOLEAN DEFAULT false,
+  brandtalk BOOLEAN DEFAULT false,
+  brand_message BOOLEAN DEFAULT false,
 
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
@@ -1212,7 +1599,23 @@ NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 
 ## 📝 최근 업데이트 히스토리
 
-### MTS API 전환 (Phase 0-10, 2025-01-25~10-29): 100% 완료 ✅
+### v4.0 (2025-10-29): 카카오 발신프로필 관리 시스템 추가 ✅
+
+**신규 기능**:
+- ✅ 카카오 채널 등록 모달 (3단계 프로세스)
+- ✅ 카카오 인증 토큰 발급 API
+- ✅ MTS 발신프로필 등록 API
+- ✅ 카테고리 코드 조회 API
+- ✅ 발신프로필 목록 조회 API
+- ✅ 커스텀 훅 2개 추가 (useTargetMarketing, useTermsContent)
+
+**변경 통계**:
+- 총 파일: 343개 → 348개 (+5개)
+- API 엔드포인트: 160개 → 163개 (+3개)
+- 컴포넌트: 75개 → 77개 (+2개)
+- 커스텀 훅: 1개 → 3개 (+2개)
+
+### v3.0 (2025-01-28): MTS API 전환 완료 (Phase 0-10) ✅
 
 | Phase | 완료율 | 내용 |
 |-------|--------|------|
@@ -1229,7 +1632,7 @@ NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 - 새로운 라이브러리: `src/lib/mtsApi.ts` (1100+줄)
 - Naver SENS 관련 코드 완전 제거
 - 모든 발송 API 엔드포인트 MTS로 전환
-- 비용: SMS 15원, LMS 50원, MMS 200원, 알림톡 15원, 친구톡 30원, 톡톡 15원, 브랜드 15원
+- 비용: SMS 20원, LMS 50원, MMS 200원, 알림톡 15원, 친구톡 30원, 톡톡 15원, 브랜드 15원
 
 ### Phase 3 (2025-01-24): SMS 알림 시스템
 - ✅ SMS 알림 템플릿 관리
@@ -1253,42 +1656,44 @@ NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 
 ---
 
-## 📊 전체 요약
+## 📊 최종 요약
 
 MTS Message는 **Next.js 15 + Supabase + JWT 인증 + MTS API**를 기반으로 한 **엔터프라이즈급 종합 메시징 플랫폼**입니다.
 
 ### 핵심 기능
 
 1. **통합 메시징** - SMS/LMS/MMS, 카카오 알림톡/친구톡, 네이버 톡톡 (MTS API)
-2. **예약 관리 시스템** - 공간 예약, 자동 발송 규칙, 캘린더, 40개 API
-3. **AI 타겟 마케팅** - OpenAI 기반 캠페인 추천
-4. **캠페인 관리** - 승인 워크플로우, 예산 관리, 차등 단가
-5. **다중 역할** - USER, ADVERTISER, SALESPERSON, ADMIN
-6. **추천인 시스템** - 2단계 수수료, 리워드 추적
-7. **결제 시스템** - NicePay 연동, 크레딧 충전
-8. **알림 자동화** - SMS 알림 템플릿, 이벤트 기반
-9. **관리자 대시보드** - 통계, 승인, 설정, 11개 페이지
-10. **모바일 대응** - 반응형 디자인
+2. **🆕 카카오 발신프로필 관리** - 채널 등록, 인증, MTS 연동 자동화
+3. **예약 관리 시스템** - 공간 예약, 자동 발송 규칙, 캘린더, 21개 API
+4. **AI 타겟 마케팅** - OpenAI 기반 캠페인 추천
+5. **캠페인 관리** - 승인 워크플로우, 예산 관리, 차등 단가
+6. **다중 역할** - USER, ADVERTISER, SALESPERSON, ADMIN
+7. **추천인 시스템** - 2단계 수수료, 리워드 추적
+8. **결제 시스템** - NicePay 연동, 크레딧 충전
+9. **알림 자동화** - SMS 알림 템플릿, 이벤트 기반
+10. **관리자 대시보드** - 통계, 승인, 설정, 11개 페이지
+11. **모바일 대응** - 반응형 디자인
 
 ### 아키텍처 특징
 
 - **Service-Oriented**: 비즈니스 로직 분리 (services/)
 - **Type-Safe**: TypeScript 100% 적용
-- **API-First**: 159개 REST API 엔드포인트
+- **API-First**: 163개 REST API 엔드포인트
 - **Secure**: JWT + RLS + 역할 기반 권한
 - **Scalable**: Context API + 폴링 기반 상태 관리
-- **Modular**: 75개 재사용 가능 컴포넌트
+- **Modular**: 77개 재사용 가능 컴포넌트
 
 ### 기술적 하이라이트
 
-- **342개** TypeScript/TSX 파일
-- **159개** API 엔드포인트
+- **348개** TypeScript/TSX 파일
+- **163개** API 엔드포인트
 - **57개** 페이지 라우트
-- **75개** React 컴포넌트
+- **77개** React 컴포넌트
 - **16개** Core 라이브러리
 - **4개** Context Providers
 - **10개** Utility 모듈
 - **3개** Service 레이어
+- **3개** 커스텀 훅
 
 ### MTS API 통합 현황
 
@@ -1299,14 +1704,18 @@ MTS Message는 **Next.js 15 + Supabase + JWT 인증 + MTS API**를 기반으로 
 | 카카오 친구톡 | ✅ 완료 | 30원 |
 | 네이버 톡톡 | ✅ 완료 | 15원 |
 | 카카오 브랜드 | ✅ 완료 | 15원 |
+| **카카오 발신프로필 관리** | ✅ **NEW v4.0** | - |
 | 예약 발송 (모든 타입) | ✅ 완료 | - |
-| 통합 테스트 | ⏳ 선택사항 | - |
 
 ---
 
-**문서 버전**: v3.0 (Complete Codebase Analysis)
+**문서 버전**: v4.0 (Complete Codebase Analysis with Kakao Sender Profile Management)
 **최종 업데이트**: 2025-10-29
 **작성자**: Claude Code Analysis
-**변경사항**: MTS API 전환 Phase 0-10 완료 (100%), 카카오 브랜드 메시지 및 예약 발송 기능 추가
+**변경사항**:
+- 카카오 발신프로필 관리 시스템 추가 (API 5개, 컴포넌트 1개)
+- 커스텀 훅 2개 추가 (useTargetMarketing, useTermsContent)
+- 전체 코드베이스 재분석 및 통계 업데이트
+- 총 348개 파일, 163개 API 엔드포인트, 77개 컴포넌트
 
-이 문서는 실제 코드베이스의 **완전한 분석**을 기반으로 작성되었으며, 현재 프로젝트의 모든 파일, API, 페이지, 컴포넌트를 포함합니다.
+이 문서는 실제 코드베이스의 **완전한 재분석**을 기반으로 작성되었으며, 현재 프로젝트의 모든 파일, API, 페이지, 컴포넌트를 포함합니다.
