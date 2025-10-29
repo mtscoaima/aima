@@ -74,6 +74,7 @@ const MTS_ERROR_MESSAGES: Record<string, string> = {
   'ER01': '인증코드 내용이 없거나 유효하지 않음',
   'ER02': '발신프로필키 내용이 없음',
   'ER03': '수신자번호 내용이 없음',
+  'ER17': '허용되지 않은 발신번호 (MTS에 등록되지 않은 번호)',
 
   // SMS/MMS 이통사 오류 (1xxx, 2xxx, 4xxx, 6xxx, 8xxx)
   '1013': '결번',
@@ -144,6 +145,9 @@ export async function sendMtsSMS(
     }
 
     // API 호출
+    console.log('🔍 [MTS SMS] 요청 URL:', `${MTS_API_URL}/sndng/sms/sendMessage`);
+    console.log('🔍 [MTS SMS] 요청 Body:', JSON.stringify(requestBody, null, 2));
+
     const response = await fetch(`${MTS_API_URL}/sndng/sms/sendMessage`, {
       method: 'POST',
       headers: {
@@ -153,6 +157,7 @@ export async function sendMtsSMS(
     });
 
     const result = await response.json();
+    console.log('🔍 [MTS SMS] 응답:', JSON.stringify(result, null, 2));
 
     // 성공 확인 (0000: SMS/LMS 성공)
     if (result.code === '0000') {

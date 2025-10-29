@@ -102,7 +102,9 @@ const AddressBookModal: React.FC<AddressBookModalProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        setGroupContacts(data.contacts || []);
+        // API 응답 구조: { success: true, data: { contacts: [...] } }
+        const contacts = data.data?.contacts || data.contacts || [];
+        setGroupContacts(contacts);
       }
     } catch (error) {
       console.error("연락처 조회 오류:", error);
