@@ -1068,7 +1068,7 @@ export async function sendKakaoBrand(
       callback_number: cleanCallbackNumber,
       message: message,
       message_type: messageType,
-      send_mode: '3', // 3: 즉시발송
+      send_mode: '2', // 2: 즉시발송 (규격서 준수)
       targeting: targeting,
       tran_type: tranType,
       country_code: '82',
