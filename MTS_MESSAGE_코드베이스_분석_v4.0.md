@@ -38,20 +38,27 @@ Supabase (PostgreSQL + Storage)
 - 폴링 기반 실시간 업데이트 (Supabase Realtime 미사용)
 - Service Layer를 통한 비즈니스 로직 분리
 
-### 프로젝트 통계 (2025-10-29 기준 - 전체 코드베이스 재분석)
+### 프로젝트 통계 (2025-10-30 기준 - Phase 3.1 완료)
 
 | 구분 | 개수 | 변경사항 | 설명 |
 |------|------|---------|------|
-| **총 TypeScript/TSX 파일** | 348개 | +5개 | 전체 소스 파일 |
-| **API 엔드포인트** | 163개 | +3개 | REST API 라우트 |
+| **총 TypeScript/TSX 파일** | 348개 | - | 전체 소스 파일 |
+| **API 엔드포인트** | 163개 | - | REST API 라우트 |
 | **페이지** | 57개 | - | Next.js 페이지 라우트 |
-| **컴포넌트** | 77개 | +2개 | React 컴포넌트 |
+| **컴포넌트** | 77개 | - | React 컴포넌트 |
 | **라이브러리 모듈** | 16개 | - | Core 라이브러리 |
 | **서비스 모듈** | 3개 | - | 비즈니스 로직 서비스 |
 | **유틸리티** | 10개 | - | Helper 함수 |
 | **컨텍스트** | 4개 | - | Global State 관리 |
-| **커스텀 훅** | 3개 | +2개 | React Hook |
+| **커스텀 훅** | 3개 | - | React Hook |
 | **타입 정의** | 3개 | - | TypeScript 타입 |
+
+**최근 업데이트 (2025-10-30)**:
+- ✅ Phase 3.1 알림톡 발송 테스트 완료
+- ✅ MTS API 응답 코드 불일치 해결 (`0000` vs `1000`)
+- ✅ 디버깅용 console.log 38개 제거
+- ✅ Next.js 15 타입 에러 2건 수정
+- ✅ 빌드 성공 (0 에러, 0 경고)
 
 ---
 
@@ -74,6 +81,22 @@ GET  /api/kakao/categories         - 카테고리 코드 목록
   - 카카오톡 인증 토큰 요청
   - MTS API 발신프로필 등록
   - 카테고리 선택 UI
+
+- `src/components/kakao/TemplateCreateModal.tsx` - 알림톡 템플릿 등록 모달
+  - 템플릿 코드, 이름, 내용 입력
+  - 검수 즉시 요청 옵션
+  - MTS API 템플릿 등록 및 검수 요청
+
+- `src/components/messages/kakao/KakaoAlimtalkTab.tsx` - 알림톡 템플릿 관리 탭
+  - 발신프로필별 템플릿 목록 조회
+  - 템플릿 등록 모달 통합
+  - 템플릿 상태 표시 (정상/대기/중지 · 등록됨/검수중/승인됨/반려됨)
+
+- `src/components/messages/AlimtalkTab.tsx` - 알림톡 발송 탭 (메시지 보내기)
+  - 템플릿 선택 및 미리보기
+  - 수신자 다중 입력 (엔터로 구분)
+  - 회신번호 선택
+  - SMS 백업 발송 옵션
 
 #### 신규 디렉토리 구조
 ```
@@ -103,7 +126,12 @@ src/
 ```
 src/components/
 ├── kakao/                          # NEW: 카카오 관련
+│   ├── ChannelRegistrationModal.tsx
+│   └── TemplateCreateModal.tsx
 ├── messages/kakao/                 # 카카오 메시지 탭들
+│   ├── KakaoAlimtalkTab.tsx       # 알림톡 템플릿 관리
+│   ├── KakaoChannelTab.tsx        # 채널/그룹 관리
+│   └── KakaoBrandTab.tsx          # 브랜드 템플릿
 ├── messages/naver/                 # 네이버 메시지 탭들
 ├── admin/campaign-settings/        # 캠페인 설정
 ├── admin/system-settings/          # 시스템 설정
@@ -111,6 +139,31 @@ src/components/
 ├── common/                         # 공통 컴포넌트 (빈 디렉토리)
 └── history/                        # 히스토리 (빈 디렉토리)
 ```
+
+### 4. MTS API 통합 중요 발견사항 (2025-10-30)
+
+**알림톡 API 응답 코드 불일치:**
+- **문서 명시**: 알림톡 성공 시 `1000` 반환
+- **실제 응답**: `0000` 반환 (SMS/LMS/MMS와 동일)
+- **해결**: `src/lib/mtsApi.ts`의 `sendMtsAlimtalk()` 함수에서 두 코드 모두 허용
+  ```typescript
+  // Line 443
+  if (result.code === '0000' || result.code === '1000') {
+    return { success: true, ... };
+  }
+  ```
+
+**템플릿 검수 요청 API:**
+- 성공 코드: `200`
+- 검수 상태: `inspection_status` 컬럼으로 관리
+  - `REG`: 등록됨
+  - `REQ`: 검수 요청중
+  - `APR`: 승인됨
+  - `REJ`: 반려됨
+
+**디버깅 로그 정리:**
+- Phase 3.1 테스트 중 추가된 38개 console.log 제거
+- 프로덕션 배포 준비 완료
 
 ---
 

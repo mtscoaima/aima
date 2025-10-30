@@ -145,9 +145,6 @@ export async function sendMtsSMS(
     }
 
     // API 호출
-    console.log('🔍 [MTS SMS] 요청 URL:', `${MTS_API_URL}/sndng/sms/sendMessage`);
-    console.log('🔍 [MTS SMS] 요청 Body:', JSON.stringify(requestBody, null, 2));
-
     const response = await fetch(`${MTS_API_URL}/sndng/sms/sendMessage`, {
       method: 'POST',
       headers: {
@@ -157,7 +154,6 @@ export async function sendMtsSMS(
     });
 
     const result = await response.json();
-    console.log('🔍 [MTS SMS] 응답:', JSON.stringify(result, null, 2));
 
     // 성공 확인 (0000: SMS/LMS 성공)
     if (result.code === '0000') {
@@ -439,8 +435,8 @@ export async function sendMtsAlimtalk(
 
     const result = await response.json();
 
-    // 성공 확인 (1000: 알림톡 성공)
-    if (result.code === '1000') {
+    // 성공 확인 (0000 또는 1000: 알림톡 성공)
+    if (result.code === '0000' || result.code === '1000') {
       return {
         success: true,
         msgId: result.msg_id,
@@ -457,8 +453,6 @@ export async function sendMtsAlimtalk(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (알림톡):', error);
-
     if (error instanceof TypeError) {
       return {
         success: false,
@@ -679,35 +673,24 @@ export async function getMtsAlimtalkTemplates(
  * 카카오 알림톡 템플릿 상세 조회
  * @param senderKey 발신 프로필 키
  * @param templateCode 템플릿 코드
+ * @param senderKeyType 발신프로필 타입 (S: 기본, G: 그룹, 기본값: S)
  */
 export async function getMtsAlimtalkTemplate(
   senderKey: string,
-  templateCode: string
+  templateCode: string,
+  senderKeyType: 'S' | 'G' = 'S'
 ): Promise<MtsApiResult> {
   try {
-    // 환경 변수 확인
-    if (!MTS_AUTH_CODE) {
-      return {
-        success: false,
-        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
-        errorCode: 'CONFIG_ERROR',
-      };
-    }
-
-    // 요청 본문
-    const requestBody = {
-      auth_code: MTS_AUTH_CODE,
-      sender_key: senderKey,
-      template_code: templateCode,
-    };
+    // FormData 생성
+    const formData = new FormData();
+    formData.append('senderKey', senderKey);
+    formData.append('templateCode', templateCode);
+    formData.append('senderKeyType', senderKeyType);
 
     // API 호출
-    const response = await fetch(`${MTS_TEMPLATE_API_URL}/kakaoTalk/atk/getTemplate`, {
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/state/template`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-      },
-      body: JSON.stringify(requestBody),
+      body: formData,
     });
 
     const result = await response.json();

@@ -76,34 +76,6 @@ async function getUserPhoneNumber(userId: number): Promise<{ phone: string; name
 }
 
 /**
- * Console 출력 포맷
- */
-function logNotificationToConsole(
-  eventType: string,
-  recipientName: string,
-  recipientPhone: string,
-  messageType: string,
-  subject: string | null,
-  content: string,
-  logId: number
-) {
-  console.log('\n' + '━'.repeat(60));
-  console.log('📱 [SMS 알림 로그]');
-  console.log('━'.repeat(60));
-  console.log(`📌 이벤트: ${eventType}`);
-  console.log(`👤 수신자: ${recipientName} (${recipientPhone})`);
-  console.log(`📝 타입: ${messageType}`);
-  if (subject) {
-    console.log(`📧 제목: ${subject}`);
-  }
-  console.log(`💬 내용:`);
-  console.log(`   ${content.split('\n').join('\n   ')}`);
-  console.log('━'.repeat(60));
-  console.log(`✅ 로그 저장 완료 (ID: ${logId})`);
-  console.log('━'.repeat(60) + '\n');
-}
-
-/**
  * 알림 발송 로그 저장
  */
 async function saveNotificationLog(
@@ -159,8 +131,6 @@ export async function triggerNotification(
   eventData: NotificationEventData
 ): Promise<void> {
   try {
-    console.log(`🔔 알림 트리거: ${eventData.eventType}`);
-
     // 1. 템플릿 조회
     const { data: template, error: templateError } = await supabase
       .from('sms_notification_templates')
@@ -175,7 +145,6 @@ export async function triggerNotification(
 
     // 2. 비활성화된 템플릿이면 종료
     if (!template.is_active) {
-      console.log(`⏸️  알림 비활성화됨: ${template.name}`);
       return;
     }
 
@@ -230,7 +199,7 @@ export async function triggerNotification(
       );
 
       // 로그 저장
-      const logId = await saveNotificationLog(
+      await saveNotificationLog(
         typedTemplate.id,
         eventData.eventType,
         recipient.id,
@@ -243,22 +212,7 @@ export async function triggerNotification(
           template_name: typedTemplate.name,
         }
       );
-
-      if (logId) {
-        // Console 출력
-        logNotificationToConsole(
-          eventData.eventType,
-          recipient.name,
-          recipient.phone,
-          typedTemplate.message_type,
-          subject,
-          content,
-          logId
-        );
-      }
     }
-
-    console.log(`✅ 알림 처리 완료: ${recipients.length}명에게 발송`);
 
   } catch (error) {
     console.error('❌ 알림 처리 중 오류:', error);

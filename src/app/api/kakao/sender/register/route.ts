@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 등록 성공 - 응답 데이터 추출
-    const responseData = result.responseData?.data;
+    const responseData = result.responseData?.data as Record<string, unknown> | undefined;
     if (!responseData || !responseData.senderKey) {
       return NextResponse.json(
         { error: 'MTS API 응답에서 senderKey를 찾을 수 없습니다.' },

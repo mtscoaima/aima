@@ -36,6 +36,30 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // 템플릿 상태 레이블 변환 함수
+  const getTemplateStatusLabel = (template: AlimtalkTemplate) => {
+    const statusMap: Record<string, string> = {
+      'R': '대기',
+      'A': '정상',
+      'S': '중지'
+    };
+    const inspectionMap: Record<string, string> = {
+      'REG': '등록됨',
+      'REQ': '검수중',
+      'APR': '승인됨',
+      'REJ': '반려됨'
+    };
+
+    const statusLabel = statusMap[template.status] || template.status;
+    const inspectionLabel = template.inspection_status
+      ? inspectionMap[template.inspection_status]
+      : '';
+
+    return inspectionLabel
+      ? `${statusLabel} · ${inspectionLabel}`
+      : statusLabel;
+  };
+
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
     loadSenderProfiles();
@@ -143,7 +167,6 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
         onSendComplete(result);
       }
     } catch (error) {
-      console.error("알림톡 발송 실패:", error);
       alert(
         error instanceof Error ? error.message : "알림톡 발송 중 오류가 발생했습니다."
       );
@@ -239,7 +262,7 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
                   <option value="">템플릿을 선택하세요</option>
                   {alimtalkTemplates.map((template) => (
                     <option key={template.template_code} value={template.template_code}>
-                      {template.template_name} ({template.status})
+                      {template.template_name} ({getTemplateStatusLabel(template)})
                     </option>
                   ))}
                 </select>

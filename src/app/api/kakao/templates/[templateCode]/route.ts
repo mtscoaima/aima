@@ -20,7 +20,7 @@ const supabase = createClient(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { templateCode: string } }
+  { params }: { params: Promise<{ templateCode: string }> }
 ) {
   try {
     // JWT 인증 확인
@@ -30,7 +30,7 @@ export async function DELETE(
     }
 
     const userId = authResult.userInfo.userId;
-    const templateCode = params.templateCode;
+    const { templateCode } = await params;
 
     // 쿼리 파라미터 추출
     const searchParams = request.nextUrl.searchParams;

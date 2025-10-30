@@ -18,6 +18,30 @@ const KakaoAlimtalkTab = () => {
   const [recipientInput, setRecipientInput] = useState("");
   const [callbackNumber, setCallbackNumber] = useState("");
 
+  // 템플릿 상태 레이블 변환 함수
+  const getTemplateStatusLabel = (template: AlimtalkTemplate) => {
+    const statusMap: Record<string, string> = {
+      'R': '대기',
+      'A': '정상',
+      'S': '중지'
+    };
+    const inspectionMap: Record<string, string> = {
+      'REG': '등록됨',
+      'REQ': '검수중',
+      'APR': '승인됨',
+      'REJ': '반려됨'
+    };
+
+    const statusLabel = statusMap[template.status] || template.status;
+    const inspectionLabel = template.inspection_status
+      ? inspectionMap[template.inspection_status]
+      : '';
+
+    return inspectionLabel
+      ? `${statusLabel} · ${inspectionLabel}`
+      : statusLabel;
+  };
+
   // 채널 및 템플릿 상태
   const [senderProfiles, setSenderProfiles] = useState<SenderProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string>("");
@@ -334,7 +358,7 @@ const KakaoAlimtalkTab = () => {
                   <option value="">템플릿을 선택하세요</option>
                   {alimtalkTemplates.map((template) => (
                     <option key={template.template_code} value={template.template_code}>
-                      {template.template_name} ({template.status})
+                      {template.template_name} ({getTemplateStatusLabel(template)})
                     </option>
                   ))}
                 </select>

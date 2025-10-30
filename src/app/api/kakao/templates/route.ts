@@ -124,7 +124,9 @@ export async function GET(request: NextRequest) {
     // DB 데이터 즉시 반환
     return NextResponse.json({
       success: true,
-      data: templates || [],
+      data: {
+        list: templates || [],
+      },
       count: templates?.length || 0,
       syncTriggered: needsSync,
     });

@@ -235,6 +235,8 @@ export async function POST(request: NextRequest) {
       mtsResponse: templateData,
       inspectionRequested: requestInspection,
       inspectionSuccess: inspectionResult?.success || false,
+      inspectionError: inspectionResult?.error || null,
+      inspectionErrorCode: inspectionResult?.errorCode || null,
     });
   } catch (error) {
     console.error('템플릿 등록 API 오류:', error);
