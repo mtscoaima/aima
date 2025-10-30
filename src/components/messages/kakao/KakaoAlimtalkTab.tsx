@@ -10,6 +10,7 @@ import {
   type AlimtalkTemplate,
 } from "@/utils/kakaoApi";
 import ChannelRegistrationModal from "../../kakao/ChannelRegistrationModal";
+import TemplateCreateModal from "../../kakao/TemplateCreateModal";
 
 const KakaoAlimtalkTab = () => {
   // 수신자 및 발신번호 상태
@@ -33,6 +34,7 @@ const KakaoAlimtalkTab = () => {
   const [smsBackupMessage, setSmsBackupMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
@@ -299,7 +301,18 @@ const KakaoAlimtalkTab = () => {
           {/* 우측: 알림톡 템플릿 */}
           <div className="flex-1">
             <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 className="font-medium text-gray-700 mb-3">알림톡 템플릿</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-gray-700">알림톡 템플릿</h3>
+                {selectedProfile && (
+                  <button
+                    onClick={() => setIsTemplateModalOpen(true)}
+                    className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                    템플릿 추가
+                  </button>
+                )}
+              </div>
 
               {!selectedProfile ? (
                 <div className="text-center py-2 text-gray-500 text-sm">
@@ -326,8 +339,15 @@ const KakaoAlimtalkTab = () => {
                   ))}
                 </select>
               ) : (
-                <div className="text-center py-2 text-gray-500 text-sm">
-                  사용 가능한 템플릿이 없습니다.
+                <div className="text-center py-4">
+                  <p className="text-gray-500 text-sm mb-3">사용 가능한 템플릿이 없습니다.</p>
+                  <button
+                    onClick={() => setIsTemplateModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    첫 템플릿 추가하기
+                  </button>
                 </div>
               )}
             </div>
@@ -423,6 +443,19 @@ const KakaoAlimtalkTab = () => {
           loadSenderProfiles();
         }}
       />
+
+      {/* 템플릿 추가 모달 */}
+      {selectedProfile && (
+        <TemplateCreateModal
+          isOpen={isTemplateModalOpen}
+          onClose={() => setIsTemplateModalOpen(false)}
+          senderKey={selectedProfile}
+          onSuccess={() => {
+            setIsTemplateModalOpen(false);
+            loadTemplates(selectedProfile);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1323,3 +1323,186 @@ export async function registerMtsSenderProfile(
     };
   }
 }
+
+/**
+ * 카카오 알림톡 템플릿 등록
+ * @param templateData 템플릿 정보
+ */
+export async function createMtsAlimtalkTemplate(templateData: {
+  senderKey: string;
+  senderKeyType?: string;
+  templateCode: string;
+  templateName: string;
+  templateContent: string;
+  templateMessageType?: string;
+  templateEmphasizeType?: string;
+  categoryCode?: string;
+  securityFlag?: string;
+  buttons?: string; // JSON string
+  quickReplies?: string; // JSON string
+  templateExtra?: string;
+  templateTitle?: string;
+  templateSubtitle?: string;
+  templateImageName?: string;
+  templateImageUrl?: string;
+  templatePreviewMessage?: string;
+  templateRepresentLink?: string;
+}): Promise<MtsApiResult> {
+  try {
+    // FormData 생성
+    const formData = new FormData();
+    formData.append('senderKey', templateData.senderKey);
+    formData.append('senderKeyType', templateData.senderKeyType || 'S');
+    formData.append('templateCode', templateData.templateCode);
+    formData.append('templateName', templateData.templateName);
+    formData.append('templateContent', templateData.templateContent);
+    formData.append('templateMessageType', templateData.templateMessageType || 'BA');
+    formData.append('templateEmphasizeType', templateData.templateEmphasizeType || 'NONE');
+
+    // 선택적 필드 추가
+    if (templateData.categoryCode) formData.append('categoryCode', templateData.categoryCode);
+    if (templateData.securityFlag) formData.append('securityFlag', templateData.securityFlag);
+    if (templateData.buttons) formData.append('buttons', templateData.buttons);
+    if (templateData.quickReplies) formData.append('quickReplies', templateData.quickReplies);
+    if (templateData.templateExtra) formData.append('templateExtra', templateData.templateExtra);
+    if (templateData.templateTitle) formData.append('templateTitle', templateData.templateTitle);
+    if (templateData.templateSubtitle) formData.append('templateSubtitle', templateData.templateSubtitle);
+    if (templateData.templateImageName) formData.append('templateImageName', templateData.templateImageName);
+    if (templateData.templateImageUrl) formData.append('templateImageUrl', templateData.templateImageUrl);
+    if (templateData.templatePreviewMessage) formData.append('templatePreviewMessage', templateData.templatePreviewMessage);
+    if (templateData.templateRepresentLink) formData.append('templateRepresentLink', templateData.templateRepresentLink);
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/create/template`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    // 성공 확인
+    if (result.code === '200') {
+      return {
+        success: true,
+        responseData: result.data,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: result.message || '템플릿 등록 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (템플릿 등록):', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 카카오 알림톡 템플릿 검수 요청
+ * @param senderKey 발신 프로필 키
+ * @param templateCode 템플릿 코드
+ * @param senderKeyType 발신 프로필 타입
+ */
+export async function requestMtsTemplateInspection(
+  senderKey: string,
+  templateCode: string,
+  senderKeyType: string = 'S'
+): Promise<MtsApiResult> {
+  try {
+    // FormData 생성
+    const formData = new FormData();
+    formData.append('senderKey', senderKey);
+    formData.append('templateCode', templateCode);
+    formData.append('senderKeyType', senderKeyType);
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/template/request`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    // 성공 확인
+    if (result.code === '200') {
+      return {
+        success: true,
+        responseData: result.data,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: result.message || '템플릿 검수 요청 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (템플릿 검수 요청):', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 카카오 알림톡 템플릿 삭제
+ * @param senderKey 발신 프로필 키
+ * @param templateCode 템플릿 코드
+ * @param senderKeyType 발신 프로필 타입
+ */
+export async function deleteMtsAlimtalkTemplate(
+  senderKey: string,
+  templateCode: string,
+  senderKeyType: string = 'S'
+): Promise<MtsApiResult> {
+  try {
+    // FormData 생성
+    const formData = new FormData();
+    formData.append('senderKey', senderKey);
+    formData.append('templateCode', templateCode);
+    formData.append('senderKeyType', senderKeyType);
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/delete/template`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    // 성공 확인
+    if (result.code === '200') {
+      return {
+        success: true,
+        responseData: result.data,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: result.message || '템플릿 삭제 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (템플릿 삭제):', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
