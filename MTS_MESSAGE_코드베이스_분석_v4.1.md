@@ -1,4 +1,4 @@
-# MTS Message 프로젝트 코드베이스 분석 (v4.0)
+# MTS Message 프로젝트 코드베이스 분석 (v4.1)
 
 ## 📊 프로젝트 개요
 
@@ -11,9 +11,9 @@
 - **AI 통합**: OpenAI API (GPT-4, DALL-E 3)
 - **메시징 API**: MTS API (Naver SENS 전환 완료)
   - SMS/LMS/MMS
-  - 카카오 알림톡, 친구톡, 브랜드 메시지
+  - 카카오 알림톡, 친구톡 V2, 브랜드 메시지
   - 네이버 톡톡 스마트알림
-  - **NEW**: 카카오 발신프로필 관리 API
+  - **카카오 발신프로필 관리 API**
 - **결제**: NicePay (KG이니시스)
 - **파일 처리**: Sharp (이미지), xlsx (엑셀), html2canvas
 - **차트**: Chart.js, react-chartjs-2
@@ -38,7 +38,7 @@ Supabase (PostgreSQL + Storage)
 - 폴링 기반 실시간 업데이트 (Supabase Realtime 미사용)
 - Service Layer를 통한 비즈니스 로직 분리
 
-### 프로젝트 통계 (2025-10-30 기준 - Phase 3.1 완료)
+### 프로젝트 통계 (2025-10-31 기준 - v4.1)
 
 | 구분 | 개수 | 변경사항 | 설명 |
 |------|------|---------|------|
@@ -53,12 +53,136 @@ Supabase (PostgreSQL + Storage)
 | **커스텀 훅** | 3개 | - | React Hook |
 | **타입 정의** | 3개 | - | TypeScript 타입 |
 
-**최근 업데이트 (2025-10-30)**:
-- ✅ Phase 3.1 알림톡 발송 테스트 완료
-- ✅ MTS API 응답 코드 불일치 해결 (`0000` vs `1000`)
-- ✅ 디버깅용 console.log 38개 제거
-- ✅ Next.js 15 타입 에러 2건 수정
+**최근 업데이트 (2025-10-31)**:
+- ✅ 친구톡 발송 API 완전 수정 (DB 스키마, 성공 코드, 데이터 흐름)
+- ✅ SMS 템플릿 로딩 버그 수정 (API 응답 파싱, 검색어 초기화)
+- ✅ 디버깅 로그 정리 (모든 console.log 제거, 에러 로그만 유지)
+- ✅ Database migrations 4건 적용
 - ✅ 빌드 성공 (0 에러, 0 경고)
+
+---
+
+## 🆕 v4.1 주요 변경사항 (2025-10-31)
+
+### 1. 친구톡 발송 시스템 버그 수정
+
+#### API 레벨 수정
+**파일**: `src/app/api/messages/kakao/friendtalk/send/route.ts`
+- **MTS API 성공 코드 인식**: `0000` 또는 `1000` 모두 허용
+- **DB 스키마 수정**: 실제 테이블 구조에 맞게 컬럼명 변경
+  ```typescript
+  // Before (잘못된 컬럼명)
+  message, recipient, type
+
+  // After (올바른 컬럼명)
+  message_content, to_number, to_name, message_type
+  ```
+- **수신자 이름 저장**: `Recipient[]` 객체에서 `name` 필드 추출 및 저장
+- **발송 시간 기록**: `sent_at` 필드에 성공 시 현재 시간 저장
+
+#### 라이브러리 레벨 수정
+**파일**: `src/lib/mtsApi.ts`
+- **sendMtsFriendtalk 함수**: 성공 코드 체크 로직 수정
+  ```typescript
+  // 0000 또는 1000 모두 성공으로 인식
+  if (result.code === '0000' || result.code === '1000') {
+    return { success: true, msgId: result.msg_id, ... };
+  }
+  ```
+- **디버깅 로그 제거**: 모든 console.log 제거, console.error만 유지
+
+#### 컴포넌트 레벨 수정
+**파일**:
+- `src/components/messages/KakaoMessageContent.tsx`
+- `src/components/messages/FriendtalkTab.tsx`
+- `src/components/messages/AlimtalkTab.tsx`
+- `src/utils/kakaoApi.ts`
+
+**변경사항**:
+```typescript
+// Before: 전화번호만 전달 (이름 손실)
+<FriendtalkTab recipients={recipients.map(r => r.phone_number)} />
+
+// After: 전체 Recipient 객체 전달
+interface Recipient {
+  phone_number: string;
+  name?: string;
+}
+<FriendtalkTab recipients={recipients} />
+```
+
+#### Database Migrations (4건)
+1. **message_type 길이 확장**
+   ```sql
+   ALTER TABLE message_logs
+   ALTER COLUMN message_type TYPE varchar(50);
+   ```
+
+2. **message_type CHECK constraint 업데이트**
+   ```sql
+   ALTER TABLE message_logs ADD CONSTRAINT message_logs_message_type_check
+   CHECK (message_type IN (
+     'SMS', 'LMS', 'MMS',
+     'KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK', 'KAKAO_BRAND', 'NAVERTALK'
+   ));
+   ```
+
+3. **transactions amount CHECK 수정**
+   ```sql
+   -- 음수 금액을 양수로 변환
+   UPDATE transactions SET amount = ABS(amount) WHERE amount < 0;
+
+   -- 양수만 허용하도록 제약조건 변경
+   ALTER TABLE transactions ADD CONSTRAINT transactions_amount_check
+   CHECK (amount > 0);
+   ```
+
+4. **SMS 전송 로직 수정**
+   **파일**: `src/lib/messageSender.ts`
+   ```typescript
+   // Before: 빈 문자열 저장
+   to_name: params.toName || ''
+
+   // After: NULL 저장
+   to_name: params.toName || null
+   ```
+
+### 2. SMS 템플릿 로딩 버그 수정
+
+#### 문제점
+- API 응답 구조: `{ success: true, data: { templates: [...] } }`
+- 클라이언트 파싱: `data.templates` (❌ 잘못됨)
+- 결과: 템플릿 0개로 인식, "저장된 내용이 없습니다" 표시
+
+#### 해결방법
+**파일**: `src/components/modals/LoadContentModal.tsx`
+
+```typescript
+// Before
+setTemplates(data.templates || []);
+
+// After: 중첩된 data 구조 처리
+const templates = data.data?.templates || data.templates || [];
+setTemplates(templates);
+```
+
+**추가 개선**:
+- 모달 열 때 검색어 초기화: `setSearchTerm("")`
+- 이전 검색어로 인한 필터링 문제 해결
+
+### 3. 코드 정리 및 최적화
+
+#### 디버깅 로그 제거
+**대상 파일**:
+- `src/app/api/messages/kakao/friendtalk/send/route.ts`
+- `src/app/api/sms-templates/route.ts`
+- `src/lib/mtsApi.ts` (sendMtsFriendtalk)
+- `src/components/modals/LoadContentModal.tsx`
+
+**변경사항**:
+- 모든 디버깅용 console.log 제거
+- 에러 처리용 console.error만 유지
+- 코드 가독성 개선
 
 ---
 

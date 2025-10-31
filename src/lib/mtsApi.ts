@@ -145,6 +145,19 @@ export async function sendMtsSMS(
     }
 
     // API 호출
+    console.log('========================================');
+    console.log('[MTS SMS API 호출 시작]');
+    console.log('시간:', new Date().toISOString());
+    console.log('API URL:', `${MTS_API_URL}/sndng/sms/sendMessage`);
+    console.log('요청 데이터:', JSON.stringify({
+      auth_code: '*** (보안)',
+      callback_number: cleanCallbackNumber.substring(0, 3) + '****' + cleanCallbackNumber.substring(7),
+      phone_number: cleanToNumber.substring(0, 3) + '****' + cleanToNumber.substring(7),
+      message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+      subject: subject || '(없음)',
+      send_date: sendDate || '(즉시발송)'
+    }, null, 2));
+
     const response = await fetch(`${MTS_API_URL}/sndng/sms/sendMessage`, {
       method: 'POST',
       headers: {
@@ -154,6 +167,11 @@ export async function sendMtsSMS(
     });
 
     const result = await response.json();
+
+    console.log('[MTS SMS API 응답 수신]');
+    console.log('HTTP 상태:', response.status, response.statusText);
+    console.log('응답 데이터:', JSON.stringify(result, null, 2));
+    console.log('========================================\n');
 
     // 성공 확인 (0000: SMS/LMS 성공)
     if (result.code === '0000') {
@@ -425,6 +443,22 @@ export async function sendMtsAlimtalk(
     }
 
     // API 호출
+    console.log('========================================');
+    console.log('[MTS 카카오 알림톡 API 호출 시작]');
+    console.log('시간:', new Date().toISOString());
+    console.log('API URL:', `${MTS_API_URL}/sndng/atk/sendMessage`);
+    console.log('요청 데이터:', JSON.stringify({
+      auth_code: '*** (보안)',
+      sender_key: senderKey,
+      template_code: templateCode,
+      phone_number: cleanToNumber.substring(0, 3) + '****' + cleanToNumber.substring(7),
+      message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+      callback_number: cleanCallbackNumber.substring(0, 3) + '****' + cleanCallbackNumber.substring(7),
+      버튼: buttons ? `${buttons.length}개` : '없음',
+      전환발송설정: tranType ? `있음 (${tranType})` : '없음',
+      예약발송: sendDate || '(즉시발송)'
+    }, null, 2));
+
     const response = await fetch(`${MTS_API_URL}/sndng/atk/sendMessage`, {
       method: 'POST',
       headers: {
@@ -434,6 +468,11 @@ export async function sendMtsAlimtalk(
     });
 
     const result = await response.json();
+
+    console.log('[MTS 카카오 알림톡 API 응답 수신]');
+    console.log('HTTP 상태:', response.status, response.statusText);
+    console.log('응답 데이터:', JSON.stringify(result, null, 2));
+    console.log('========================================\n');
 
     // 성공 확인 (0000 또는 1000: 알림톡 성공)
     if (result.code === '0000' || result.code === '1000') {
@@ -550,6 +589,24 @@ export async function sendMtsFriendtalk(
     // API 호출 (V2 엔드포인트 사용)
     const apiUrl = `${MTS_API_URL}/v2/sndng/ftk/sendMessage`;
 
+    console.log('========================================');
+    console.log('[MTS 카카오 친구톡 API 호출 시작]');
+    console.log('시간:', new Date().toISOString());
+    console.log('API URL:', apiUrl);
+    console.log('요청 데이터:', JSON.stringify({
+      auth_code: '*** (보안)',
+      sender_key: senderKey,
+      phone_number: cleanToNumber.substring(0, 3) + '****' + cleanToNumber.substring(7),
+      message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+      messageType: messageType,
+      ad_flag: adFlag,
+      callback_number: cleanCallbackNumber.substring(0, 3) + '****' + cleanCallbackNumber.substring(7),
+      이미지: imageUrls ? `${imageUrls.length}개` : '없음',
+      버튼: buttons ? `${buttons.length}개` : '없음',
+      전환발송설정: tranType ? `있음 (${tranType})` : '없음',
+      예약발송: sendDate || '(즉시발송)'
+    }, null, 2));
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -559,6 +616,11 @@ export async function sendMtsFriendtalk(
     });
 
     const result = await response.json();
+
+    console.log('[MTS 카카오 친구톡 API 응답 수신]');
+    console.log('HTTP 상태:', response.status, response.statusText);
+    console.log('응답 데이터:', JSON.stringify(result, null, 2));
+    console.log('========================================\n');
 
     // 성공 확인 (0000 또는 1000: 친구톡 성공)
     // MTS API는 친구톡에 대해 0000 또는 1000을 반환할 수 있음

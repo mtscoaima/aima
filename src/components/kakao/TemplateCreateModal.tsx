@@ -125,7 +125,12 @@ const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
     try {
       // 버튼 데이터 정제 (빈 필드 제거)
       const cleanedButtons = buttons.map((button) => {
-        const cleaned: Record<string, string> = {
+        const cleaned: {
+          name: string;
+          type: string;
+          url_mobile?: string;
+          url_pc?: string;
+        } = {
           name: button.name.trim(),
           type: button.type,
         };

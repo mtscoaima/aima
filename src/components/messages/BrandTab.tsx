@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { Loader2, Send } from "lucide-react";
-import { fetchSenderProfiles, sendBrandMessage, type SenderProfile } from "@/utils/kakaoApi";
+import { fetchSenderProfiles, sendBrandMessage, type SenderProfile, type Recipient } from "@/utils/kakaoApi";
 
 interface BrandTabProps {
-  recipients: string[];
+  recipients: Recipient[];
   callbackNumber: string;
 }
 
