@@ -64,7 +64,9 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         throw new Error(data.error || "템플릿 조회에 실패했습니다");
       }
 
-      setTemplates(data.templates || []);
+      // API 응답 구조: { success: true, data: { count, templates } }
+      const templates = data.data?.templates || data.templates || [];
+      setTemplates(templates);
     } catch (err) {
       console.error("템플릿 조회 오류:", err);
       alert(err instanceof Error ? err.message : "템플릿 조회 중 오류가 발생했습니다");
@@ -104,6 +106,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setSearchTerm(""); // 모달 열 때마다 검색어 초기화
       setActiveTab(initialActiveTab);
       if (initialActiveTab === "saved") {
         fetchTemplates();

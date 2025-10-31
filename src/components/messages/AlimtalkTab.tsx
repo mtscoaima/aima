@@ -11,8 +11,13 @@ import {
 } from "@/utils/kakaoApi";
 import ChannelRegistrationModal from "../kakao/ChannelRegistrationModal";
 
+interface Recipient {
+  phone_number: string;
+  name?: string;
+}
+
 interface AlimtalkTabProps {
-  recipients?: string[]; // 상위 컴포넌트에서 전달받는 수신자 목록
+  recipients?: Recipient[]; // 상위 컴포넌트에서 전달받는 수신자 목록 (전화번호 + 이름)
   callbackNumber?: string; // 발신번호
   onSendComplete?: (result: unknown) => void; // 발송 완료 콜백
 }

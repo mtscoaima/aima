@@ -15,7 +15,10 @@ const supabase = createClient(
  * Request Body:
  * {
  *   senderKey: string;                // 발신 프로필 키
- *   recipients: string[];             // 수신자 목록
+ *   recipients: Array<{               // 수신자 목록
+ *     phone_number: string;
+ *     name?: string;
+ *   }>;
  *   message: string;                  // 메시지 내용
  *   callbackNumber: string;           // 발신번호
  *   messageType: 'FT'|'FI'|'FW'|'FL'|'FC'; // 메시지 타입
@@ -111,9 +114,12 @@ export async function POST(request: NextRequest) {
     // 각 수신자에게 발송
     for (const recipient of recipients) {
       try {
+        const phoneNumber = recipient.phone_number;
+        const name = recipient.name || null;
+
         const result = await sendMtsFriendtalk(
           senderKey,
-          recipient,
+          phoneNumber,
           message,
           callbackNumber,
           messageType,
@@ -132,7 +138,7 @@ export async function POST(request: NextRequest) {
         }
 
         results.push({
-          recipient,
+          recipient: phoneNumber,
           success: result.success,
           msgId: result.msgId,
           error: result.error,
@@ -140,32 +146,40 @@ export async function POST(request: NextRequest) {
         });
 
         // DB에 발송 이력 저장
-        await supabase.from('message_logs').insert({
+        const { error: dbError } = await supabase.from('message_logs').insert({
           user_id: userId,
-          type: 'FRIENDTALK',
-          recipient: recipient,
-          message: message,
+          to_number: phoneNumber,
+          to_name: name,
+          message_content: message,
+          subject: null,
+          message_type: 'KAKAO_FRIENDTALK',
+          sent_at: result.success ? new Date().toISOString() : null,
           status: result.success ? 'sent' : 'failed',
-          scheduled_at: scheduledAt || null,
+          error_message: result.error || null,
+          credit_used: result.success ? 15 : 0, // 친구톡 기본 단가 15원
           metadata: {
             sender_key: senderKey,
             callback_number: callbackNumber,
             message_type: messageType,
             ad_flag: adFlag,
             image_urls: imageUrls,
-            mts_msg_id: result.msgId,
-            error_code: result.errorCode,
-            error_message: result.error,
             buttons: buttons,
             tran_type: tranType,
             tran_message: tranMessage,
+            scheduled_at: scheduledAt,
+            mts_msg_id: result.msgId,
           },
         });
+
+        if (dbError) {
+          console.error(`DB 저장 실패 (${phoneNumber}):`, dbError);
+        }
       } catch (error) {
+        const phoneNumber = recipient.phone_number;
         failCount++;
-        console.error(`친구톡 발송 실패 (수신자: ${recipient}):`, error);
+        console.error(`예외 발생 (수신자: ${phoneNumber}):`, error);
         results.push({
-          recipient,
+          recipient: phoneNumber,
           success: false,
           error: error instanceof Error ? error.message : '알 수 없는 오류',
         });
@@ -174,20 +188,15 @@ export async function POST(request: NextRequest) {
 
     // 사용자 잔액 차감 (성공한 건수만)
     if (successCount > 0) {
-      // 친구톡 단가 조회 (기본 15원)
-      const { data: pricingData } = await supabase
-        .from('pricing_settings')
-        .select('friendtalk_price')
-        .single();
-
-      const unitPrice = pricingData?.friendtalk_price || 15;
+      // 친구톡 단가 (기본 15원)
+      const unitPrice = 15;
       const totalCost = successCount * unitPrice;
 
-      // 트랜잭션 생성
-      await supabase.from('transactions').insert({
+      // 트랜잭션 생성 (amount는 양수로 저장, UI에서 type='usage'일 때 - 표시)
+      const { error: transError } = await supabase.from('transactions').insert({
         user_id: userId,
         type: 'usage',
-        amount: -totalCost,
+        amount: totalCost, // 양수로 저장
         description: `카카오 친구톡 발송 (${successCount}건)`,
         reference_id: results.filter(r => r.success).map(r => r.msgId).join(','),
         metadata: {
@@ -199,6 +208,10 @@ export async function POST(request: NextRequest) {
         },
         status: 'completed',
       });
+
+      if (transError) {
+        console.error('트랜잭션 생성 실패:', transError);
+      }
     }
 
     // 응답 반환

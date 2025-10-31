@@ -140,16 +140,21 @@ export async function POST(request: NextRequest) {
           // message_logs 테이블에 저장
           await supabase.from('message_logs').insert({
             user_id: userId,
-            message_type: 'NAVERTALK',
-            recipient_number: recipient.phone_number,
+            to_number: recipient.phone_number,
+            to_name: recipient.name || null,
             message_content: text,
+            subject: null,
+            message_type: 'NAVERTALK',
+            sent_at: new Date().toISOString(),
             status: 'sent',
+            error_message: null,
+            credit_used: 0, // 네이버톡 비용은 추후 설정
             metadata: {
-              mts_msg_id: result.msgId,
               navertalk_id: navertalkId,
               template_code: templateCode,
               product_code: productCode,
               buttons: buttons || null,
+              mts_msg_id: result.msgId,
             },
           });
 

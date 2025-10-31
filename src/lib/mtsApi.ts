@@ -497,7 +497,6 @@ export async function sendMtsFriendtalk(
   sendDate?: string
 ): Promise<MtsApiResult> {
   try {
-    // 환경 변수 확인
     if (!MTS_AUTH_CODE) {
       return {
         success: false,
@@ -549,7 +548,9 @@ export async function sendMtsFriendtalk(
     }
 
     // API 호출 (V2 엔드포인트 사용)
-    const response = await fetch(`${MTS_API_URL}/v2/sndng/ftk/sendMessage`, {
+    const apiUrl = `${MTS_API_URL}/v2/sndng/ftk/sendMessage`;
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -559,8 +560,9 @@ export async function sendMtsFriendtalk(
 
     const result = await response.json();
 
-    // 성공 확인 (1000: 친구톡 성공)
-    if (result.code === '1000') {
+    // 성공 확인 (0000 또는 1000: 친구톡 성공)
+    // MTS API는 친구톡에 대해 0000 또는 1000을 반환할 수 있음
+    if (result.code === '0000' || result.code === '1000') {
       return {
         success: true,
         msgId: result.msg_id,
@@ -570,14 +572,16 @@ export async function sendMtsFriendtalk(
     }
 
     // 실패 시 에러 메시지 반환
+    const errorMsg = getErrorMessage(result.code) || result.message || '친구톡 발송 실패';
+
     return {
       success: false,
-      error: getErrorMessage(result.code) || result.message || '친구톡 발송 실패',
+      error: errorMsg,
       errorCode: result.code,
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (친구톡 V2):', error);
+    console.error('[mtsApi.sendMtsFriendtalk] 오류:', error);
 
     if (error instanceof TypeError) {
       return {
@@ -1355,12 +1359,6 @@ export async function createMtsAlimtalkTemplate(templateData: {
     if (templateData.templatePreviewMessage) formData.append('templatePreviewMessage', templateData.templatePreviewMessage);
     if (templateData.templateRepresentLink) formData.append('templateRepresentLink', templateData.templateRepresentLink);
 
-    // 디버깅: FormData 내용 출력
-    console.log('=== MTS API 템플릿 등록 요청 데이터 ===');
-    for (const [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
-
     // API 호출
     const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/create/template`, {
       method: 'POST',
@@ -1369,14 +1367,8 @@ export async function createMtsAlimtalkTemplate(templateData: {
 
     const result = await response.json();
 
-    // 디버깅: MTS API 응답 출력
-    console.log('=== MTS API 템플릿 등록 응답 ===');
-    console.log('HTTP Status:', response.status);
-    console.log('Response:', result);
-
     // 성공 확인
     if (result.code === '200') {
-      console.log('✅ 템플릿 등록 성공');
       return {
         success: true,
         responseData: result.data,

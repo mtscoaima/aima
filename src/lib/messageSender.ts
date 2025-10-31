@@ -421,9 +421,9 @@ async function saveMessageLog(params: {
       .insert({
         user_id: params.userId,
         to_number: params.toNumber,
-        to_name: params.toName || '',
+        to_name: params.toName || null,
         message_content: params.messageContent,
-        subject: params.subject || '',
+        subject: params.subject || null,
         message_type: params.messageType,
         sent_at: new Date().toISOString(),
         status: params.status,

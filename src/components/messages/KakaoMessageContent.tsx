@@ -62,7 +62,7 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
       {/* 알림톡 탭 내용 */}
       {activeKakaoTab === "alimtalk" && (
         <AlimtalkTab
-          recipients={recipients.map(r => r.phone_number)}
+          recipients={recipients}
           callbackNumber={selectedSenderNumber}
         />
       )}
@@ -70,7 +70,7 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
       {/* 친구톡 탭 내용 */}
       {activeKakaoTab === "friendtalk" && (
         <FriendtalkTab
-          recipients={recipients.map(r => r.phone_number)}
+          recipients={recipients}
           callbackNumber={selectedSenderNumber}
         />
       )}
@@ -78,7 +78,7 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
       {/* 브랜드 메시지 탭 내용 */}
       {activeKakaoTab === "brand" && (
         <BrandTab
-          recipients={recipients.map(r => r.phone_number)}
+          recipients={recipients}
           callbackNumber={selectedSenderNumber}
         />
       )}

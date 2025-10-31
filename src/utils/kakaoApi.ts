@@ -24,11 +24,17 @@ export interface AlimtalkTemplate {
   }>;
 }
 
+// 수신자 타입
+export interface Recipient {
+  phone_number: string;
+  name?: string;
+}
+
 // 알림톡 발송 요청 타입
 export interface AlimtalkSendRequest {
   senderKey: string;
   templateCode: string;
-  recipients: string[];
+  recipients: Recipient[];
   message: string;
   callbackNumber: string;
   buttons?: Array<{
@@ -45,7 +51,7 @@ export interface AlimtalkSendRequest {
 // 친구톡 발송 요청 타입
 export interface FriendtalkSendRequest {
   senderKey: string;
-  recipients: string[];
+  recipients: Recipient[];
   message: string;
   callbackNumber: string;
   messageType: 'FT' | 'FI' | 'FW' | 'FL' | 'FC';
@@ -66,7 +72,7 @@ export interface FriendtalkSendRequest {
 export interface BrandMessageSendRequest {
   senderKey: string;
   templateCode: string;
-  recipients: string[];
+  recipients: Recipient[];
   message: string;
   callbackNumber: string;
   messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO';

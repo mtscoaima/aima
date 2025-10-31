@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
           await supabase.from('transactions').insert({
             user_id: userId,
             type: 'usage',
-            amount: -costPerMessage,
+            amount: costPerMessage, // 양수로 저장
             description: `브랜드 메시지 발송 (${recipient})`,
             reference_id: result.msgId,
             metadata: {

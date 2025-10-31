@@ -16,7 +16,10 @@ const supabase = createClient(
  * {
  *   senderKey: string;           // 발신 프로필 키
  *   templateCode: string;        // 템플릿 코드
- *   recipients: string[];        // 수신자 목록
+ *   recipients: Array<{          // 수신자 목록
+ *     phone_number: string;
+ *     name?: string;
+ *   }>;
  *   message: string;             // 메시지 내용
  *   callbackNumber: string;      // 발신번호
  *   buttons?: Array<{            // 버튼 (선택)
@@ -100,10 +103,13 @@ export async function POST(request: NextRequest) {
     // 각 수신자에게 발송
     for (const recipient of recipients) {
       try {
+        const phoneNumber = recipient.phone_number;
+        const name = recipient.name || null;
+
         const result = await sendMtsAlimtalk(
           senderKey,
           templateCode,
-          recipient,
+          phoneNumber,
           message,
           callbackNumber,
           buttons,
@@ -119,7 +125,7 @@ export async function POST(request: NextRequest) {
         }
 
         results.push({
-          recipient,
+          recipient: phoneNumber,
           success: result.success,
           msgId: result.msgId,
           error: result.error,
@@ -129,28 +135,32 @@ export async function POST(request: NextRequest) {
         // DB에 발송 이력 저장
         await supabase.from('message_logs').insert({
           user_id: userId,
-          type: 'ALIMTALK',
-          recipient: recipient,
-          message: message,
+          to_number: phoneNumber,
+          to_name: name,
+          message_content: message,
+          subject: null,
+          message_type: 'KAKAO_ALIMTALK',
+          sent_at: result.success ? new Date().toISOString() : null,
           status: result.success ? 'sent' : 'failed',
-          scheduled_at: scheduledAt || null,
+          error_message: result.error || null,
+          credit_used: result.success ? 15 : 0, // 알림톡 기본 단가 15원
           metadata: {
             sender_key: senderKey,
             template_code: templateCode,
             callback_number: callbackNumber,
-            mts_msg_id: result.msgId,
-            error_code: result.errorCode,
-            error_message: result.error,
             buttons: buttons,
             tran_type: tranType,
             tran_message: tranMessage,
+            scheduled_at: scheduledAt,
+            mts_msg_id: result.msgId,
           },
         });
       } catch (error) {
+        const phoneNumber = recipient.phone_number;
         failCount++;
-        console.error(`알림톡 발송 실패 (수신자: ${recipient}):`, error);
+        console.error(`알림톡 발송 실패 (수신자: ${phoneNumber}):`, error);
         results.push({
-          recipient,
+          recipient: phoneNumber,
           success: false,
           error: error instanceof Error ? error.message : '알 수 없는 오류',
         });
@@ -168,11 +178,11 @@ export async function POST(request: NextRequest) {
       const unitPrice = pricingData?.alimtalk_price || 15;
       const totalCost = successCount * unitPrice;
 
-      // 트랜잭션 생성
+      // 트랜잭션 생성 (amount는 양수로 저장, UI에서 type='usage'일 때 - 표시)
       await supabase.from('transactions').insert({
         user_id: userId,
         type: 'usage',
-        amount: -totalCost,
+        amount: totalCost, // 양수로 저장
         description: `카카오 알림톡 발송 (${successCount}건)`,
         reference_id: results.filter(r => r.success).map(r => r.msgId).join(','),
         metadata: {
