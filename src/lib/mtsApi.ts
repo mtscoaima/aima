@@ -1345,7 +1345,7 @@ export async function createMtsAlimtalkTemplate(templateData: {
     // 선택적 필드 추가
     if (templateData.categoryCode) formData.append('categoryCode', templateData.categoryCode);
     if (templateData.securityFlag) formData.append('securityFlag', templateData.securityFlag);
-    if (templateData.buttons) formData.append('buttons', templateData.buttons);
+    if (templateData.buttons) formData.append('button', templateData.buttons); // MTS API는 'button' 사용
     if (templateData.quickReplies) formData.append('quickReplies', templateData.quickReplies);
     if (templateData.templateExtra) formData.append('templateExtra', templateData.templateExtra);
     if (templateData.templateTitle) formData.append('templateTitle', templateData.templateTitle);
@@ -1355,6 +1355,12 @@ export async function createMtsAlimtalkTemplate(templateData: {
     if (templateData.templatePreviewMessage) formData.append('templatePreviewMessage', templateData.templatePreviewMessage);
     if (templateData.templateRepresentLink) formData.append('templateRepresentLink', templateData.templateRepresentLink);
 
+    // 디버깅: FormData 내용 출력
+    console.log('=== MTS API 템플릿 등록 요청 데이터 ===');
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}:`, value);
+    }
+
     // API 호출
     const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/create/template`, {
       method: 'POST',
@@ -1363,8 +1369,14 @@ export async function createMtsAlimtalkTemplate(templateData: {
 
     const result = await response.json();
 
+    // 디버깅: MTS API 응답 출력
+    console.log('=== MTS API 템플릿 등록 응답 ===');
+    console.log('HTTP Status:', response.status);
+    console.log('Response:', result);
+
     // 성공 확인
     if (result.code === '200') {
+      console.log('✅ 템플릿 등록 성공');
       return {
         success: true,
         responseData: result.data,
@@ -1372,6 +1384,7 @@ export async function createMtsAlimtalkTemplate(templateData: {
     }
 
     // 실패 시 에러 메시지 반환
+    console.error('❌ 템플릿 등록 실패:', result.message);
     return {
       success: false,
       error: result.message || '템플릿 등록 실패',

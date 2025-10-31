@@ -1,8 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 import { createAlimtalkTemplate } from "@/utils/kakaoTemplateApi";
+
+interface ButtonData {
+  name: string;
+  type: string;
+  url_mobile?: string;
+  url_pc?: string;
+}
 
 interface TemplateCreateModalProps {
   isOpen: boolean;
@@ -21,8 +28,31 @@ const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
   const [templateName, setTemplateName] = useState("");
   const [templateContent, setTemplateContent] = useState("");
   const [requestInspection, setRequestInspection] = useState(false);
+  const [buttons, setButtons] = useState<ButtonData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const handleAddButton = () => {
+    if (buttons.length >= 5) {
+      setError("버튼은 최대 5개까지 추가 가능합니다.");
+      return;
+    }
+    setButtons([...buttons, { name: "", type: "WL", url_mobile: "" }]);
+  };
+
+  const handleRemoveButton = (index: number) => {
+    setButtons(buttons.filter((_, i) => i !== index));
+  };
+
+  const handleButtonChange = (
+    index: number,
+    field: keyof ButtonData,
+    value: string
+  ) => {
+    const newButtons = [...buttons];
+    newButtons[index] = { ...newButtons[index], [field]: value };
+    setButtons(newButtons);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,9 +84,63 @@ const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
       return;
     }
 
+    // 버튼 유효성 검사
+    for (let i = 0; i < buttons.length; i++) {
+      const button = buttons[i];
+
+      if (!button.name.trim()) {
+        setError(`버튼 ${i + 1}의 이름을 입력하세요.`);
+        return;
+      }
+
+      if (button.name.length > 14) {
+        setError(`버튼 ${i + 1}의 이름은 최대 14자까지 가능합니다.`);
+        return;
+      }
+
+      // WL(웹링크), AL(앱링크) 타입은 URL 필수
+      if (button.type === "WL" || button.type === "AL") {
+        if (!button.url_mobile?.trim()) {
+          setError(`버튼 ${i + 1}의 모바일 URL을 입력하세요.`);
+          return;
+        }
+
+        // URL 형식 검사 (http:// 또는 https://로 시작해야 함)
+        const urlPattern = /^https?:\/\/.+/i;
+        if (!urlPattern.test(button.url_mobile.trim())) {
+          setError(`버튼 ${i + 1}의 모바일 URL은 http:// 또는 https://로 시작해야 합니다.`);
+          return;
+        }
+
+        // PC URL이 입력된 경우 형식 검사
+        if (button.url_pc?.trim() && !urlPattern.test(button.url_pc.trim())) {
+          setError(`버튼 ${i + 1}의 PC URL은 http:// 또는 https://로 시작해야 합니다.`);
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
+      // 버튼 데이터 정제 (빈 필드 제거)
+      const cleanedButtons = buttons.map((button) => {
+        const cleaned: Record<string, string> = {
+          name: button.name.trim(),
+          type: button.type,
+        };
+
+        // WL, AL 타입은 URL 추가
+        if (button.type === "WL" || button.type === "AL") {
+          cleaned.url_mobile = button.url_mobile!.trim();
+          if (button.url_pc?.trim()) {
+            cleaned.url_pc = button.url_pc.trim();
+          }
+        }
+
+        return cleaned;
+      });
+
       await createAlimtalkTemplate({
         senderKey,
         templateCode: templateCode.trim(),
@@ -64,6 +148,7 @@ const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
         templateContent: templateContent.trim(),
         templateMessageType: "BA",
         templateEmphasizeType: "NONE",
+        buttons: cleanedButtons.length > 0 ? cleanedButtons : undefined,
         requestInspection,
       });
 
@@ -77,6 +162,7 @@ const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
       setTemplateCode("");
       setTemplateName("");
       setTemplateContent("");
+      setButtons([]);
       setRequestInspection(false);
 
       onSuccess();
@@ -168,6 +254,137 @@ const TemplateCreateModal: React.FC<TemplateCreateModalProps> = ({
             />
             <p className="mt-1 text-xs text-gray-500">
               변수 형식: #{"{"}변수명{"}"} (예: #{"{"}고객명{"}"}, #{"{"}주문번호{"}"})
+            </p>
+          </div>
+
+          {/* 버튼 설정 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                버튼 (선택)
+              </label>
+              <button
+                type="button"
+                onClick={handleAddButton}
+                disabled={buttons.length >= 5 || isSubmitting}
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                버튼 추가
+              </button>
+            </div>
+
+            {buttons.length > 0 && (
+              <div className="space-y-3">
+                {buttons.map((button, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border border-gray-200 rounded-lg bg-gray-50"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        버튼 {index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveButton(index)}
+                        className="text-red-500 hover:text-red-700"
+                        disabled={isSubmitting}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {/* 버튼 이름 */}
+                      <div>
+                        <input
+                          type="text"
+                          value={button.name}
+                          onChange={(e) =>
+                            handleButtonChange(index, "name", e.target.value)
+                          }
+                          placeholder="버튼 이름 (최대 14자)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                          maxLength={14}
+                          disabled={isSubmitting}
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          {button.name.length}/14자
+                        </p>
+                      </div>
+
+                      {/* 버튼 타입 */}
+                      <div>
+                        <select
+                          value={button.type}
+                          onChange={(e) =>
+                            handleButtonChange(index, "type", e.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                          disabled={isSubmitting}
+                        >
+                          <option value="WL">웹링크 (WL)</option>
+                          <option value="AL">앱링크 (AL)</option>
+                          <option value="BK">봇키워드 (BK)</option>
+                          <option value="MD">메시지전달 (MD)</option>
+                        </select>
+                      </div>
+
+                      {/* URL 입력 (WL, AL 타입만) */}
+                      {(button.type === "WL" || button.type === "AL") && (
+                        <>
+                          <div>
+                            <input
+                              type="text"
+                              value={button.url_mobile || ""}
+                              onChange={(e) =>
+                                handleButtonChange(
+                                  index,
+                                  "url_mobile",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="모바일 URL (필수) - 예: https://example.com"
+                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                              disabled={isSubmitting}
+                            />
+                          </div>
+                          <div>
+                            <input
+                              type="text"
+                              value={button.url_pc || ""}
+                              onChange={(e) =>
+                                handleButtonChange(
+                                  index,
+                                  "url_pc",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="PC URL (선택) - 예: https://example.com"
+                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                              disabled={isSubmitting}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {buttons.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded border border-gray-200">
+                버튼을 추가하려면 위의 &quot;버튼 추가&quot; 버튼을 클릭하세요.
+              </p>
+            )}
+
+            <p className="mt-2 text-xs text-gray-500">
+              • 버튼은 최대 5개까지 추가 가능합니다.
+              <br />
+              • 웹링크(WL), 앱링크(AL)는 URL 입력이 필요합니다.
+              <br />• 버튼 이름은 최대 14자까지 입력 가능합니다.
             </p>
           </div>
 

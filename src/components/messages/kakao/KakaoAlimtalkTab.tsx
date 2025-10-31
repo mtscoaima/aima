@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Info, HelpCircle, RefreshCw, Send, Plus } from "lucide-react";
+import { Info, RefreshCw, Plus } from "lucide-react";
 import {
   fetchSenderProfiles,
   fetchAlimtalkTemplates,
-  sendAlimtalk,
   type SenderProfile,
   type AlimtalkTemplate,
 } from "@/utils/kakaoApi";
@@ -13,11 +12,6 @@ import ChannelRegistrationModal from "../../kakao/ChannelRegistrationModal";
 import TemplateCreateModal from "../../kakao/TemplateCreateModal";
 
 const KakaoAlimtalkTab = () => {
-  // 수신자 및 발신번호 상태
-  const [recipients, setRecipients] = useState<string[]>([]);
-  const [recipientInput, setRecipientInput] = useState("");
-  const [callbackNumber, setCallbackNumber] = useState("");
-
   // 템플릿 상태 레이블 변환 함수
   const getTemplateStatusLabel = (template: AlimtalkTemplate) => {
     const statusMap: Record<string, string> = {
@@ -51,11 +45,8 @@ const KakaoAlimtalkTab = () => {
   // 로딩 상태
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  const [isSending, setIsSending] = useState(false);
 
   // 기타 상태
-  const [enableSmsBackup, setEnableSmsBackup] = useState(false);
-  const [smsBackupMessage, setSmsBackupMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -110,91 +101,9 @@ const KakaoAlimtalkTab = () => {
     }
   };
 
-  // 수신자 추가
-  const handleAddRecipient = () => {
-    const trimmed = recipientInput.trim();
-    if (trimmed && !recipients.includes(trimmed)) {
-      setRecipients([...recipients, trimmed]);
-      setRecipientInput("");
-    }
-  };
-
-  // 수신자 제거
-  const handleRemoveRecipient = (recipient: string) => {
-    setRecipients(recipients.filter(r => r !== recipient));
-  };
-
-  // Enter 키로 수신자 추가
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAddRecipient();
-    }
-  };
-
   // 템플릿 선택 핸들러
   const handleTemplateSelect = (template: AlimtalkTemplate) => {
     setSelectedTemplate(template);
-  };
-
-  // 알림톡 발송
-  const handleSendAlimtalk = async () => {
-    // 유효성 검사
-    if (!selectedProfile) {
-      alert("발신 프로필을 선택해주세요.");
-      return;
-    }
-
-    if (!selectedTemplate) {
-      alert("템플릿을 선택해주세요.");
-      return;
-    }
-
-    if (recipients.length === 0) {
-      alert("수신자를 입력해주세요.");
-      return;
-    }
-
-    if (!callbackNumber) {
-      alert("발신번호를 입력해주세요.");
-      return;
-    }
-
-    // 발송 확인
-    const confirmed = window.confirm(
-      `${recipients.length}명에게 알림톡을 발송하시겠습니까?`
-    );
-    if (!confirmed) return;
-
-    setIsSending(true);
-    setErrorMessage("");
-
-    try {
-      const result = await sendAlimtalk({
-        senderKey: selectedProfile,
-        templateCode: selectedTemplate.template_code,
-        recipients: recipients,
-        message: selectedTemplate.template_content,
-        callbackNumber: callbackNumber,
-        buttons: selectedTemplate.buttons,
-        tranType: enableSmsBackup ? "SMS" : undefined,
-        tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
-      });
-
-      alert(
-        `알림톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`
-      );
-
-      // 발송 성공 시 수신자 목록 초기화
-      setRecipients([]);
-      setRecipientInput("");
-    } catch (error) {
-      console.error("알림톡 발송 실패:", error);
-      alert(
-        error instanceof Error ? error.message : "알림톡 발송 중 오류가 발생했습니다."
-      );
-    } finally {
-      setIsSending(false);
-    }
   };
 
   return (
@@ -208,69 +117,6 @@ const KakaoAlimtalkTab = () => {
           </div>
         </div>
       )}
-
-      {/* 수신자 입력 영역 */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <h3 className="font-medium text-gray-700 mb-3">수신자 정보</h3>
-
-        {/* 수신번호 입력 */}
-        <div className="mb-3">
-          <label className="block text-sm text-gray-600 mb-2">수신번호</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={recipientInput}
-              onChange={(e) => setRecipientInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="010-XXXX-XXXX"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              onClick={handleAddRecipient}
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-            >
-              추가
-            </button>
-          </div>
-        </div>
-
-        {/* 수신자 목록 */}
-        {recipients.length > 0 && (
-          <div className="mb-3">
-            <label className="block text-sm text-gray-600 mb-2">
-              수신자 목록 ({recipients.length}명)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {recipients.map((recipient, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm"
-                >
-                  <span>{recipient}</span>
-                  <button
-                    onClick={() => handleRemoveRecipient(recipient)}
-                    className="text-gray-500 hover:text-red-500"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 발신번호 입력 */}
-        <div>
-          <label className="block text-sm text-gray-600 mb-2">발신번호</label>
-          <input
-            type="text"
-            value={callbackNumber}
-            onChange={(e) => setCallbackNumber(e.target.value)}
-            placeholder="010-XXXX-XXXX"
-            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-      </div>
 
       {/* 카카오 채널 & 알림톡 템플릿 */}
       <div className="mb-4">
@@ -379,83 +225,41 @@ const KakaoAlimtalkTab = () => {
         </div>
       </div>
 
-      {/* 템플릿 내용 */}
+      {/* 템플릿 내용 미리보기 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <h3 className="font-medium text-gray-700 mb-3">템플릿 내용</h3>
-        <textarea
-          placeholder="사용할 템플릿을 선택하면, 이곳에 템플릿 내용이 표시됩니다. (내용수정불가)"
-          className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[200px] bg-gray-50"
-          value={selectedTemplate?.template_content || ""}
-          readOnly
-        />
-      </div>
-
-      {/* 문구 치환 */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="font-medium text-gray-700">문구 치환</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Info className="w-4 h-4 text-blue-500" />
-          <span className="text-sm text-gray-600">
-            {selectedTemplate
-              ? "템플릿에 변수가 있는 경우 여기서 입력할 수 있습니다."
-              : "템플릿을 선택해주세요."}
-          </span>
-        </div>
-      </div>
-
-      {/* 발송실패 시 문자대체발송 여부 */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <input
-            type="checkbox"
-            id="smsBackup"
-            className="rounded"
-            checked={enableSmsBackup}
-            onChange={(e) => setEnableSmsBackup(e.target.checked)}
-          />
-          <label htmlFor="smsBackup" className="text-sm text-gray-700">
-            발송실패 시 문자대체발송 여부
-          </label>
-          <HelpCircle className="w-4 h-4 text-gray-400" />
-        </div>
-
-        {enableSmsBackup && (
-          <textarea
-            placeholder="알림톡 발송 실패 시 전송할 문자 메시지를 입력하세요."
-            className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[100px]"
-            value={smsBackupMessage}
-            onChange={(e) => setSmsBackupMessage(e.target.value)}
-          />
+        <h3 className="font-medium text-gray-700 mb-3">템플릿 내용 미리보기</h3>
+        {selectedTemplate ? (
+          <>
+            <div className="mb-2">
+              <span className="text-sm text-gray-600">템플릿 코드: </span>
+              <span className="text-sm font-medium text-gray-800">{selectedTemplate.template_code}</span>
+            </div>
+            <div className="mb-2">
+              <span className="text-sm text-gray-600">상태: </span>
+              <span className="text-sm font-medium text-gray-800">{getTemplateStatusLabel(selectedTemplate)}</span>
+            </div>
+            <textarea
+              className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[200px] bg-gray-50"
+              value={selectedTemplate.template_content}
+              readOnly
+            />
+          </>
+        ) : (
+          <div className="text-center py-8 text-gray-500 text-sm">
+            템플릿을 선택하면 미리보기가 표시됩니다.
+          </div>
         )}
       </div>
 
-      {/* 발송 버튼 */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSendAlimtalk}
-          disabled={
-            isSending ||
-            !selectedProfile ||
-            !selectedTemplate ||
-            recipients.length === 0
-          }
-          className="flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-          style={{ backgroundColor: "#795548" }}
-        >
-          {isSending ? (
-            <>
-              <RefreshCw className="w-5 h-5 animate-spin" />
-              발송 중...
-            </>
-          ) : (
-            <>
-              <Send className="w-5 h-5" />
-              알림톡 발송
-            </>
-          )}
-        </button>
+      {/* 안내 메시지 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-2">
+          <Info className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-blue-700">
+            <p className="font-medium mb-1">이 페이지는 템플릿 관리 전용입니다</p>
+            <p>실제 알림톡 발송은 <strong>&quot;메시지 보내기&quot;</strong> 탭에서 진행해주세요.</p>
+          </div>
+        </div>
       </div>
 
       {/* 채널 연동 모달 */}

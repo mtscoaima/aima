@@ -127,18 +127,6 @@ export async function fetchSenderProfiles(): Promise<SenderProfile[]> {
     if (result.success && result.profiles) {
       return result.profiles;
     }
-    // DB 조회 응답 구조에 맞게 파싱 (변경됨: MTS API → Supabase DB)
-    if (result.success && result.profiles) {
-      return result.profiles;
-    }
-    // DB 조회 응답 구조에 맞게 파싱 (변경됨: MTS API → Supabase DB)
-    if (result.success && result.profiles) {
-      return result.profiles;
-    }
-    // DB 조회 응답 구조에 맞게 파싱 (변경됨: MTS API → Supabase DB)
-    if (result.success && result.profiles) {
-      return result.profiles;
-    }
 
     return [];
   } catch (error) {
