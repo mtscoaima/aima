@@ -1,22 +1,14 @@
 export const runtime = "nodejs";
 
-import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import sharp from "sharp";
 
-const ACCESS_KEY = process.env.NAVER_ACCESS_KEY_ID!;
-const SECRET_KEY = process.env.NAVER_SECRET_KEY!;
-const SERVICE_ID = process.env.NAVER_SENS_SERVICE_ID!;
+const MTS_API_URL = process.env.MTS_API_URL || "https://api.mtsco.co.kr";
 
 interface JWTPayload {
   userId: number;
   email: string;
-}
-
-function makeSignature(method: string, path: string, ts: string) {
-  const base = `${method} ${path}\n${ts}\n${ACCESS_KEY}`;
-  return crypto.createHmac("sha256", SECRET_KEY).update(base).digest("base64");
 }
 
 export async function POST(req: NextRequest) {
@@ -28,14 +20,23 @@ export async function POST(req: NextRequest) {
     }
 
     const token = authHeader.substring(7);
+
     const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      return NextResponse.json({ error: "서버 설정 오류" }, { status: 500 });
+
+    // JWT_SECRET 환경 변수 확인
+    if (!jwtSecret || jwtSecret.trim() === '') {
+      console.error('[upload-image] JWT_SECRET 환경 변수가 설정되지 않았습니다');
+      console.error('process.env.JWT_SECRET 값:', process.env.JWT_SECRET);
+      return NextResponse.json({
+        error: "서버 설정 오류: JWT_SECRET이 설정되지 않았습니다"
+      }, { status: 500 });
     }
 
     try {
       jwt.verify(token, jwtSecret) as JWTPayload;
-    } catch {
+    } catch (jwtError) {
+      console.error('JWT 검증 실패:', jwtError);
+      console.error('에러 메시지:', jwtError instanceof Error ? jwtError.message : String(jwtError));
       return NextResponse.json({ error: "유효하지 않은 토큰입니다" }, { status: 401 });
     }
 
@@ -56,11 +57,12 @@ export async function POST(req: NextRequest) {
     // 파일 버퍼 생성 및 변환
     let buf = Buffer.from(await f.arrayBuffer());
 
-    // PNG → JPEG 변환 또는 리사이즈 (해상도 1500x1440, 품질 88%)
+    // PNG → JPEG 변환 또는 리사이즈
+    // MTS API 권장: 640x480 이하, 300KB 이하, JPG 포맷
     try {
       const converted = await sharp(buf)
-        .resize(1500, 1440, { fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 88 })
+        .resize(640, 480, { fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 85 })
         .toBuffer();
       buf = Buffer.from(converted);
     } catch {
@@ -77,54 +79,79 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // 파일명 정규화: ASCII, 공백 제거, .jpg 확장자
-    let baseName = (f.name || "image").normalize("NFKD").replace(/[^\x20-\x7E]/g, "_");
-    baseName = baseName.replace(/\.(png|jpeg|jpg)$/i, "");
-    baseName = baseName.replace(/\s+/g, "");
-    baseName = baseName.replace(/_+/g, "_").replace(/^_+|_+$/g, "");
-    const fileName = (baseName || "image") + ".jpg";
 
-    // Base64 인코딩
-    const fileBody = buf.toString("base64");
+    // MTS API에 multipart/form-data로 업로드
+    const formData = new FormData();
+    const blob = new Blob([buf], { type: 'image/jpeg' });
+    formData.append('images', blob, 'image.jpg');
 
-    // Naver SENS 업로드
-    const method = "POST";
-    const path = `/sms/v2/services/${SERVICE_ID}/files`;
-    const ts = Date.now().toString();
-    const sig = makeSignature(method, path, ts);
-
-    const res = await fetch(`https://sens.apigw.ntruss.com${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "x-ncp-iam-access-key": ACCESS_KEY,
-        "x-ncp-apigw-timestamp": ts,
-        "x-ncp-apigw-signature-v2": sig,
-      },
-      body: JSON.stringify({ fileName, fileBody }),
+    const res = await fetch(`${MTS_API_URL}/img/upload_image`, {
+      method: 'POST',
+      body: formData,
     });
 
-    const text = await res.text();
+    const responseText = await res.text();
 
     if (!res.ok) {
+      console.error('MTS API 업로드 실패:', res.status, responseText);
       return NextResponse.json(
         {
           success: false,
-          error: `SENS upload failed: HTTP ${res.status} - ${text}`,
+          error: `MTS 이미지 업로드 실패: HTTP ${res.status} - ${responseText}`,
         },
         { status: 502 }
       );
     }
 
-    const data = JSON.parse(text);
+    const data = JSON.parse(responseText);
+
+    console.log('MTS API 파싱된 응답:');
+    console.log('- code:', data.code);
+    console.log('- message:', data.message);
+    console.log('- image:', data.image);
+
+    // MTS API 응답 검증
+    if (data.code !== '0000') {
+      console.error('MTS API 오류 코드:', data.code, data.message);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `MTS 이미지 업로드 오류: ${data.message || data.code}`,
+          code: data.code,
+        },
+        { status: 400 }
+      );
+    }
+
+    // image 필드가 없으면 에러
+    if (!data.image) {
+      console.error('MTS API 응답에 image 필드가 없습니다!');
+      console.error('전체 응답:', JSON.stringify(data, null, 2));
+      return NextResponse.json({
+        success: false,
+        error: 'MTS API 응답에 image 필드가 없습니다',
+        responseData: data
+      }, { status: 500 });
+    }
+
+    console.log('MTS API 업로드 성공!');
+    console.log('이미지 URL:', data.image);
+
     return NextResponse.json({
       success: true,
-      ...data,
-      fileName,
-      fileSize: buf.length
+      imageUrl: data.image,
+      fileSize: buf.length,
+      code: data.code,
+      message: data.message
     });
 
   } catch (e) {
+    console.error('========================================');
+    console.error('[upload-image] 전체 에러 발생:');
+    console.error('에러 타입:', typeof e);
+    console.error('에러 객체:', e);
+    console.error('에러 스택:', e instanceof Error ? e.stack : 'N/A');
+    console.error('========================================');
     const error = e as Error;
     return NextResponse.json({ success: false, error: error?.message || String(e) }, { status: 500 });
   }

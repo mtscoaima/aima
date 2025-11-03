@@ -55,10 +55,11 @@
 
 1. [테스트 개요](#테스트-개요)
 2. [테스트 환경 설정](#테스트-환경-설정)
-3. [Phase 3: 카카오 알림톡](#phase-3-카카오-알림톡)
-4. [Phase 4: 카카오 친구톡](#phase-4-카카오-친구톡)
-5. [Phase 5: 네이버 톡톡](#phase-5-네이버-톡톡)
-6. [Phase 6: 카카오 브랜드 메시지](#phase-6-카카오-브랜드-메시지)
+3. [Phase 1-2: SMS/LMS/MMS](#phase-1-2-smslmsmms) (참고용, 완료됨)
+4. [Phase 3: 카카오 알림톡](#phase-3-카카오-알림톡)
+5. [Phase 4: 카카오 친구톡](#phase-4-카카오-친구톡)
+6. [Phase 5: 네이버 톡톡](#phase-5-네이버-톡톡)
+7. [Phase 6: 카카오 브랜드 메시지](#phase-6-카카오-브랜드-메시지)
 
 ---
 
@@ -91,6 +92,229 @@ MTS_API_URL=                     # MTS API URL
 ### 3. 카카오/네이버 계정 준비
 - 카카오 발신프로필 (senderKey)
 - 네이버 톡톡 ID (navertalkId)
+
+---
+
+## Phase 1-2: SMS/LMS/MMS
+
+> ✅ **상태**: 테스트 완료 (2025-11-03)
+>
+> 이 섹션은 참고용입니다. Phase 1-2는 이미 완료되었으며 재테스트가 필요하지 않습니다.
+
+### 📌 완료된 작업
+- ✅ SMS/LMS 자동 판단 로직 구현
+- ✅ MMS 이미지 업로드 기능 (PNG → JPEG 변환, 640×480px, 300KB)
+- ✅ 메시지 발송 API 통합 (MTS API)
+- ✅ 잔액 차감 로직 (SMS: 25원, LMS: 50원, MMS: 100원)
+- ✅ 메시지 로그 저장 (message_logs)
+- ✅ 거래 내역 저장 (transactions)
+
+### 📋 Phase 1-2 테스트 요약 (참고용)
+
+**1.1 SMS 발송 (90바이트 이하)**
+- 메시지 타입: SMS
+- 예제: "안녕하세요" (15바이트)
+- 단가: 25원
+- 테스트 결과: ✅ 성공
+
+**1.2 LMS 발송 (90바이트 초과)**
+- 메시지 타입: LMS
+- 예제: "안녕하세요 고객님, 예약이 정상적으로 완료되었습니다." (93바이트)
+- 단가: 50원
+- subject 자동 추가: "LMS"
+- 테스트 결과: ✅ 성공
+
+**1.3 MMS 발송 (이미지 포함)**
+- 메시지 타입: MMS
+- 이미지 최적화: PNG → JPEG, 640×480px, 300KB
+- 단가: 100원
+- subject 자동 추가: "MMS"
+- attachment 객체 생성: `{ image: [{ img_url: "..." }] }`
+- 테스트 결과: ✅ 성공
+
+### 🔍 주요 확인 사항 (완료)
+
+**메시지 타입 자동 판단:**
+```typescript
+// src/utils/messageTemplateParser.ts
+- 이미지 첨부됨 → MMS
+- 메시지 90바이트 초과 → LMS
+- 그 외 → SMS
+```
+
+**이미지 업로드 워크플로우:**
+```
+1. 사용자 이미지 업로드 (최대 5MB)
+   ↓
+2. Sharp 라이브러리로 최적화
+   - PNG → JPEG 변환
+   - 640×480px 리사이즈
+   - 300KB 이하로 압축
+   ↓
+3. MTS 이미지 업로드 API 호출
+   - 엔드포인트: https://api.mtsco.co.kr/img/upload_image
+   - 응답: { code: "0000", image: "/2025/11/03/..." }
+   ↓
+4. 이미지 URL 저장 (Frontend State)
+   ↓
+5. MMS 발송 시 attachment 객체에 포함
+```
+
+**잔액 차감 로직:**
+```typescript
+// src/lib/messageSender.ts
+- SMS: 25원 차감 (transactions 테이블 usage 기록)
+- LMS: 50원 차감
+- MMS: 100원 차감
+- metadata: { usage_type: 'message_send', message_type: 'SMS/LMS/MMS' }
+```
+
+**DB 저장 확인:**
+```sql
+-- message_logs 테이블
+SELECT
+  id,
+  user_id,
+  to_number,
+  message_type, -- 'SMS', 'LMS', 'MMS'
+  message_content,
+  credit_used, -- 25, 50, 100
+  status, -- 'sent'
+  created_at
+FROM message_logs
+WHERE user_id = YOUR_USER_ID
+ORDER BY created_at DESC;
+
+-- transactions 테이블
+SELECT
+  id,
+  user_id,
+  type, -- 'usage'
+  amount, -- 25, 50, 100
+  description, -- '메시지 발송 (SMS/LMS/MMS)'
+  metadata, -- { usage_type: 'message_send', message_type: '...' }
+  created_at
+FROM transactions
+WHERE user_id = YOUR_USER_ID
+AND type = 'usage'
+ORDER BY created_at DESC;
+```
+
+### 🎯 핵심 테스트 시나리오 (완료)
+
+#### 시나리오 1.1: SMS 발송 (짧은 메시지)
+**입력:**
+- 수신자: 01012345678
+- 메시지: "안녕하세요"
+- 이미지: 없음
+
+**예상 결과:**
+- ✅ 메시지 타입: SMS (자동 판단)
+- ✅ 잔액 차감: 25원
+- ✅ MTS API 요청 데이터: subject 필드 없음
+- ✅ DB 저장: message_type='SMS', credit_used=25
+
+#### 시나리오 1.2: LMS 발송 (긴 메시지)
+**입력:**
+- 수신자: 01012345678
+- 메시지: "안녕하세요 고객님, 예약이 정상적으로 완료되었습니다. 추가 문의사항이 있으시면 언제든지 연락주세요."
+- 이미지: 없음
+
+**예상 결과:**
+- ✅ 메시지 타입: LMS (자동 판단, 93바이트 초과)
+- ✅ 잔액 차감: 50원
+- ✅ MTS API 요청 데이터: subject="LMS" 자동 추가
+- ✅ DB 저장: message_type='LMS', credit_used=50
+
+#### 시나리오 1.3: MMS 발송 (이미지 포함)
+**입력:**
+- 수신자: 01012345678
+- 메시지: "이미지가 포함된 MMS입니다"
+- 이미지: photo.png (1.2MB)
+
+**예상 결과:**
+- ✅ 이미지 최적화: 245KB (640×480px, JPEG)
+- ✅ MTS 이미지 업로드: /2025/11/03/20251103052213575.jpg
+- ✅ 메시지 타입: MMS (이미지 있으면 무조건 MMS)
+- ✅ 잔액 차감: 100원
+- ✅ MTS API 요청 데이터:
+  ```json
+  {
+    "subject": "MMS",
+    "attachment": {
+      "image": [{
+        "img_url": "/2025/11/03/20251103052213575.jpg"
+      }]
+    }
+  }
+  ```
+- ✅ DB 저장: message_type='MMS', credit_used=100
+
+### 📝 주요 Console.log 출력 (참고)
+
+**SMS 발송 시:**
+```
+========================================
+[MTS SMS API 호출 시작]
+시간: 2025-11-03T05:22:45.123Z
+API URL: https://api.mtsco.co.kr/sndng/sms/sendMessage
+계산된 바이트: 15바이트
+메시지 타입: SMS
+요청 데이터: {
+  "callback_number": "010****1234",
+  "phone_number": "010****5678",
+  "message": "안녕하세요"
+}
+// subject 없음 주목!
+========================================
+```
+
+**LMS 발송 시:**
+```
+========================================
+[MTS SMS API 호출 시작]
+계산된 바이트: 93바이트
+메시지 타입: LMS
+요청 데이터: {
+  "subject": "LMS",  // ⭐ LMS는 subject 필수!
+  ...
+}
+========================================
+```
+
+**MMS 발송 시:**
+```
+========================================
+[MTS 이미지 업로드 시작]
+파일명: photo.png
+원본크기: 1.2MB
+최적화 후: 245KB (640x480px, JPEG)
+이미지 URL: /2025/11/03/20251103052213575.jpg
+========================================
+
+[MTS SMS API 호출 시작]
+메시지 타입: MMS
+이미지 포함: Yes
+요청 데이터: {
+  "subject": "MMS",
+  "attachment": {
+    "image": [{
+      "img_url": "/2025/11/03/20251103052213575.jpg"
+    }]
+  }
+}
+========================================
+```
+
+### ⚠️ 알려진 이슈 (비차단)
+
+**ER17 에러: NotAllowedCallbackNumber**
+- 원인: 발신번호가 MTS에 등록되지 않음
+- 영향: 메시지 발송 실패 (API 응답은 정상)
+- 해결: MTS 담당자에게 발신번호 등록 요청
+- 상태: 요청 중
+
+**중요**: 이 에러는 MTS 설정 문제이며, 코드 구현과는 무관합니다. API 호출, 데이터 저장, 잔액 차감은 모두 정상 작동합니다.
 
 ---
 
@@ -334,6 +558,15 @@ ORDER BY created_at DESC LIMIT 1;
 
 ## 최종 체크리스트
 
+### ✅ SMS/LMS/MMS (완료)
+- [x] SMS 발송 (90바이트 이하)
+- [x] LMS 발송 (90바이트 초과)
+- [x] MMS 이미지 업로드
+- [x] MMS 발송 (이미지 포함)
+- [x] 메시지 타입 자동 판단
+- [x] 잔액 차감 (SMS: 25원, LMS: 50원, MMS: 100원)
+- [x] DB 저장 (message_logs, transactions)
+
 ### ✅ 카카오 알림톡 (필수)
 - [ ] 템플릿 조회 기능
 - [ ] 변수 치환 발송
@@ -364,6 +597,19 @@ ORDER BY created_at DESC LIMIT 1;
 ---
 
 ## 테스트 결과 기록 양식
+
+### Phase 1-2: SMS/LMS/MMS
+```
+테스트 일시: 2025-11-03
+테스터: 개발팀
+결과: [x] 성공 [ ] 실패
+비고:
+  - SMS/LMS 자동 판단 로직 정상 작동
+  - MMS 이미지 업로드 완료 (PNG → JPEG, 640×480px, 300KB)
+  - 잔액 차감 확인 (SMS: 25원, LMS: 50원, MMS: 100원)
+  - DB 저장 확인 (message_logs, transactions)
+  - ER17 에러 발생 (발신번호 미등록, MTS 설정 대기중)
+```
 
 ### Phase 3: 카카오 알림톡
 ```

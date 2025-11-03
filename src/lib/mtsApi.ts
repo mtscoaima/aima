@@ -74,6 +74,7 @@ const MTS_ERROR_MESSAGES: Record<string, string> = {
   'ER01': '인증코드 내용이 없거나 유효하지 않음',
   'ER02': '발신프로필키 내용이 없음',
   'ER03': '수신자번호 내용이 없음',
+  'ER15': '메시지 크기 초과 (SMS: 90바이트, LMS: 2000바이트)',
   'ER17': '허용되지 않은 발신번호 (MTS에 등록되지 않은 번호)',
 
   // SMS/MMS 이통사 오류 (1xxx, 2xxx, 4xxx, 6xxx, 8xxx)
@@ -98,19 +99,21 @@ function getErrorMessage(code: string): string {
 }
 
 /**
- * SMS 발송 (90바이트 이하, 자동으로 SMS/LMS 판단)
+ * SMS/LMS/MMS 발송 (자동으로 SMS/LMS/MMS 판단)
  * @param toNumber 수신번호 (하이픈 없이)
  * @param message 메시지 내용
  * @param callbackNumber 발신번호 (하이픈 없이)
- * @param subject 제목 (LMS용, 선택)
+ * @param subject 제목 (LMS/MMS용, 선택)
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
+ * @param imageUrl 이미지 URL (MMS용, 선택) - /img/upload_image API로 업로드한 URL
  */
 export async function sendMtsSMS(
   toNumber: string,
   message: string,
   callbackNumber: string,
   subject?: string,
-  sendDate?: string
+  sendDate?: string,
+  imageUrl?: string
 ): Promise<MtsApiResult> {
   try {
     // 환경 변수 확인
@@ -126,17 +129,37 @@ export async function sendMtsSMS(
     const cleanToNumber = toNumber.replace(/-/g, '');
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
+    // 메시지 바이트 계산 (한글 = 3바이트, 영문/숫자 = 1바이트)
+    const messageBytes = Buffer.byteLength(message, 'utf-8');
+
+    // 메시지 타입 결정
+    let messageType = 'SMS';
+    if (imageUrl) {
+      messageType = 'MMS'; // 이미지가 있으면 MMS
+    } else if (messageBytes > 90) {
+      messageType = 'LMS'; // 90바이트 초과면 LMS
+    }
+
     // 요청 본문
-    const requestBody: Record<string, string> = {
+    const requestBody: Record<string, string | { image: { img_url: string }[] }> = {
       auth_code: MTS_AUTH_CODE,
       callback_number: cleanCallbackNumber,
       phone_number: cleanToNumber,
       message: message,
     };
 
-    // 제목이 있으면 추가 (LMS용)
-    if (subject) {
-      requestBody.subject = subject;
+    // LMS/MMS인 경우 subject 추가
+    if (messageType === 'LMS' || messageType === 'MMS') {
+      requestBody.subject = subject || (messageType === 'MMS' ? 'MMS' : 'LMS');
+    }
+
+    // MMS인 경우 attachment 추가
+    if (imageUrl) {
+      requestBody.attachment = {
+        image: [{
+          img_url: imageUrl
+        }]
+      };
     }
 
     // 예약 발송 시간이 있으면 추가
@@ -146,17 +169,22 @@ export async function sendMtsSMS(
 
     // API 호출
     console.log('========================================');
-    console.log('[MTS SMS API 호출 시작]');
+    console.log('[MTS SMS/LMS/MMS API 호출 시작]');
     console.log('시간:', new Date().toISOString());
+    console.log('메시지 타입:', messageType);
+    console.log('메시지 크기:', messageBytes, '바이트');
+    console.log('이미지 포함:', imageUrl ? 'Yes' : 'No');
     console.log('API URL:', `${MTS_API_URL}/sndng/sms/sendMessage`);
-    console.log('요청 데이터:', JSON.stringify({
+    console.log('요청 데이터 (마스킹):', JSON.stringify({
       auth_code: '*** (보안)',
       callback_number: cleanCallbackNumber.substring(0, 3) + '****' + cleanCallbackNumber.substring(7),
       phone_number: cleanToNumber.substring(0, 3) + '****' + cleanToNumber.substring(7),
       message: message.length > 50 ? message.substring(0, 50) + '...' : message,
-      subject: subject || '(없음)',
-      send_date: sendDate || '(즉시발송)'
+      subject: requestBody.subject || '(없음)',
+      send_date: sendDate || '(즉시발송)',
+      attachment: imageUrl ? { image: [{ img_url: imageUrl }] } : '(없음)'
     }, null, 2));
+    console.log('실제 전송 requestBody:', JSON.stringify(requestBody, null, 2));
 
     const response = await fetch(`${MTS_API_URL}/sndng/sms/sendMessage`, {
       method: 'POST',

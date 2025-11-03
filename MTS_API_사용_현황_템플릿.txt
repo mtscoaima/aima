@@ -562,30 +562,47 @@ API 주소: https://api.mtsco.co.kr/img/upload_image
 📌 6-3. 보내는 데이터 (Request)
 ------------------------------------------------------------
 FormData:
-- auth_code: "인증코드"
-- image: 이미지 파일 (Binary)
+- images: 이미지 파일 (Binary) - 필드명 주의: "images" (복수형)
 
 [제약사항]
-- 최대 파일 크기: 300KB
-- 지원 형식: JPG, PNG, GIF
-- 권장 해상도: 가로 최대 1000px
+- 최대 파일 크기: 300KB (권장)
+- 지원 형식: JPG, PNG
+- 권장 해상도: 640x480px 이하
+- 자동 변환: PNG → JPEG, 품질 85%
 
 📌 6-4. 받는 데이터 (Response)
 ------------------------------------------------------------
+📋 **실제 테스트 결과 (2025-11-03 17:21:07)**
+
+테스트 응답:
 {
   "code": "0000",
-  "images": "/2025/01/31/xxxxxxxxxxxx.jpg"
+  "image": "/2025/11/03/20251103052213575.jpg",
+  "message": "StoredFileSuccess"
 }
+
+⚠️ **주의사항**:
+- 응답 필드명이 "images"가 아니라 **"image"** (단수형)입니다!
+- MTS API 문서와 실제 응답이 다를 수 있으니 주의
 
 [설명]
 - code: "0000"이면 성공
-- images: 업로드된 이미지의 서버 경로 (MMS 발송 시 사용)
+- image: 업로드된 이미지의 서버 경로 (MMS 발송 시 사용)
+- message: 업로드 상태 메시지
 
 📌 6-5. 현재 구현 상태
 ------------------------------------------------------------
-구현 완료: ✅
-코드 위치: src/lib/mtsApi.ts - uploadMtsImage() 함수
-사용처: MMS 발송 시 자동 호출
+구현 완료: ✅ (2025-11-03 완전 재구현)
+코드 위치:
+- src/app/api/messages/upload-image/route.ts (메인 업로드 API)
+- src/components/messages/SmsMessageContent.tsx (프론트엔드 UI)
+사용처:
+- MMS 발송 시 사용자가 이미지 업로드
+- 최대 3개 이미지 지원 (UI 제한)
+특이사항:
+- Naver SENS API에서 MTS API로 완전 전환 완료
+- Sharp 라이브러리로 이미지 자동 변환 및 최적화
+- 업로드 API가 multipart/form-data 형식으로 직접 MTS에 전송
 
 
 ================================================================================

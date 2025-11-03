@@ -130,6 +130,10 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
 
       const data = await response.json();
 
+      if (!data.success || !data.imageUrl) {
+        throw new Error('이미지 URL을 받지 못했습니다');
+      }
+
       // 미리보기 URL 생성
       const previewUrl = URL.createObjectURL(file);
 
@@ -137,8 +141,8 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
       const newImages = [
         ...uploadedImages,
         {
-          fileId: data.fileId,
-          fileName: data.fileName,
+          fileId: data.imageUrl, // MTS API에서 받은 이미지 URL
+          fileName: file.name,
           fileSize: data.fileSize,
           preview: previewUrl,
         },

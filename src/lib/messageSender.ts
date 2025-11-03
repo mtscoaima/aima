@@ -4,7 +4,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { sendMtsSMS, sendMtsMMS } from "@/lib/mtsApi";
+import { sendMtsSMS } from "@/lib/mtsApi";
 import { determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabase = createClient(
@@ -133,13 +133,14 @@ export async function sendMessage(
   let sendResult;
 
   if (messageType === 'MMS' && imageUrls && imageUrls.length > 0) {
-    // MMS 발송
-    sendResult = await sendMtsMMS(
+    // MMS 발송 (첫 번째 이미지만 사용 - MTS API는 최대 3개 지원하지만 현재는 1개만)
+    sendResult = await sendMtsSMS(
       cleanPhone,
       message,
-      subject || '',
-      imageUrls,
-      callbackNumber
+      callbackNumber,
+      subject || 'MMS',
+      undefined, // sendDate
+      imageUrls[0] // 첫 번째 이미지 URL
     );
   } else {
     // SMS/LMS 발송 (MTS API가 자동으로 90바이트 기준 판단)

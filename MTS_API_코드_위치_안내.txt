@@ -14,11 +14,18 @@ MTS API 코드 위치 및 호출 흐름 안내
    ↓
 2단계: 시스템이 사용자 정보를 확인하고 입력 데이터를 검증
    ↓
-3단계: 메시지 타입 결정 (SMS/LMS/MMS 자동 판단)
+3단계: ⭐ 메시지 타입 자동 판단 (2025-11-03 개선)
+   - 이미지 첨부됨 → MMS
+   - 메시지 90바이트 초과 → LMS
+   - 그 외 → SMS
    ↓
 4단계: 잔액 확인 및 발신번호 조회
+   - SMS: 25원, LMS: 50원, MMS: 100원
    ↓
 5단계: ⭐ MTS API 호출 (여기서 Console.log 확인!)
+   - SMS: subject 없음
+   - LMS: subject 자동 추가
+   - MMS: subject + attachment 자동 추가
    ↓
 6단계: 발송 결과 처리 (성공 시 잔액 차감, 실패 시 에러 표시)
 
@@ -60,6 +67,383 @@ MTS API 코드 위치 및 호출 흐름 안내
      "received_at": "2025-01-31 03:45:12"
    }
    ========================================
+
+
+================================================================================
+1-1. SMS/LMS 자동 판단 상세 설명 ⭐
+================================================================================
+
+[바이트 계산 로직]
+위치: src/utils/messageTemplateParser.ts - calculateMessageBytes() 함수 (222-238줄)
+
+코드 동작:
+  let bytes = 0;
+  for (let i = 0; i < message.length; i++) {
+    const charCode = message.charCodeAt(i);
+    if (charCode <= 0x7f) {
+      bytes += 1;      // ASCII (영문, 숫자, 기호)
+    } else if (charCode <= 0x7ff) {
+      bytes += 2;      // 2바이트 문자
+    } else {
+      bytes += 3;      // 한글 등 3바이트 문자
+    }
+  }
+
+[SMS vs LMS 예제]
+
+예제 1) SMS (90바이트 이하)
+  메시지: "안녕하세요"
+  바이트: 5글자 × 3바이트 = 15바이트
+  판단: SMS (25원)
+
+예제 2) SMS (영문)
+  메시지: "Hello, how are you?" (19자)
+  바이트: 19바이트 (영문 1바이트)
+  판단: SMS (25원)
+
+예제 3) LMS (90바이트 초과)
+  메시지: "안녕하세요 고객님, 예약이 정상적으로 완료되었습니다."
+  바이트: 31글자 × 3바이트 = 93바이트
+  판단: LMS (50원)
+
+예제 4) LMS (긴 메시지)
+  메시지: "안녕하세요 고객님, 금일 오후 3시 예약이 확정되었습니다. 주소는 서울시..."
+  바이트: 200바이트 이상
+  판단: LMS (50원)
+
+[자동 판단 함수]
+위치: src/utils/messageTemplateParser.ts - determineMessageType() 함수 (246-249줄)
+
+코드:
+  export function determineMessageType(message: string): 'SMS' | 'LMS' {
+    const bytes = calculateMessageBytes(message);
+    return bytes <= 90 ? 'SMS' : 'LMS';
+  }
+
+[실제 발송 시 Console.log 예제]
+
+SMS 발송 시:
+========================================
+[MTS SMS API 호출 시작]
+시간: 2025-11-03T05:22:45.123Z
+API URL: https://api.mtsco.co.kr/sndng/sms/sendMessage
+계산된 바이트: 15바이트
+메시지 타입: SMS
+요청 데이터: {
+  "auth_code": "***",
+  "callback_number": "010****1234",
+  "phone_number": "010****5678",
+  "message": "안녕하세요",
+  "send_date": "(즉시발송)"
+}
+// subject 없음 주목!
+========================================
+
+LMS 발송 시:
+========================================
+[MTS SMS API 호출 시작]
+시간: 2025-11-03T05:23:10.456Z
+API URL: https://api.mtsco.co.kr/sndng/sms/sendMessage
+계산된 바이트: 93바이트
+메시지 타입: LMS
+요청 데이터: {
+  "auth_code": "***",
+  "callback_number": "010****1234",
+  "phone_number": "010****5678",
+  "message": "안녕하세요 고객님, 예약이 정상적으로 완료되었습니다.",
+  "subject": "LMS",  // ⭐ LMS는 subject 필수!
+  "send_date": "(즉시발송)"
+}
+========================================
+
+[subject 자동 추가 로직]
+위치: src/lib/mtsApi.ts - sendMtsSMS() 함수 (194-196줄)
+
+코드:
+  if (messageType === 'LMS' || messageType === 'MMS') {
+    requestBody.subject = subject || (messageType === 'MMS' ? 'MMS' : 'LMS');
+  }
+
+설명:
+  - SMS는 subject 불필요 (전송 안됨)
+  - LMS는 subject 필수 (없으면 자동으로 "LMS" 입력)
+  - MMS는 subject 필수 (없으면 자동으로 "MMS" 입력)
+
+
+================================================================================
+1-2. MMS 이미지 업로드 및 발송 완전 가이드 ⭐
+================================================================================
+
+[전체 워크플로우]
+A단계: 사용자가 이미지 업로드 버튼 클릭
+   ↓
+B단계: ⭐ 이미지 최적화 (Sharp 라이브러리)
+   - PNG → JPEG 변환
+   - 640×480px 리사이즈
+   - 300KB 이하로 압축
+   ↓
+C단계: ⭐ MTS 이미지 업로드 API 호출
+   - 엔드포인트: https://api.mtsco.co.kr/img/upload_image
+   - 응답: { code: "0000", image: "/2025/11/03/..." }
+   ↓
+D단계: 이미지 URL 저장 (Frontend State)
+   ↓
+E단계: 사용자가 메시지 작성 후 "발송" 버튼 클릭
+   ↓
+F단계: ⭐ MMS 발송 (이미지 포함)
+   - attachment.image[0].img_url에 이미지 URL 추가
+   ↓
+G단계: 발송 결과 처리
+
+[코드 위치 - 상세]
+
+A단계: 사용자 클릭 이벤트
+   파일: src/components/messages/SmsMessageContent.tsx
+   함수: handleImageUpload() (162-240줄)
+
+   코드 흐름:
+   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0];
+     if (!file) return;
+
+     // 파일 크기 검증 (5MB)
+     if (file.size > 5 * 1024 * 1024) {
+       alert('이미지는 5MB 이하만 업로드 가능합니다');
+       return;
+     }
+
+     // ⭐ B단계로 진행 (FormData 생성)
+
+B단계: 이미지 최적화
+   파일: src/app/api/messages/upload-image/route.ts (38-74줄)
+   라이브러리: Sharp
+
+   코드 동작:
+   // 1. 파일을 Buffer로 변환
+   const arrayBuffer = await file.arrayBuffer();
+   const buffer = Buffer.from(arrayBuffer);
+
+   // 2. Sharp로 최적화
+   const buf = await sharp(buffer)
+     .jpeg({ quality: 85 })              // ⭐ PNG → JPEG 변환
+     .resize(640, 480, {                 // ⭐ 640×480px 리사이즈
+       fit: 'inside',
+       withoutEnlargement: true
+     })
+     .toBuffer();
+
+   // 3. 크기 검증
+   if (buf.length > 300 * 1024) {        // ⭐ 300KB 제한
+     return NextResponse.json({
+       success: false,
+       error: '최적화 후에도 이미지 크기가 300KB를 초과합니다'
+     });
+   }
+
+C단계: MTS 이미지 업로드 API 호출
+   파일: src/app/api/messages/upload-image/route.ts (76-145줄)
+
+   API 스펙:
+   - 엔드포인트: https://api.mtsco.co.kr/img/upload_image
+   - 메소드: POST
+   - Content-Type: multipart/form-data
+   - 필드명: "images" (배열 형태로 전송)
+
+   코드:
+   const formData = new FormData();
+   formData.append('images', new Blob([buf], { type: 'image/jpeg' }), 'image.jpg');
+
+   const mtsResponse = await fetch(
+     'https://api.mtsco.co.kr/img/upload_image',
+     {
+       method: 'POST',
+       headers: {
+         'auth_code': process.env.MTS_AUTH_CODE!,
+       },
+       body: formData
+     }
+   );
+
+   MTS API 응답 예제:
+   {
+     "code": "0000",
+     "image": "/2025/11/03/20251103052213575.jpg",  // ⭐ 단수형 주의!
+     "message": "StoredFileSuccess"
+   }
+
+   ⚠️ 중요: 응답 필드명이 "image" (단수형)입니다!
+   (처음에 "images"로 잘못 접근해서 에러 발생했었음)
+
+   성공 응답:
+   return NextResponse.json({
+     success: true,
+     imageUrl: data.image,    // ⭐ data.image (not data.images!)
+     fileSize: buf.length,
+     code: data.code,
+     message: data.message
+   });
+
+D단계: 이미지 URL 저장
+   파일: src/components/messages/SmsMessageContent.tsx (220-234줄)
+
+   코드:
+   const data = await response.json();
+
+   if (!data.success || !data.imageUrl) {
+     throw new Error('이미지 URL을 받지 못했습니다');
+   }
+
+   // State에 저장
+   const newImages = [
+     ...uploadedImages,
+     {
+       fileId: data.imageUrl,    // MTS 이미지 경로 (/2025/11/03/...)
+       fileName: file.name,
+       fileSize: data.fileSize,
+       preview: previewUrl,
+     },
+   ];
+   setUploadedImages(newImages);
+
+E단계: 메시지 발송 요청
+   파일: src/components/messages/MessageSendTab.tsx
+   함수: handleSendMessages()
+
+   발송 데이터:
+   const response = await fetch('/api/messages/send', {
+     method: 'POST',
+     body: JSON.stringify({
+       recipients: recipients,
+       message: message,
+       subject: subject,
+       sendType: sendType,
+       imageFileIds: uploadedImages.map(img => img.fileId),  // ⭐ 이미지 URL 전송
+     })
+   });
+
+F단계: MMS 발송 (이미지 포함)
+   파일 1: src/app/api/messages/send/route.ts (27-45줄)
+
+   코드: Backend에서 imageFileIds 수신
+   interface SendMessageRequest {
+     imageUrls?: string[];      // 레거시 지원
+     imageFileIds?: string[];   // ⭐ 프론트엔드에서 사용
+   }
+
+   const finalImageUrls = imageFileIds.length > 0 ? imageFileIds : imageUrls;
+
+
+   파일 2: src/lib/messageSender.ts - sendMessage() 함수 (135-153줄)
+
+   코드: MMS 발송 로직
+   if (messageType === 'MMS' && imageUrls && imageUrls.length > 0) {
+     // MMS 발송 (첫 번째 이미지만 사용)
+     sendResult = await sendMtsSMS(
+       cleanPhone,
+       message,
+       callbackNumber,
+       subject || 'MMS',
+       undefined,        // sendDate
+       imageUrls[0]      // ⭐ 6번째 파라미터: 이미지 URL
+     );
+   }
+
+
+   파일 3: src/lib/mtsApi.ts - sendMtsSMS() 함수 (202-210줄)
+
+   코드: attachment 객체 생성
+   if (imageUrl) {
+     requestBody.attachment = {
+       image: [{
+         img_url: imageUrl    // ⭐ MTS 이미지 경로
+       }]
+     };
+   }
+
+   최종 전송 데이터:
+   {
+     "auth_code": "***",
+     "callback_number": "010****1234",
+     "phone_number": "010****5678",
+     "message": "이미지가 포함된 MMS입니다",
+     "subject": "MMS",
+     "attachment": {           // ⭐ MMS 전용 필드
+       "image": [{
+         "img_url": "/2025/11/03/20251103052213575.jpg"
+       }]
+     }
+   }
+
+[실제 MMS 발송 Console.log 예제]
+
+이미지 업로드 성공 시:
+========================================
+[MTS 이미지 업로드 시작]
+시간: 2025-11-03T05:22:13.123Z
+파일명: photo.png
+원본크기: 1.2MB
+최적화 후: 245KB (640x480px, JPEG)
+
+[MTS 이미지 업로드 API 호출]
+API URL: https://api.mtsco.co.kr/img/upload_image
+응답 코드: 0000
+이미지 URL: /2025/11/03/20251103052213575.jpg
+========================================
+
+MMS 발송 시:
+========================================
+[MTS SMS API 호출 시작]
+시간: 2025-11-03T05:22:45.789Z
+API URL: https://api.mtsco.co.kr/sndng/sms/sendMessage
+메시지 타입: MMS
+이미지 포함: Yes
+요청 데이터: {
+  "auth_code": "***",
+  "callback_number": "010****1234",
+  "phone_number": "010****5678",
+  "message": "이미지가 포함된 MMS입니다",
+  "subject": "MMS",
+  "attachment": {
+    "image": [{
+      "img_url": "/2025/11/03/20251103052213575.jpg"
+    }]
+  }
+}
+[MTS SMS API 응답 수신]
+HTTP 상태: 200 OK
+응답 데이터: {
+  "code": "0000",
+  "message": "success",
+  "msg_id": "20251103052245123456",
+  "received_at": "2025-11-03 05:22:45"
+}
+========================================
+
+[MMS 관련 주요 포인트]
+
+1. 이미지 스펙:
+   - 권장: 640×480px, 300KB 이하, JPEG
+   - 최대: 5MB (업로드 전), 300KB (업로드 후)
+
+2. API 응답 필드명 주의:
+   - 요청: "images" (복수형)
+   - 응답: "image" (단수형) ⭐ 매우 중요!
+
+3. 메시지 타입 우선순위:
+   - 이미지 있으면 무조건 MMS (바이트 수 무관)
+   - 이미지 없으면 바이트 수로 SMS/LMS 판단
+
+4. 비용:
+   - SMS: 25원
+   - LMS: 50원
+   - MMS: 100원
+
+5. 테스트 완료 상태:
+   - ✅ 이미지 업로드 (PNG → JPEG 변환)
+   - ✅ 이미지 최적화 (640×480, 300KB)
+   - ✅ MTS 업로드 API 연동
+   - ✅ MMS 발송 (attachment 포함)
+   - ⚠️ 발신번호 등록 필요 (ER17 에러 - MTS 담당자에게 요청 중)
 
 
 ================================================================================

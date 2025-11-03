@@ -58,7 +58,8 @@ interface SendMessageRequest {
   sendType: "immediate" | "scheduled";
   scheduledAt?: string; // ISO 8601 형식
   isAd?: boolean; // 광고 메시지 여부
-  imageUrls?: string[]; // MMS 이미지 파일 ID 배열
+  imageUrls?: string[]; // MMS 이미지 URL 배열 (하위 호환성)
+  imageFileIds?: string[]; // MMS 이미지 파일 ID 배열 (프론트엔드에서 사용)
 }
 
 // ============================================================================
@@ -96,7 +97,11 @@ export async function POST(request: NextRequest) {
       scheduledAt,
       isAd = false,
       imageUrls = [],
+      imageFileIds = [],
     } = body;
+
+    // imageFileIds와 imageUrls 통합 (imageFileIds 우선)
+    const finalImageUrls = imageFileIds.length > 0 ? imageFileIds : imageUrls;
 
     // 3. 유효성 검증
     if (!recipients || recipients.length === 0) {
@@ -192,7 +197,7 @@ export async function POST(request: NextRequest) {
           toName: recipient.name,
           message: personalizedMessage,
           subject,
-          imageUrls: imageUrls && imageUrls.length > 0 ? imageUrls : undefined,
+          imageUrls: finalImageUrls && finalImageUrls.length > 0 ? finalImageUrls : undefined,
           metadata: {
             source: "messages_send",
             send_type: "immediate",
@@ -264,7 +269,7 @@ export async function POST(request: NextRequest) {
           message: personalizedMessage,
           subject,
           scheduledAt: scheduledAt!,
-          imageUrls: imageUrls && imageUrls.length > 0 ? imageUrls : undefined,
+          imageUrls: finalImageUrls && finalImageUrls.length > 0 ? finalImageUrls : undefined,
           metadata: {
             source: "messages_send",
             send_type: "scheduled",

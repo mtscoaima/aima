@@ -262,10 +262,342 @@ A: (담당자 확인 필요)
 
 ================================================================================
 
+## 7️⃣ 추가 문제: ER15 에러 (MessageSizeOverException)
+
+### 문제 발견일
+2025-11-03
+
+### 문제 증상
+- SMS/LMS 발송 시 ER15 에러 발생
+- 오류 코드: ER15
+- 오류 메시지: "MessageSizeOverException"
+- 발송 시도 메시지: 264바이트 (90바이트 초과)
+
+### 실제 MTS API 요청/응답
+
+[요청 - 1차 시도]
+{
+  "auth_code": "***",
+  "callback_number": "01040571331",
+  "phone_number": "01040571331",
+  "message": "안녕하세요 윤건님 엠티에스컴퍼니입니다.\n2025-11-03 특별 할인 안내드립니다...",
+  // subject 없음 → SMS로 처리
+}
+
+[응답]
+{
+  "code": "ER15",
+  "received_at": "2025-11-03 16:20:39",
+  "message": "MessageSizeOverException"
+}
+
+[요청 - 2차 시도 (subject 추가)]
+{
+  "auth_code": "***",
+  "callback_number": "01040571331",
+  "phone_number": "01040571331",
+  "message": "안녕하세요 윤건님...",
+  "subject": ""  // 빈 문자열 추가
+}
+
+[응답]
+{
+  "code": "ER15",  // 여전히 실패
+  "received_at": "2025-11-03 16:24:10",
+  "message": "MessageSizeOverException"
+}
+
+[요청 - 3차 시도 (subject에 공백)]
+{
+  "subject": " "  // 공백 한 칸
+}
+
+[응답]
+{
+  "code": "ER15",  // 여전히 실패
+  "received_at": "2025-11-03 16:49:34"
+}
+
+---
+
+### 문제 원인 분석
+
+1. **SMS 길이 제한**
+   - SMS: 90바이트 제한 (한글 약 30자)
+   - LMS: 2000바이트 제한 (한글 약 666자)
+
+2. **MTS API SMS/LMS 구분 방식**
+   - 문서: "subject 파라미터가 있으면 LMS로 전송"
+   - 실제: subject가 빈 문자열("")이나 공백(" ")인 경우 SMS로 처리됨
+
+3. **메시지 바이트 계산**
+   - 실제 메시지: 변수 치환 전 원본 포함 약 264바이트
+   - SMS 제한(90바이트) 초과
+   - MTS API가 SMS로 인식하여 ER15 에러 반환
+
+---
+
+### 해결 시도 과정
+
+#### 시도 1: 바이트 계산 및 자동 LMS 전환
+```typescript
+// src/lib/mtsApi.ts
+const messageBytes = Buffer.byteLength(message, 'utf-8');
+
+if (messageBytes > 90 || subject) {
+  requestBody.subject = subject || '';
+}
+```
+결과: ❌ 실패 (빈 문자열은 LMS로 인식 안 됨)
+
+#### 시도 2: 공백으로 변경
+```typescript
+requestBody.subject = subject || ' ';
+```
+결과: ❌ 실패 (공백도 LMS로 인식 안 됨)
+
+#### 시도 3: 의미있는 값 추가 (최종 적용)
+```typescript
+requestBody.subject = subject || 'LMS';
+```
+결과: ⏳ 테스트 대기 중
+
+---
+
+### MTS API 문서 확인 사항
+
+**SMS 메시지 전송 API**
+- path: /sndng/sms/sendMessage
+- message: text(1000) - 필수 - "공백 포함 1000자로 제한"
+- subject: text(20) - 선택 - "제목 LMS/MMS 전송시 제목"
+
+**주의사항**:
+- subject 파라미터는 선택사항
+- subject가 있으면 LMS로, 없으면 SMS로 처리
+- **빈 문자열("")이나 공백(" ")은 subject가 없는 것으로 간주될 수 있음**
+
+---
+
+### MTS 담당자 문의 사항 (추가)
+
+#### 질문 5: SMS/LMS 자동 구분 정책
+
+Q: subject 파라미터의 값이 빈 문자열("")이거나 공백(" ")일 경우,
+   SMS와 LMS 중 어느 것으로 처리되나요?
+
+현상:
+  - subject: "" (빈 문자열) → SMS로 처리되어 ER15 발생
+  - subject: " " (공백) → SMS로 처리되어 ER15 발생
+  - subject: "LMS" (값 있음) → 테스트 필요
+
+문의:
+  - 90바이트 초과 메시지를 자동으로 LMS로 전환하려면
+    subject에 어떤 값을 넣어야 하나요?
+  - 빈 문자열로는 LMS 전환이 불가능한가요?
+
+A: (담당자 확인 필요)
+
+---
+
+#### 질문 6: ER15 에러 상세 정보
+
+Q: ER15 (MessageSizeOverException) 에러는 정확히 어떤 상황에서 발생하나요?
+
+현상:
+  - 264바이트 메시지를 subject 없이 전송 → ER15
+  - 264바이트 메시지를 subject="" 로 전송 → ER15
+  - 264바이트는 LMS 제한(2000바이트) 이내인데도 에러 발생
+
+문의:
+  - ER15는 SMS 90바이트 초과 시 발생하는 에러인가요?
+  - 아니면 LMS 2000바이트 초과 시 발생하는 에러인가요?
+  - subject가 있어도 ER15가 발생할 수 있나요?
+
+A: (담당자 확인 필요)
+
+---
+
+### 최종 적용 코드 (2025-11-03)
+
+```typescript
+// src/lib/mtsApi.ts - Line 141-145
+
+// 메시지 바이트 계산 (한글 = 3바이트, 영문/숫자 = 1바이트)
+const messageBytes = Buffer.byteLength(message, 'utf-8');
+
+// 90바이트 초과 시 LMS로 전송 (subject 필수)
+// MTS API는 subject 유무로 SMS/LMS를 구분합니다
+if (messageBytes > 90 || subject) {
+  requestBody.subject = subject || 'LMS'; // 기본 제목으로 LMS 전송
+}
+```
+
+**변경 내역**:
+- ER15 에러 코드 매핑 추가
+- 메시지 바이트 계산 로직 추가
+- 90바이트 초과 시 자동으로 subject 추가
+- subject 기본값: 'LMS' (빈 문자열은 인식 안 됨)
+
+---
+
+### 임시 해결 방안
+
+**옵션 A: subject에 의미있는 값 사용 (적용됨)**
+```typescript
+requestBody.subject = subject || 'LMS';
+```
+
+**옵션 B: 사용자에게 제목 입력 요청**
+- UI에서 LMS 발송 시 제목 입력 필드 추가
+- 사용자가 제목을 입력하지 않으면 기본값 사용
+
+**옵션 C: 메시지 자동 분할 (향후 고려)**
+- 90바이트 초과 시 자동으로 여러 SMS로 분할
+- 단, 비용 증가 및 수신 경험 저하 가능성
+
+---
+
+### 테스트 메시지 예시
+
+```
+안녕하세요 #[이름]님 #[회사명]입니다.
+#[오늘날짜] 특별 할인 안내드립니다.
+전화번호: #[전화번호]
+그룹명: #[그룹명]
+현재시간: #[현재시간]
+요일: #[요일]
+발신번호: #[발신번호]
+회사명: #[회사명]
+담당자명: #[담당자명]
+```
+
+**변수 치환 후 실제 메시지**:
+```
+안녕하세요 윤건님 엠티에스컴퍼니입니다.
+2025-11-03 특별 할인 안내드립니다.
+전화번호: 010-4057-1331
+그룹명: 테스트그룹
+현재시간: 16:49
+요일: 일요일
+발신번호: 010-4057-1331
+회사명: 엠티에스컴퍼니
+담당자명: 윤건
+```
+
+바이트 수: 약 264바이트 (한글 88자 수준)
+
+================================================================================
+
 관련 파일:
 - docs/연동규격서md/발송API/MTS_카카오알림톡_Restful_Interface_Guide_v2.1.md
-- src/lib/mtsApi.ts
+- src/lib/mtsApi.ts (ER15 에러 처리 및 자동 LMS 전환 로직 추가)
 - .env.local (TEST_CALLING_NUMBER)
 
+================================================================================
+
+## Section 8: MMS 이미지 업로드 및 전송 구현 완료 (2025-11-03)
+
+### 문제 상황
+MMS 메시지 전송 시 이미지를 첨부하는 기능이 필요했으나, 기존 Naver SENS API 기반으로 구현되어 있었음.
+
+### 해결 과정
+
+#### 1. 이미지 업로드 API 전환
+**파일**: `src/app/api/messages/upload-image/route.ts`
+
+**변경 내용**:
+- Naver SENS API → MTS API (`/img/upload_image`) 전환
+- 환경 변수: `NAVER_ACCESS_KEY_ID`, `NAVER_SECRET_KEY`, `NAVER_SENS_SERVICE_ID` 제거
+- MTS API 권장 스펙 적용:
+  - 해상도: 1500x1440 → 640x480px
+  - 파일 크기: 300KB 이하 (동일)
+  - 포맷: JPG (자동 변환)
+  - 품질: 88% → 85%
+
+**MTS API 응답 구조**:
+```json
+{
+  "code": "0000",
+  "image": "/2025/11/03/20251103052213575.jpg",
+  "message": "StoredFileSuccess"
+}
+```
+- 주의: 필드명이 `images`가 아닌 `image` (단수형)
+
+#### 2. MMS 전송 로직 구현
+**파일**: `src/lib/mtsApi.ts`
+
+**sendMtsSMS 함수 수정**:
+- 파라미터 추가: `imageUrl?: string`
+- 메시지 타입 자동 판단:
+  ```typescript
+  let messageType = 'SMS';
+  if (imageUrl) {
+    messageType = 'MMS';
+  } else if (messageBytes > 90) {
+    messageType = 'LMS';
+  }
+  ```
+- attachment 객체 생성:
+  ```typescript
+  if (imageUrl) {
+    requestBody.attachment = {
+      image: [{
+        img_url: imageUrl
+      }]
+    };
+  }
+  ```
+
+#### 3. 프론트엔드-백엔드 연동
+**파일**: `src/components/messages/SmsMessageContent.tsx`
+- 업로드 API 응답에서 `imageUrl` 추출
+- `imageUrl`을 `fileId`로 사용 (MTS 이미지 경로)
+
+**파일**: `src/app/api/messages/send/route.ts`
+- `imageFileIds` 파라미터 추가 (프론트엔드 호환성)
+- `imageUrls`와 `imageFileIds` 통합:
+  ```typescript
+  const finalImageUrls = imageFileIds.length > 0 ? imageFileIds : imageUrls;
+  ```
+
+**파일**: `src/lib/messageSender.ts`
+- MMS 발송 시 `sendMtsSMS` 사용 (첫 번째 이미지만)
+  ```typescript
+  sendResult = await sendMtsSMS(
+    cleanPhone,
+    message,
+    callbackNumber,
+    subject || 'MMS',
+    undefined,
+    imageUrls[0]
+  );
+  ```
+
+### 테스트 결과
+```
+[MTS SMS/LMS/MMS API 호출 시작]
+메시지 타입: MMS
+메시지 크기: 26 바이트
+이미지 포함: Yes
+attachment: {
+  "image": [{
+    "img_url": "/2025/11/03/20251103052213575.jpg"
+  }]
+}
+```
+
+### 현재 상태
+✅ 이미지 업로드: 정상 작동
+✅ MMS 전송 요청: 정상 작동 (attachment 포함)
+❌ 실제 전송 실패: ER17 (발신번호 미등록/미승인)
+
+### MTS 문의 사항
+**질문 7**: MMS 이미지 URL 형식
+- 업로드 API에서 받은 상대 경로(`/2025/11/03/...`)를 그대로 사용해도 되나요?
+- 아니면 전체 URL(`https://api.mtsco.co.kr/2025/11/03/...`)이 필요한가요?
+
+================================================================================
+
 작성자: Claude Code
-최종 수정일: 2025-10-29
+최종 수정일: 2025-11-03 (MMS 이미지 업로드 구현 완료)
