@@ -522,7 +522,7 @@ export default function ReservationCalendarPage() {
                     key={index}
                     className={`min-h-[140px] p-2 border-r border-b border-gray-100 ${
                       !isCurrentMonth ? 'bg-gray-50' : 'bg-white'
-                    } ${isCurrentMonth ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors`}
+                    } ${isCurrentMonth ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors flex flex-col`}
                     onClick={() => isCurrentMonth && handleDateClick(day)}
                   >
                     <div className={`text-sm font-medium mb-1 ${
@@ -537,7 +537,7 @@ export default function ReservationCalendarPage() {
                     
                     {hasReservation && (
                       <div className="space-y-1">
-                        {dayReservations.slice(0, 2).map((reservation) => {
+                        {dayReservations.map((reservation) => {
                           const timeStr = formatReservationTime(reservation);
                           const displayParts = [];
                           const position = getReservationDatePosition(reservation, day);
@@ -633,11 +633,6 @@ export default function ReservationCalendarPage() {
                             </ReservationTooltip>
                           );
                         })}
-                        {dayReservations.length > 2 && (
-                          <div className="text-xs text-gray-500 px-2">
-                            +{dayReservations.length - 2}개 더
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>

@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import MessageSendTab from "@/components/messages/MessageSendTab";
 import KakaoNaverRcsTab from "@/components/messages/KakaoNaverRcsTab";
 import ReservationManagementTab from "@/components/messages/ReservationManagementTab";
 
 const MessageSendPage = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   // State for tabs
   const [activeTab, setActiveTab] = useState("message-send");
@@ -19,6 +20,12 @@ const MessageSendPage = () => {
       setActiveTab(tab);
     }
   }, [searchParams]);
+
+  // Handle tab change with URL update
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    router.push(`/messages/send?tab=${tab}`, { scroll: false });
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -47,7 +54,7 @@ const MessageSendPage = () => {
                 ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
                 : "text-gray-500 hover:text-blue-600"
             }`}
-            onClick={() => setActiveTab("message-send")}
+            onClick={() => handleTabChange("message-send")}
           >
             메시지 보내기
           </button>
@@ -57,7 +64,7 @@ const MessageSendPage = () => {
                 ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
                 : "text-gray-500 hover:text-blue-600"
             }`}
-            onClick={() => setActiveTab("kakao-naver-rcs")}
+            onClick={() => handleTabChange("kakao-naver-rcs")}
           >
             카카오/네이버/RCS
           </button>
@@ -67,7 +74,7 @@ const MessageSendPage = () => {
                 ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
                 : "text-gray-500 hover:text-blue-600"
             }`}
-            onClick={() => setActiveTab("reservations")}
+            onClick={() => handleTabChange("reservations")}
           >
             예약관리(공간관리용)
           </button>

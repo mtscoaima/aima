@@ -25,6 +25,7 @@ interface ReservationFormData {
   phoneNumber: string;
   people: string;
   memo: string;
+  amount: string;
 }
 
 interface Reservation {
@@ -70,7 +71,8 @@ export default function EditReservationPage() {
     customerName: "",
     phoneNumber: "",
     people: "1",
-    memo: ""
+    memo: "",
+    amount: ""
   });
 
   const [showChannelModal, setShowChannelModal] = useState(false);
@@ -215,7 +217,8 @@ export default function EditReservationPage() {
           customerName: reservation.customer_name,
           phoneNumber: reservation.customer_phone || "",
           people: reservation.guest_count.toString(),
-          memo: reservation.special_requirements || reservation.memo || ""
+          memo: reservation.special_requirements || reservation.memo || "",
+          amount: (reservation.total_amount || reservation.amount || 0).toString()
         };
 
         setFormData(formattedData);
@@ -358,7 +361,8 @@ export default function EditReservationPage() {
         end_datetime: endDateTimeStr,
         guest_count: parseInt(formData.people),
         booking_channel: getChannelValue(formData.channel),
-        special_requirements: formData.memo || null
+        special_requirements: formData.memo || null,
+        total_amount: formData.amount ? parseInt(formData.amount) : 0
       };
 
       const response = await fetch(`/api/reservations/${reservationId}`, {
@@ -652,6 +656,22 @@ export default function EditReservationPage() {
                     value={formData.people}
                     onChange={(e) => handleInputChange("people", e.target.value)}
                     placeholder="10 명"
+                    className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* 금액 */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">금액</h3>
+
+                <div>
+                  <label className="block text-gray-900 font-medium mb-3">총 금액</label>
+                  <input
+                    type="number"
+                    value={formData.amount}
+                    onChange={(e) => handleInputChange("amount", e.target.value)}
+                    placeholder="금액을 입력하세요 (원)"
                     className="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
