@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
           sent_at: result.success ? new Date().toISOString() : null,
           status: result.success ? 'sent' : 'failed',
           error_message: result.error || null,
-          credit_used: result.success ? 30 : 0, // 친구톡 기본 단가 30원
+          credit_used: result.success ? 20 : 0, // 친구톡 기본 단가 20원
           metadata: {
             sender_key: senderKey,
             callback_number: callbackNumber,
@@ -190,8 +190,8 @@ export async function POST(request: NextRequest) {
 
     // 사용자 잔액 차감 (성공한 건수만)
     if (successCount > 0) {
-      // 친구톡 단가 (기본 30원)
-      const unitPrice = 30;
+      // 친구톡 단가 (기본 20원)
+      const unitPrice = 20;
       const totalCost = successCount * unitPrice;
 
       // 트랜잭션 생성 (amount는 양수로 저장, UI에서 type='usage'일 때 - 표시)

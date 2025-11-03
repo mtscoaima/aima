@@ -92,8 +92,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 네이버 톡톡 단가 계산 (가정: 건당 15원)
-    const NAVER_TALK_COST = 15;
+    // 네이버 톡톡 단가 계산
+    // INFORMATION/CARDINFO: 스마트알림 13원
+    // BENEFIT: 광고 20원
+    const NAVER_TALK_COST = productCode === 'BENEFIT' ? 20 : 13;
     const totalCost = recipients.length * NAVER_TALK_COST;
 
     // 잔액 확인
@@ -148,7 +150,7 @@ export async function POST(request: NextRequest) {
             sent_at: new Date().toISOString(),
             status: 'sent',
             error_message: null,
-            credit_used: 0, // 네이버톡 비용은 추후 설정
+            credit_used: NAVER_TALK_COST, // 네이버 스마트알림 13원, 광고 20원
             metadata: {
               navertalk_id: navertalkId,
               template_code: templateCode,

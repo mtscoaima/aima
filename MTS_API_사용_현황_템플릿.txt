@@ -450,18 +450,26 @@ API 주소: https://api.mtsco.co.kr/btalk/send/message/basic
 📌 4-5. 현재 구현 상태
 ------------------------------------------------------------
 구현 완료: ✅
+테스트 완료: ✅ (2025-11-03)
 코드 위치:
-- API 함수: src/lib/mtsApi.ts - sendKakaoBrand() 함수 (1073-1220줄)
-- UI 컴포넌트: src/components/messages/BrandTab.tsx
+- MTS API 함수: src/lib/mtsApi.ts - sendKakaoBrand() 함수 (1073-1220줄)
+- 템플릿 조회 함수: src/utils/kakaoApi.ts - fetchBrandTemplates() 함수 (267-304줄)
+- 발송 래퍼 함수: src/utils/kakaoApi.ts - sendBrandMessage() 함수 (309-334줄)
+- UI 컴포넌트: src/components/messages/BrandTab.tsx (완전 재작성)
 - API 라우트: src/app/api/messages/kakao/brand/send/route.ts
 특이사항:
-- 현재 전문방식(basic) API만 구현됨
-- **템플릿 기반 발송 구조로 변경됨 (2025-11-03)**
-  * 템플릿 선택 → 내용 자동 입력 방식 (AlimtalkTab과 동일)
-  * 수동 입력 방식 제거 (이전 버전과 다름)
-- 광고성 메시지 발송 가능
+- **템플릿 기반 발송 구조** (전문방식 - 알림톡과 동일)
+  * 템플릿 선택 → 내용 자동 입력 방식
+  * 수동 입력 불가 (message_type, 내용은 템플릿에서 자동 가져옴)
+- **Rich UI 구조 적용 완료**
+  * 템플릿 미리보기 (8가지 형식 버튼)
+  * 템플릿 정보 + 예시 이미지 (좌우 분할)
+  * 수신대상 정보 (원형 차트 + 탭)
+  * 문구 치환, 전환 발송 설정, 수신자 정보
+- 브랜드 템플릿 조회 API 구현 완료 ✅
+- 다양한 메시지 타입 지원 (TEXT/IMAGE/WIDE/WIDE_ITEM_LIST/CAROUSEL_FEED/COMMERCE/CAROUSEL_COMMERCE/PREMIUM_VIDEO)
 - 다양한 첨부 컨텐츠 지원 (버튼, 이미지, 쿠폰, 아이템 리스트)
-- **브랜드 템플릿 조회 API 구현 필요** (현재 플레이스홀더)
+- 전환 발송 기능 (브랜드톡 실패 시 SMS/LMS/MMS로 자동 전환)
 
 
 ================================================================================
@@ -719,12 +727,26 @@ FormData:
 
 📌 주요 코드 위치
 ------------------------------------------------------------
-- 핵심 API 함수: src/lib/mtsApi.ts
-- SMS/LMS/MMS: sendMtsSMS() (108-192줄)
-- 카카오 알림톡: sendMtsAlimtalk() (373-470줄)
-- 카카오 친구톡: sendMtsFriendtalk() (525-640줄) - imageLink 파라미터 추가됨
-- 카카오 브랜드톡: sendKakaoBrand() (1073-1220줄) - 템플릿 기반으로 변경됨
-- 네이버 톡톡: sendNaverTalk() (946-1050줄)
+- 핵심 MTS API 함수: src/lib/mtsApi.ts (총 1562줄)
+  * SMS/LMS/MMS: sendMtsSMS() (108줄~)
+  * 카카오 알림톡: sendMtsAlimtalk() (391줄~)
+  * 카카오 친구톡: sendMtsFriendtalk() (525줄~) - imageLink 파라미터 추가됨
+  * 카카오 브랜드톡: sendKakaoBrand() (1073줄~)
+  * 네이버 톡톡: sendNaverTalk() (961줄~)
+
+- 카카오 API 래퍼 함수: src/utils/kakaoApi.ts
+  * 발신프로필 조회: fetchSenderProfiles() (127줄~)
+  * 알림톡 템플릿 조회: fetchAlimtalkTemplates() (164줄~)
+  * 알림톡 발송: sendAlimtalk() (201줄~)
+  * 친구톡 발송: sendFriendtalk() (232줄~)
+  * **브랜드 템플릿 조회: fetchBrandTemplates() (267줄~)** ✅ 신규 추가
+  * **브랜드 메시지 발송: sendBrandMessage() (309줄~)** ✅ 신규 추가
+
+- UI 컴포넌트:
+  * 알림톡 탭: src/components/messages/AlimtalkTab.tsx
+  * 친구톡 탭: src/components/messages/FriendtalkTab.tsx
+  * **브랜드 메시지 탭: src/components/messages/BrandTab.tsx** ✅ 완전 재작성
+  * 네이버 톡톡 탭: src/components/messages/NaverTalkTab.tsx
 
 📌 참고 문서
 ------------------------------------------------------------
@@ -738,18 +760,29 @@ FormData:
 작성일: 2025-01-31
 최종 업데이트: 2025-11-03
 프로젝트: MTS Message Portal
+버전: 2.0
 
-📌 변경 이력 (2025-11-03)
+📌 변경 이력 v2.0 (2025-11-03)
 ------------------------------------------------------------
 1. 친구톡 API: imageLink 파라미터 추가
    - 이미지 클릭 시 이동할 URL 지원
    - attachment.image[].img_link 필드 추가
 
-2. 브랜드톡 API: 구조 변경
+2. 브랜드톡 API: 완전 재구현 완료 ✅
    - 수동 입력 방식 → 템플릿 선택 방식으로 변경
    - AlimtalkTab과 동일한 워크플로우 적용
-   - 브랜드 템플릿 조회 API 구현 필요 (TODO)
+   - **브랜드 템플릿 조회 API 구현 완료** (kakaoApi.ts)
+   - **Rich UI 구조 적용 완료** (템플릿 미리보기, 수신대상 정보 등)
+   - BrandTab.tsx 완전 재작성
+   - fetchBrandTemplates(), sendBrandMessage() 함수 추가
 
 3. 코드 위치 업데이트
-   - 함수 줄 번호 최신화
+   - mtsApi.ts: 총 1562줄 (이전보다 증가)
+   - kakaoApi.ts: 브랜드 메시지 관련 함수 2개 추가
+   - 모든 함수 줄 번호 최신화
    - 새로운 UI 컴포넌트 구조 반영
+
+4. 문서 구조 개선
+   - 코드 위치 섹션에 kakaoApi.ts 추가
+   - UI 컴포넌트 목록 추가
+   - 함수별 상세 줄 번호 명시

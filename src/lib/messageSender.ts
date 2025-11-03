@@ -390,13 +390,13 @@ async function deductBalance(
 function getMessageCredit(messageType: 'SMS' | 'LMS' | 'MMS'): number {
   switch (messageType) {
     case 'SMS':
-      return 20;
+      return 25;
     case 'LMS':
       return 50;
     case 'MMS':
-      return 200;
+      return 100;
     default:
-      return 20;
+      return 25;
   }
 }
 

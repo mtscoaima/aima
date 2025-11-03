@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
           sent_at: result.success ? new Date().toISOString() : null,
           status: result.success ? 'sent' : 'failed',
           error_message: result.error || null,
-          credit_used: result.success ? 15 : 0, // 알림톡 기본 단가 15원
+          credit_used: result.success ? 13 : 0, // 알림톡 기본 단가 13원
           metadata: {
             sender_key: senderKey,
             template_code: templateCode,
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         .select('alimtalk_price')
         .single();
 
-      const unitPrice = pricingData?.alimtalk_price || 15;
+      const unitPrice = pricingData?.alimtalk_price || 13;
       const totalCost = successCount * unitPrice;
 
       // 트랜잭션 생성 (amount는 양수로 저장, UI에서 type='usage'일 때 - 표시)

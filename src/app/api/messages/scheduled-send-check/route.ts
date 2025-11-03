@@ -28,13 +28,13 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // 메시지 타입별 단가 (원)
 const MESSAGE_COSTS: Record<string, number> = {
-  SMS: 20,
+  SMS: 25,
   LMS: 50,
-  MMS: 200,
-  KAKAO_ALIMTALK: 15,
-  KAKAO_FRIENDTALK: 30,
-  NAVER_TALK: 15,
-  KAKAO_BRAND: 15,
+  MMS: 100,
+  KAKAO_ALIMTALK: 13,
+  KAKAO_FRIENDTALK: 20,
+  NAVER_TALK: 13, // 스마트알림 기본, 광고는 20원
+  KAKAO_BRAND: 20,
 };
 
 // 광고머니 잔액 계산 함수

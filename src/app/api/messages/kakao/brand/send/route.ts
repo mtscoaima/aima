@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
     // 예약 발송 시간 변환 (있는 경우)
     const sendDate = scheduledAt ? convertToMtsDateFormat(scheduledAt) : undefined;
 
-    // 비용 계산 (브랜드 메시지: 15원)
-    const costPerMessage = 15;
+    // 비용 계산 (브랜드 메시지: 20원)
+    const costPerMessage = 20;
     const totalCost = recipients.length * costPerMessage;
 
     // 사용자 잔액 확인

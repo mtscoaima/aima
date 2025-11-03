@@ -1948,7 +1948,7 @@ NEXT_PUBLIC_BASE_URL=https://yourdomain.com
 - 새로운 라이브러리: `src/lib/mtsApi.ts` (1100+줄)
 - Naver SENS 관련 코드 완전 제거
 - 모든 발송 API 엔드포인트 MTS로 전환
-- 비용: SMS 20원, LMS 50원, MMS 200원, 알림톡 15원, 친구톡 30원, 톡톡 15원, 브랜드 15원
+- 비용: SMS 25원, LMS 50원, MMS 100원, 알림톡 13원, 친구톡 20원, 톡톡 13원/20원, 브랜드 20원
 
 ### Phase 3 (2025-01-24): SMS 알림 시스템
 - ✅ SMS 알림 템플릿 관리
@@ -2015,20 +2015,144 @@ MTS Message는 **Next.js 15 + Supabase + JWT 인증 + MTS API**를 기반으로 
 
 | 기능 | 상태 | 비용 |
 |------|------|------|
-| SMS/LMS/MMS | ✅ 완료 | 20/50/200원 |
-| 카카오 알림톡 | ✅ 완료 | 15원 |
-| 카카오 친구톡 | ✅ 완료 | 30원 |
-| 네이버 톡톡 | ✅ 완료 | 15원 |
-| 카카오 브랜드 | ✅ 완료 | 15원 |
+| SMS/LMS/MMS | ✅ 완료 | 25/50/100원 |
+| 카카오 알림톡 | ✅ 완료 | 13원 |
+| 카카오 친구톡 | ✅ 완료 | 20원 |
+| 네이버 톡톡 | ✅ 완료 | 13원/20원 |
+| 카카오 브랜드 | ✅ 완료 | 20원 |
 | **카카오 발신프로필 관리** | ✅ **NEW v4.0** | - |
 | 예약 발송 (모든 타입) | ✅ 완료 | - |
 
 ---
 
-**문서 버전**: v4.0 (Complete Codebase Analysis with Kakao Sender Profile Management)
-**최종 업데이트**: 2025-10-29
+## 📝 v4.3 변경사항 (2025-11-03)
+
+### 카카오 브랜드 메시지 완전 재구현
+
+**개요**: BrandTab 컴포넌트를 완전히 재작성하여 템플릿 기반 발송 및 Rich UI 구조 적용
+
+#### 1. BrandTab 완전 재작성 ✅
+**파일**: `src/components/messages/BrandTab.tsx` (579줄)
+
+**주요 변경사항**:
+- **이전**: 수동 입력 방식 (messageType 선택 + 메시지 직접 입력)
+- **현재**: 템플릿 선택 방식 (AlimtalkTab과 동일한 워크플로우)
+
+**새로운 UI 구조** (8개 섹션):
+1. 카카오 채널 + 브랜드 템플릿 선택 (좌우 분할)
+2. 템플릿 미리보기 (8가지 형식 버튼)
+   - 텍스트형, 이미지형, 와이드형, 와이드리스트형
+   - 캐러셀피드형, 커머스형, 캐러셀커머스형, 프리미엄동영상
+3. 템플릿 정보 + 예시 이미지 (좌우 분할)
+4. 전체수신번호 + 수신대상 정보 (겹치는 원형 차트 + 탭)
+5. 문구 치환 (변수 입력)
+6. 전환 발송 설정 (N/S/L/M 버튼)
+7. 수신자 정보 (수신자 수 + 예상 비용)
+8. 발송 버튼
+
+**핵심 함수**:
+- `loadBrandTemplates()` (127-139줄): 발신 프로필 선택 시 템플릿 자동 조회
+- `handleSendBrandMessage()` (147-230줄): MTS API 발송 처리
+
+#### 2. kakaoApi.ts 함수 추가 ✅
+**파일**: `src/utils/kakaoApi.ts`
+
+**신규 추가된 타입 및 함수**:
+```typescript
+// BrandTemplate 타입 (72-86줄)
+export interface BrandTemplate {
+  template_code: string;
+  template_name: string;
+  template_content: string;
+  message_type: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' |
+                'CAROUSEL_FEED' | 'COMMERCE' | 'CAROUSEL_COMMERCE' | 'PREMIUM_VIDEO';
+  status: string;
+  inspection_status?: string;
+  buttons?: Array<...>;
+}
+
+// fetchBrandTemplates() (267-304줄)
+// - 발신 프로필별 브랜드 템플릿 목록 조회
+// - MTS API 템플릿 조회 엔드포인트 호출
+// - 브랜드 메시지 타입 필터링
+
+// sendBrandMessage() (309-334줄)
+// - 브랜드 메시지 발송 래퍼 함수
+// - /api/messages/kakao/brand/send 호출
+// - 발송 결과 처리
+```
+
+#### 3. mtsApi.ts 상태 확인 ✅
+**파일**: `src/lib/mtsApi.ts` (총 1562줄)
+
+**브랜드 메시지 관련 함수**:
+- `sendKakaoBrand()` (1073-1220줄)
+  - MTS API 브랜드 메시지 발송 함수
+  - 템플릿 코드, message_type, attachment 지원
+  - 전환 발송 기능 (N/S/L/M)
+
+#### 4. 워크플로우 변경
+
+**이전 워크플로우**:
+```
+1. 발신 프로필 선택
+2. 메시지 타입 수동 선택 (TEXT/IMAGE/WIDE 등)
+3. 메시지 내용 직접 입력
+4. 템플릿 코드 입력
+5. 발송
+```
+
+**현재 워크플로우** ✅:
+```
+1. 발신 프로필 선택
+2. 브랜드 템플릿 자동 조회
+3. 템플릿 선택 (message_type, 내용 자동 표시)
+4. 템플릿 미리보기 확인 (8가지 형식)
+5. 수신대상 정보 확인 (원형 차트)
+6. 필요 시 변수 치환
+7. 전환 발송 설정
+8. 발송
+```
+
+#### 5. 빌드 상태 ✅
+- **빌드 결과**: 성공
+- **타입 에러**: 없음
+- **경고**: 없음
+- **총 줄 수**: BrandTab.tsx 579줄
+- **테스트 상태**: UI 구현 완료, MTS API 연동 완료
+
+#### 6. 문서 업데이트 완료 ✅
+- `MTS_API_사용_현황_템플릿.txt` v2.0
+- `MTS_API_코드_위치_안내.txt` v2.0
+- `MTS_MESSAGE_코드베이스_분석_v4.1.md` v4.3 (이 문서)
+
+### MTS API 통합 현황 (업데이트)
+
+| 기능 | 상태 | 비용 | 비고 |
+|------|------|------|------|
+| SMS/LMS/MMS | ✅ 완료 | 25/50/100원 | - |
+| 카카오 알림톡 | ✅ 완료 | 13원 | - |
+| 카카오 친구톡 V2 | ✅ 완료 | 20원 | imageLink 지원 |
+| 네이버 톡톡 | ✅ 완료 | 13원/20원 | 스마트알림/광고 |
+| 카카오 브랜드 | ✅ 완료 | 20원 | ✅ **v4.3 재구현** |
+| 카카오 발신프로필 관리 | ✅ 완료 | - | v4.0 추가 |
+| 예약 발송 (모든 타입) | ✅ 완료 | - | - |
+
+---
+
+**문서 버전**: v4.3 (Brand Message Complete Redesign)
+**최종 업데이트**: 2025-11-03
 **작성자**: Claude Code Analysis
-**변경사항**:
+**변경사항 (v4.3)**:
+- 카카오 브랜드 메시지 완전 재구현 ✅
+  - BrandTab.tsx 완전 재작성 (579줄)
+  - fetchBrandTemplates(), sendBrandMessage() 추가
+  - Rich UI 구조 적용 (8개 섹션)
+  - 템플릿 기반 발송 워크플로우로 전환
+- kakaoApi.ts: BrandTemplate 타입 및 함수 2개 추가
+- 모든 관련 문서 업데이트 완료 (v2.0)
+
+**이전 버전 (v4.0)**:
 - 카카오 발신프로필 관리 시스템 추가 (API 5개, 컴포넌트 1개)
 - 커스텀 훅 2개 추가 (useTargetMarketing, useTermsContent)
 - 전체 코드베이스 재분석 및 통계 업데이트
