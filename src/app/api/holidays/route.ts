@@ -99,8 +99,6 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-
       // 401 오류 시 fallback 데이터 사용
       if (response.status === 401) {
 
@@ -130,7 +128,7 @@ export async function GET(request: NextRequest) {
     let data: any;
     try {
       data = JSON.parse(responseText);
-    } catch (parseError) {
+    } catch {
       throw new Error('Invalid JSON response from API');
     }
 
@@ -182,7 +180,7 @@ export async function GET(request: NextRequest) {
           : (data.response?.body?.items?.item ? 1 : 0)
       }
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

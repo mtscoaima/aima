@@ -85,6 +85,14 @@ function logNotificationToConsole(
   content: string,
   logId: number
 ) {
+  // 사용하지 않는 파라미터 void 처리
+  void eventType;
+  void recipientName;
+  void recipientPhone;
+  void messageType;
+  void content;
+  void logId;
+
   if (subject) {
   }
 }
@@ -238,6 +246,6 @@ export async function triggerNotification(
     }
 
 
-  } catch (error) {
+  } catch {
   }
 }
