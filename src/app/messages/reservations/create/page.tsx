@@ -270,13 +270,13 @@ export default function CreateReservationPage() {
       }
 
       await response.json();
-      
+
       // 예약 생성 성공 시 sessionStorage 정리
       sessionStorage.removeItem('reservationPrice');
       sessionStorage.removeItem('reservationFormData');
-      
+
       alert('예약이 성공적으로 생성되었습니다!');
-      router.push('/messages/reservations/list');
+      router.push('/messages/reservations/calendar');
       
     } catch (error) {
       console.error('Error creating reservation:', error);
