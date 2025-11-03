@@ -68,8 +68,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (!SERVICE_KEY) {
-      console.error('ODCLOUD_SERVICE_KEY not found in environment');
-      console.warn('Using fallback holiday data');
 
       const fallbackData = getFallbackHolidays(year);
 
@@ -93,7 +91,6 @@ export async function GET(request: NextRequest) {
     // 사업자 검증과 동일한 방식으로 API 키 인코딩
     const apiUrl = `http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getHoliDeInfo?serviceKey=${encodeURIComponent(SERVICE_KEY)}&solYear=${year}&numOfRows=100&_type=json`;
 
-    console.log('Fetching holidays for year:', year);
 
     const response = await fetch(apiUrl, {
       headers: {
@@ -102,15 +99,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error('API response not OK:', response.status, response.statusText);
       const errorText = await response.text();
-      console.error('Error response:', errorText);
-      console.error('API URL:', apiUrl.replace(encodeURIComponent(SERVICE_KEY), '***'));
 
       // 401 오류 시 fallback 데이터 사용
       if (response.status === 401) {
-        console.warn('401 Unauthorized - API 활용신청이 필요하거나 승인 대기 중일 수 있습니다.');
-        console.warn('Fallback 데이터를 사용합니다.');
 
         // Fallback: 연도별 공휴일 데이터
         const fallbackData = getFallbackHolidays(year);
@@ -133,27 +125,22 @@ export async function GET(request: NextRequest) {
     }
 
     const responseText = await response.text();
-    console.log('Raw API Response (first 500 chars):', responseText.substring(0, 500));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let data: any;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('Failed to parse JSON:', parseError);
       throw new Error('Invalid JSON response from API');
     }
 
-    console.log('Parsed API Response:', JSON.stringify(data, null, 2));
 
     // API 응답 검증
     if (!data.response) {
-      console.error('No response object in API data');
       throw new Error('Invalid API response structure');
     }
 
     if (data.response.header?.resultCode !== '00') {
-      console.error('API returned error:', data.response.header);
       throw new Error(`API Error: ${data.response.header?.resultMsg || 'Unknown error'}`);
     }
 
@@ -161,29 +148,22 @@ export async function GET(request: NextRequest) {
     const holidays: string[] = [];
     const items = data.response?.body?.items?.item;
 
-    console.log('Items from API:', items);
 
     if (!items || items === '') {
-      console.log('No holiday items in response');
     } else if (Array.isArray(items)) {
-      console.log(`Found ${items.length} holiday items (array)`);
       items.forEach((item: HolidayItem) => {
         const dateStr = item.locdate.toString();
         const formatted = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
-        console.log(`Holiday: ${item.dateName} (${item.isHoliday}) - ${formatted}`);
         holidays.push(formatted);
       });
     } else if (typeof items === 'object') {
       // 단일 항목인 경우
-      console.log('Found single holiday item (object)');
       const item = items as HolidayItem;
       const dateStr = item.locdate.toString();
       const formatted = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
-      console.log(`Holiday: ${item.dateName} (${item.isHoliday}) - ${formatted}`);
       holidays.push(formatted);
     }
 
-    console.log(`Total holidays extracted: ${holidays.length}`);
 
     // 캐시 저장
     cache[year] = {
@@ -203,7 +183,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching holidays:', error);
     return NextResponse.json(
       {
         success: false,

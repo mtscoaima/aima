@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 export default function ReservationsLayout({
   children,
@@ -10,15 +10,21 @@ export default function ReservationsLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // 메인 페이지(/messages/reservations)는 백버튼 표시하지 않음
   const isMainPage = pathname === "/messages/reservations";
 
   const handleBackToMenu = () => {
-    // 히스토리가 있으면 뒤로, 없으면 예약관리 메인으로
-    if (typeof window !== 'undefined' && window.history.length > 1) {
+    // from 파라미터가 있으면 해당 URL로 이동
+    const fromUrl = searchParams.get('from');
+    if (fromUrl) {
+      router.push(fromUrl);
+    } else if (typeof window !== 'undefined' && window.history.length > 1) {
+      // from 파라미터가 없으면 히스토리 뒤로가기
       router.back();
     } else {
+      // 히스토리도 없으면 예약관리 메인으로
       router.push("/messages/reservations");
     }
   };

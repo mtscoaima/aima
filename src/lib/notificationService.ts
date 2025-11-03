@@ -41,7 +41,6 @@ async function getAdminPhoneNumbers(): Promise<Array<{ id: number; phone: string
     .eq('is_active', true);
 
   if (error) {
-    console.error('❌ 관리자 조회 실패:', error);
     return [];
   }
 
@@ -65,7 +64,6 @@ async function getUserPhoneNumber(userId: number): Promise<{ phone: string; name
     .single();
 
   if (error || !user || !user.phone_number) {
-    console.error('❌ 사용자 전화번호 조회 실패:', error);
     return null;
   }
 
@@ -87,20 +85,8 @@ function logNotificationToConsole(
   content: string,
   logId: number
 ) {
-  console.log('\n' + '━'.repeat(60));
-  console.log('📱 [SMS 알림 로그]');
-  console.log('━'.repeat(60));
-  console.log(`📌 이벤트: ${eventType}`);
-  console.log(`👤 수신자: ${recipientName} (${recipientPhone})`);
-  console.log(`📝 타입: ${messageType}`);
   if (subject) {
-    console.log(`📧 제목: ${subject}`);
   }
-  console.log(`💬 내용:`);
-  console.log(`   ${content.split('\n').join('\n   ')}`);
-  console.log('━'.repeat(60));
-  console.log(`✅ 로그 저장 완료 (ID: ${logId})`);
-  console.log('━'.repeat(60) + '\n');
 }
 
 /**
@@ -133,7 +119,6 @@ async function saveNotificationLog(
     .single();
 
   if (error) {
-    console.error('❌ 알림 로그 저장 실패:', error);
     return null;
   }
 
@@ -159,7 +144,6 @@ export async function triggerNotification(
   eventData: NotificationEventData
 ): Promise<void> {
   try {
-    console.log(`🔔 알림 트리거: ${eventData.eventType}`);
 
     // 1. 템플릿 조회
     const { data: template, error: templateError } = await supabase
@@ -169,13 +153,11 @@ export async function triggerNotification(
       .single();
 
     if (templateError || !template) {
-      console.error(`❌ 템플릿 조회 실패 (${eventData.eventType}):`, templateError);
       return;
     }
 
     // 2. 비활성화된 템플릿이면 종료
     if (!template.is_active) {
-      console.log(`⏸️  알림 비활성화됨: ${template.name}`);
       return;
     }
 
@@ -195,13 +177,11 @@ export async function triggerNotification(
     } else if (typedTemplate.recipient_type === 'USER') {
       // 특정 사용자
       if (!eventData.userId) {
-        console.error('❌ USER 타입인데 userId가 없습니다');
         return;
       }
 
       const userInfo = await getUserPhoneNumber(eventData.userId);
       if (!userInfo) {
-        console.error(`❌ 사용자 전화번호 없음 (userId: ${eventData.userId})`);
         return;
       }
 
@@ -213,7 +193,6 @@ export async function triggerNotification(
     }
 
     if (recipients.length === 0) {
-      console.warn(`⚠️  수신자 없음 (${eventData.eventType})`);
       return;
     }
 
@@ -258,9 +237,7 @@ export async function triggerNotification(
       }
     }
 
-    console.log(`✅ 알림 처리 완료: ${recipients.length}명에게 발송`);
 
   } catch (error) {
-    console.error('❌ 알림 처리 중 오류:', error);
   }
 }
