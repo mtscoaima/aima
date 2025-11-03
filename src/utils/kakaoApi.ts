@@ -57,6 +57,7 @@ export interface FriendtalkSendRequest {
   messageType: 'FT' | 'FI' | 'FW' | 'FL' | 'FC';
   adFlag: 'Y' | 'N';
   imageUrls?: string[];
+  imageLink?: string;  // 이미지 클릭 시 이동할 URL
   buttons?: Array<{
     name: string;
     type: string;
@@ -66,6 +67,22 @@ export interface FriendtalkSendRequest {
   tranType?: 'SMS' | 'LMS' | 'MMS';
   tranMessage?: string;
   scheduledAt?: string;
+}
+
+// 브랜드 템플릿 타입
+export interface BrandTemplate {
+  template_code: string;
+  template_name: string;
+  template_content: string;
+  message_type: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'COMMERCE' | 'CAROUSEL_COMMERCE' | 'PREMIUM_VIDEO';
+  status: string;
+  inspection_status?: string;
+  buttons?: Array<{
+    type: string;
+    name: string;
+    url_mobile?: string;
+    url_pc?: string;
+  }>;
 }
 
 // 브랜드 메시지 발송 요청 타입
@@ -237,6 +254,51 @@ export async function sendFriendtalk(request: FriendtalkSendRequest) {
     return result;
   } catch (error) {
     console.error('친구톡 발송 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 브랜드 메시지 발송
+ */
+/**
+ * 브랜드 템플릿 목록 조회
+ */
+export async function fetchBrandTemplates(senderKey: string): Promise<BrandTemplate[]> {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      throw new Error('로그인이 필요합니다.');
+    }
+
+    // TODO: MTS API에 브랜드 템플릿 조회 엔드포인트가 있는지 확인 필요
+    // 현재는 알림톡 템플릿 조회 API를 사용하되, 브랜드 메시지 타입만 필터링
+    const response = await fetch(`/api/kakao/templates?senderKey=${encodeURIComponent(senderKey)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '브랜드 템플릿 조회 실패');
+    }
+
+    const result = await response.json();
+
+    // MTS API 응답 구조에 맞게 파싱
+    if (result.success && result.data && result.data.list) {
+      // 브랜드 메시지용 템플릿만 필터링 (message_type이 COMMERCE 등 포함)
+      return result.data.list.filter((template: BrandTemplate) =>
+        ['TEXT', 'IMAGE', 'WIDE', 'WIDE_ITEM_LIST', 'CAROUSEL_FEED', 'COMMERCE', 'CAROUSEL_COMMERCE', 'PREMIUM_VIDEO'].includes(template.message_type)
+      );
+    }
+
+    return [];
+  } catch (error) {
+    console.error('브랜드 템플릿 조회 오류:', error);
     throw error;
   }
 }

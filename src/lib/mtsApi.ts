@@ -530,6 +530,7 @@ export async function sendMtsFriendtalk(
   messageType: 'FT' | 'FI' | 'FW' | 'FL' | 'FC' = 'FT',
   adFlag: 'Y' | 'N' = 'N',
   imageUrls?: string[],
+  imageLink?: string,
   buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>,
   tranType?: 'SMS' | 'LMS' | 'MMS',
   tranMessage?: string,
@@ -564,7 +565,10 @@ export async function sendMtsFriendtalk(
       const attachment: Record<string, unknown> = {};
 
       if (imageUrls && imageUrls.length > 0) {
-        attachment.image = imageUrls.map(url => ({ img_url: url }));
+        attachment.image = imageUrls.map(url => ({
+          img_url: url,
+          ...(imageLink ? { img_link: imageLink } : {})
+        }));
       }
 
       if (buttons && buttons.length > 0) {

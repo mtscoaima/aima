@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Info, HelpCircle, RefreshCw, Send, Image as ImageIcon } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Info, HelpCircle, RefreshCw, Send, Image as ImageIcon, FileText, Upload, Save } from "lucide-react";
 import {
   fetchSenderProfiles,
   sendFriendtalk,
@@ -37,6 +37,14 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const [smsBackupMessage, setSmsBackupMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  // UI 관련 state
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [imageLink, setImageLink] = useState("");
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // 변수 개수 계산
+  const variableCount = (message.match(/#\[.*?\]/g) || []).length;
+
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
     loadSenderProfiles();
@@ -60,6 +68,34 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     } finally {
       setIsLoadingProfiles(false);
     }
+  };
+
+  // 치환문구 추가
+  const addReplaceText = () => {
+    const textarea = messageInputRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = message.substring(0, start) + "#[변수명]" + message.substring(end);
+    setMessage(newText);
+
+    // 커서 위치 조정
+    setTimeout(() => {
+      textarea.selectionStart = start + 2;
+      textarea.selectionEnd = start + 7;
+      textarea.focus();
+    }, 0);
+  };
+
+  // 저장내용 모달 열기
+  const handleSavedContentClick = () => {
+    alert("저장내용 기능은 추후 구현 예정입니다.");
+  };
+
+  // 최근발송 모달 열기
+  const handleRecentSentClick = () => {
+    alert("최근발송 기능은 추후 구현 예정입니다.");
   };
 
   // 친구톡 발송
@@ -113,6 +149,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         messageType: messageType,
         adFlag: adFlag,
         imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+        imageLink: imageLink.trim() || undefined,
         tranType: enableSmsBackup ? "SMS" : undefined,
         tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
       });
@@ -247,20 +284,139 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       </div>
 
       {/* 메시지 내용 */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           메시지 내용
         </label>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="친구톡 메시지 내용을 입력하세요."
-          className="w-full h-40 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
-        />
-        <p className="text-sm text-gray-500">
-          {message.length}자 / 최대 1000자
-        </p>
+        <div className="flex flex-col">
+          <textarea
+            ref={messageInputRef}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="이곳에 문자 내용을 입력합니다&#10;치환문구 예시) #[이름]님 #[날짜] 방문 예약입니다."
+            className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[300px]"
+            maxLength={1000}
+          />
+
+          {/* 하단 도구바 */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+            <div className="flex items-center gap-3">
+              {/* 아이콘 버튼들 */}
+              <button
+                className="p-2 text-gray-500 hover:text-gray-700"
+                onClick={addReplaceText}
+                title="치환문구 추가"
+              >
+                <FileText className="w-4 h-4" />
+              </button>
+              <button
+                className="p-2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowImageUpload(!showImageUpload)}
+                title="이미지 첨부"
+              >
+                <ImageIcon className="w-4 h-4" />
+              </button>
+              <button
+                className="p-2 text-gray-500 hover:text-gray-700"
+                onClick={() => alert("문구 저장 기능은 추후 구현 예정입니다.")}
+                title="문구 저장하기"
+              >
+                <Save className="w-4 h-4" />
+              </button>
+
+              {/* 텍스트 버튼들 */}
+              <button
+                className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+                onClick={handleSavedContentClick}
+              >
+                저장내용
+              </button>
+              <button
+                className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+                onClick={handleRecentSentClick}
+              >
+                최근발송
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">{message.length} / 1,000 자</span>
+              <Info className="w-4 h-4 text-gray-400" />
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* 이미지 첨부 영역 (토글) */}
+      {showImageUpload && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="mb-3">
+            <h4 className="font-medium text-gray-700 mb-2">이미지 첨부 가이드</h4>
+            <div className="text-sm text-gray-600 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">▸</span>
+                <span>가로 너비 500px 이상</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">▸</span>
+                <span>세로 높이 250px 이상</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">▸</span>
+                <span>가로:세로 비율이 1:1.5 ~ 2:1 범위 내</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">▸</span>
+                <span>JPG, PNG 확장자</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">▸</span>
+                <span>이미지 파일 용량 최대 500KB 이하</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
+            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <h4 className="font-medium text-gray-700 mb-1">메시지에 이미지 첨부</h4>
+            <p className="text-sm text-gray-500">
+              이곳에 파일 끌어오기 혹은 찾아보기
+            </p>
+          </div>
+
+          {/* 이미지 링크 URL 입력 */}
+          <div className="mt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-gray-600">📎 이미지 클릭 시 링크</span>
+            </div>
+            <input
+              type="text"
+              value={imageLink}
+              onChange={(e) => setImageLink(e.target.value)}
+              placeholder="https://nurigo.net"
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-50"
+            />
+            <p className="text-xs text-gray-500 mt-2">최대 100자 이내</p>
+          </div>
+
+          {/* 이미지 링크 안내 */}
+          <div className="mt-4 p-3 bg-gray-50 rounded border">
+            <div className="text-xs text-gray-600 space-y-1">
+              <div className="flex items-start gap-2">
+                <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                <span>이미지 링크의 경우 선택 입력사항 이며, 최대 100자까지 입력 가능 (입력 비필수)</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                <span>이미지 링크는 수신자가 이미지를 클릭(터치) 했을 때, 이동하게 되는 웹사이트 링크입니다.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                <span>친구톡과 친구톡 이미지 단가는 차이가 있습니다. 발송전 꼭 단가를 확인하세요</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 이미지 URL (이미지형만) */}
       {['FI', 'FW', 'FL', 'FC'].includes(messageType) && (
@@ -283,6 +439,38 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           </p>
         </div>
       )}
+
+      {/* 카카오톡 버튼 */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="font-medium text-gray-700">카카오톡 버튼</span>
+        </div>
+        <div className="text-center py-4 border border-dashed border-gray-300 rounded">
+          <button
+            className="text-gray-500 text-sm hover:text-gray-700"
+            onClick={() => alert("친구톡 버튼 기능은 추후 구현 예정입니다.")}
+          >
+            친구톡 버튼 추가
+          </button>
+        </div>
+      </div>
+
+      {/* 문구 치환 */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <FileText className="w-4 h-4 text-gray-600" />
+          <span className="font-medium text-gray-700">문구 치환</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Info className="w-4 h-4 text-blue-500" />
+          <span className="text-sm text-gray-600">
+            {variableCount === 0
+              ? "내용에 변수가 없습니다."
+              : `${variableCount}개의 변수가 존재합니다. 수신번호를 추가해주세요`
+            }
+          </span>
+        </div>
+      </div>
 
       {/* SMS 백업 옵션 */}
       <div className="space-y-3 border-t pt-4">

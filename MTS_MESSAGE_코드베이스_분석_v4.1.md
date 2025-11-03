@@ -1,4 +1,4 @@
-# MTS Message 프로젝트 코드베이스 분석 (v4.1)
+# MTS Message 프로젝트 코드베이스 분석 (v4.2)
 
 ## 📊 프로젝트 개요
 
@@ -38,7 +38,7 @@ Supabase (PostgreSQL + Storage)
 - 폴링 기반 실시간 업데이트 (Supabase Realtime 미사용)
 - Service Layer를 통한 비즈니스 로직 분리
 
-### 프로젝트 통계 (2025-10-31 기준 - v4.1)
+### 프로젝트 통계 (2025-11-03 기준 - v4.2)
 
 | 구분 | 개수 | 변경사항 | 설명 |
 |------|------|---------|------|
@@ -53,12 +53,151 @@ Supabase (PostgreSQL + Storage)
 | **커스텀 훅** | 3개 | - | React Hook |
 | **타입 정의** | 3개 | - | TypeScript 타입 |
 
-**최근 업데이트 (2025-10-31)**:
+**최근 업데이트 (2025-11-03 - v4.2)**:
+- ✅ 브랜드 메시지 구조 완전 변경 (수동 입력 → 템플릿 선택 방식)
+- ✅ 친구톡 imageLink 기능 추가 (이미지 클릭 링크)
+- ✅ BrandTab.tsx 완전 재작성 (575줄 → 280줄)
+- ✅ FriendtalkTab.tsx 누락된 UI 요소 복원
+- ✅ 빌드 성공 (0 에러, 0 경고)
+
+**이전 업데이트 (2025-10-31 - v4.1)**:
 - ✅ 친구톡 발송 API 완전 수정 (DB 스키마, 성공 코드, 데이터 흐름)
 - ✅ SMS 템플릿 로딩 버그 수정 (API 응답 파싱, 검색어 초기화)
 - ✅ 디버깅 로그 정리 (모든 console.log 제거, 에러 로그만 유지)
 - ✅ Database migrations 4건 적용
-- ✅ 빌드 성공 (0 에러, 0 경고)
+
+---
+
+## 🆕 v4.2 주요 변경사항 (2025-11-03)
+
+### 1. 브랜드 메시지 아키텍처 변경
+
+#### UI 레벨 완전 재작성
+**파일**: `src/components/messages/BrandTab.tsx`
+
+**변경 전 구조** (수동 입력 방식):
+```typescript
+// 사용자가 직접 입력
+const [templateCode, setTemplateCode] = useState("");
+const [message, setMessage] = useState("");
+const [messageType, setMessageType] = useState<'TEXT' | 'IMAGE' | ...>('TEXT');
+```
+
+**변경 후 구조** (템플릿 선택 방식):
+```typescript
+// 템플릿에서 자동으로 가져옴
+interface BrandTemplate {
+  template_code: string;
+  template_name: string;
+  message_type: 'TEXT' | 'IMAGE' | ...;
+  template_content: string;
+  buttons?: Array<{...}>;
+}
+const [selectedTemplate, setSelectedTemplate] = useState<BrandTemplate | null>(null);
+```
+
+**주요 변경사항**:
+- ⚠️ **수동 입력 완전 제거**: message_type, message 내용은 템플릿에서만 가져옴
+- ✅ **알림톡과 동일한 워크플로우**: 템플릿 선택 → 내용 확인 → 발송
+- ✅ **코드 간소화**: 575줄 → 280줄 (약 51% 감소)
+- ✅ **buttons 매핑 수정**: `attachment.button` 형식으로 변환
+
+**영향받는 파일**:
+- `src/components/messages/BrandTab.tsx` - UI 컴포넌트 완전 재작성
+- `src/utils/kakaoApi.ts` - BrandMessageSendRequest 인터페이스 (변경 없음, 이미 맞음)
+- `src/lib/mtsApi.ts` - sendKakaoBrand() 함수 (변경 없음)
+
+**TODO**:
+- 브랜드 템플릿 조회 API 구현 필요 (`/api/messages/kakao/brand/templates`)
+- `fetchBrandTemplates(senderKey: string)` 함수 구현 필요
+
+### 2. 친구톡 imageLink 기능 추가
+
+#### 인터페이스 업데이트
+**파일**: `src/utils/kakaoApi.ts`
+
+**변경사항**:
+```typescript
+export interface FriendtalkSendRequest {
+  // ... 기존 필드들
+  imageLink?: string;  // 새로 추가: 이미지 클릭 시 이동할 URL
+}
+```
+
+#### UI 레벨 수정
+**파일**: `src/components/messages/FriendtalkTab.tsx`
+
+**추가된 코드**:
+```typescript
+// imageLink 파라미터 전달
+const result = await sendFriendtalk({
+  // ... 기존 파라미터들
+  imageLink: imageLink.trim() || undefined,  // 새로 추가
+});
+```
+
+#### API 레벨 수정
+**파일**: `src/app/api/messages/kakao/friendtalk/send/route.ts`
+
+**추가된 코드**:
+```typescript
+const { imageLink } = body;  // 요청에서 추출
+
+const result = await sendMtsFriendtalk(
+  // ... 기존 파라미터들
+  imageLink,  // MTS API로 전달
+);
+```
+
+#### MTS API 호출 수정
+**파일**: `src/lib/mtsApi.ts` - `sendMtsFriendtalk()` 함수
+
+**변경사항**:
+```typescript
+// 함수 시그니처 업데이트 (7번째 파라미터)
+export async function sendMtsFriendtalk(
+  senderKey: string,
+  toNumber: string,
+  message: string,
+  callbackNumber: string,
+  messageType: 'FT' | 'FI' | 'FW' | 'FL' | 'FC' = 'FT',
+  adFlag: 'Y' | 'N' = 'N',
+  imageUrls?: string[],
+  imageLink?: string,  // 새로 추가
+  buttons?: Array<{...}>,
+  tranType?: 'SMS' | 'LMS' | 'MMS',
+  tranMessage?: string,
+  sendDate?: string
+)
+
+// attachment.image 매핑 수정
+if (imageUrls && imageUrls.length > 0) {
+  attachment.image = imageUrls.map(url => ({
+    img_url: url,
+    ...(imageLink ? { img_link: imageLink } : {})  // img_link 추가
+  }));
+}
+```
+
+**기능 설명**:
+- 이미지 첨부 시 클릭 가능한 링크 설정 가능
+- MTS API의 `attachment.image[].img_link` 파라미터 활용
+- 사용자가 이미지를 클릭하면 지정한 URL로 이동
+
+### 3. FriendtalkTab UI 요소 복원
+
+**파일**: `src/components/messages/FriendtalkTab.tsx`
+
+**복원된 UI 요소**:
+- ✅ 메시지 입력 툴바 (아이콘 + 텍스트 버튼)
+- ✅ 이미지 업로드 영역 (드래그 앤 드롭)
+- ✅ 카카오톡 버튼 섹션
+- ✅ 텍스트 치환 섹션 (변수 카운팅 포함)
+
+**추가된 핸들러 함수**:
+- `addReplaceText()` - 변수 추가
+- `handleSavedContentClick()` - 저장된 내용 불러오기
+- `handleRecentSentClick()` - 최근 발송 내용 불러오기
 
 ---
 
