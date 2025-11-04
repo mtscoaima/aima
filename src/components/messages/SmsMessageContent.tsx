@@ -77,10 +77,10 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // 파일 크기 검증 (클라이언트측 300KB)
-    const maxSize = 300 * 1024; // 300KB
+    // 파일 크기 검증 (클라이언트측 5MB, 백엔드에서 자동 최적화)
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert(`이미지 크기는 300KB 이하여야 합니다.\n현재 크기: ${(file.size / 1024).toFixed(1)}KB`);
+      alert(`이미지 크기는 5MB 이하여야 합니다.\n현재 크기: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
       event.target.value = "";
       return;
     }
@@ -319,7 +319,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
               이미지 첨부 (MMS)
             </label>
             <span className="text-xs text-gray-500">
-              최대 300KB, 3개까지
+              최대 5MB, 3개까지 (자동 최적화)
             </span>
           </div>
 
@@ -397,7 +397,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
             </div>
             <div className="flex items-center gap-2">
               <span className="text-gray-400">▸</span>
-              <span>각 파일당 최대 300KB</span>
+              <span>각 파일당 최대 5MB (자동 최적화: 640×480px, 300KB 이하)</span>
             </div>
           </div>
         </div>

@@ -17,7 +17,7 @@ const supabase = createClient(
  *
  * 설명:
  * - DB에 저장된 템플릿들의 최신 상태를 MTS API로 조회하여 동기화
- * - inspection_status, status 등 변경사항 반영
+ * - status 등 변경사항 반영
  */
 export async function POST(request: NextRequest) {
   try {
@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
               template_content: (mtsData.templateContent as string) || template.template_content,
               template_message_type: (mtsData.templateMessageType as string) || template.template_message_type,
               template_emphasize_type: (mtsData.templateEmphasizeType as string) || template.template_emphasize_type,
-              inspection_status: (mtsData.inspectionStatus as string) || template.inspection_status,
               status: (mtsData.status as string) || template.status,
               buttons: mtsData.buttons ? (mtsData.buttons as object) : template.buttons,
               quick_replies: mtsData.quickReplies ? (mtsData.quickReplies as object) : template.quick_replies,

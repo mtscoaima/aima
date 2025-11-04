@@ -188,7 +188,6 @@ export async function POST(request: NextRequest) {
         template_content: templateContent,
         template_message_type: templateMessageType,
         template_emphasize_type: templateEmphasizeType,
-        inspection_status: 'REG', // 등록 상태
         status: 'R', // 대기 상태
         buttons: buttons || null,
         quick_replies: quickReplies || null,
@@ -222,7 +221,6 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('kakao_alimtalk_templates')
           .update({
-            inspection_status: 'REQ', // 검수 요청 상태
             synced_at: new Date().toISOString(),
           })
           .eq('id', savedTemplate.id);

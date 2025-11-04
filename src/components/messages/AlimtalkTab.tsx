@@ -48,21 +48,8 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
       'A': '정상',
       'S': '중지'
     };
-    const inspectionMap: Record<string, string> = {
-      'REG': '등록됨',
-      'REQ': '검수중',
-      'APR': '승인됨',
-      'REJ': '반려됨'
-    };
 
-    const statusLabel = statusMap[template.status] || template.status;
-    const inspectionLabel = template.inspection_status
-      ? inspectionMap[template.inspection_status]
-      : '';
-
-    return inspectionLabel
-      ? `${statusLabel} · ${inspectionLabel}`
-      : statusLabel;
+    return statusMap[template.status] || template.status;
   };
 
   // 컴포넌트 마운트 시 발신 프로필 조회

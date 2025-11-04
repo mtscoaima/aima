@@ -15,7 +15,6 @@ export interface AlimtalkTemplate {
   template_name: string;
   template_content: string;
   status: string;
-  inspection_status?: string; // REG: 등록됨, REQ: 검수요청중, APR: 승인됨, REJ: 반려됨
   buttons?: Array<{
     name: string;
     type: string;
@@ -76,7 +75,6 @@ export interface BrandTemplate {
   template_content: string;
   message_type: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'COMMERCE' | 'CAROUSEL_COMMERCE' | 'PREMIUM_VIDEO';
   status: string;
-  inspection_status?: string;
   buttons?: Array<{
     type: string;
     name: string;
