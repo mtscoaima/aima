@@ -873,3 +873,34 @@ FormData:
 5. UI 컴포넌트 구조 정리
    - 카카오/네이버 탭 구조 명확화
    - 각 컴포넌트별 역할 및 파일 위치 명시
+
+📌 변경 이력 v3.1 (2025-01-04)
+------------------------------------------------------------
+✨ **변수 형식 통일 작업 완료**
+
+1. 변수 형식 표준화 ✅
+   - 기존: SMS/MMS/친구톡 `#[변수명]`, 알림톡 `#{변수명}` (불일치)
+   - 변경: 모든 메시지 타입에서 `#{변수명}` 통일 (MTS API 표준)
+   - 표준 변수: #{이름}, #{전화번호}, #{오늘날짜}, #{현재시간} 등
+
+2. 유틸리티 함수 업데이트 ✅
+   - src/utils/messageVariables.ts 개선
+   - 새로운 함수: countVariables(), extractVariables(), migrateVariableFormat()
+   - 표준 패턴 상수: VARIABLE_PATTERN = /#{[^}]+}/g
+
+3. UI 컴포넌트 업데이트 ✅
+   - SmsMessageContent.tsx: 변수 형식 및 placeholder 업데이트
+   - FriendtalkTab.tsx: 변수 카운팅 및 삽입 형식 변경
+   - AlimtalkTab.tsx: 변수 개수 표시 기능 추가
+   - BrandTab.tsx: 변수 개수 표시 기능 추가
+
+4. 데이터베이스 마이그레이션 완료 ✅
+   - sms_message_templates 테이블: 1개 레코드 변환 완료
+   - #[변수명] → #{변수명} 자동 변환 (Supabase MCP 사용)
+   - 마이그레이션 스크립트: scripts/migrate-variable-format.ts
+
+5. 변수 시스템 구분 확인 ✅
+   - 일반 메시지: #{변수명} (SMS, 카카오, 네이버 톡톡)
+   - 예약 시스템: {{변수명}} (독립 시스템, 변경 불필요)
+   - 시스템 알림: {{변수명}} (내부 시스템, 변경 불필요)
+

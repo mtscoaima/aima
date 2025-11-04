@@ -167,6 +167,13 @@ export async function sendMtsSMS(
       requestBody.send_date = sendDate;
     }
 
+    // API 엔드포인트 결정
+    // SMS (90바이트 이하, 이미지 없음) -> /sndng/sms/sendMessage
+    // LMS/MMS (90바이트 초과 또는 이미지 포함) -> /sndng/mms/sendMessage
+    const endpoint = messageType === 'SMS'
+      ? `${MTS_API_URL}/sndng/sms/sendMessage`
+      : `${MTS_API_URL}/sndng/mms/sendMessage`;
+
     // API 호출
     console.log('========================================');
     console.log('[MTS SMS/LMS/MMS API 호출 시작]');
@@ -174,7 +181,7 @@ export async function sendMtsSMS(
     console.log('메시지 타입:', messageType);
     console.log('메시지 크기:', messageBytes, '바이트');
     console.log('이미지 포함:', imageUrl ? 'Yes' : 'No');
-    console.log('API URL:', `${MTS_API_URL}/sndng/sms/sendMessage`);
+    console.log('API URL:', endpoint);
     console.log('요청 데이터 (마스킹):', JSON.stringify({
       auth_code: '*** (보안)',
       callback_number: cleanCallbackNumber.substring(0, 3) + '****' + cleanCallbackNumber.substring(7),
@@ -186,7 +193,7 @@ export async function sendMtsSMS(
     }, null, 2));
     console.log('실제 전송 requestBody:', JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(`${MTS_API_URL}/sndng/sms/sendMessage`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',

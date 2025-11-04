@@ -153,6 +153,15 @@ export async function sendMessage(
   }
 
   if (!sendResult.success) {
+    // 즉시 실패: 아직 차감하지 않았으므로 환불 불필요
+    // 에러 코드 로깅 (ER15: 메시지 크기 초과, ER17: 미등록 발신번호 등)
+    console.log(`[발송 실패] 에러 코드: ${sendResult.errorCode}, 메시지: ${sendResult.error}`);
+
+    // TODO: 전송 결과 API 연동 시, 비동기 전달 실패 케이스 처리
+    // 1. 발송 성공 후 차감 완료
+    // 2. 전송 결과 API에서 실패 확인 (3016, 3019 등)
+    // 3. refundBalance() 호출하여 환불 처리
+
     return {
       success: false,
       messageType,
@@ -378,6 +387,50 @@ async function deductBalance(
     }
   } catch (error) {
     console.error('잔액 차감 예외:', error);
+  }
+}
+
+/**
+ * 잔액 환불
+ * transactions 테이블에 refund 기록 추가
+ *
+ * @param userId - 사용자 ID
+ * @param amount - 환불 금액
+ * @param reason - 환불 사유
+ * @param metadata - 추가 메타데이터
+ * @returns 환불 성공 여부
+ */
+export async function refundBalance(
+  userId: number,
+  amount: number,
+  reason: string,
+  metadata?: Record<string, string | number | boolean>
+): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('transactions').insert({
+      user_id: userId,
+      amount: amount,
+      type: 'refund',
+      status: 'completed',
+      description: reason,
+      metadata: {
+        transactionType: 'advertising',
+        refund_reason: reason,
+        ...metadata
+      },
+      created_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('잔액 환불 오류:', error);
+      return false;
+    }
+
+    console.log(`[환불 완료] 사용자 ${userId}: ${amount}원 (사유: ${reason})`);
+    return true;
+  } catch (error) {
+    console.error('잔액 환불 예외:', error);
+    return false;
   }
 }
 

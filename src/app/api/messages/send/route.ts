@@ -183,8 +183,9 @@ export async function POST(request: NextRequest) {
         if (recipient.variables) {
           for (const [key, value] of Object.entries(recipient.variables)) {
             // 기본 변수가 아닌 커스텀 변수만 치환
+            // 변수 형식: #{변수명}
             if (!["이름", "전화번호", "그룹명"].includes(key)) {
-              const pattern = new RegExp(`#\\[${key}\\]`, "g");
+              const pattern = new RegExp(`#{${key}}`, "g");
               personalizedMessage = personalizedMessage.replace(pattern, value);
             }
           }

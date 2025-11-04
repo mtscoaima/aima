@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
           sent_at: result.success ? new Date().toISOString() : null,
           status: result.success ? 'sent' : 'failed',
           error_message: result.error || null,
-          credit_used: result.success ? 13 : 0, // 알림톡 기본 단가 13원
+          credit_used: result.success ? 13 : 0, // 알림톡 기본 단가 13원 (실패 시 차감 안함)
           metadata: {
             sender_key: senderKey,
             template_code: templateCode,
@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
             tran_message: tranMessage,
             scheduled_at: scheduledAt,
             mts_msg_id: result.msgId,
+            error_code: result.errorCode || null, // 에러 코드 저장 (ER15, ER17, 3016 등)
           },
         });
       } catch (error) {

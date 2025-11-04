@@ -2182,3 +2182,134 @@ export interface BrandTemplate {
 - 총 348개 파일, 163개 API 엔드포인트, 77개 컴포넌트
 
 이 문서는 실제 코드베이스의 **완전한 재분석**을 기반으로 작성되었으며, 현재 프로젝트의 모든 파일, API, 페이지, 컴포넌트를 포함합니다.
+
+---
+
+## 🆕 v5.1 주요 변경사항 (2025-01-04)
+
+### 1. 변수 형식 통일 작업
+
+#### 목적
+- 모든 메시지 발송 타입에서 일관된 변수 형식 사용
+- 사용자 경험 개선 및 코드 유지보수성 향상
+- MTS API 알림톡 표준 형식으로 통일
+
+#### 변경 사항
+
+**변수 형식 표준화**:
+- 기존: SMS/MMS/친구톡 `#[변수명]`, 알림톡 `#{변수명}` (불일치)
+- 변경: 모든 메시지 타입에서 `#{변수명}` 통일 (MTS API 표준)
+- 표준 변수: `#{이름}`, `#{전화번호}`, `#{오늘날짜}`, `#{현재시간}`, `#{회사명}` 등
+
+**유틸리티 함수 업데이트**:
+- 파일: `src/utils/messageVariables.ts`
+- 새로운 상수: `VARIABLE_PATTERN = /#{[^}]+}/g`
+- 새로운 함수:
+  - `countVariables(text: string): number` - 변수 개수 계산
+  - `extractVariables(text: string): string[]` - 변수 목록 추출
+  - `migrateVariableFormat(text: string): string` - 구 형식 → 신 형식 변환
+- 기존 함수 업데이트:
+  - `replaceVariables()` - `#{변수명}` 형식 치환
+  - `getUnreplacedVariables()` - 패턴 업데이트
+
+**UI 컴포넌트 업데이트**:
+1. `SmsMessageContent.tsx` (Line 181, 214)
+   - Placeholder 예시: `#{이름}님 #{시간}시 방문 예약입니다.`
+   - 변수 카운팅 정규식: `/#{[^}]+}/g`
+
+2. `FriendtalkTab.tsx` (Line 54, 88, 384)
+   - 변수 카운팅 정규식 업데이트
+   - 치환문구 버튼: `#{변수명}` 삽입
+   - Placeholder 예시 업데이트
+
+3. `AlimtalkTab.tsx` (Line 305)
+   - 변수 개수 자동 표시 기능 추가
+   - 템플릿 선택 시 변수 카운팅
+
+4. `BrandTab.tsx` (Line 562)
+   - 변수 개수 자동 표시 기능 추가
+   - 템플릿별 변수 카운팅
+
+#### 데이터베이스 마이그레이션
+
+**마이그레이션 완료**:
+- 테이블: `sms_message_templates`
+- 변환 레코드: 1개
+- 변환 내용: `#[변수명]` → `#{변수명}`
+- 방법: Supabase MCP를 통한 SQL 실행
+- SQL: `UPDATE sms_message_templates SET content = regexp_replace(content, '#\[([^\]]+)\]', '#{\1}', 'g')`
+
+**마이그레이션 스크립트**:
+- 파일: `scripts/migrate-variable-format.ts`
+- 기능: TypeScript 기반 마이그레이션 스크립트
+- 문서: `scripts/README-MIGRATION.md`
+
+#### 변수 시스템 구분 확인
+
+프로젝트에는 3가지 독립적인 변수 시스템이 존재:
+
+1. **일반 메시지** - `#{변수명}` ✅ 통일 완료
+   - SMS/MMS, 카카오(알림톡/친구톡/브랜드), 네이버 톡톡
+   - 유틸리티: `messageVariables.ts`
+
+2. **예약 시스템** - `{{변수명}}` (독립 시스템)
+   - `/messages/reservations` 하위 모든 페이지
+   - 유틸리티: `messageTemplateParser.ts`
+   - 변수: `{{고객명}}`, `{{공간명}}`, `{{예약날짜}}` 등
+   - 변경 불필요 (의도된 설계)
+
+3. **시스템 알림** - `{{변수명}}` (내부 시스템)
+   - 테이블: `sms_notification_templates`
+   - 변수: `{{companyName}}`, `{{userName}}` 등
+   - 변경 불필요 (내부 시스템)
+
+#### 테스트 항목
+
+**변수 치환 기능 테스트**:
+- [ ] SMS/MMS 탭에서 `#{이름}` 형식으로 변수 삽입
+- [ ] 카카오 친구톡 치환문구 버튼 동작 확인
+- [ ] 카카오 알림톡 템플릿 변수 개수 표시
+- [ ] 카카오 브랜드 템플릿 변수 개수 표시
+- [ ] 변수 실행 시 정상 치환 확인 (#{이름} → 실제 이름)
+
+#### 영향받는 파일 목록
+
+**수정된 파일** (5개):
+- `src/utils/messageVariables.ts` - 유틸리티 함수 추가/업데이트
+- `src/components/messages/SmsMessageContent.tsx` - SMS/MMS 변수 형식 변경
+- `src/components/messages/FriendtalkTab.tsx` - 친구톡 변수 형식 변경
+- `src/components/messages/AlimtalkTab.tsx` - 알림톡 변수 카운팅 추가
+- `src/components/messages/BrandTab.tsx` - 브랜드 변수 카운팅 추가
+
+**새로 생성된 파일** (2개):
+- `scripts/migrate-variable-format.ts` - 마이그레이션 스크립트
+- `scripts/README-MIGRATION.md` - 마이그레이션 가이드
+
+**업데이트된 문서** (4개):
+- `MTS_API_사용_현황_템플릿.txt` v3.1
+- `MTS_API_통합_테스트_가이드.md` v2.1
+- `MTS_MESSAGE_코드베이스_분석_v4.1.md` v5.1 (이 문서)
+- `VARIABLE_FORMAT_MIGRATION_SUMMARY.md` (신규)
+
+#### 통계 업데이트
+
+| 구분 | 개수 | 변경사항 |
+|------|------|---------|
+| 유틸리티 함수 | 11개 | - |
+| 수정된 컴포넌트 | 4개 | SmsMessage, Friendtalk, Alimtalk, Brand |
+| 마이그레이션 스크립트 | 1개 | 신규 생성 |
+| 문서 업데이트 | 4개 | 버전 업데이트 |
+
+---
+
+**문서 버전**: v5.1 (Variable Format Unification)
+**최종 업데이트**: 2025-01-04
+**작성자**: Claude Code Analysis
+**변경사항 (v5.1)**:
+- 변수 형식 통일 작업 완료 ✅
+  - 모든 메시지 타입에서 `#{변수명}` 형식 사용
+  - UI 컴포넌트 4개 업데이트
+  - 유틸리티 함수 개선
+  - 데이터베이스 마이그레이션 완료
+  - 변수 시스템 3종 확인 및 구분
+- 문서 4개 업데이트 (v3.1, v2.1, v5.1)
