@@ -922,7 +922,7 @@ export async function getMtsSenderProfiles(
  * @param count 페이지당 개수 (기본: 100)
  */
 export async function getNaverTalkTemplates(
-  navertalkId: string,
+  partnerKey: string,
   page: number = 1,
   count: number = 100
 ): Promise<MtsApiResult> {
@@ -939,7 +939,7 @@ export async function getNaverTalkTemplates(
     // 요청 본문
     const requestBody = {
       auth_code: MTS_AUTH_CODE,
-      navertalk_id: navertalkId,
+      partner_key: partnerKey,
       page: page,
       count: count,
     };
@@ -1001,7 +1001,7 @@ export async function getNaverTalkTemplates(
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
  */
 export async function sendNaverTalk(
-  navertalkId: string,
+  partnerKey: string,
   templateCode: string,
   toNumber: string,
   text: string,
@@ -1026,7 +1026,7 @@ export async function sendNaverTalk(
     // 요청 본문
     const requestBody: Record<string, unknown> = {
       auth_code: MTS_AUTH_CODE,
-      navertalk_id: navertalkId,
+      partner_key: partnerKey,
       code: templateCode,
       phone_number: cleanToNumber,
       text: text,
@@ -1605,7 +1605,7 @@ export async function deleteMtsAlimtalkTemplate(
 
 /**
  * 네이버 톡톡 템플릿 생성
- * @param partnerKey 파트너 키 (네이버 톡톡 ID)
+ * @param navertalkId 네이버 톡톡 회원 ID
  * @param code 템플릿 코드
  * @param text 템플릿 내용
  * @param productCode 상품 코드 (INFORMATION: 정보성, BENEFIT: 혜택형, CARDINFO: 카드알림)
@@ -1652,6 +1652,8 @@ export async function createNaverTalkTemplate(
     console.log('[네이버 톡톡] 템플릿 생성 요청:', {
       partnerKey,
       code,
+      text,
+      textLength: text?.length || 0,
       productCode,
       categoryCode,
       buttonsCount: buttons?.length || 0,
@@ -1667,6 +1669,7 @@ export async function createNaverTalkTemplate(
     });
 
     const result = await response.json();
+    console.log('[네이버 톡톡] MTS API 응답:', result);
 
     // 성공 확인
     if (result.success === true) {
@@ -1678,11 +1681,11 @@ export async function createNaverTalkTemplate(
     }
 
     // 실패 시 에러 메시지 반환
-    console.error('[네이버 톡톡] 템플릿 생성 실패:', result.resultMessage);
+    console.error('[네이버 톡톡] 템플릿 생성 실패:', result.resultMessage || result.message || result);
     return {
       success: false,
-      error: result.resultMessage || '네이버 톡톡 템플릿 생성 실패',
-      errorCode: 'TEMPLATE_CREATE_FAILED',
+      error: result.resultMessage || result.message || '네이버 톡톡 템플릿 생성 실패',
+      errorCode: result.code || 'TEMPLATE_CREATE_FAILED',
       responseData: result,
     };
   } catch (error) {

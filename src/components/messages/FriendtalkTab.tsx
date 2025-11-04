@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Info, HelpCircle, RefreshCw, Send, Image as ImageIcon, FileText, Upload, Save, X } from "lucide-react";
+import { Info, RefreshCw, Send, Image as ImageIcon, FileText, Upload, Save, X } from "lucide-react";
 import {
   fetchSenderProfiles,
   sendFriendtalk,
@@ -46,7 +46,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
   // UI 관련 state
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [imageLink, setImageLink] = useState("");
+  const [imageLink] = useState("");
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -247,12 +247,15 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       // 업로드된 이미지의 fileId 배열 생성
       const imageFileIds = uploadedImages.map(img => img.fileId);
 
+      // 메시지 타입 자동 감지: 이미지가 있으면 FI, 없으면 FT
+      const autoDetectedType = imageFileIds.length > 0 ? 'FI' : 'FT';
+
       const result = await sendFriendtalk({
         senderKey: selectedProfile,
         recipients: recipients,
         message: message,
         callbackNumber: callbackNumber,
-        messageType: undefined, // 자동 감지
+        messageType: autoDetectedType, // 자동 감지
         adFlag: adFlag,
         imageUrls: imageFileIds.length > 0 ? imageFileIds : undefined,
         imageLink: imageLink.trim() || undefined,

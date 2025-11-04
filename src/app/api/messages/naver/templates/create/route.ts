@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createNaverTalkTemplate } from '@/lib/mtsApi';
-import { verifyToken } from '@/lib/auth';
+import { validateAuthWithSuccess } from '@/utils/authUtils';
 
 /**
  * POST /api/messages/naver/templates/create
@@ -8,21 +8,10 @@ import { verifyToken } from '@/lib/auth';
  */
 export async function POST(request: NextRequest) {
   try {
-    // JWT 검증
-    const token = request.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
-      return NextResponse.json(
-        { error: '인증 토큰이 필요합니다.' },
-        { status: 401 }
-      );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: '유효하지 않은 토큰입니다.' },
-        { status: 401 }
-      );
+    // JWT 인증 확인
+    const authResult = validateAuthWithSuccess(request);
+    if (!authResult.isValid || !authResult.userInfo) {
+      return authResult.errorResponse;
     }
 
     // 요청 본문 파싱
@@ -39,7 +28,7 @@ export async function POST(request: NextRequest) {
     // 필수 파라미터 검증
     if (!partnerKey) {
       return NextResponse.json(
-        { error: '파트너 키가 필요합니다.' },
+        { error: '파트너키가 필요합니다.' },
         { status: 400 }
       );
     }
