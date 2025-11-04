@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Info, HelpCircle, RefreshCw, Send, Image as ImageIcon, FileText, Upload, Save } from "lucide-react";
+import { Info, HelpCircle, RefreshCw, Send, Image as ImageIcon, FileText, Upload, Save, X } from "lucide-react";
 import {
   fetchSenderProfiles,
   sendFriendtalk,
@@ -19,6 +19,13 @@ interface FriendtalkTabProps {
   onSendComplete?: (result: unknown) => void; // 발송 완료 콜백
 }
 
+interface UploadedImage {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  preview: string;
+}
+
 const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   recipients = [],
   callbackNumber = "",
@@ -29,10 +36,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const [selectedProfile, setSelectedProfile] = useState<string>("");
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [messageType, setMessageType] = useState<'FT' | 'FI' | 'FW' | 'FL' | 'FC'>('FT');
   const [adFlag, setAdFlag] = useState<'Y' | 'N'>('N');
   const [message, setMessage] = useState("");
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [enableSmsBackup, setEnableSmsBackup] = useState(false);
   const [smsBackupMessage, setSmsBackupMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -41,6 +48,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [imageLink, setImageLink] = useState("");
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 변수 개수 계산
   const variableCount = (message.match(/#\[.*?\]/g) || []).length;
@@ -98,6 +106,101 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     alert("최근발송 기능은 추후 구현 예정입니다.");
   };
 
+  // 이미지 업로드 핸들러
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 파일 크기 검증 (클라이언트측 300KB)
+    const maxSize = 300 * 1024; // 300KB
+    if (file.size > maxSize) {
+      alert(`이미지 크기는 300KB 이하여야 합니다.\n현재 크기: ${(file.size / 1024).toFixed(1)}KB`);
+      event.target.value = "";
+      return;
+    }
+
+    // 파일 형식 검증
+    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+      alert("JPG, JPEG, PNG 형식만 지원됩니다.");
+      event.target.value = "";
+      return;
+    }
+
+    // 최대 1개 제한 (친구톡은 1개만 가능)
+    if (uploadedImages.length >= 1) {
+      alert("친구톡 이미지는 1개만 첨부할 수 있습니다.");
+      event.target.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+    setErrorMessage("");
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("로그인이 필요합니다");
+      }
+
+      // FormData 생성
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // API 호출
+      const response = await fetch("/api/messages/upload-image", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "이미지 업로드 실패");
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.imageUrl) {
+        throw new Error('이미지 URL을 받지 못했습니다');
+      }
+
+      // 미리보기 URL 생성
+      const previewUrl = URL.createObjectURL(file);
+
+      // 업로드된 이미지 추가
+      setUploadedImages([
+        {
+          fileId: data.imageUrl, // MTS API에서 받은 이미지 URL
+          fileName: file.name,
+          fileSize: data.fileSize,
+          preview: previewUrl,
+        },
+      ]);
+
+      console.log('[친구톡 이미지 업로드 성공]', data.imageUrl);
+    } catch (error) {
+      console.error('[친구톡 이미지 업로드 실패]', error);
+      setErrorMessage(error instanceof Error ? error.message : '이미지 업로드 실패');
+      alert(error instanceof Error ? error.message : '이미지 업로드 실패');
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
+  };
+
+  // 이미지 삭제 핸들러
+  const handleRemoveImage = (index: number) => {
+    const newImages = uploadedImages.filter((_, i) => i !== index);
+    setUploadedImages(newImages);
+
+    // 미리보기 URL 해제
+    if (uploadedImages[index].preview) {
+      URL.revokeObjectURL(uploadedImages[index].preview);
+    }
+  };
+
   // 친구톡 발송
   const handleSendFriendtalk = async () => {
     // 유효성 검사
@@ -141,14 +244,17 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     setErrorMessage("");
 
     try {
+      // 업로드된 이미지의 fileId 배열 생성
+      const imageFileIds = uploadedImages.map(img => img.fileId);
+
       const result = await sendFriendtalk({
         senderKey: selectedProfile,
         recipients: recipients,
         message: message,
         callbackNumber: callbackNumber,
-        messageType: messageType,
+        messageType: undefined, // 자동 감지
         adFlag: adFlag,
-        imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+        imageUrls: imageFileIds.length > 0 ? imageFileIds : undefined,
         imageLink: imageLink.trim() || undefined,
         tranType: enableSmsBackup ? "SMS" : undefined,
         tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
@@ -164,7 +270,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
       // 발송 후 메시지 초기화
       setMessage("");
-      setImageUrls([]);
+      setUploadedImages([]);
     } catch (error) {
       console.error("친구톡 발송 실패:", error);
       alert(
@@ -231,40 +337,19 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         </select>
       </div>
 
-      {/* 메시지 타입 선택 */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          <div className="flex items-center gap-2">
-            <span>메시지 타입</span>
-            <div className="group relative inline-block">
-              <HelpCircle className="w-4 h-4 text-gray-400" />
-              <div className="hidden group-hover:block absolute z-10 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2">
-                FT: 텍스트형 (기본) / FI: 이미지형 / FW: 와이드 이미지형 / FL: 와이드 리스트형 / FC: 캐러셀형
-              </div>
-            </div>
+      {/* 메시지 타입 자동 감지 안내 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-2">
+          <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-blue-800">
+            <p className="font-medium mb-1">메시지 타입 자동 감지</p>
+            <p className="text-blue-700">
+              이미지가 첨부되면 <strong>이미지형(FI)</strong>으로, 첨부되지 않으면 <strong>텍스트형(FT)</strong>으로 자동 선택됩니다.
+            </p>
+            <p className="text-blue-600 text-xs mt-2">
+              ※ 와이드 이미지(FW), 와이드 리스트(FL), 캐러셀(FC) 타입이 필요한 경우 별도로 문의해주세요.
+            </p>
           </div>
-        </label>
-
-        <div className="flex gap-2">
-          {[
-            { value: 'FT', label: '텍스트형' },
-            { value: 'FI', label: '이미지형' },
-            { value: 'FW', label: '와이드 이미지' },
-            { value: 'FL', label: '와이드 리스트' },
-            { value: 'FC', label: '캐러셀형' },
-          ].map((type) => (
-            <button
-              key={type.value}
-              onClick={() => setMessageType(type.value as 'FT' | 'FI' | 'FW' | 'FL' | 'FC')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                messageType === type.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {type.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -346,97 +431,73 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         </div>
       </div>
 
-      {/* 이미지 첨부 영역 (토글) */}
+
+      {/* 이미지 업로드 (토글) */}
       {showImageUpload && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="mb-3">
-            <h4 className="font-medium text-gray-700 mb-2">이미지 첨부 가이드</h4>
-            <div className="text-sm text-gray-600 space-y-1">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-gray-700">
               <div className="flex items-center gap-2">
-                <span className="text-gray-400">▸</span>
-                <span>가로 너비 500px 이상</span>
+                <ImageIcon className="w-4 h-4" />
+                <span>이미지 첨부</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">▸</span>
-                <span>세로 높이 250px 이상</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">▸</span>
-                <span>가로:세로 비율이 1:1.5 ~ 2:1 범위 내</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">▸</span>
-                <span>JPG, PNG 확장자</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">▸</span>
-                <span>이미지 파일 용량 최대 500KB 이하</span>
-              </div>
-            </div>
+            </label>
+            {uploadedImages.length === 0 && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                {isUploading ? "업로드 중..." : "이미지 선택"}
+              </button>
+            )}
           </div>
 
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <h4 className="font-medium text-gray-700 mb-1">메시지에 이미지 첨부</h4>
-            <p className="text-sm text-gray-500">
-              이곳에 파일 끌어오기 혹은 찾아보기
-            </p>
-          </div>
-
-          {/* 이미지 링크 URL 입력 */}
-          <div className="mt-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm text-gray-600">📎 이미지 클릭 시 링크</span>
-            </div>
-            <input
-              type="text"
-              value={imageLink}
-              onChange={(e) => setImageLink(e.target.value)}
-              placeholder="https://nurigo.net"
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-50"
-            />
-            <p className="text-xs text-gray-500 mt-2">최대 100자 이내</p>
-          </div>
-
-          {/* 이미지 링크 안내 */}
-          <div className="mt-4 p-3 bg-gray-50 rounded border">
-            <div className="text-xs text-gray-600 space-y-1">
-              <div className="flex items-start gap-2">
-                <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
-                <span>이미지 링크의 경우 선택 입력사항 이며, 최대 100자까지 입력 가능 (입력 비필수)</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
-                <span>이미지 링크는 수신자가 이미지를 클릭(터치) 했을 때, 이동하게 되는 웹사이트 링크입니다.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
-                <span>친구톡과 친구톡 이미지 단가는 차이가 있습니다. 발송전 꼭 단가를 확인하세요</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 이미지 URL (이미지형만) */}
-      {['FI', 'FW', 'FL', 'FC'].includes(messageType) && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            <div className="flex items-center gap-2">
-              <ImageIcon className="w-4 h-4" />
-              <span>이미지 URL</span>
-            </div>
-          </label>
           <input
-            type="text"
-            value={imageUrls[0] || ''}
-            onChange={(e) => setImageUrls(e.target.value ? [e.target.value] : [])}
-            placeholder="/2025/01/28/image.jpg"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png"
+            onChange={handleImageUpload}
+            className="hidden"
           />
-          <p className="text-sm text-gray-500">
-            MTS API를 통해 업로드한 이미지 경로를 입력하세요.
-          </p>
+
+          {/* 업로드된 이미지 미리보기 */}
+          {uploadedImages.length > 0 && (
+            <div className="border border-gray-200 rounded-lg p-3">
+              {uploadedImages.map((image, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <img
+                    src={image.preview}
+                    alt={image.fileName}
+                    className="w-16 h-16 object-cover rounded border border-gray-200"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700 truncate">
+                      {image.fileName}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(image.fileSize / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveImage(index)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="text-xs text-gray-700 space-y-1">
+              <p>• 최대 1개, 300KB 이하, JPG/PNG 형식만 가능</p>
+              <p>• 이미지를 첨부하면 자동으로 <strong>이미지형(FI)</strong>으로 발송됩니다</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -504,10 +565,15 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       {/* 발송 버튼 */}
       <button
         onClick={handleSendFriendtalk}
-        disabled={isSending || !selectedProfile || !message.trim()}
+        disabled={isSending || isUploading || !selectedProfile || !message.trim()}
         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
       >
-        {isSending ? (
+        {isUploading ? (
+          <>
+            <RefreshCw className="w-5 h-5 animate-spin" />
+            <span>이미지 업로드 중...</span>
+          </>
+        ) : isSending ? (
           <>
             <RefreshCw className="w-5 h-5 animate-spin" />
             <span>발송 중...</span>

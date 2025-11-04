@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!messageType || !['FT', 'FI', 'FW', 'FL', 'FC'].includes(messageType)) {
+    // 메시지 타입이 제공된 경우에만 유효성 검사
+    if (messageType && !['FT', 'FI', 'FW', 'FL', 'FC'].includes(messageType)) {
       return NextResponse.json(
         { error: '메시지 타입이 올바르지 않습니다. (FT, FI, FW, FL, FC 중 하나)' },
         { status: 400 }

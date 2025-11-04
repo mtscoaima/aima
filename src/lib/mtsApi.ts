@@ -555,7 +555,7 @@ export async function sendMtsFriendtalk(
   toNumber: string,
   message: string,
   callbackNumber: string,
-  messageType: 'FT' | 'FI' | 'FW' | 'FL' | 'FC' = 'FT',
+  messageType?: 'FT' | 'FI' | 'FW' | 'FL' | 'FC',
   adFlag: 'Y' | 'N' = 'N',
   imageUrls?: string[],
   imageLink?: string,
@@ -577,13 +577,27 @@ export async function sendMtsFriendtalk(
     const cleanToNumber = toNumber.replace(/-/g, '');
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
+    // 메시지 타입 자동 감지
+    let finalMessageType = messageType;
+    if (!finalMessageType) {
+      if (imageUrls && imageUrls.length > 0) {
+        finalMessageType = 'FI';
+        console.log('[친구톡] 메시지 타입 자동 감지: FI (이미지형)');
+      } else {
+        finalMessageType = 'FT';
+        console.log('[친구톡] 메시지 타입 자동 감지: FT (텍스트형)');
+      }
+    } else {
+      console.log(`[친구톡] 메시지 타입 수동 지정: ${finalMessageType}`);
+    }
+
     // 요청 본문
     const requestBody: Record<string, unknown> = {
       auth_code: MTS_AUTH_CODE,
       sender_key: senderKey,
       phone_number: cleanToNumber,
       message: message,
-      messageType: messageType,
+      messageType: finalMessageType,
       ad_flag: adFlag,
       callback_number: cleanCallbackNumber,
     };
@@ -1581,6 +1595,249 @@ export async function deleteMtsAlimtalkTemplate(
     };
   } catch (error) {
     console.error('MTS API 호출 오류 (템플릿 삭제):', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 네이버 톡톡 템플릿 생성
+ * @param partnerKey 파트너 키 (네이버 톡톡 ID)
+ * @param code 템플릿 코드
+ * @param text 템플릿 내용
+ * @param productCode 상품 코드 (INFORMATION: 정보성, BENEFIT: 혜택형, CARDINFO: 카드알림)
+ * @param categoryCode 카테고리 코드
+ * @param buttons 버튼 정보 (선택, 최대 5개)
+ */
+export async function createNaverTalkTemplate(
+  partnerKey: string,
+  code: string,
+  text: string,
+  productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO',
+  categoryCode: string,
+  buttons?: Array<{
+    type: 'WEB_LINK' | 'APP_LINK';
+    buttonCode: string;
+    name: string;
+    url?: string;
+    mobileUrl?: string;
+  }>
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_API_URL) {
+      return {
+        success: false,
+        error: 'MTS_API_URL이 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 요청 본문
+    const requestBody: Record<string, unknown> = {
+      productCode,
+      code,
+      text,
+      categoryCode,
+    };
+
+    // 버튼이 있는 경우 추가
+    if (buttons && buttons.length > 0) {
+      requestBody.buttons = buttons;
+    }
+
+    console.log('[네이버 톡톡] 템플릿 생성 요청:', {
+      partnerKey,
+      code,
+      productCode,
+      categoryCode,
+      buttonsCount: buttons?.length || 0,
+    });
+
+    // API 호출
+    const response = await fetch(`${MTS_API_URL}/naver/v1/template/${partnerKey}/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    // 성공 확인
+    if (result.success === true) {
+      console.log('[네이버 톡톡] 템플릿 생성 성공:', result.templateId);
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    console.error('[네이버 톡톡] 템플릿 생성 실패:', result.resultMessage);
+    return {
+      success: false,
+      error: result.resultMessage || '네이버 톡톡 템플릿 생성 실패',
+      errorCode: 'TEMPLATE_CREATE_FAILED',
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (네이버 톡톡 템플릿 생성):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 카카오 브랜드 메시지 템플릿 생성
+ * @param senderKey 발신프로필 키
+ * @param senderGroupKey 발신프로필 그룹 키 (senderKey 또는 senderGroupKey 중 하나 필수)
+ * @param name 템플릿 이름
+ * @param chatBubbleType 메시지 타입 (TEXT, IMAGE, WIDE, WIDE_ITEM_LIST, CAROUSEL_FEED, PREMIUM_VIDEO, COMMERCE, CAROUSEL_COMMERCE)
+ * @param content 템플릿 내용
+ * @param adult 성인용 메시지 여부
+ * @param additionalContent 템플릿 부가정보 (선택)
+ * @param imageUrl 이미지 URL (선택)
+ * @param imageName 이미지 파일명 (선택)
+ * @param imageLink 이미지 클릭시 이동할 URL (선택)
+ * @param buttons 버튼 목록 (선택)
+ */
+export async function createBrandTemplate(
+  senderKey: string | undefined,
+  senderGroupKey: string | undefined,
+  name: string,
+  chatBubbleType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE',
+  content: string,
+  adult: boolean = false,
+  additionalContent?: string,
+  imageUrl?: string,
+  imageName?: string,
+  imageLink?: string,
+  buttons?: Array<{
+    name: string;
+    linkType: string;
+    linkMobile?: string;
+    linkPc?: string;
+    linkAndroid?: string;
+    linkIos?: string;
+    bizFormId?: number;
+  }>
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_TEMPLATE_API_URL) {
+      return {
+        success: false,
+        error: 'MTS_TEMPLATE_API_URL이 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // senderKey 또는 senderGroupKey 중 하나는 필수
+    if (!senderKey && !senderGroupKey) {
+      return {
+        success: false,
+        error: 'senderKey 또는 senderGroupKey 중 하나는 필수입니다.',
+        errorCode: 'MISSING_REQUIRED_PARAM',
+      };
+    }
+
+    // 요청 본문 구성
+    const requestBody: Record<string, unknown> = {
+      name,
+      chatBubbleType,
+      content,
+      adult,
+    };
+
+    // senderKey 또는 senderGroupKey 추가
+    if (senderKey) {
+      requestBody.senderKey = senderKey;
+    }
+    if (senderGroupKey) {
+      requestBody.senderGroupKey = senderGroupKey;
+    }
+
+    // 선택적 필드 추가
+    if (additionalContent) {
+      requestBody.additionalContent = additionalContent;
+    }
+    if (imageUrl) {
+      requestBody.imageUrl = imageUrl;
+    }
+    if (imageName) {
+      requestBody.imageName = imageName;
+    }
+    if (imageLink) {
+      requestBody.imageLink = imageLink;
+    }
+    if (buttons && buttons.length > 0) {
+      requestBody.buttons = buttons;
+    }
+
+    console.log('[브랜드 메시지] 템플릿 생성 요청:', {
+      name,
+      chatBubbleType,
+      senderKey,
+      senderGroupKey,
+      buttonsCount: buttons?.length || 0,
+    });
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/direct/brand/template/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    // 성공 확인 (code: "200")
+    if (result.code === '200') {
+      console.log('[브랜드 메시지] 템플릿 생성 성공:', result.data);
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    console.error('[브랜드 메시지] 템플릿 생성 실패:', result.message);
+    return {
+      success: false,
+      error: result.message || '카카오 브랜드 메시지 템플릿 생성 실패',
+      errorCode: result.code || 'TEMPLATE_CREATE_FAILED',
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (브랜드 메시지 템플릿 생성):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
