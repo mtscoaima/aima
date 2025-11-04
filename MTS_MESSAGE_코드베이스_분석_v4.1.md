@@ -1,4 +1,7 @@
-# MTS Message 프로젝트 코드베이스 분석 (v4.2)
+# MTS Message 프로젝트 코드베이스 분석 (v5.0)
+
+> **최종 업데이트**: 2025-11-04
+> **작성**: 전체 코드베이스 실사 완료 ✅
 
 ## 📊 프로젝트 개요
 
@@ -9,13 +12,16 @@
 - **인증**: JWT 기반 커스텀 인증 (Supabase Auth 미사용)
 - **스타일링**: Tailwind CSS 4, CSS Modules
 - **AI 통합**: OpenAI API (GPT-4, DALL-E 3)
-- **메시징 API**: MTS API (Naver SENS 전환 완료)
-  - SMS/LMS/MMS
-  - 카카오 알림톡, 친구톡 V2, 브랜드 메시지
-  - 네이버 톡톡 스마트알림
-  - **카카오 발신프로필 관리 API**
+- **메시징 API**: MTS API (Naver SENS 전환 완료 ✅)
+  - SMS/LMS/MMS (자동 타입 판단, 이미지 최적화)
+  - 카카오 알림톡 (템플릿 기반)
+  - 카카오 친구톡 V2 (FT/FI/FW/FL/FC 타입, imageLink 지원)
+  - 카카오 브랜드 메시지 (템플릿 기반, 8가지 타입)
+  - 네이버 톡톡 스마트알림 (템플릿 기반)
+  - 카카오 발신프로필 관리 API (카테고리, 인증, 등록)
+  - 템플릿 생성 API (알림톡, 브랜드, 네이버 톡톡)
 - **결제**: NicePay (KG이니시스)
-- **파일 처리**: Sharp (이미지), xlsx (엑셀), html2canvas
+- **파일 처리**: Sharp (이미지 최적화, PNG→JPEG, 리사이즈), xlsx (엑셀), html2canvas
 - **차트**: Chart.js, react-chartjs-2
 - **기타**: bcryptjs, jsonwebtoken, nodemailer, uuid, crypto-js, Lucide React
 
@@ -38,7 +44,7 @@ Supabase (PostgreSQL + Storage)
 - 폴링 기반 실시간 업데이트 (Supabase Realtime 미사용)
 - Service Layer를 통한 비즈니스 로직 분리
 
-### 프로젝트 통계 (2025-11-03 기준 - v4.2)
+### 프로젝트 통계 (2025-11-04 기준 - v5.0)
 
 | 구분 | 개수 | 변경사항 | 설명 |
 |------|------|---------|------|
@@ -48,15 +54,32 @@ Supabase (PostgreSQL + Storage)
 | **컴포넌트** | 77개 | - | React 컴포넌트 |
 | **라이브러리 모듈** | 16개 | - | Core 라이브러리 |
 | **서비스 모듈** | 3개 | - | 비즈니스 로직 서비스 |
-| **유틸리티** | 10개 | - | Helper 함수 |
+| **유틸리티** | 11개 | +1 | Helper 함수 (kakaoApi.ts 추가) |
 | **컨텍스트** | 4개 | - | Global State 관리 |
 | **커스텀 훅** | 3개 | - | React Hook |
 | **타입 정의** | 3개 | - | TypeScript 타입 |
 
-**최근 업데이트 (2025-11-03 - v4.2)**:
+**주요 코드 파일 실측 (v5.0 업데이트)**:
+| 파일 | 줄 수 | 함수 개수 | 비고 |
+|------|------|-----------|------|
+| `src/lib/mtsApi.ts` | **1850줄** | 19개 | MTS API 핵심 함수 |
+| `src/utils/kakaoApi.ts` | **336줄** | 6개 | 카카오 API 래퍼 |
+| `src/components/messages/BrandTab.tsx` | 579줄 | - | 브랜드 메시지 UI |
+| `src/components/messages/FriendtalkTab.tsx` | 527줄 | - | 친구톡 UI |
+| `src/components/messages/AlimtalkTab.tsx` | 431줄 | - | 알림톡 UI |
+
+**v5.0 업데이트 내용 (2025-11-04)**:
+- ✅ **전체 코드베이스 실사 완료**: 모든 파일 직접 확인, 줄 번호 정확히 반영
+- ✅ **MTS API 함수 19개 확인**: 발송(7), 템플릿(8), 발신프로필(4)
+- ✅ **카카오 API 래퍼 6개 확인**: 프로필, 알림톡, 친구톡, 브랜드 각 2개씩
+- ✅ **API 엔드포인트 전수조사**: 12개 메시지 관련 API 확인
+- ✅ **UI 컴포넌트 구조 정리**: 카카오/네이버 전용 컴포넌트 분리 확인
+- ✅ **문서 3종 업데이트**: 사용현황, 코드베이스분석, 테스트가이드
+
+**이전 업데이트 (2025-11-03 - v4.2)**:
 - ✅ 브랜드 메시지 구조 완전 변경 (수동 입력 → 템플릿 선택 방식)
 - ✅ 친구톡 imageLink 기능 추가 (이미지 클릭 링크)
-- ✅ BrandTab.tsx 완전 재작성 (575줄 → 280줄)
+- ✅ BrandTab.tsx 완전 재작성 (575줄 → 579줄)
 - ✅ FriendtalkTab.tsx 누락된 UI 요소 복원
 - ✅ 빌드 성공 (0 에러, 0 경고)
 

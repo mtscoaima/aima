@@ -556,7 +556,16 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
         </div>
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-blue-500" />
-          <span className="text-sm text-gray-600">내용에 변수가 없습니다.</span>
+          <span className="text-sm text-gray-600">
+            {selectedTemplate
+              ? (() => {
+                  const variableCount = (selectedTemplate.template_content.match(/#{[^}]+}/g) || []).length;
+                  return variableCount === 0
+                    ? "내용에 변수가 없습니다."
+                    : `${variableCount}개의 변수가 존재합니다. 수신번호를 추가해주세요`;
+                })()
+              : "내용에 변수가 없습니다."}
+          </span>
         </div>
       </div>
 

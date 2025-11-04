@@ -744,26 +744,86 @@ FormData:
 
 📌 주요 코드 위치
 ------------------------------------------------------------
-- 핵심 MTS API 함수: src/lib/mtsApi.ts (총 1562줄)
-  * SMS/LMS/MMS: sendMtsSMS() (108줄~)
-  * 카카오 알림톡: sendMtsAlimtalk() (391줄~)
-  * 카카오 친구톡: sendMtsFriendtalk() (525줄~) - imageLink 파라미터 추가됨
-  * 카카오 브랜드톡: sendKakaoBrand() (1073줄~)
-  * 네이버 톡톡: sendNaverTalk() (961줄~)
+✅ **핵심 MTS API 함수: src/lib/mtsApi.ts (총 1850줄)**
 
-- 카카오 API 래퍼 함수: src/utils/kakaoApi.ts
+  [발송 API - 8개 함수]
+  * SMS/LMS: sendMtsSMS() (110줄~)
+  * MMS: sendMtsMMS() (249줄~)
+  * 이미지 업로드: uploadMtsImage() (341줄~)
+  * 카카오 알림톡: sendMtsAlimtalk() (419줄~)
+  * 카카오 친구톡 V2: sendMtsFriendtalk() (553줄~)
+  * 네이버 톡톡: sendNaverTalk() (1003줄~)
+  * 카카오 브랜드톡: sendKakaoBrand() (1115줄~)
+
+  [템플릿 관리 API - 7개 함수]
+  * 알림톡 템플릿 목록 조회: getMtsAlimtalkTemplates() (716줄~)
+  * 알림톡 템플릿 상세 조회: getMtsAlimtalkTemplate() (790줄~)
+  * 알림톡 템플릿 생성: createMtsAlimtalkTemplate() (1426줄~)
+  * 알림톡 템플릿 검수 요청: requestMtsTemplateInspection() (1510줄~)
+  * 알림톡 템플릿 삭제: deleteMtsAlimtalkTemplate() (1561줄~)
+  * 네이버 톡톡 템플릿 조회: getNaverTalkTemplates() (924줄~)
+  * 네이버 톡톡 템플릿 생성: createNaverTalkTemplate() (1615줄~)
+  * 브랜드 메시지 템플릿 생성: createBrandTemplate() (1724줄~)
+
+  [발신프로필 관리 API - 3개 함수]
+  * 발신프로필 목록 조회: getMtsSenderProfiles() (852줄~)
+  * 카테고리 목록 조회: getMtsCategoryList() (1250줄~)
+  * 발신프로필 인증 토큰 요청: requestMtsSenderToken() (1304줄~)
+  * 발신프로필 등록: registerMtsSenderProfile() (1365줄~)
+
+✅ **카카오 API 래퍼 함수: src/utils/kakaoApi.ts (총 336줄)**
+
   * 발신프로필 조회: fetchSenderProfiles() (127줄~)
   * 알림톡 템플릿 조회: fetchAlimtalkTemplates() (164줄~)
   * 알림톡 발송: sendAlimtalk() (201줄~)
   * 친구톡 발송: sendFriendtalk() (232줄~)
-  * **브랜드 템플릿 조회: fetchBrandTemplates() (267줄~)** ✅ 신규 추가
-  * **브랜드 메시지 발송: sendBrandMessage() (309줄~)** ✅ 신규 추가
+  * 브랜드 템플릿 조회: fetchBrandTemplates() (267줄~)
+  * 브랜드 메시지 발송: sendBrandMessage() (309줄~)
 
-- UI 컴포넌트:
-  * 알림톡 탭: src/components/messages/AlimtalkTab.tsx
-  * 친구톡 탭: src/components/messages/FriendtalkTab.tsx
-  * **브랜드 메시지 탭: src/components/messages/BrandTab.tsx** ✅ 완전 재작성
-  * 네이버 톡톡 탭: src/components/messages/NaverTalkTab.tsx
+✅ **API 엔드포인트: src/app/api/messages/**
+
+  [메시지 발송 API]
+  * SMS/LMS/MMS: /api/messages/send/route.ts
+  * 카카오 알림톡: /api/messages/kakao/alimtalk/send/route.ts
+  * 카카오 친구톡: /api/messages/kakao/friendtalk/send/route.ts
+  * 카카오 브랜드톡: /api/messages/kakao/brand/send/route.ts
+  * 네이버 톡톡: /api/messages/naver/talk/send/route.ts
+
+  [템플릿 생성 API]
+  * 카카오 브랜드 템플릿: /api/messages/kakao/brand/templates/create/route.ts
+  * 네이버 톡톡 템플릿: /api/messages/naver/templates/create/route.ts
+
+  [기타 API]
+  * 이미지 업로드: /api/messages/upload-image/route.ts
+  * 예약 발송: /api/messages/scheduled/route.ts
+
+✅ **UI 컴포넌트: src/components/messages/**
+
+  [메인 탭 컴포넌트]
+  * 메시지 보내기: MessageSendTab.tsx
+  * 카카오/네이버/RCS: KakaoNaverRcsTab.tsx
+  * 템플릿 관리: TemplateManagementTab.tsx
+  * 예약 관리: ReservationManagementTab.tsx
+
+  [메시지 발송 컴포넌트]
+  * SMS/LMS/MMS: SmsMessageContent.tsx
+  * 카카오 메시지: KakaoMessageContent.tsx
+    - 알림톡: AlimtalkTab.tsx
+    - 친구톡: FriendtalkTab.tsx
+    - 브랜드 메시지: BrandTab.tsx
+  * 네이버 톡톡: NaverTalkContent.tsx
+    - 네이버 톡톡: NaverTalkTalkTab.tsx
+
+  [카카오 전용 컴포넌트 - kakao/]
+  * 알림톡: kakao/KakaoAlimtalkTab.tsx
+  * 브랜드 메시지: kakao/KakaoBrandTab.tsx
+  * 채널 관리: kakao/KakaoChannelTab.tsx
+
+  [네이버 전용 컴포넌트 - naver/]
+  * 네이버 계정 등록: naver/NaverAccountRegisterModal.tsx
+  * 톡톡 ID 관리: naver/NaverTalkIdTab.tsx
+  * 템플릿 생성: naver/NaverTemplateCreateModal.tsx
+  * 템플릿 관리: naver/NaverTemplateTab.tsx
 
 📌 참고 문서
 ------------------------------------------------------------
@@ -775,31 +835,41 @@ FormData:
 작성 정보
 ================================================================================
 작성일: 2025-01-31
-최종 업데이트: 2025-11-03
+최종 업데이트: 2025-11-04
 프로젝트: MTS Message Portal
-버전: 2.0
+버전: 3.0
 
-📌 변경 이력 v2.0 (2025-11-03)
+📌 변경 이력 v3.0 (2025-11-04)
 ------------------------------------------------------------
-1. 친구톡 API: imageLink 파라미터 추가
-   - 이미지 클릭 시 이동할 URL 지원
-   - attachment.image[].img_link 필드 추가
+1. 전체 코드베이스 실사 완료 ✅
+   - 모든 API 엔드포인트 확인
+   - 실제 함수 위치 및 줄 번호 정확히 반영
+   - mtsApi.ts: 총 1850줄 (실측)
+   - kakaoApi.ts: 총 336줄 (실측)
 
-2. 브랜드톡 API: 완전 재구현 완료 ✅
-   - 수동 입력 방식 → 템플릿 선택 방식으로 변경
-   - AlimtalkTab과 동일한 워크플로우 적용
-   - **브랜드 템플릿 조회 API 구현 완료** (kakaoApi.ts)
-   - **Rich UI 구조 적용 완료** (템플릿 미리보기, 수신대상 정보 등)
-   - BrandTab.tsx 완전 재작성
-   - fetchBrandTemplates(), sendBrandMessage() 함수 추가
+2. MTS API 함수 목록 업데이트 (19개 함수)
+   - SMS/LMS: sendMtsSMS() (110줄~)
+   - MMS: sendMtsMMS() (249줄~), uploadMtsImage() (341줄~)
+   - 카카오 알림톡: sendMtsAlimtalk() (419줄~)
+   - 카카오 친구톡: sendMtsFriendtalk() (553줄~)
+   - 카카오 브랜드톡: sendKakaoBrand() (1115줄~)
+   - 네이버 톡톡: sendNaverTalk() (1003줄~)
+   - 템플릿 관리: 7개 함수 (조회, 생성, 검수, 삭제)
+   - 발신프로필 관리: 3개 함수
 
-3. 코드 위치 업데이트
-   - mtsApi.ts: 총 1562줄 (이전보다 증가)
-   - kakaoApi.ts: 브랜드 메시지 관련 함수 2개 추가
-   - 모든 함수 줄 번호 최신화
-   - 새로운 UI 컴포넌트 구조 반영
+3. API 래퍼 함수 정리 (kakaoApi.ts - 6개 함수)
+   - fetchSenderProfiles() (127줄~)
+   - fetchAlimtalkTemplates() (164줄~)
+   - sendAlimtalk() (201줄~)
+   - sendFriendtalk() (232줄~)
+   - fetchBrandTemplates() (267줄~)
+   - sendBrandMessage() (309줄~)
 
-4. 문서 구조 개선
-   - 코드 위치 섹션에 kakaoApi.ts 추가
-   - UI 컴포넌트 목록 추가
-   - 함수별 상세 줄 번호 명시
+4. API 엔드포인트 전체 목록 작성
+   - 메시지 발송 API: 5개
+   - 템플릿 관리 API: 3개
+   - 이미지 업로드 API: 1개
+
+5. UI 컴포넌트 구조 정리
+   - 카카오/네이버 탭 구조 명확화
+   - 각 컴포넌트별 역할 및 파일 위치 명시

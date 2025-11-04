@@ -178,7 +178,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
   };
 
   const placeholderText = `이곳에 문자 내용을 입력합니다.
-치환문구 예시) #[이름]님 #[시간]시 방문 예약입니다.`;
+치환문구 예시) #{이름}님 #{시간}시 방문 예약입니다.`;
 
   const handleVariableSelect = (variable: string) => {
     const textarea = textareaRef.current;
@@ -211,7 +211,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
   };
 
   const getVariableCount = () => {
-    const matches = messageContent.match(/#\[.*?\]/g);
+    const matches = messageContent.match(/#{[^}]+}/g);
     return matches ? matches.length : 0;
   };
 

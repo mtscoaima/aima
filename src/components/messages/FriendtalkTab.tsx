@@ -51,7 +51,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 변수 개수 계산
-  const variableCount = (message.match(/#\[.*?\]/g) || []).length;
+  const variableCount = (message.match(/#{[^}]+}/g) || []).length;
 
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
@@ -85,13 +85,13 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const newText = message.substring(0, start) + "#[변수명]" + message.substring(end);
+    const newText = message.substring(0, start) + "#{변수명}" + message.substring(end);
     setMessage(newText);
 
     // 커서 위치 조정
     setTimeout(() => {
       textarea.selectionStart = start + 2;
-      textarea.selectionEnd = start + 7;
+      textarea.selectionEnd = start + 6;
       textarea.focus();
     }, 0);
   };
@@ -381,7 +381,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             ref={messageInputRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="이곳에 문자 내용을 입력합니다&#10;치환문구 예시) #[이름]님 #[날짜] 방문 예약입니다."
+            placeholder="이곳에 문자 내용을 입력합니다&#10;치환문구 예시) #{이름}님 #{날짜} 방문 예약입니다."
             className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[300px]"
             maxLength={1000}
           />
