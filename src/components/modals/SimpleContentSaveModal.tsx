@@ -11,6 +11,11 @@ interface SimpleContentSaveModalProps {
     subject?: string;
     content: string;
     isAd?: boolean;
+    // 친구톡 지원 필드
+    messageType?: string; // 'SMS' | 'FRIENDTALK' 등
+    buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
+    imageUrl?: string;
+    imageLink?: string;
   };
   onSaveSuccess?: () => void;
 }
@@ -57,6 +62,10 @@ const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
           content: currentContent.content.trim(),
           subject: currentContent.subject?.trim() || "",
           isPrivate: true,
+          messageType: currentContent.messageType || 'SMS',
+          buttons: currentContent.buttons || null,
+          imageUrl: currentContent.imageUrl || null,
+          imageLink: currentContent.imageLink || null,
         }),
       });
 

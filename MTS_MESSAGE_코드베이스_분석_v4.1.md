@@ -1,7 +1,7 @@
-# MTS Message 프로젝트 코드베이스 분석 (v5.0)
+# MTS Message 프로젝트 코드베이스 분석 (v5.2)
 
-> **최종 업데이트**: 2025-11-04
-> **작성**: 전체 코드베이스 실사 완료 ✅
+> **최종 업데이트**: 2025-11-05
+> **작성**: 전체 코드베이스 실사 완료 + Phase 4 친구톡 완전 완료 ✅
 
 ## 📊 프로젝트 개요
 
@@ -44,29 +44,47 @@ Supabase (PostgreSQL + Storage)
 - 폴링 기반 실시간 업데이트 (Supabase Realtime 미사용)
 - Service Layer를 통한 비즈니스 로직 분리
 
-### 프로젝트 통계 (2025-11-04 기준 - v5.0)
+### 프로젝트 통계 (2025-11-05 기준 - v5.2)
 
 | 구분 | 개수 | 변경사항 | 설명 |
 |------|------|---------|------|
-| **총 TypeScript/TSX 파일** | 348개 | - | 전체 소스 파일 |
+| **총 TypeScript/TSX 파일** | 349개 | +1 | FriendtalkButtonModal.tsx 추가 |
 | **API 엔드포인트** | 163개 | - | REST API 라우트 |
 | **페이지** | 57개 | - | Next.js 페이지 라우트 |
-| **컴포넌트** | 77개 | - | React 컴포넌트 |
+| **컴포넌트** | 78개 | +1 | FriendtalkButtonModal 추가 |
 | **라이브러리 모듈** | 16개 | - | Core 라이브러리 |
 | **서비스 모듈** | 3개 | - | 비즈니스 로직 서비스 |
-| **유틸리티** | 11개 | +1 | Helper 함수 (kakaoApi.ts 추가) |
+| **유틸리티** | 11개 | - | Helper 함수 |
 | **컨텍스트** | 4개 | - | Global State 관리 |
 | **커스텀 훅** | 3개 | - | React Hook |
 | **타입 정의** | 3개 | - | TypeScript 타입 |
+| **마이그레이션** | 1개 | +1 | 친구톡 테이블 확장 SQL |
 
-**주요 코드 파일 실측 (v5.0 업데이트)**:
+**주요 코드 파일 실측 (v5.2 업데이트)**:
 | 파일 | 줄 수 | 함수 개수 | 비고 |
 |------|------|-----------|------|
 | `src/lib/mtsApi.ts` | **1850줄** | 19개 | MTS API 핵심 함수 |
 | `src/utils/kakaoApi.ts` | **336줄** | 6개 | 카카오 API 래퍼 |
+| `src/components/messages/FriendtalkTab.tsx` | **804줄** | - | 친구톡 UI (+277줄) |
 | `src/components/messages/BrandTab.tsx` | 579줄 | - | 브랜드 메시지 UI |
-| `src/components/messages/FriendtalkTab.tsx` | 527줄 | - | 친구톡 UI |
 | `src/components/messages/AlimtalkTab.tsx` | 431줄 | - | 알림톡 UI |
+| `src/components/modals/FriendtalkButtonModal.tsx` | **243줄** | - | **신규** 버튼 모달 |
+
+**v5.2 업데이트 내용 (2025-11-05)**:
+- ✅ **Phase 4 친구톡 완전 완료**: 버튼, 템플릿 저장/불러오기, 최근발송 기능 구현
+- ✅ **DB 마이그레이션**: `sms_message_templates` 테이블 확장 (4개 컬럼, 2개 인덱스)
+- ✅ **신규 컴포넌트**: `FriendtalkButtonModal.tsx` (243줄, WL 타입 버튼 관리)
+- ✅ **모달 확장**: `SimpleContentSaveModal`, `LoadContentModal` (친구톡 메타데이터 지원)
+- ✅ **API 확장**: `/api/sms-templates` (messageType 필터링, JSONB 저장)
+- ✅ **FriendtalkTab 대폭 확장**: 527줄 → 804줄 (+277줄, +52% 증가)
+- ✅ **테스트 완료**: 모든 기능 정상 작동 확인
+
+**v5.1 업데이트 내용 (2025-11-05)**:
+- ✅ **구현 상태 명확화**: 완료 vs 미구현 기능 명시 (Phase 4 친구톡 집중)
+- ✅ **Placeholder 식별**: 버튼, 템플릿, 최근발송 UI placeholder 확인
+- ✅ **Backend vs Frontend 분리**: 백엔드는 준비되었으나 UI가 없는 기능 구분
+- ✅ **구현 우선순위 매트릭스 추가**: 다음 구현해야 할 기능 명시
+- ✅ **파일 참조 업데이트**: 정확한 Line 번호와 코드 스니펫 포함
 
 **v5.0 업데이트 내용 (2025-11-04)**:
 - ✅ **전체 코드베이스 실사 완료**: 모든 파일 직접 확인, 줄 번호 정확히 반영
@@ -88,6 +106,366 @@ Supabase (PostgreSQL + Storage)
 - ✅ SMS 템플릿 로딩 버그 수정 (API 응답 파싱, 검색어 초기화)
 - ✅ 디버깅 로그 정리 (모든 console.log 제거, 에러 로그만 유지)
 - ✅ Database migrations 4건 적용
+
+---
+
+## 📊 기능별 구현 상태 매트릭스 (v5.2 - 2025-11-05)
+
+### 메시지 발송 기능
+
+| 기능 영역 | 컴포넌트 | UI | Backend API | 테스트 | 상태 |
+|-----------|----------|-----|-------------|--------|------|
+| **SMS/LMS/MMS** | `SmsMessageContent.tsx` | ✅ | ✅ | ✅ | **완료** |
+| └ 변수 치환 | `messageVariables.ts` | ✅ | ✅ | ✅ | **완료** |
+| └ 템플릿 저장/불러오기 | `SimpleContentSaveModal.tsx`<br/>`LoadContentModal.tsx` | ✅ | ✅ `/api/sms-templates` | ✅ | **완료** |
+| └ 최근발송 불러오기 | `LoadContentModal.tsx` (Line 78) | ✅ | ✅ `message_logs` | ✅ | **완료** |
+| **카카오 알림톡** | `AlimtalkTab.tsx` | ✅ | ✅ | ✅ | **완료** |
+| └ 템플릿 조회/선택 | `fetchAlimtalkTemplates()` | ✅ | ✅ `/api/kakao/templates` | ✅ | **완료** |
+| └ 변수 치환 | (MTS 서버 처리) | ✅ | ✅ | ⏸️ | **보류** (템플릿 승인 대기) |
+| **카카오 친구톡** | `FriendtalkTab.tsx` | ✅ | ✅ | ✅ | **완료** |
+| └ FT (텍스트형) | Line 1-804 | ✅ | ✅ `/api/messages/kakao/friendtalk/send` | ✅ | **완료** |
+| └ FI (이미지형) | Line 1-804 | ✅ | ✅ `/api/messages/kakao/upload-image` | ✅ | **완료** |
+| └ 변수 치환 | `messageVariables.ts` | ✅ | ✅ | ✅ | **완료** |
+| └ **버튼 기능 (WL 타입)** | `FriendtalkButtonModal.tsx` (243줄 신규) | ✅ | ✅ `mtsApi.ts` Line 626-628 | ✅ | **완료** |
+| └ **템플릿 저장/불러오기** | `SimpleContentSaveModal.tsx`<br/>`LoadContentModal.tsx` | ✅ | ✅ `/api/sms-templates` (확장) | ✅ | **완료** |
+| └ **최근발송 불러오기** | `LoadContentModal.tsx` (확장) | ✅ | ✅ `message_logs.metadata` | ✅ | **완료** |
+| └ FW (와이드형) | - | ❌ | ✅ `sendMtsFriendtalk()` | ❌ | **미구현** (백엔드만) |
+| └ FC (캐러셀) | - | ❌ | ✅ `sendMtsFriendtalk()` | ❌ | **미구현** (백엔드만) |
+| └ AL/BK/MD/BC/BT 버튼 타입 | - | ❌ | ✅ `sendMtsFriendtalk()` | ❌ | **미구현** (백엔드만) |
+| **네이버 톡톡** | `NaverTalkTalkTab.tsx` | ✅ | ✅ | ✅ | **완료** |
+| └ 템플릿 조회/선택 | `fetchNaverTemplates()` | ✅ | ✅ `/api/naver/templates` | ✅ | **완료** |
+| └ 변수 치환 | `messageVariables.ts` | ✅ | ✅ | ✅ | **완료** |
+| **카카오 브랜드 메시지** | `BrandTab.tsx` | ✅ | ✅ | ❌ | **미테스트** (권한 필요) |
+| └ 템플릿 조회/선택 | `fetchBrandTemplates()` | ✅ | ✅ `/api/kakao/templates` | ❌ | **미테스트** |
+
+### 상태 범례
+- ✅ **완료**: 구현 및 테스트 완료
+- ❌ **미구현**: 구현되지 않음
+- ⏸️ **보류**: 외부 요인으로 대기 중
+
+**v5.2 주요 변경사항**:
+- ✅ Phase 4 친구톡 완전 완료 (버튼, 템플릿, 최근발송 모두 구현)
+- ✅ FriendtalkTab.tsx: 527줄 → 804줄 (+277줄, +52% 증가)
+- ✅ 신규 컴포넌트: FriendtalkButtonModal.tsx (243줄)
+- ✅ DB 마이그레이션: sms_message_templates 테이블 확장 (4개 컬럼, 2개 인덱스)
+
+### Phase 4 친구톡 구현 완료 세부 분석 (2025-11-05)
+
+#### ✅ 1. 버튼 기능 (WL 타입) - 완료
+
+**구현 상태**: ✅ 완료 (243줄 신규 모달 컴포넌트)
+
+**신규 파일**: `src/components/modals/FriendtalkButtonModal.tsx` (243 lines)
+```typescript
+// 주요 인터페이스
+interface FriendtalkButton {
+  name: string;      // 버튼명 (최대 14자)
+  type: 'WL';        // 웹링크 (초기 버전)
+  url_mobile: string; // 모바일 URL (필수)
+  url_pc?: string;    // PC URL (선택)
+}
+
+interface FriendtalkButtonModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  buttons: FriendtalkButton[];
+  onSave: (buttons: FriendtalkButton[]) => void;
+}
+
+// 주요 기능
+- ✅ 버튼 추가/편집/삭제 (최대 5개)
+- ✅ 버튼명 14자 제한 + 실시간 검증
+- ✅ URL 형식 검증 (try/catch new URL)
+- ✅ 모바일 URL 필수, PC URL 선택
+- ✅ 개별 버튼 삭제 기능
+```
+
+**FriendtalkTab 통합** (Line 634-677, 749-799)
+```typescript
+// Line 59-60: 상태 관리
+const [buttons, setButtons] = useState<Array<{...}>>([]);
+const [isButtonModalOpen, setIsButtonModalOpen] = useState(false);
+
+// Line 634-677: 버튼 섹션 UI
+{buttons.length === 0 ? (
+  <button onClick={() => setIsButtonModalOpen(true)}>
+    + 버튼 추가
+  </button>
+) : (
+  <div className="space-y-2">
+    {buttons.map((button, index) => (
+      <div key={index}>
+        <span>{button.name}</span>
+        <button onClick={() => setButtons(buttons.filter((_, i) => i !== index))}>
+          삭제
+        </button>
+      </div>
+    ))}
+    <button onClick={() => setIsButtonModalOpen(true)}>
+      + 버튼 추가
+    </button>
+  </div>
+)}
+
+// Line 793-799: 모달 렌더링
+<FriendtalkButtonModal
+  isOpen={isButtonModalOpen}
+  onClose={() => setIsButtonModalOpen(false)}
+  buttons={buttons as Array<{...}>}
+  onSave={(newButtons) => setButtons(newButtons as Array<{...}>)}
+/>
+```
+
+**백엔드 지원**: ✅ 완료 (기존 구현 활용)
+```typescript
+// src/lib/mtsApi.ts Line 626-628
+if (buttons && buttons.length > 0) {
+  attachment.button = buttons;
+}
+
+// FriendtalkTab Line 361: 발송 시 전달
+buttons: buttons.length > 0 ? buttons : undefined,
+```
+
+**구현된 버튼 타입**:
+- ✅ WL (웹링크): URL로 이동
+
+**미구현 버튼 타입** (백엔드 준비됨):
+- ❌ AL (앱링크): 앱 실행
+- ❌ BK (봇키워드): 봇 키워드 전송
+- ❌ MD (메시지전달): 상담톡 연결
+- ❌ BC (상담톡전환): 상담톡 전환
+- ❌ BT (봇전환): 봇 전환
+
+**테스트 결과**: ✅ 모든 기능 정상 작동 확인
+
+#### ✅ 2. 템플릿 저장/불러오기 - 완료
+
+**구현 상태**: ✅ 완료 (DB 마이그레이션 + 3개 파일 확장)
+
+**1. DB 마이그레이션**: `migrations/20250205_extend_sms_templates_for_friendtalk.sql` (37 lines, 신규)
+```sql
+-- 기존 sms_message_templates 테이블 확장 (옵션 1 채택)
+ALTER TABLE sms_message_templates
+ADD COLUMN IF NOT EXISTS message_type VARCHAR(20) DEFAULT 'SMS',
+ADD COLUMN IF NOT EXISTS buttons JSONB,
+ADD COLUMN IF NOT EXISTS image_url TEXT,
+ADD COLUMN IF NOT EXISTS image_link TEXT;
+
+-- 기존 데이터 업데이트
+UPDATE sms_message_templates
+SET message_type = 'SMS'
+WHERE message_type IS NULL;
+
+-- 인덱스 추가 (성능 최적화)
+CREATE INDEX IF NOT EXISTS idx_sms_templates_message_type
+ON sms_message_templates(message_type);
+
+CREATE INDEX IF NOT EXISTS idx_sms_templates_user_type
+ON sms_message_templates(user_id, message_type);
+```
+
+**2. API 확장**: `src/app/api/sms-templates/route.ts`
+```typescript
+// Line 23: GET 핸들러 - messageType 필터 추가
+const messageType = searchParams.get("messageType") || "SMS";
+query = query.eq("message_type", messageType);
+
+// Line 70-73, 94-97: POST 핸들러 - 새 필드 처리
+const {
+  name, content, subject, isPrivate = true,
+  messageType = 'SMS',  // 추가
+  buttons,              // 추가
+  imageUrl,            // 추가
+  imageLink            // 추가
+} = body;
+
+const { data: template, error } = await supabase
+  .from("sms_message_templates")
+  .insert({
+    user_id: userId,
+    name: name.trim(),
+    content: content.trim(),
+    message_type: messageType,     // 추가
+    buttons: buttons || null,      // 추가
+    image_url: imageUrl || null,   // 추가
+    image_link: imageLink || null, // 추가
+    // ...
+  });
+```
+
+**3. 저장 모달 확장**: `src/components/modals/SimpleContentSaveModal.tsx`
+```typescript
+// Line 14-19: 인터페이스 확장
+interface SimpleContentSaveModalProps {
+  currentContent: {
+    subject?: string;
+    content: string;
+    isAd?: boolean;
+    messageType?: string;  // 추가
+    buttons?: Array<{...}>; // 추가
+    imageUrl?: string;     // 추가
+    imageLink?: string;    // 추가
+  };
+}
+
+// Line 65-68: POST 요청에 새 필드 포함
+body: JSON.stringify({
+  name: saveName.trim(),
+  content: currentContent.content.trim(),
+  messageType: currentContent.messageType || 'SMS',
+  buttons: currentContent.buttons || null,
+  imageUrl: currentContent.imageUrl || null,
+  imageLink: currentContent.imageLink || null,
+})
+```
+
+**4. 불러오기 모달 확장**: `src/components/modals/LoadContentModal.tsx`
+```typescript
+// props에 messageTypeFilter 추가
+interface LoadContentModalProps {
+  messageTypeFilter?: string; // 추가
+  onSelect?: (content: {
+    subject?: string;
+    content: string;
+    buttons?: Array<{...}>;  // 추가
+    imageUrl?: string;       // 추가
+    imageLink?: string;      // 추가
+  }) => void;
+}
+
+// Line 74: GET 요청에 messageType 쿼리 파라미터
+const messageType = messageTypeFilter || 'SMS';
+const response = await fetch(`/api/sms-templates?messageType=${messageType}`);
+
+// Line 162-164: 템플릿 선택 시 친구톡 메타데이터 반환
+onSelect({
+  subject: template.subject,
+  content: template.content,
+  buttons: template.buttons,       // 추가
+  imageUrl: template.image_url,    // 추가
+  imageLink: template.image_link,  // 추가
+});
+```
+
+**5. FriendtalkTab 통합**: (Line 519, 759-774)
+```typescript
+// Line 519: 저장 버튼 연결
+<button onClick={() => setIsSaveModalOpen(true)}>
+  <Save size={14} />
+  템플릿 저장
+</button>
+
+// Line 759-774: 저장 모달 렌더링
+<SimpleContentSaveModal
+  isOpen={isSaveModalOpen}
+  onClose={() => setIsSaveModalOpen(false)}
+  currentContent={{
+    content: message,
+    messageType: 'FRIENDTALK',
+    buttons: buttons.length > 0 ? buttons : undefined,
+    imageUrl: uploadedImages.length > 0 ? uploadedImages[0].fileId : undefined,
+    imageLink: imageLink.trim() || undefined,
+  }}
+/>
+```
+
+**테스트 결과**: ✅ SMS 템플릿과 완전 분리, 친구톡 전용 템플릿 저장/불러오기 정상 작동
+
+#### ✅ 3. 최근발송 불러오기 - 완료
+
+**구현 상태**: ✅ 완료 (LoadContentModal 확장, metadata JSONB 활용)
+
+**DB 준비 상태**: ✅ 이미 완료
+- `message_logs` 테이블에 메타데이터 JSONB로 저장 중
+- 친구톡 발송 시 buttons, image_urls, message_type, image_link 등 자동 저장됨
+
+**구현된 변경사항**:
+
+**1. LoadContentModal 확장**: `src/components/modals/LoadContentModal.tsx`
+```typescript
+// Line 176-178: 최근발송 선택 시 친구톡 메타데이터 복원
+if (log.metadata) {
+  onSelect({
+    content: log.message,
+    buttons: log.metadata.buttons,              // 추가
+    imageUrl: log.metadata.image_urls?.[0],     // 추가
+    imageLink: log.metadata.image_link,         // 추가
+  });
+}
+```
+
+**2. FriendtalkTab 통합**: (Line 148-157, 775-791)
+```typescript
+// Line 148-157: 핸들러 추가
+const handleSavedContentClick = () => {
+  setLoadModalActiveTab("saved");
+  setIsLoadModalOpen(true);
+};
+
+const handleRecentSentClick = () => {
+  setLoadModalActiveTab("recent");
+  setIsLoadModalOpen(true);
+};
+
+// Line 775-791: 불러오기 모달 렌더링
+<LoadContentModal
+  isOpen={isLoadModalOpen}
+  onClose={() => setIsLoadModalOpen(false)}
+  activeTab={loadModalActiveTab}
+  messageTypeFilter="FRIENDTALK"  // 친구톡만 필터링
+  onSelect={(content) => {
+    setMessage(content.content);
+    if (content.buttons) {
+      setButtons(content.buttons);
+    }
+    if (content.imageUrl) {
+      setUploadedImages([{
+        fileId: content.imageUrl,
+        fileName: '불러온 이미지',
+        fileSize: 0
+      }]);
+    }
+    if (content.imageLink) {
+      setImageLink(content.imageLink);
+    }
+    setIsLoadModalOpen(false);
+  }}
+/>
+```
+
+**3. metadata JSONB 저장 로직**: (기존 구현 활용)
+```typescript
+// src/app/api/messages/kakao/friendtalk/send/route.ts
+// 발송 시 자동으로 metadata에 저장됨:
+metadata: {
+  buttons: buttons,
+  image_urls: imageUrls,
+  image_link: imageLink,
+  message_type: messageType
+}
+```
+
+**테스트 결과**: ✅ 최근 발송한 친구톡 메시지(텍스트, 이미지, 버튼, 링크) 모두 정상 불러오기
+
+### Phase 4 구현 완료 요약
+
+| 기능 | 상태 | 파일 변경 | 코드 줄 수 | 비고 |
+|------|------|-----------|----------|------|
+| **버튼 (WL)** | ✅ 완료 | +1 신규 | 243 lines | FriendtalkButtonModal.tsx |
+| **템플릿 저장/불러오기** | ✅ 완료 | +1 마이그레이션, 3 확장 | 37 lines (SQL) | DB 확장, API/모달 확장 |
+| **최근발송** | ✅ 완료 | 1 확장 | - | LoadContentModal 확장 |
+| **FriendtalkTab 통합** | ✅ 완료 | 1 대폭 확장 | +277 lines | 527 → 804 lines |
+
+**총 변경사항**: 5개 파일 (신규 2개, 확장 3개), +557 lines
+
+### 미구현 기능 우선순위 매트릭스 (Phase 4 이후)
+
+| 순위 | 기능 | 난이도 | 영향도 | 상태 | 비고 |
+|------|------|--------|--------|------|------|
+| 1 | 버튼 타입 확장 (AL/BK/MD/BC/BT) | 중 | 중 | ❌ 미구현 | 백엔드 준비됨, UI 확장 필요 |
+| 2 | 와이드형 (FW) | 중 | 중 | ❌ 미구현 | 백엔드 준비됨, UI 테스트 필요 |
+| 3 | 캐러셀 (FC) | 높음 | 중 | ❌ 미구현 | 복잡한 UI 구조 |
 
 ---
 

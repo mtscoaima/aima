@@ -1,7 +1,8 @@
 /**
- * SMS 메시지 템플릿 API
- * GET /api/sms-templates - 템플릿 목록 조회
- * POST /api/sms-templates - 템플릿 저장
+ * 메시지 템플릿 API (SMS + 친구톡)
+ * GET /api/sms-templates - 템플릿 목록 조회 (?messageType=SMS|FRIENDTALK)
+ * POST /api/sms-templates - 템플릿 저장 (messageType, buttons, imageUrl, imageLink 지원)
+ * DELETE /api/sms-templates - 템플릿 삭제
  */
 
 import { getSupabaseClient } from "@/lib/apiClient";
@@ -19,11 +20,13 @@ export const GET = withAuth(async (request, userInfo) => {
   // 쿼리 파라미터
   const { searchParams } = new URL(request.url);
   const isPrivate = searchParams.get("isPrivate");
+  const messageType = searchParams.get("messageType") || "SMS"; // 추가: 메시지 타입 필터
 
   // 템플릿 조회
   let query = supabase
     .from("sms_message_templates")
     .select("*")
+    .eq("message_type", messageType) // 추가: 메시지 타입 필터
     .order("created_at", { ascending: false });
 
   // 공개 템플릿 또는 본인 템플릿만 조회
@@ -59,7 +62,16 @@ export const POST = withAuth(async (request, userInfo) => {
 
   // 요청 본문 파싱
   const body = await request.json();
-  const { name, content, subject, isPrivate = true } = body;
+  const {
+    name,
+    content,
+    subject,
+    isPrivate = true,
+    messageType = 'SMS', // 추가
+    buttons, // 추가
+    imageUrl, // 추가
+    imageLink // 추가
+  } = body;
 
   // 유효성 검증
   if (!name || !name.trim()) {
@@ -79,6 +91,10 @@ export const POST = withAuth(async (request, userInfo) => {
       content: content.trim(),
       subject: subject?.trim() || "",
       is_private: isPrivate,
+      message_type: messageType, // 추가
+      buttons: buttons || null, // 추가
+      image_url: imageUrl || null, // 추가
+      image_link: imageLink || null, // 추가
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

@@ -8,7 +8,15 @@ interface LoadContentModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialActiveTab?: string;
-  onSelect?: (content: { subject?: string; content: string; isAd?: boolean }) => void;
+  messageTypeFilter?: string; // 추가: 'SMS' | 'FRIENDTALK'
+  onSelect?: (content: {
+    subject?: string;
+    content: string;
+    isAd?: boolean;
+    buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>; // 추가
+    imageUrl?: string; // 추가
+    imageLink?: string; // 추가
+  }) => void;
 }
 
 interface Template {
@@ -16,6 +24,10 @@ interface Template {
   name: string;
   content: string;
   subject?: string;
+  message_type?: string; // 추가
+  buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>; // 추가
+  image_url?: string; // 추가
+  image_link?: string; // 추가
   created_at: string;
 }
 
@@ -27,12 +39,18 @@ interface MessageLog {
   to_name?: string;
   message_type: string;
   sent_at: string;
+  metadata?: { // 추가
+    buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
+    image_urls?: string[];
+    image_link?: string;
+  };
 }
 
 const LoadContentModal: React.FC<LoadContentModalProps> = ({
   isOpen,
   onClose,
   initialActiveTab = "saved",
+  messageTypeFilter, // 추가
   onSelect,
 }) => {
   const router = useRouter();
@@ -52,7 +70,9 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         throw new Error("로그인이 필요합니다");
       }
 
-      const response = await fetch("/api/sms-templates", {
+      // messageType 파라미터 추가
+      const messageType = messageTypeFilter || 'SMS';
+      const response = await fetch(`/api/sms-templates?messageType=${messageType}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -73,7 +93,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [messageTypeFilter]);
 
   const fetchMessageLogs = useCallback(async () => {
     setIsLoading(true);
@@ -139,6 +159,9 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         subject: template.subject,
         content: template.content,
         isAd: false,
+        buttons: template.buttons, // 추가
+        imageUrl: template.image_url, // 추가
+        imageLink: template.image_link, // 추가
       });
     }
     onClose();
@@ -150,6 +173,9 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         subject: log.subject,
         content: log.message_content,
         isAd: false,
+        buttons: log.metadata?.buttons, // 추가
+        imageUrl: log.metadata?.image_urls?.[0], // 추가 (첫 번째 이미지만)
+        imageLink: log.metadata?.image_link, // 추가
       });
     }
     onClose();

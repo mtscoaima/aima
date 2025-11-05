@@ -83,12 +83,10 @@ export async function POST(req: NextRequest) {
 
       // 최소 가로 500px 확인
       let resizeWidth = width;
-      let resizeHeight = height;
 
       if (width < 500) {
         // 가로가 500px 미만이면 500px로 확대
         resizeWidth = 500;
-        resizeHeight = Math.round(height * (500 / width));
       }
 
       // 2:1 비율로 조정 (가로:세로)

@@ -8,10 +8,14 @@ import {
   type SenderProfile,
 } from "@/utils/kakaoApi";
 import { replaceVariables as replaceStandardVariables } from '@/utils/messageVariables';
+import SimpleContentSaveModal from "@/components/modals/SimpleContentSaveModal";
+import LoadContentModal from "@/components/modals/LoadContentModal";
+import FriendtalkButtonModal from "@/components/modals/FriendtalkButtonModal";
 
 interface Recipient {
   phone_number: string;
   name?: string;
+  group_name?: string; // 추가
   variables?: Record<string, string>;
 }
 
@@ -48,9 +52,16 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
   // UI 관련 state
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [imageLink] = useState("");
+  const [imageLink, setImageLink] = useState("");
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 버튼 및 모달 관련 state
+  const [buttons, setButtons] = useState<Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>>([]);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+  const [loadModalActiveTab, setLoadModalActiveTab] = useState<"saved" | "recent">("saved");
+  const [isButtonModalOpen, setIsButtonModalOpen] = useState(false);
 
   // 사용자 정보 (변수 치환용)
   const [userInfo, setUserInfo] = useState({
@@ -136,12 +147,14 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
   // 저장내용 모달 열기
   const handleSavedContentClick = () => {
-    alert("저장내용 기능은 추후 구현 예정입니다.");
+    setLoadModalActiveTab("saved");
+    setIsLoadModalOpen(true);
   };
 
   // 최근발송 모달 열기
   const handleRecentSentClick = () => {
-    alert("최근발송 기능은 추후 구현 예정입니다.");
+    setLoadModalActiveTab("recent");
+    setIsLoadModalOpen(true);
   };
 
   // 이미지 업로드 핸들러
@@ -348,6 +361,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             adFlag: adFlag,
             imageUrls: imageFileIds.length > 0 ? imageFileIds : undefined,
             imageLink: imageLink.trim() || undefined,
+            buttons: buttons.length > 0 ? buttons : undefined, // 버튼 추가
             tranType: enableSmsBackup ? "SMS" : undefined,
             tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
           });
@@ -503,8 +517,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               </button>
               <button
                 className="p-2 text-gray-500 hover:text-gray-700"
-                onClick={() => alert("문구 저장 기능은 추후 구현 예정입니다.")}
-                title="문구 저장하기"
+                onClick={() => setIsSaveModalOpen(true)}
+                title="템플릿 저장하기"
               >
                 <Save className="w-4 h-4" />
               </button>
@@ -622,15 +636,45 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       <div className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
           <span className="font-medium text-gray-700">카카오톡 버튼</span>
+          <span className="text-xs text-gray-500">(최대 5개, WL 타입만 지원)</span>
         </div>
-        <div className="text-center py-4 border border-dashed border-gray-300 rounded">
-          <button
-            className="text-gray-500 text-sm hover:text-gray-700"
-            onClick={() => alert("친구톡 버튼 기능은 추후 구현 예정입니다.")}
-          >
-            친구톡 버튼 추가
-          </button>
-        </div>
+
+        {buttons.length === 0 ? (
+          <div className="text-center py-4 border border-dashed border-gray-300 rounded">
+            <button
+              className="text-blue-600 text-sm hover:text-blue-700"
+              onClick={() => setIsButtonModalOpen(true)}
+            >
+              + 버튼 추가
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {buttons.map((button, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium text-sm">{button.name}</span>
+                  <span className="text-xs text-gray-500 ml-2">({button.type})</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setButtons(buttons.filter((_, i) => i !== index));
+                  }}
+                  className="text-red-600 hover:text-red-700 text-xs px-2 py-1"
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => setIsButtonModalOpen(true)}
+              disabled={buttons.length >= 5}
+              className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+            >
+              + 버튼 추가 ({buttons.length}/5)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 문구 치환 */}
@@ -702,6 +746,57 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           </>
         )}
       </button>
+
+      {/* 템플릿 저장 모달 */}
+      <SimpleContentSaveModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        currentContent={{
+          content: message,
+          messageType: 'FRIENDTALK',
+          buttons: buttons.length > 0 ? buttons : undefined,
+          imageUrl: uploadedImages.length > 0 ? uploadedImages[0].fileId : undefined,
+          imageLink: imageLink.trim() || undefined,
+        }}
+        onSaveSuccess={() => {
+          setIsSaveModalOpen(false);
+          alert("템플릿이 저장되었습니다.");
+        }}
+      />
+
+      {/* 템플릿/최근발송 불러오기 모달 */}
+      <LoadContentModal
+        isOpen={isLoadModalOpen}
+        onClose={() => setIsLoadModalOpen(false)}
+        initialActiveTab={loadModalActiveTab}
+        messageTypeFilter="FRIENDTALK"
+        onSelect={(content) => {
+          setMessage(content.content);
+          if (content.buttons) setButtons(content.buttons);
+          if (content.imageUrl) {
+            // 이미지 복원
+            setUploadedImages([{
+              fileId: content.imageUrl,
+              fileName: '불러온 이미지',
+              fileSize: 0,
+              preview: content.imageUrl,
+            }]);
+          }
+          if (content.imageLink) setImageLink(content.imageLink);
+          setIsLoadModalOpen(false);
+        }}
+      />
+
+      {/* 버튼 추가/수정 모달 */}
+      <FriendtalkButtonModal
+        isOpen={isButtonModalOpen}
+        onClose={() => setIsButtonModalOpen(false)}
+        buttons={buttons as Array<{ name: string; type: 'WL'; url_mobile: string; url_pc?: string }>}
+        onSave={(newButtons) => {
+          setButtons(newButtons as Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>);
+          setIsButtonModalOpen(false);
+        }}
+      />
     </div>
   );
 };
