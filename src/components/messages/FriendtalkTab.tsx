@@ -7,10 +7,12 @@ import {
   sendFriendtalk,
   type SenderProfile,
 } from "@/utils/kakaoApi";
+import { replaceVariables as replaceStandardVariables } from '@/utils/messageVariables';
 
 interface Recipient {
   phone_number: string;
   name?: string;
+  variables?: Record<string, string>;
 }
 
 interface FriendtalkTabProps {
@@ -50,12 +52,48 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 사용자 정보 (변수 치환용)
+  const [userInfo, setUserInfo] = useState({
+    phone: '',
+    name: '',
+    companyName: '',
+  });
+
   // 변수 개수 계산
   const variableCount = (message.match(/#{[^}]+}/g) || []).length;
 
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
     loadSenderProfiles();
+  }, []);
+
+  // 사용자 정보 조회 (변수 치환용)
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return;
+
+        const response = await fetch('/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        setUserInfo({
+          phone: data.phoneNumber || '',
+          name: data.name || '',
+          companyName: data.companyInfo?.companyName || '',
+        });
+      } catch (error) {
+        console.error('사용자 정보 조회 오류:', error);
+      }
+    };
+
+    fetchUserInfo();
   }, []);
 
   // 발신 프로필 조회
@@ -111,10 +149,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // 파일 크기 검증 (클라이언트측 300KB)
-    const maxSize = 300 * 1024; // 300KB
+    // 파일 크기 검증 (클라이언트측 5MB, 백엔드에서 자동 최적화)
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert(`이미지 크기는 300KB 이하여야 합니다.\n현재 크기: ${(file.size / 1024).toFixed(1)}KB`);
+      alert(`이미지 크기는 5MB 이하여야 합니다.\n현재 크기: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
       event.target.value = "";
       return;
     }
@@ -142,12 +180,24 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         throw new Error("로그인이 필요합니다");
       }
 
+      // senderKey 확인
+      if (!selectedProfile) {
+        throw new Error("발신 프로필을 먼저 선택해주세요");
+      }
+
       // FormData 생성
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("senderKey", selectedProfile); // Kakao 업로드 API는 senderKey 필수
 
-      // API 호출
-      const response = await fetch("/api/messages/upload-image", {
+      console.log('[친구톡 이미지 업로드 시작]');
+      console.log('senderKey:', selectedProfile);
+      console.log('파일명:', file.name);
+      console.log('파일 크기:', file.size, 'bytes');
+
+      // Kakao 전용 이미지 업로드 API 호출
+      // MTS 서버 이미지는 Kakao에서 접근 불가하므로 Kakao 서버에 업로드
+      const response = await fetch("/api/messages/kakao/upload-image", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -172,14 +222,15 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       // 업로드된 이미지 추가
       setUploadedImages([
         {
-          fileId: data.imageUrl, // MTS API에서 받은 이미지 URL
+          fileId: data.imageUrl, // Kakao 서버 이미지 URL (https://mud-kage.kakao.com/...)
           fileName: file.name,
           fileSize: data.fileSize,
           preview: previewUrl,
         },
       ]);
 
-      console.log('[친구톡 이미지 업로드 성공]', data.imageUrl);
+      console.log('[친구톡 Kakao 이미지 업로드 성공]');
+      console.log('Kakao 이미지 URL:', data.imageUrl);
     } catch (error) {
       console.error('[친구톡 이미지 업로드 실패]', error);
       setErrorMessage(error instanceof Error ? error.message : '이미지 업로드 실패');
@@ -200,6 +251,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       URL.revokeObjectURL(uploadedImages[index].preview);
     }
   };
+
 
   // 친구톡 발송
   const handleSendFriendtalk = async () => {
@@ -250,25 +302,70 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       // 메시지 타입 자동 감지: 이미지가 있으면 FI, 없으면 FT
       const autoDetectedType = imageFileIds.length > 0 ? 'FI' : 'FT';
 
-      const result = await sendFriendtalk({
-        senderKey: selectedProfile,
-        recipients: recipients,
-        message: message,
-        callbackNumber: callbackNumber,
-        messageType: autoDetectedType, // 자동 감지
-        adFlag: adFlag,
-        imageUrls: imageFileIds.length > 0 ? imageFileIds : undefined,
-        imageLink: imageLink.trim() || undefined,
-        tranType: enableSmsBackup ? "SMS" : undefined,
-        tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
+      // 각 수신자별로 변수 치환된 메시지 생성
+      const processedRecipients = recipients.map(recipient => {
+        // Step 1: 자동 변수 치환 (messageVariables.ts의 replaceStandardVariables 함수)
+        let replacedMessage = replaceStandardVariables(
+          message,
+          {
+            name: recipient.name,
+            phone: recipient.phone_number,
+            groupName: recipient.group_name || recipient.variables?.['그룹명'],
+          },
+          userInfo
+        );
+
+        // Step 2: 커스텀 변수 추가 치환 (SMS 발송과 동일한 로직)
+        if (recipient.variables) {
+          for (const [key, value] of Object.entries(recipient.variables)) {
+            // 기본 변수가 아닌 커스텀 변수만 치환
+            if (!['이름', '전화번호', '그룹명', '오늘날짜', '현재시간', '요일', '발신번호', '회사명', '담당자명'].includes(key)) {
+              const pattern = new RegExp(`#{${key}}`, 'g');
+              replacedMessage = replacedMessage.replace(pattern, value);
+            }
+          }
+        }
+
+        return {
+          phone_number: recipient.phone_number,
+          name: recipient.name,
+          replacedMessage: replacedMessage,
+        };
       });
 
+      // 각 수신자에게 개별 발송 (변수 치환된 메시지로)
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const recipient of processedRecipients) {
+        try {
+          const result = await sendFriendtalk({
+            senderKey: selectedProfile,
+            recipients: [{ phone_number: recipient.phone_number, name: recipient.name }],
+            message: recipient.replacedMessage, // 치환된 메시지 사용
+            callbackNumber: callbackNumber,
+            messageType: autoDetectedType,
+            adFlag: adFlag,
+            imageUrls: imageFileIds.length > 0 ? imageFileIds : undefined,
+            imageLink: imageLink.trim() || undefined,
+            tranType: enableSmsBackup ? "SMS" : undefined,
+            tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
+          });
+
+          if (result.successCount > 0) successCount++;
+          else failCount++;
+        } catch (error) {
+          failCount++;
+          console.error(`발송 실패 (${recipient.phone_number}):`, error);
+        }
+      }
+
       alert(
-        `친구톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`
+        `친구톡 발송 완료\n성공: ${successCount}건\n실패: ${failCount}건`
       );
 
       if (onSendComplete) {
-        onSendComplete(result);
+        onSendComplete({ successCount, failCount });
       }
 
       // 발송 후 메시지 초기화
@@ -458,6 +555,23 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             )}
           </div>
 
+          {/* 카카오 친구톡 이미지 규격 안내 */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-blue-800 space-y-1">
+                <p className="font-medium">카카오 친구톡 이미지 안내</p>
+                <ul className="list-disc list-inside text-xs space-y-1 text-blue-700">
+                  <li>권장 비율: <strong>2:1 (가로:세로)</strong> - 예: 1000x500px, 800x400px</li>
+                  <li>최소 크기: 가로 500px 이상</li>
+                  <li>파일 형식: JPG, PNG</li>
+                  <li>최대 용량: 500KB (자동 최적화)</li>
+                  <li className="text-amber-700 font-medium">⚠️ 2:1 비율이 아닌 이미지는 자동으로 중앙 기준 잘립니다</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <input
             ref={fileInputRef}
             type="file"
@@ -497,7 +611,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="text-xs text-gray-700 space-y-1">
-              <p>• 최대 1개, 300KB 이하, JPG/PNG 형식만 가능</p>
+              <p>• 최대 1개, 5MB 이하, JPG/PNG 형식만 가능 (자동 최적화: 300KB 이하)</p>
               <p>• 이미지를 첨부하면 자동으로 <strong>이미지형(FI)</strong>으로 발송됩니다</p>
             </div>
           </div>

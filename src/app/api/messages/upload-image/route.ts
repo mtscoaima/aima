@@ -105,10 +105,15 @@ export async function POST(req: NextRequest) {
 
     const data = JSON.parse(responseText);
 
+    console.log('========================================');
+    console.log('[MTS 이미지 업로드 API 전체 응답]');
+    console.log(JSON.stringify(data, null, 2));
+    console.log('========================================');
     console.log('MTS API 파싱된 응답:');
     console.log('- code:', data.code);
     console.log('- message:', data.message);
     console.log('- image:', data.image);
+    console.log('- images:', data.images);
 
     // MTS API 응답 검증
     if (data.code !== '0000') {
@@ -123,23 +128,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // image 필드가 없으면 에러
-    if (!data.image) {
-      console.error('MTS API 응답에 image 필드가 없습니다!');
+    // image 또는 images 필드가 없으면 에러
+    const imageField = data.image || data.images;
+    if (!imageField) {
+      console.error('MTS API 응답에 image/images 필드가 없습니다!');
       console.error('전체 응답:', JSON.stringify(data, null, 2));
       return NextResponse.json({
         success: false,
-        error: 'MTS API 응답에 image 필드가 없습니다',
+        error: 'MTS API 응답에 image/images 필드가 없습니다',
         responseData: data
       }, { status: 500 });
     }
 
     console.log('MTS API 업로드 성공!');
-    console.log('이미지 URL:', data.image);
+    console.log('이미지 필드 (상대 경로):', imageField);
+
+    // MTS API는 상대 경로를 반환
+    // MMS와 친구톡 모두 상대 경로를 그대로 사용 (MTS가 내부적으로 처리)
+    console.log('반환할 이미지 경로:', imageField);
 
     return NextResponse.json({
       success: true,
-      imageUrl: data.image,
+      imageUrl: imageField, // 상대 경로 그대로 반환
       fileSize: buf.length,
       code: data.code,
       message: data.message

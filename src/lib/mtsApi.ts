@@ -615,10 +615,12 @@ export async function sendMtsFriendtalk(
       const attachment: Record<string, unknown> = {};
 
       if (imageUrls && imageUrls.length > 0) {
-        attachment.image = imageUrls.map(url => ({
-          img_url: url,
+        // FI/FW/FL/FC 타입은 단일 이미지 객체 사용 (배열 아님)
+        // MTS API 규격: attachment.image = { img_url: "...", img_link: "..." }
+        attachment.image = {
+          img_url: imageUrls[0], // 첫 번째 이미지만 사용
           ...(imageLink ? { img_link: imageLink } : {})
-        }));
+        };
       }
 
       if (buttons && buttons.length > 0) {
@@ -647,7 +649,7 @@ export async function sendMtsFriendtalk(
     console.log('[MTS 카카오 친구톡 API 호출 시작]');
     console.log('시간:', new Date().toISOString());
     console.log('API URL:', apiUrl);
-    console.log('요청 데이터:', JSON.stringify({
+    console.log('요청 데이터 (요약):', JSON.stringify({
       auth_code: '*** (보안)',
       sender_key: senderKey,
       phone_number: cleanToNumber.substring(0, 3) + '****' + cleanToNumber.substring(7),
@@ -660,6 +662,7 @@ export async function sendMtsFriendtalk(
       전환발송설정: tranType ? `있음 (${tranType})` : '없음',
       예약발송: sendDate || '(즉시발송)'
     }, null, 2));
+    console.log('실제 전송 requestBody:', JSON.stringify(requestBody, null, 2));
 
     const response = await fetch(apiUrl, {
       method: 'POST',
