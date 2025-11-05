@@ -108,27 +108,61 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 백그라운드 동기화 (await 하지 않음 - 응답 먼저 반환)
+    // 동기화 처리
     if (needsSync) {
-      // 비동기로 동기화 API 호출 (결과 대기하지 않음)
-      fetch(`${request.nextUrl.origin}/api/kakao/templates/sync?senderKey=${senderKey}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': request.headers.get('Authorization') || '',
-        },
-      }).catch((error) => {
-        console.error('백그라운드 동기화 오류:', error);
-      });
+      if (forceSync) {
+        // 사용자가 명시적으로 요청 시: 동기화 완료 대기
+        try {
+          const syncResponse = await fetch(`${request.nextUrl.origin}/api/kakao/templates/sync?senderKey=${senderKey}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': request.headers.get('Authorization') || '',
+            },
+          });
+
+          if (syncResponse.ok) {
+            // 동기화 완료 후 DB 재조회
+            const { data: updatedTemplates } = await supabase
+              .from('kakao_alimtalk_templates')
+              .select('*')
+              .eq('user_id', userId)
+              .eq('sender_key', senderKey)
+              .order('created_at', { ascending: false });
+
+            return NextResponse.json({
+              success: true,
+              data: {
+                list: updatedTemplates || [],
+              },
+              count: updatedTemplates?.length || 0,
+              syncCompleted: true,
+            });
+          }
+        } catch (error) {
+          console.error('동기화 오류:', error);
+          // 동기화 실패해도 DB 데이터는 반환
+        }
+      } else {
+        // 일반 조회: 백그라운드 동기화 (현행 유지)
+        fetch(`${request.nextUrl.origin}/api/kakao/templates/sync?senderKey=${senderKey}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': request.headers.get('Authorization') || '',
+          },
+        }).catch((error) => {
+          console.error('백그라운드 동기화 오류:', error);
+        });
+      }
     }
 
-    // DB 데이터 즉시 반환
+    // DB 데이터 즉시 반환 (forceSync=false인 경우)
     return NextResponse.json({
       success: true,
       data: {
         list: templates || [],
       },
       count: templates?.length || 0,
-      syncTriggered: needsSync,
+      syncTriggered: needsSync && !forceSync,
     });
   } catch (error) {
     console.error('템플릿 조회 API 오류:', error);

@@ -96,7 +96,8 @@ export async function POST(request: NextRequest) {
         );
 
         if (result.success && result.responseData) {
-          const mtsData = result.responseData as Record<string, unknown>;
+          const mtsResponse = result.responseData as Record<string, unknown>;
+          const mtsData = (mtsResponse.data as Record<string, unknown>) || mtsResponse;
 
           // DB 업데이트
           const { error: updateError } = await supabase
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
               template_message_type: (mtsData.templateMessageType as string) || template.template_message_type,
               template_emphasize_type: (mtsData.templateEmphasizeType as string) || template.template_emphasize_type,
               status: (mtsData.status as string) || template.status,
+              inspection_status: (mtsData.inspectionStatus as string) || template.inspection_status,
               buttons: mtsData.buttons ? (mtsData.buttons as object) : template.buttons,
               quick_replies: mtsData.quickReplies ? (mtsData.quickReplies as object) : template.quick_replies,
               category_code: (mtsData.categoryCode as string) || template.category_code,

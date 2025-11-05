@@ -24,28 +24,30 @@
 1. 발신번호 등록 API
 2. 템플릿 등록 및 승인 프로세스
 
-### 📊 테스트 진행 상태 (v2.4 - 2025-11-04 17:30 기준)
+### 📊 테스트 진행 상태 (v2.5 - 2025-11-05 기준)
 - ✅ **Phase 1-2**: SMS/LMS/MMS (테스트 완료 - 모두 성공!)
   - ✅ SMS 발송 + 변수 치환 (#{이름})
   - ✅ LMS 발송 + 변수 치환 (#{이름}, #{오늘날짜}, #{회사명})
   - ✅ MMS 이미지 업로드 + 발송
   - ✅ 실제 메시지 수신 확인
 - ✅ **Phase 1.5**: 크레딧 환불 로직 (코드 검증 완료)
-- 🔄 **Phase 3**: 카카오 알림톡 (일부 완료, 변수 치환 보류)
+- ✅ **Phase 3**: 카카오 알림톡 (완료 - 변수 치환 추후 확인)
   - ✅ 템플릿 조회 기능 정상 작동
-  - ✅ 변수 없는 템플릿 발송 성공 (TEST_INSPECT_001)
+  - ✅ 변수 없는 템플릿 발송 성공 및 수신 확인 (TEST_INSPECT_001)
+  - ✅ `inspection_status` 필드 추가 및 UI 업데이트 완료
+  - ✅ 템플릿 상태 표시 개선 (승인됨 ✅, 등록됨, 검수중 ⏳, 반려됨 ❌)
   - ⏸️ 변수 포함 템플릿 테스트 보류 (템플릿 승인 대기 중)
-  - ✅ inspection_status 필드 제거 완료 (코드 정리)
+  - **참고**: 알림톡 템플릿은 클라이언트에서 변수 치환하지 않음 (MTS API가 서버에서 처리)
 - ⏸️ **Phase 4**: 카카오 친구톡 (대기)
 - ⏸️ **Phase 5**: 네이버 톡톡 (대기)
 - ⏸️ **Phase 6**: 카카오 브랜드 메시지 (대기)
 
-> ✅ **최신 업데이트 (2025-11-04 17:30)**: Phase 3 부분 완료
-> - 알림톡 템플릿 조회 정상 작동
-> - 변수 없는 템플릿 발송 성공 (TEST_INSPECT_001)
-> - 변수 포함 템플릿 테스트 보류 (TEST_VAR_002 승인 대기)
-> - **중요**: 알림톡 템플릿은 클라이언트에서 변수 치환하지 않음 (MTS API가 처리)
-> - inspection_status 필드 완전 제거 (5개 파일 수정)
+> ✅ **최신 업데이트 (2025-11-05)**: Phase 3 완료 (변수 치환 제외)
+> - ✅ 알림톡 승인된 템플릿 발송 성공 (TEST_INSPECT_001)
+> - ✅ `inspection_status` 필드 DB 추가 및 동기화 로직 구현
+> - ✅ 템플릿 상태 표시 개선 (APR: 승인됨 ✅, REG: 등록됨, REQ: 검수중 ⏳, REJ: 반려됨 ❌)
+> - ✅ 메시지 발송 페이지 및 템플릿 관리 페이지 모두 업데이트
+> - ⏸️ 변수 포함 템플릿 (TEST_VAR_002) 승인 대기 중 - 추후 재테스트 예정
 
 ### 💰 메시지 요금표 (2025-11-03 업데이트)
 
@@ -448,13 +450,15 @@ API URL: https://api.mtsco.co.kr/sndng/mms/sendMessage  // ⭐ LMS는 MMS API �
 - [ ] 전환 메시지 입력
 - [ ] metadata에 tran_type 저장 확인
 
-**3.5 코드 정리 완료**
-- [x] inspection_status 필드 제거 (5개 파일) ✅
-  - [x] src/components/messages/kakao/KakaoAlimtalkTab.tsx
-  - [x] src/components/messages/AlimtalkTab.tsx
-  - [x] src/app/api/kakao/templates/sync/route.ts
-  - [x] src/app/api/kakao/templates/create/route.ts
-  - [x] src/utils/kakaoApi.ts
+**3.5 템플릿 상태 관리 시스템 구현 완료** ✅
+- [x] DB 스키마 업데이트 (inspection_status 컬럼 추가) ✅
+- [x] MTS API 응답 파싱 수정 (responseData.data.inspectionStatus) ✅
+- [x] 템플릿 동기화 API 개선 (sync=true 파라미터 지원) ✅
+- [x] UI 상태 표시 업데이트 ✅
+  - [x] src/components/messages/kakao/KakaoAlimtalkTab.tsx (템플릿 관리 페이지)
+  - [x] src/components/messages/AlimtalkTab.tsx (메시지 발송 페이지)
+- [x] 템플릿 생성 시 inspection_status 초기화 (REG) ✅
+- [x] 새로고침 버튼 추가 (수동 동기화 지원) ✅
 
 ### ⚠️ 알림톡 템플릿 매칭 주의사항 (2025-11-04 업데이트)
 
@@ -1014,18 +1018,35 @@ createBrandTemplate();
 비고:
 ```
 
-### Phase 3: 카카오 알림톡 (부분 완료)
+### Phase 3: 카카오 알림톡 (완료 - 변수 치환 제외)
 ```
-테스트 일시: 2025-11-04 17:00-17:30
+테스트 일시: 2025-11-05
 테스터: Claude + User
-결과: [x] 부분 성공 (변수 없는 템플릿 완료, 변수 포함 템플릿 보류)
-비고:
+결과: [x] 성공 (변수 없는 템플릿 완료, 변수 포함 템플릿 승인 대기 중)
+
+주요 성과:
 - ✅ 템플릿 조회 기능 정상 작동
 - ✅ TEST_INSPECT_001 템플릿 발송 성공 (실제 수신 확인)
-- ⏸️ TEST_VAR_002 (변수 포함) API 성공하나 메시지 미수신 (템플릿 승인 대기로 추정)
-- ✅ inspection_status 필드 완전 제거 (5개 파일)
-- 📝 알림톡 변수 치환은 MTS API가 서버에서 처리 (클라이언트 치환 불필요)
-- 📝 변수 포함 템플릿은 승인 완료 후 재테스트 필요
+- ✅ inspection_status 필드 추가 및 동기화 로직 구현
+- ✅ 템플릿 상태 표시 시스템 구축
+  - APR (승인됨 ✅)
+  - REG (등록됨)
+  - REQ (검수중 ⏳)
+  - REJ (반려됨 ❌)
+  - S (중지됨 ⛔)
+- ✅ DB 스키마 업데이트 (inspection_status 컬럼 추가)
+- ✅ MTS API 응답 파싱 개선 (responseData.data.inspectionStatus)
+- ✅ 템플릿 동기화 API 개선 (sync=true 파라미터)
+- ✅ 새로고침 버튼 추가 (수동 동기화)
+- ✅ UI 업데이트 (메시지 발송 페이지 + 템플릿 관리 페이지)
+
+보류 항목:
+- ⏸️ TEST_VAR_002 (변수 포함 템플릿) - 승인 대기 중
+- ⏸️ 변수 치환 기능 테스트 - 템플릿 승인 후 재테스트 예정
+
+참고사항:
+- 알림톡 변수 치환은 MTS API가 서버에서 처리 (클라이언트 치환 불필요)
+- 클라이언트는 #{변수명} 형태로 그대로 전송
 ```
 
 ### Phase 4: 카카오 친구톡 (초기화)

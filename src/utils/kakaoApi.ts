@@ -14,7 +14,8 @@ export interface AlimtalkTemplate {
   template_code: string;
   template_name: string;
   template_content: string;
-  status: string;
+  status: string;  // R: 대기, A: 정상, S: 중지
+  inspection_status?: string;  // REG: 등록됨, REQ: 검수중, APR: 승인됨, REJ: 반려됨
   buttons?: Array<{
     name: string;
     type: string;
@@ -158,15 +159,18 @@ export async function fetchSenderProfiles(): Promise<SenderProfile[]> {
 
 /**
  * 알림톡 템플릿 목록 조회
+ * @param senderKey 발신 프로필 키
+ * @param forceSync 강제 동기화 여부 (true: 동기화 완료 대기, false: 백그라운드 동기화)
  */
-export async function fetchAlimtalkTemplates(senderKey: string): Promise<AlimtalkTemplate[]> {
+export async function fetchAlimtalkTemplates(senderKey: string, forceSync = false): Promise<AlimtalkTemplate[]> {
   try {
     const token = localStorage.getItem('accessToken');
     if (!token) {
       throw new Error('로그인이 필요합니다.');
     }
 
-    const response = await fetch(`/api/kakao/templates?senderKey=${encodeURIComponent(senderKey)}`, {
+    const syncParam = forceSync ? '&sync=true' : '';
+    const response = await fetch(`/api/kakao/templates?senderKey=${encodeURIComponent(senderKey)}${syncParam}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

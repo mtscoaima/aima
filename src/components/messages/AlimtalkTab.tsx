@@ -43,12 +43,30 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
 
   // 템플릿 상태 레이블 변환 함수
   const getTemplateStatusLabel = (template: AlimtalkTemplate) => {
+    // 중지 상태 우선 체크
+    if (template.status === 'S') {
+      return '중지됨 ⛔';
+    }
+
+    // 검수 상태 맵핑
+    const inspectionMap: Record<string, string> = {
+      'APR': '승인됨 ✅',
+      'REG': '등록됨',
+      'REQ': '검수중 ⏳',
+      'REJ': '반려됨 ❌'
+    };
+
+    // inspection_status 우선 표시
+    if (template.inspection_status) {
+      return inspectionMap[template.inspection_status] || template.inspection_status;
+    }
+
+    // fallback: status 표시
     const statusMap: Record<string, string> = {
       'R': '대기',
       'A': '정상',
       'S': '중지'
     };
-
     return statusMap[template.status] || template.status;
   };
 

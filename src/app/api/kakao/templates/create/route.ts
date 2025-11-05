@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
         template_message_type: templateMessageType,
         template_emphasize_type: templateEmphasizeType,
         status: 'R', // 대기 상태
+        inspection_status: 'REG', // 등록됨 상태
         buttons: buttons || null,
         quick_replies: quickReplies || null,
         category_code: categoryCode || null,

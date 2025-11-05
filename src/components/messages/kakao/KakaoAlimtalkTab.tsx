@@ -14,12 +14,30 @@ import TemplateCreateModal from "../../kakao/TemplateCreateModal";
 const KakaoAlimtalkTab = () => {
   // 템플릿 상태 레이블 변환 함수
   const getTemplateStatusLabel = (template: AlimtalkTemplate) => {
+    // 중지 상태 우선 체크
+    if (template.status === 'S') {
+      return '중지됨 ⛔';
+    }
+
+    // 검수 상태 맵핑
+    const inspectionMap: Record<string, string> = {
+      'APR': '승인됨 ✅',
+      'REG': '등록됨',
+      'REQ': '검수중 ⏳',
+      'REJ': '반려됨 ❌'
+    };
+
+    // inspection_status 우선 표시
+    if (template.inspection_status) {
+      return inspectionMap[template.inspection_status] || template.inspection_status;
+    }
+
+    // fallback: status 표시
     const statusMap: Record<string, string> = {
       'R': '대기',
       'A': '정상',
       'S': '중지'
     };
-
     return statusMap[template.status] || template.status;
   };
 
@@ -74,11 +92,11 @@ const KakaoAlimtalkTab = () => {
   };
 
   // 템플릿 목록 조회
-  const loadTemplates = async (senderKey: string) => {
+  const loadTemplates = async (senderKey: string, forceSync = false) => {
     setIsLoadingTemplates(true);
     setErrorMessage("");
     try {
-      const templates = await fetchAlimtalkTemplates(senderKey);
+      const templates = await fetchAlimtalkTemplates(senderKey, forceSync);
       setAlimtalkTemplates(templates);
     } catch (error) {
       console.error("템플릿 조회 실패:", error);
@@ -161,13 +179,24 @@ const KakaoAlimtalkTab = () => {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-gray-700">알림톡 템플릿</h3>
                 {selectedProfile && (
-                  <button
-                    onClick={() => setIsTemplateModalOpen(true)}
-                    className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4" />
-                    템플릿 추가
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => loadTemplates(selectedProfile, true)}
+                      disabled={isLoadingTemplates}
+                      className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="템플릿 상태 새로고침"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isLoadingTemplates ? 'animate-spin' : ''}`} />
+                      새로고침
+                    </button>
+                    <button
+                      onClick={() => setIsTemplateModalOpen(true)}
+                      className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      <Plus className="w-4 h-4" />
+                      템플릿 추가
+                    </button>
+                  </div>
                 )}
               </div>
 

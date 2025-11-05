@@ -303,6 +303,7 @@ export async function sendMtsMMS(
 
     const result = await response.json();
 
+
     // 성공 확인
     if (result.code === '0000') {
       return {
@@ -510,7 +511,7 @@ export async function sendMtsAlimtalk(
     console.log('========================================\n');
 
     // 성공 확인 (0000 또는 1000: 알림톡 성공)
-    if (result.code === '0000' || result.code === '1000') {
+    if (result.code === '0000' || result.code === '1000' || result.code === '200') {
       return {
         success: true,
         msgId: result.msg_id,
@@ -814,8 +815,9 @@ export async function getMtsAlimtalkTemplate(
 
     const result = await response.json();
 
+
     // 성공 확인
-    if (result.code === '0000' || result.code === '1000') {
+    if (result.code === '0000' || result.code === '1000' || result.code === '200') {
       return {
         success: true,
         responseData: result,
