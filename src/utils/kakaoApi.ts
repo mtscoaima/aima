@@ -28,6 +28,9 @@ export interface AlimtalkTemplate {
 export interface Recipient {
   phone_number: string;
   name?: string;
+  group_name?: string;
+  variables?: Record<string, string>;
+  replacedMessage?: string; // 변수가 치환된 메시지 (알림톡/친구톡용)
 }
 
 // 알림톡 발송 요청 타입

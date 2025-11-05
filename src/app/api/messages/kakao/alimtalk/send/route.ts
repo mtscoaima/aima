@@ -105,12 +105,14 @@ export async function POST(request: NextRequest) {
       try {
         const phoneNumber = recipient.phone_number;
         const name = recipient.name || null;
+        // 수신자별로 치환된 메시지가 있으면 사용, 없으면 원본 message 사용
+        const messageToSend = recipient.replacedMessage || message;
 
         const result = await sendMtsAlimtalk(
           senderKey,
           templateCode,
           phoneNumber,
-          message,
+          messageToSend,
           callbackNumber,
           buttons,
           tranType,
@@ -137,7 +139,7 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           to_number: phoneNumber,
           to_name: name,
-          message_content: message,
+          message_content: messageToSend, // 치환된 메시지 저장
           subject: null,
           message_type: 'KAKAO_ALIMTALK',
           sent_at: result.success ? new Date().toISOString() : null,

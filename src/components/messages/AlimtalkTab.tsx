@@ -9,11 +9,14 @@ import {
   type SenderProfile,
   type AlimtalkTemplate,
 } from "@/utils/kakaoApi";
+import { replaceVariables as replaceStandardVariables, countReplaceableVariables } from '@/utils/messageVariables';
 import ChannelRegistrationModal from "../kakao/ChannelRegistrationModal";
 
 interface Recipient {
   phone_number: string;
   name?: string;
+  group_name?: string;
+  variables?: Record<string, string>;
 }
 
 interface AlimtalkTabProps {
@@ -40,6 +43,13 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
   const [errorMessage, setErrorMessage] = useState("");
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 사용자 정보 (변수 치환용)
+  const [userInfo, setUserInfo] = useState({
+    phone: '',
+    name: '',
+    companyName: '',
+  });
 
   // 템플릿 상태 레이블 변환 함수
   const getTemplateStatusLabel = (template: AlimtalkTemplate) => {
@@ -73,6 +83,35 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
     loadSenderProfiles();
+  }, []);
+
+  // 사용자 정보 조회 (변수 치환용)
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return;
+
+        const response = await fetch('/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        setUserInfo({
+          phone: data.phoneNumber || '',
+          name: data.name || '',
+          companyName: data.companyInfo?.companyName || '',
+        });
+      } catch (error) {
+        console.error('사용자 정보 조회 오류:', error);
+      }
+    };
+
+    fetchUserInfo();
   }, []);
 
   // 발신 프로필 선택 시 템플릿 조회
@@ -158,11 +197,42 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
     setErrorMessage("");
 
     try {
+      // 각 수신자별로 변수 치환된 메시지 생성
+      const processedRecipients = recipients.map(recipient => {
+        // Step 1: 표준 변수 치환 (messageVariables.ts의 replaceStandardVariables 함수)
+        let replacedMessage = replaceStandardVariables(
+          selectedTemplate.template_content,
+          {
+            name: recipient.name,
+            phone: recipient.phone_number,
+            groupName: recipient.group_name || recipient.variables?.['그룹명'],
+          },
+          userInfo
+        );
+
+        // Step 2: 커스텀 변수 추가 치환 (SMS 발송과 동일한 로직)
+        if (recipient.variables) {
+          for (const [key, value] of Object.entries(recipient.variables)) {
+            // 기본 변수가 아닌 커스텀 변수만 치환
+            if (!['이름', '전화번호', '그룹명', '오늘날짜', '현재시간', '요일', '발신번호', '회사명', '담당자명'].includes(key)) {
+              const pattern = new RegExp(`#{${key}}`, 'g');
+              replacedMessage = replacedMessage.replace(pattern, value);
+            }
+          }
+        }
+
+        return {
+          phone_number: recipient.phone_number,
+          name: recipient.name,
+          replacedMessage: replacedMessage,
+        };
+      });
+
       const result = await sendAlimtalk({
         senderKey: selectedProfile,
         templateCode: selectedTemplate.template_code,
-        recipients: recipients,
-        message: selectedTemplate.template_content,
+        recipients: processedRecipients,
+        message: selectedTemplate.template_content, // 원본 템플릿 (백업용)
         callbackNumber: callbackNumber,
         buttons: selectedTemplate.buttons,
         tranType: enableSmsBackup ? "SMS" : undefined,
@@ -307,10 +377,10 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
           <span className="text-sm text-gray-600">
             {selectedTemplate
               ? (() => {
-                  const variableCount = (selectedTemplate.template_content.match(/#{[^}]+}/g) || []).length;
-                  return variableCount === 0
-                    ? "내용에 변수가 없습니다."
-                    : `${variableCount}개의 변수가 존재합니다. 수신번호를 추가해주세요`;
+                  const replaceableCount = countReplaceableVariables(selectedTemplate.template_content);
+                  return replaceableCount === 0
+                    ? "내용에 치환 가능한 변수가 없습니다."
+                    : `${replaceableCount}개의 변수가 자동으로 치환됩니다.`;
                 })()
               : "템플릿을 선택해주세요."}
           </span>

@@ -1254,4 +1254,3 @@ API URL: https://api.mtsco.co.kr/sndng/mms/sendMessage
 - MMS: 이미지 포함하여 수신 확인 ✅
 
 ---
-

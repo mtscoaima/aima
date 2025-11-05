@@ -10,6 +10,7 @@ import {
   Upload,
   X
 } from "lucide-react";
+import { countReplaceableVariables } from '@/utils/messageVariables';
 import SimpleContentSaveModal from "../modals/SimpleContentSaveModal";
 import LoadContentModal from "../modals/LoadContentModal";
 import ScheduledMessagesModal from "../modals/ScheduledMessagesModal";
@@ -210,12 +211,8 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
     setIsLoadModalOpen(true);
   };
 
-  const getVariableCount = () => {
-    const matches = messageContent.match(/#{[^}]+}/g);
-    return matches ? matches.length : 0;
-  };
-
-  const variableCount = getVariableCount();
+  // 치환 가능한 변수 개수 계산
+  const replaceableVariableCount = countReplaceableVariables(messageContent);
 
   return (
     <>
@@ -412,9 +409,9 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-blue-500" />
           <span className="text-sm text-gray-600">
-            {variableCount === 0
-              ? "내용에 변수가 없습니다."
-              : `${variableCount}개의 변수가 존재합니다. 수신번호를 추가해주세요`
+            {replaceableVariableCount === 0
+              ? "내용에 치환 가능한 변수가 없습니다."
+              : `${replaceableVariableCount}개의 변수가 자동으로 치환됩니다.`
             }
           </span>
         </div>

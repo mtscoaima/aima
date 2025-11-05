@@ -7,7 +7,7 @@ import {
   sendFriendtalk,
   type SenderProfile,
 } from "@/utils/kakaoApi";
-import { replaceVariables as replaceStandardVariables } from '@/utils/messageVariables';
+import { replaceVariables as replaceStandardVariables, countReplaceableVariables } from '@/utils/messageVariables';
 import SimpleContentSaveModal from "@/components/modals/SimpleContentSaveModal";
 import LoadContentModal from "@/components/modals/LoadContentModal";
 import FriendtalkButtonModal from "@/components/modals/FriendtalkButtonModal";
@@ -70,8 +70,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     companyName: '',
   });
 
-  // 변수 개수 계산
-  const variableCount = (message.match(/#{[^}]+}/g) || []).length;
+  // 치환 가능한 변수 개수 계산
+  const replaceableVariableCount = countReplaceableVariables(message);
 
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
@@ -686,9 +686,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-blue-500" />
           <span className="text-sm text-gray-600">
-            {variableCount === 0
-              ? "내용에 변수가 없습니다."
-              : `${variableCount}개의 변수가 존재합니다. 수신번호를 추가해주세요`
+            {replaceableVariableCount === 0
+              ? "내용에 치환 가능한 변수가 없습니다."
+              : `${replaceableVariableCount}개의 변수가 자동으로 치환됩니다.`
             }
           </span>
         </div>
