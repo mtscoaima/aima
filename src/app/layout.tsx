@@ -19,12 +19,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "에이마 - AI실시간타겟마케팅",
+  title: "에이마",
   description:
-    "CRM 마케팅의 새로운 패러다임! AI와 마케팅전문가가 최적의 효율을 찾아냅니다.",
+    "에이마(AIMA)는 엠티에스컴퍼니의 AI 기술로 고객 데이터를 분석하고 실시간 타깃 마케팅을 자동화하는 플랫폼입니다. CRM 효율을 극대화하는 인공지능 마케팅 솔루션을 만나보세요.",
+  keywords: "에이마, AIMA, 엠티에스컴퍼니, AI 마케팅, 실시간 타깃 마케팅, CRM, 인공지능 마케팅, 마케팅 자동화, 디지털 마케팅, 고객데이터 분석",
   openGraph: {
-    title: "에이마 - AI실시간타겟마케팅",
-    description: "CRM 마케팅의 새로운 패러다임! AI와 마케팅전문가가 최적의 효율을 찾아냅니다.",
+    title: "에이마",
+    description: "에이마(AIMA)는 엠티에스컴퍼니의 AI 기술로 고객 데이터를 분석하고 실시간 타깃 마케팅을 자동화하는 플랫폼입니다. CRM 효율을 극대화하는 인공지능 마케팅 솔루션을 만나보세요.",
   },
   other: {
     "naver-site-verification": "2acbc824d4bda0f427257226955d03ff9ce9dd6b",
