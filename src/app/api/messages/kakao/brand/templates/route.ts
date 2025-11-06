@@ -1,0 +1,141 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { validateAuthWithSuccess } from '@/utils/authUtils';
+import { getMtsBrandTemplate } from '@/lib/mtsApi';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// 자동 동기화 간격 (10분)
+const AUTO_SYNC_INTERVAL = 10 * 60 * 1000;
+
+/**
+ * GET /api/messages/kakao/brand/templates
+ * 카카오 브랜드 메시지 템플릿 목록 조회
+ *
+ * 쿼리 파라미터:
+ * - senderKey: 발신 프로필 키 (필수)
+ * - sync: true로 설정 시 강제 동기화
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // JWT 인증 확인
+    const authResult = validateAuthWithSuccess(request);
+    if (!authResult.isValid || !authResult.userInfo) {
+      return authResult.errorResponse;
+    }
+
+    const userId = authResult.userInfo.userId;
+
+    // URL 파라미터에서 senderKey, sync 추출
+    const { searchParams } = new URL(request.url);
+    const senderKey = searchParams.get('senderKey');
+    const forceSync = searchParams.get('sync') === 'true';
+
+    if (!senderKey) {
+      return NextResponse.json(
+        { error: 'senderKey 파라미터가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // Supabase 클라이언트 생성
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 브랜드 템플릿 조회
+    const { data: templates, error } = await supabase
+      .from('kakao_brand_templates')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('sender_key', senderKey)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('브랜드 템플릿 조회 오류:', error);
+      return NextResponse.json(
+        { error: '템플릿 조회 중 오류가 발생했습니다.', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    // 자동 동기화 체크
+    const shouldSync = forceSync || shouldAutoSync(templates || []);
+
+    if (shouldSync && templates && templates.length > 0) {
+      console.log(`[브랜드 템플릿 조회] 자동 동기화 시작 (강제: ${forceSync})`);
+
+      // 백그라운드에서 동기화 (Promise 반환 없이)
+      syncTemplatesInBackground(supabase, templates);
+    }
+
+    return NextResponse.json({
+      success: true,
+      templates: templates || [],
+      count: templates?.length || 0,
+    });
+  } catch (error) {
+    console.error('브랜드 템플릿 조회 API 오류:', error);
+    return NextResponse.json(
+      {
+        error: '템플릿 조회 중 오류가 발생했습니다.',
+        details: error instanceof Error ? error.message : '알 수 없는 오류',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 자동 동기화가 필요한지 확인
+ */
+function shouldAutoSync(templates: Array<{ synced_at: string | null }>): boolean {
+  if (templates.length === 0) return false;
+
+  // synced_at이 없거나 10분 이상 지난 경우
+  const now = Date.now();
+  return templates.some(template => {
+    if (!template.synced_at) return true;
+    const syncedTime = new Date(template.synced_at).getTime();
+    return now - syncedTime > AUTO_SYNC_INTERVAL;
+  });
+}
+
+/**
+ * 백그라운드에서 템플릿 동기화 (비동기, 결과 반환 없음)
+ */
+async function syncTemplatesInBackground(
+  supabase: ReturnType<typeof createClient>,
+  templates: Array<{ id: string; template_code: string; status: string; [key: string]: unknown }>
+) {
+  try {
+    for (const template of templates) {
+      try {
+        const result = await getMtsBrandTemplate(template.template_code);
+
+        if (result.success && result.responseData) {
+          const mtsData = result.responseData;
+
+          await supabase
+            .from('kakao_brand_templates')
+            .update({
+              status: mtsData.status || template.status,
+              content: mtsData.content,
+              chat_bubble_type: mtsData.chatBubbleType,
+              buttons: mtsData.buttons,
+              image_url: mtsData.imageUrl,
+              image_link: mtsData.imageLink,
+              modified_at: mtsData.modifiedAt ? new Date(mtsData.modifiedAt).toISOString() : null,
+              synced_at: new Date().toISOString(),
+            })
+            .eq('id', template.id);
+
+          console.log(`[백그라운드 동기화] 성공: ${template.template_code}`);
+        }
+      } catch (err) {
+        console.error(`[백그라운드 동기화] 실패: ${template.template_code}`, err);
+      }
+    }
+  } catch (error) {
+    console.error('[백그라운드 동기화] 전체 실패:', error);
+  }
+}

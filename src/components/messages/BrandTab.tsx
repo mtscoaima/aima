@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Info, RefreshCw, Send } from "lucide-react";
+import { Info, RefreshCw, Send, HelpCircle } from "lucide-react";
 import Image from "next/image";
 import {
   fetchSenderProfiles,
@@ -11,7 +11,9 @@ import {
   type BrandTemplate,
   type Recipient,
 } from "@/utils/kakaoApi";
+import { replaceVariables as replaceStandardVariables, countReplaceableVariables } from '@/utils/messageVariables';
 import ChannelRegistrationModal from "../kakao/ChannelRegistrationModal";
+import BrandTemplateModal from "../modals/BrandTemplateModal";
 
 interface BrandTabProps {
   recipients: Recipient[];
@@ -72,19 +74,57 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [selectedFormatType, setSelectedFormatType] = useState<keyof typeof templateTypes>("WIDE");
-  // const [recipientTargetType, setRecipientTargetType] = useState<'all' | 'marketing' | 'channel_friend'>('channel_friend'); // TODO: MTS API 연결 시 사용
+
+  // 수신 대상 선택 (targeting)
+  const [targetingType, setTargetingType] = useState<'M' | 'N' | 'I'>('I');
 
   // SMS 백업 설정
-  const [tranType, setTranType] = useState<'N' | 'S' | 'L' | 'M'>('N');
-  const [tranMessage, setTranMessage] = useState("");
-  const [subject, setSubject] = useState("");
+  const [enableSmsBackup, setEnableSmsBackup] = useState(false);
+  const [smsBackupMessage, setSmsBackupMessage] = useState("");
 
   const [errorMessage, setErrorMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+
+  // 사용자 정보 (변수 치환용)
+  const [userInfo, setUserInfo] = useState({
+    phone: '',
+    name: '',
+    companyName: '',
+  });
 
   // 컴포넌트 마운트 시 발신 프로필 조회
   useEffect(() => {
     loadSenderProfiles();
+  }, []);
+
+  // 사용자 정보 조회 (변수 치환용)
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return;
+
+        const response = await fetch('/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        setUserInfo({
+          phone: data.phoneNumber || '',
+          name: data.name || '',
+          companyName: data.companyInfo?.companyName || '',
+        });
+      } catch (error) {
+        console.error('사용자 정보 조회 오류:', error);
+      }
+    };
+
+    fetchUserInfo();
   }, []);
 
   // 발신 프로필 선택 시 브랜드 템플릿 조회
@@ -124,11 +164,11 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
   };
 
   // 브랜드 템플릿 조회
-  const loadBrandTemplates = async (senderKey: string) => {
+  const loadBrandTemplates = async (senderKey: string, forceSync = false) => {
     setIsLoadingTemplates(true);
     setErrorMessage("");
     try {
-      const templates = await fetchBrandTemplates(senderKey);
+      const templates = await fetchBrandTemplates(senderKey, forceSync);
       setBrandTemplates(templates);
     } catch (error) {
       console.error("브랜드 템플릿 조회 실패:", error);
@@ -136,6 +176,16 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
     } finally {
       setIsLoadingTemplates(false);
     }
+  };
+
+  // 템플릿 검수 상태 라벨 생성
+  const getTemplateStatusLabel = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'A': '승인됨 ✅',
+      'S': '중지됨 ⛔',
+      'D': '삭제됨 ❌',
+    };
+    return statusMap[status] || status;
   };
 
   // 템플릿 선택 핸들러
@@ -167,14 +217,8 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
     }
 
     // 전환 발송 메시지 검증
-    if (tranType !== 'N' && !tranMessage.trim()) {
-      alert("전환 발송 메시지를 입력해주세요.");
-      return;
-    }
-
-    // LMS/MMS 전환 시 제목 검증
-    if ((tranType === 'L' || tranType === 'M') && !subject.trim()) {
-      alert("LMS/MMS 전환 시 제목을 입력해주세요.");
+    if (enableSmsBackup && !smsBackupMessage.trim()) {
+      alert("문자대체발송 메시지를 입력해주세요.");
       return;
     }
 
@@ -188,23 +232,78 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
     setErrorMessage("");
 
     try {
+      // 각 수신자별로 변수 치환된 메시지 생성
+      const processedRecipients = recipients.map(recipient => {
+        // Step 1: 표준 변수 치환 (messageVariables.ts의 replaceStandardVariables 함수)
+        let replacedMessage = replaceStandardVariables(
+          selectedTemplate.content,
+          {
+            name: recipient.name,
+            phone: recipient.phone_number,
+            groupName: recipient.group_name || recipient.variables?.['그룹명'],
+          },
+          userInfo
+        );
+
+        // Step 2: 커스텀 변수 추가 치환
+        if (recipient.variables) {
+          for (const [key, value] of Object.entries(recipient.variables)) {
+            // 기본 변수가 아닌 커스텀 변수만 치환
+            if (!['이름', '전화번호', '그룹명', '오늘날짜', '현재시간', '요일', '발신번호', '회사명', '담당자명'].includes(key)) {
+              const pattern = new RegExp(`#{${key}}`, 'g');
+              replacedMessage = replacedMessage.replace(pattern, value);
+            }
+          }
+        }
+
+        return {
+          ...recipient,
+          replacedMessage: replacedMessage,
+        };
+      });
+
+      // 자동 타입 결정 로직
+      let tranType: 'N' | 'S' | 'L' | 'M' = 'N';
+      let subject = '';
+
+      if (enableSmsBackup && smsBackupMessage) {
+        const messageLength = smsBackupMessage.length;
+
+        // 90바이트(한글 45자) 이하 → SMS
+        if (messageLength <= 45) {
+          tranType = 'S';
+        }
+        // 2000바이트(한글 1000자) 이하 → LMS
+        else if (messageLength <= 1000) {
+          tranType = 'L';
+          subject = selectedTemplate.template_name; // LMS는 제목 사용
+        }
+        // 2000바이트 초과 → MMS
+        else {
+          tranType = 'M';
+          subject = selectedTemplate.template_name; // MMS는 제목 사용
+        }
+      }
+
       const result = await sendBrandMessage({
         senderKey: selectedProfile,
         templateCode: selectedTemplate.template_code,
-        recipients: recipients,
-        message: selectedTemplate.template_content,
+        recipients: processedRecipients,
+        message: selectedTemplate.content, // 원본 템플릿 (백업용)
         callbackNumber: callbackNumber,
         messageType: selectedTemplate.message_type as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO',
-        attachment: selectedTemplate.buttons ? {
+        // 버튼이 실제로 존재할 때만 attachment 생성
+        attachment: selectedTemplate.buttons && selectedTemplate.buttons.length > 0 ? {
           button: selectedTemplate.buttons.map(btn => ({
             type: btn.type as 'WL' | 'AL' | 'BK' | 'MD' | 'AC',
             url_mobile: btn.url_mobile,
             url_pc: btn.url_pc,
           }))
         } : undefined,
+        targeting: targetingType, // 수신 대상 선택 (M/N/I)
         tranType: tranType,
-        tranMessage: tranType !== 'N' ? tranMessage : undefined,
-        subject: (tranType === 'L' || tranType === 'M') ? subject : undefined,
+        tranMessage: tranType !== 'N' ? smsBackupMessage : undefined,
+        subject: subject || undefined,
       });
 
       if (result.success) {
@@ -213,9 +312,8 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
         );
 
         // 폼 초기화
-        setTranType('N');
-        setTranMessage("");
-        setSubject("");
+        setEnableSmsBackup(false);
+        setSmsBackupMessage("");
       } else {
         throw new Error(result.error || "브랜드 메시지 발송 실패");
       }
@@ -296,7 +394,21 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
           {/* 우측: 브랜드 템플릿 */}
           <div className="flex-1">
             <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 className="font-medium text-gray-700">브랜드 템플릿</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-gray-700">브랜드 템플릿</h3>
+                {selectedProfile && (
+                  <button
+                    onClick={() => loadBrandTemplates(selectedProfile, true)}
+                    disabled={isLoadingTemplates}
+                    className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    title="템플릿 동기화"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${isLoadingTemplates ? "animate-spin" : ""}`}
+                    />
+                  </button>
+                )}
+              </div>
               <div className="flex items-center justify-between">
                 {!selectedProfile ? (
                   <div className="text-center py-3.5 text-gray-500 text-sm">
@@ -318,7 +430,7 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
                     <option value="">템플릿을 선택하세요</option>
                     {brandTemplates.map((template) => (
                       <option key={template.template_code} value={template.template_code}>
-                        {template.template_name}
+                        {template.template_name} ({getTemplateStatusLabel(template.status)})
                       </option>
                     ))}
                   </select>
@@ -338,11 +450,8 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
 
       {/* 템플릿 미리보기 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3">
           <h3 className="font-medium text-gray-700">템플릿 미리보기</h3>
-          <button className="px-4 py-2 rounded text-sm font-medium text-white hover:opacity-90" style={{ backgroundColor: "#795548" }}>
-            템플릿 등록하기 ＞
-          </button>
         </div>
         <p className="text-sm text-gray-600 mb-4">
           {selectedTemplate ? `${selectedTemplate.template_name} 템플릿이 선택되었습니다.` : "아직 템플릿을 선택하지 않았습니다."}
@@ -518,19 +627,32 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex gap-0 border-b border-gray-300 mb-4">
               <button
-                className="px-4 py-2 text-sm font-medium cursor-not-allowed text-gray-400 bg-gray-50 border-b-2 border-transparent"
-                disabled
+                onClick={() => setTargetingType('I')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                  targetingType === 'I'
+                    ? 'text-blue-600 bg-white border-blue-600'
+                    : 'text-gray-600 bg-gray-50 border-transparent hover:bg-gray-100'
+                }`}
               >
                 전체
               </button>
               <button
-                className="px-4 py-2 text-sm font-medium cursor-not-allowed text-gray-400 bg-gray-50 border-b-2 border-transparent"
-                disabled
+                onClick={() => setTargetingType('M')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                  targetingType === 'M'
+                    ? 'text-blue-600 bg-white border-blue-600'
+                    : 'text-gray-600 bg-gray-50 border-transparent hover:bg-gray-100'
+                }`}
               >
                 수신동의자만
               </button>
               <button
-                className="px-4 py-2 text-sm font-medium text-blue-600 bg-white border-b-2 border-blue-600"
+                onClick={() => setTargetingType('N')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                  targetingType === 'N'
+                    ? 'text-blue-600 bg-white border-blue-600'
+                    : 'text-gray-600 bg-gray-50 border-transparent hover:bg-gray-100'
+                }`}
               >
                 채널친구만
               </button>
@@ -539,10 +661,14 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm font-medium">수신대상 : 채널친구만</span>
+                <span className="text-sm font-medium">
+                  수신대상 : {targetingType === 'I' ? '전체' : targetingType === 'M' ? '수신동의자만' : '채널친구만'}
+                </span>
               </div>
               <p className="text-sm text-gray-600">
-                현재 수신번호 내에서 카카오 채널 친구추가한 사용자에게 발송합니다.
+                {targetingType === 'I' && '현재 수신번호 내에서 카카오 채널 친구추가한 사용자에게 발송합니다.'}
+                {targetingType === 'M' && '현재 수신번호 내에서 카카오톡 수신 동의한 사용자에게 발송합니다.'}
+                {targetingType === 'N' && '현재 수신번호 내에서 카카오톡 수신 동의 + 채널 친구인 사용자에게 발송합니다.'}
               </p>
             </div>
           </div>
@@ -559,60 +685,40 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
           <span className="text-sm text-gray-600">
             {selectedTemplate
               ? (() => {
-                  const variableCount = (selectedTemplate.template_content.match(/#{[^}]+}/g) || []).length;
-                  return variableCount === 0
-                    ? "내용에 변수가 없습니다."
-                    : `${variableCount}개의 변수가 존재합니다. 수신번호를 추가해주세요`;
+                  const replaceableCount = countReplaceableVariables(selectedTemplate.content);
+                  return replaceableCount === 0
+                    ? "내용에 치환 가능한 변수가 없습니다."
+                    : `${replaceableCount}개의 변수가 자동으로 치환됩니다.`;
                 })()
-              : "내용에 변수가 없습니다."}
+              : "템플릿을 선택해주세요."}
           </span>
         </div>
       </div>
 
-      {/* 전환 발송 설정 */}
+      {/* 발송실패 시 문자대체발송 여부 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          전환 발송 설정 (실패 시 SMS/LMS/MMS로 전환)
-        </label>
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            {(['N', 'S', 'L', 'M'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setTranType(type)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  tranType === type
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {type === 'N' ? '전환안함' : type === 'S' ? 'SMS' : type === 'L' ? 'LMS' : 'MMS'}
-              </button>
-            ))}
-          </div>
-
-          {tranType !== 'N' && (
-            <>
-              {(tranType === 'L' || tranType === 'M') && (
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="LMS/MMS 제목"
-                  maxLength={40}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              )}
-              <textarea
-                value={tranMessage}
-                onChange={(e) => setTranMessage(e.target.value)}
-                placeholder="전환 발송 시 사용할 메시지"
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              />
-            </>
-          )}
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            type="checkbox"
+            id="smsBackup"
+            className="rounded"
+            checked={enableSmsBackup}
+            onChange={(e) => setEnableSmsBackup(e.target.checked)}
+          />
+          <label htmlFor="smsBackup" className="text-sm text-gray-700">
+            발송실패 시 문자대체발송 여부
+          </label>
+          <HelpCircle className="w-4 h-4 text-gray-400" />
         </div>
+
+        {enableSmsBackup && (
+          <textarea
+            placeholder="브랜드 메시지 발송 실패 시 전송할 문자 메시지를 입력하세요."
+            className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[100px]"
+            value={smsBackupMessage}
+            onChange={(e) => setSmsBackupMessage(e.target.value)}
+          />
+        )}
       </div>
 
       {/* 수신자 정보 */}
@@ -657,6 +763,17 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
           setIsModalOpen(false);
           loadSenderProfiles();
         }}
+      />
+
+      {/* 브랜드 템플릿 등록 모달 */}
+      <BrandTemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        onSuccess={() => {
+          setIsTemplateModalOpen(false);
+          loadBrandTemplates(selectedProfile);
+        }}
+        senderKey={selectedProfile}
       />
     </>
   );

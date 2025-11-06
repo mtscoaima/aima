@@ -86,6 +86,11 @@ export function countReplaceableVariables(text: string, customVariables?: string
  * @returns 변수명 배열 (중복 제거)
  */
 export function extractVariables(text: string): string[] {
+  // null/undefined 체크 추가
+  if (!text || typeof text !== 'string') {
+    return [];
+  }
+
   const matches = text.match(VARIABLE_PATTERN);
   if (!matches) return [];
 

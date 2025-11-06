@@ -9,10 +9,16 @@
  * - 템플릿 관리
  */
 
+import { createClient } from '@supabase/supabase-js';
+
 // MTS API 설정
 const MTS_AUTH_CODE = process.env.MTS_AUTH_CODE;
 const MTS_API_URL = process.env.MTS_API_URL || 'https://api.mtsco.co.kr';
 const MTS_TEMPLATE_API_URL = process.env.MTS_TEMPLATE_API_URL || 'https://talks.mtsco.co.kr';
+
+// Supabase 설정
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // 날짜 형식 변환 (yyyy-MM-dd HH:mm → YYYYMMDDHHmmss)
 export function convertToMtsDateFormat(dateString: string): string {
@@ -1116,7 +1122,7 @@ export async function sendNaverTalk(
  * @param message 메시지 내용
  * @param callbackNumber 발신 전화번호
  * @param messageType 브랜드 메시지 타입 (TEXT, IMAGE, WIDE, WIDE_ITEM_LIST, CAROUSEL_FEED, PREMIUM_VIDEO)
- * @param targeting 타겟팅 타입 (M: 전화번호, N: 국가코드+전화번호, I: 앱유저ID)
+ * @param targeting 타겟팅 타입 (M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구) - **필수 파라미터**
  * @param attachment 첨부 내용 (버튼, 이미지, 쿠폰 등)
  * @param tranType 전환전송 타입 (N: 전환안함, S: SMS, L: LMS, M: MMS)
  * @param tranMessage 전환전송 메시지
@@ -1182,15 +1188,37 @@ export async function sendKakaoBrand(
       callback_number: cleanCallbackNumber,
       message: message,
       message_type: messageType,
-      send_mode: '2', // 2: 즉시발송 (규격서 준수)
-      targeting: targeting,
+      send_mode: '3', // 3: 즉시발송 (MTS API 규격서 예제 참조)
+      targeting: targeting, // 필수 파라미터 (M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구)
       tran_type: tranType,
       country_code: '82',
     };
 
-    // 첨부 내용 추가
-    if (attachment) {
+    // 첨부 내용 추가 - 실제 내용이 있을 때만
+    console.log('[브랜드 메시지] Attachment 검증:', {
+      attachmentProvided: !!attachment,
+      hasButton: attachment?.button ? attachment.button.length > 0 : false,
+      hasImage: !!attachment?.image,
+      hasCoupon: !!attachment?.coupon,
+      hasItem: !!attachment?.item,
+      willAddToRequest: !!(attachment && (
+        (attachment.button && attachment.button.length > 0) ||
+        attachment.image ||
+        attachment.coupon ||
+        attachment.item
+      ))
+    });
+
+    if (attachment && (
+      (attachment.button && attachment.button.length > 0) ||
+      attachment.image ||
+      attachment.coupon ||
+      attachment.item
+    )) {
       requestBody.attachment = attachment;
+      console.log('[브랜드 메시지] ✅ Attachment 추가됨:', attachment);
+    } else {
+      console.log('[브랜드 메시지] ⚠️ Attachment 제외됨 (빈 내용)');
     }
 
     // 전환 전송 메시지 추가
@@ -1208,6 +1236,47 @@ export async function sendKakaoBrand(
       requestBody.send_date = sendDate;
     }
 
+    // 현재 시간 확인 (브랜드 메시지는 08:00-20:00만 발송 가능)
+    const now = new Date();
+    const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC to KST
+    const kstHour = kstTime.getUTCHours();
+    const kstTimeString = kstTime.toISOString().replace('T', ' ').substring(0, 19);
+    const isWithinTimeWindow = kstHour >= 8 && kstHour < 20;
+
+    console.log('[브랜드 메시지] 시간 확인:', {
+      currentTimeKST: kstTimeString,
+      kstHour,
+      isWithinTimeWindow,
+      restriction: '브랜드 메시지는 08:00-20:00 KST만 발송 가능'
+    });
+
+    if (!isWithinTimeWindow) {
+      console.warn('⚠️⚠️⚠️ 경고: 현재 시간이 브랜드 메시지 발송 시간(08:00-20:00 KST) 외입니다!');
+    }
+
+    // Targeting 요구사항 확인
+    const targetingInfo = {
+      'M': '수신동의 사용자만 (마케팅 수신동의 필요)',
+      'N': '수신동의 + 채널 친구',
+      'I': '전체 + 채널 친구 (요청 + 채널 친구)'
+    };
+    console.log('[브랜드 메시지] Targeting 설정:', {
+      targeting,
+      requirement: targetingInfo[targeting],
+      warning: targeting === 'M' ? '⚠️ 수신자가 카카오 마케팅 수신동의를 해야 합니다' : ''
+    });
+
+    console.log('[브랜드 메시지] MTS API 요청:', {
+      endpoint: `${MTS_API_URL}/btalk/send/message/basic`,
+      phone_number: cleanToNumber,
+      template_code: templateCode,
+      send_mode: requestBody.send_mode,
+      targeting: requestBody.targeting,
+      hasAttachment: 'attachment' in requestBody,
+      attachmentKeys: requestBody.attachment ? Object.keys(requestBody.attachment as object) : [],
+      fullRequestBody: requestBody
+    });
+
     // API 호출
     const response = await fetch(`${MTS_API_URL}/btalk/send/message/basic`, {
       method: 'POST',
@@ -1217,10 +1286,25 @@ export async function sendKakaoBrand(
       body: JSON.stringify(requestBody),
     });
 
+    console.log('[브랜드 메시지] HTTP 응답 상태:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+
     const result = await response.json();
+    console.log('[브랜드 메시지] MTS API 응답:', {
+      code: result.code,
+      message: result.message,
+      msg_id: result.msg_id,
+      received_at: result.received_at,
+      allKeys: Object.keys(result),
+      fullResponse: JSON.stringify(result, null, 2)
+    });
 
     // 성공 확인 (0000: 브랜드 메시지 성공)
     if (result.code === '0000' || result.code === '1000') {
+      console.log('[브랜드 메시지] 발송 성공');
       return {
         success: true,
         msgId: result.msg_id,
@@ -1230,6 +1314,10 @@ export async function sendKakaoBrand(
     }
 
     // 실패 시 에러 메시지 반환
+    console.error('[브랜드 메시지] 발송 실패:', {
+      code: result.code,
+      error: getErrorMessage(result.code) || result.message
+    });
     return {
       success: false,
       error: getErrorMessage(result.code) || result.message || '브랜드 메시지 발송 실패',
@@ -1721,6 +1809,7 @@ export async function createNaverTalkTemplate(
 
 /**
  * 카카오 브랜드 메시지 템플릿 생성
+ * @param userId 사용자 ID
  * @param senderKey 발신프로필 키
  * @param senderGroupKey 발신프로필 그룹 키 (senderKey 또는 senderGroupKey 중 하나 필수)
  * @param name 템플릿 이름
@@ -1734,6 +1823,7 @@ export async function createNaverTalkTemplate(
  * @param buttons 버튼 목록 (선택)
  */
 export async function createBrandTemplate(
+  userId: number,
   senderKey: string | undefined,
   senderGroupKey: string | undefined,
   name: string,
@@ -1775,6 +1865,7 @@ export async function createBrandTemplate(
 
     // 요청 본문 구성
     const requestBody: Record<string, unknown> = {
+      authCode: MTS_AUTH_CODE, // MTS 인증 코드 추가
       name,
       chatBubbleType,
       content,
@@ -1815,7 +1906,7 @@ export async function createBrandTemplate(
     });
 
     // API 호출
-    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/direct/brand/template/create`, {
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/direct/create/template`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1823,11 +1914,67 @@ export async function createBrandTemplate(
       body: JSON.stringify(requestBody),
     });
 
+    // 응답 상태 로깅
+    console.log('[브랜드 메시지] API 응답 상태:', response.status);
+
+    // HTML 응답 체크
+    const contentType = response.headers.get('content-type');
+    console.log('[브랜드 메시지] Content-Type:', contentType);
+
+    if (contentType && contentType.includes('text/html')) {
+      const htmlText = await response.text();
+      console.error('[브랜드 메시지] HTML 응답 받음 (처음 500자):', htmlText.substring(0, 500));
+      return {
+        success: false,
+        error: '브랜드 메시지 템플릿 생성 API가 올바르지 않습니다. MTS에서 브랜드 메시지 권한을 확인해주세요.',
+        errorCode: 'INVALID_API_RESPONSE',
+      };
+    }
+
     const result = await response.json();
 
     // 성공 확인 (code: "200")
     if (result.code === '200') {
       console.log('[브랜드 메시지] 템플릿 생성 성공:', result.data);
+
+      // Supabase에 템플릿 저장
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const templateData = result.data;
+
+        // 템플릿 데이터를 DB에 저장
+        const { error: dbError } = await supabase
+          .from('kakao_brand_templates')
+          .insert({
+            user_id: userId,
+            sender_key: senderKey || templateData.senderKey,
+            sender_group_key: senderGroupKey,
+            template_code: templateData.code,
+            template_name: templateData.name,
+            content: templateData.content,
+            chat_bubble_type: templateData.chatBubbleType,
+            status: templateData.status,
+            buttons: templateData.buttons || buttons,
+            additional_content: additionalContent,
+            image_url: imageUrl,
+            image_name: imageName,
+            image_link: imageLink,
+            adult: templateData.adult,
+            modified_at: templateData.modifiedAt ? new Date(templateData.modifiedAt) : null,
+            synced_at: new Date(),
+          });
+
+        if (dbError) {
+          console.error('[브랜드 메시지] DB 저장 오류:', dbError);
+          // DB 저장 실패해도 MTS API 성공이므로 성공으로 처리
+        } else {
+          console.log('[브랜드 메시지] DB 저장 성공');
+        }
+      } catch (dbError) {
+        console.error('[브랜드 메시지] DB 저장 예외:', dbError);
+        // DB 저장 실패해도 MTS API 성공이므로 성공으로 처리
+      }
+
       return {
         success: true,
         responseData: result,
@@ -1844,6 +1991,191 @@ export async function createBrandTemplate(
     };
   } catch (error) {
     console.error('MTS API 호출 오류 (브랜드 메시지 템플릿 생성):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 카카오 브랜드 메시지 템플릿 상세 조회
+ * @param templateCode 템플릿 코드
+ * @returns 템플릿 상세 정보
+ */
+export async function getMtsBrandTemplate(templateCode: string): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    if (!MTS_TEMPLATE_API_URL) {
+      return {
+        success: false,
+        error: 'MTS_TEMPLATE_API_URL이 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 요청 본문
+    const requestBody = {
+      authCode: MTS_AUTH_CODE,
+      code: templateCode,
+    };
+
+    console.log('[브랜드 템플릿 조회] MTS API 요청:', {
+      endpoint: `${MTS_TEMPLATE_API_URL}/mts/api/direct/state/template`,
+      templateCode,
+    });
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/direct/state/template`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+    console.log('[브랜드 템플릿 조회] MTS API 응답:', {
+      code: result.code,
+      message: result.message,
+      hasData: !!result.data,
+    });
+
+    // 성공 확인
+    if (result.code === '200' && result.data) {
+      return {
+        success: true,
+        responseData: result.data,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    console.error('[브랜드 템플릿 조회] 실패:', {
+      code: result.code,
+      message: result.message,
+    });
+    return {
+      success: false,
+      error: result.message || '브랜드 템플릿 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (브랜드 템플릿 조회):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 브랜드 메시지 발송 결과 조회
+ * @param senderKey 발신 프로필 키
+ * @param sendDate 발송 일자 (YYYYMMDD 형식, 최소 8자리)
+ * @param page 페이지 번호 (기본값: 1)
+ * @param count 페이지당 건수 (기본값: 1000)
+ * @returns 발송 결과 목록
+ */
+export async function getBrandMessageResult(
+  senderKey: string,
+  sendDate: string,
+  page: number = 1,
+  count: number = 1000
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 요청 본문
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      sender_key: senderKey,
+      send_date: sendDate,
+      page,
+      count,
+    };
+
+    console.log('[브랜드 메시지 결과 조회] MTS API 요청:', {
+      endpoint: `${MTS_API_URL}/btalk/resp/messages`,
+      senderKey,
+      sendDate,
+      page,
+      count,
+    });
+
+    // API 호출
+    const response = await fetch(`${MTS_API_URL}/btalk/resp/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+    console.log('[브랜드 메시지 결과 조회] MTS API 응답:', {
+      code: result.code,
+      message: result.message,
+      dataCount: result.data?.length || 0,
+      receivedAt: result.received_at,
+    });
+
+    // 성공 확인 (0000: 성공)
+    if (result.code === '0000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    console.error('[브랜드 메시지 결과 조회] 실패:', {
+      code: result.code,
+      message: result.message,
+    });
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '브랜드 메시지 결과 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (브랜드 메시지 결과 조회):', error);
 
     if (error instanceof TypeError) {
       return {
