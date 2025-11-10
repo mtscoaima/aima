@@ -285,6 +285,33 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
         }
       }
 
+      // attachment 구성 (버튼, 이미지, 쿠폰, 아이템 등)
+      const attachment: {
+        button?: Array<{ type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC'; url_mobile?: string; url_pc?: string }>;
+        image?: { img_url: string; img_link?: string };
+      } = {};
+
+      // 버튼 추가
+      if (selectedTemplate.buttons && selectedTemplate.buttons.length > 0) {
+        attachment.button = selectedTemplate.buttons.map(btn => ({
+          type: btn.type as 'WL' | 'AL' | 'BK' | 'MD' | 'AC',
+          url_mobile: btn.url_mobile,
+          url_pc: btn.url_pc,
+        }));
+      }
+
+      // 이미지 추가 (IMAGE, WIDE 타입일 때)
+      if ((selectedTemplate.message_type === 'IMAGE' || selectedTemplate.message_type === 'WIDE') && selectedTemplate.image_url) {
+        attachment.image = {
+          img_url: selectedTemplate.image_url,
+        };
+
+        // img_link는 값이 실제로 있을 때만 추가 (undefined 키 제거)
+        if (selectedTemplate.image_link && selectedTemplate.image_link.trim() !== '') {
+          attachment.image.img_link = selectedTemplate.image_link;
+        }
+      }
+
       const result = await sendBrandMessage({
         senderKey: selectedProfile,
         templateCode: selectedTemplate.template_code,
@@ -292,14 +319,7 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
         message: selectedTemplate.content, // 원본 템플릿 (백업용)
         callbackNumber: callbackNumber,
         messageType: selectedTemplate.message_type as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO',
-        // 버튼이 실제로 존재할 때만 attachment 생성
-        attachment: selectedTemplate.buttons && selectedTemplate.buttons.length > 0 ? {
-          button: selectedTemplate.buttons.map(btn => ({
-            type: btn.type as 'WL' | 'AL' | 'BK' | 'MD' | 'AC',
-            url_mobile: btn.url_mobile,
-            url_pc: btn.url_pc,
-          }))
-        } : undefined,
+        attachment: Object.keys(attachment).length > 0 ? attachment : undefined,
         targeting: targetingType, // 수신 대상 선택 (M/N/I)
         tranType: tranType,
         tranMessage: tranType !== 'N' ? smsBackupMessage : undefined,

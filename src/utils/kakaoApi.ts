@@ -79,6 +79,8 @@ export interface BrandTemplate {
   content: string;
   message_type: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'COMMERCE' | 'CAROUSEL_COMMERCE' | 'PREMIUM_VIDEO';
   status: string;
+  image_url?: string;      // 이미지 URL (IMAGE, WIDE 타입)
+  image_link?: string;     // 이미지 클릭 시 이동 URL (선택)
   buttons?: Array<{
     type: string;
     name: string;
@@ -304,6 +306,8 @@ export async function fetchBrandTemplates(senderKey: string, forceSync = false):
         content: string;
         chat_bubble_type: string;
         status: string;
+        image_url?: string;
+        image_link?: string;
         buttons: unknown;
       }) => ({
         template_code: template.template_code,
@@ -311,6 +315,8 @@ export async function fetchBrandTemplates(senderKey: string, forceSync = false):
         content: template.content,
         message_type: template.chat_bubble_type,
         status: template.status,
+        image_url: template.image_url,      // 이미지 URL 매핑
+        image_link: template.image_link,    // 이미지 클릭 URL 매핑
         buttons: template.buttons,
       }));
     }

@@ -195,7 +195,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      imageUrl: imageUrl, // Kakao 서버 URL (https://mud-kage.kakao.com/...)
+      url: imageUrl,        // 프론트엔드 호환: uploadedImage.url
+      fileId: imageUrl,     // 프론트엔드 호환: uploadedImage.fileId (Kakao URL을 ID로 사용)
+      imageUrl: imageUrl,   // 하위 호환성 유지
       fileSize: buf.length,
       code: data.code,
       message: data.message

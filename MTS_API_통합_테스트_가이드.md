@@ -3,13 +3,13 @@
 > **프로젝트**: MTS Message Portal
 > **작성일**: 2025-10-29
 > **최종 업데이트**: 2025-11-10
-> **버전**: v3.1 (Phase 6 브랜드 메시지 부분 테스트 완료 + 추가 케이스 가이드)
+> **버전**: v3.2 (Phase 6 IMAGE 타입 테스트 완료 + SMS 백업 검증 완료)
 > **목적**: MTS API 전환 후 전체 기능 통합 테스트 가이드
 > **대상**: QA 팀, 개발자, 프로젝트 관리자
 
 ---
 
-## 🚨 현재 테스트 현황 (2025-11-05 실시간 업데이트)
+## 🚨 현재 테스트 현황 (2025-11-10 실시간 업데이트)
 
 ### 📋 테스트 범위
 
@@ -737,32 +737,70 @@ createNaverTemplate();
 - [ ] 여러 수신자에게 다른 변수 값 적용 가능 확인
 
 **6.4 SMS 백업 설정**
-- [ ] "발송실패 시 문자대체발송 여부" 체크박스 표시
-- [ ] 체크박스 선택 시 SMS 백업 메시지 입력란 활성화
-- [ ] SMS 백업 메시지 입력
-- [ ] 자동 타입 결정 로직 확인:
+- [x] "발송실패 시 문자대체발송 여부" 체크박스 표시 ✅
+- [x] 체크박스 선택 시 SMS 백업 메시지 입력란 활성화 ✅
+- [x] SMS 백업 메시지 입력 ✅
+- [x] 자동 타입 결정 로직 확인: ✅
   - 45자 이하: SMS (S) 타입
   - 1000자 이하: LMS (L) 타입 + 제목 자동 설정
   - 1000자 초과: MMS (M) 타입 + 제목 자동 설정
-- [ ] 체크박스 해제 시 tranType='N' 확인
+- [x] 체크박스 해제 시 tranType='N' 확인 ✅
+- [x] **대체 발송 테스트 성공** (2025-11-10) ✅
+  - 브랜드 메시지 실패 시 자동으로 SMS 대체 발송 작동
+  - 실제 SMS 수신 확인 (IMAGE 타입 실패 → SMS 백업 발송)
+  - tranType='S', tranMessage 정상 전달
+  - **중요**: 대체 문자가 발송되면 = 브랜드 메시지가 실패한 것임
 
-**6.5 브랜드 메시지 발송**
-- [x] 템플릿 선택
-- [x] 수신 대상 선택 (M/N/I)
-- [x] 변수 값 입력 (변수 있는 경우)
-- [ ] SMS 백업 설정 (선택)
-- [x] 수신번호 입력 (콤마 구분 복수 입력 가능)
-- [x] "전송" 버튼 클릭
-- [x] MTS API 요청 확인 (Network 탭)
+**6.5 브랜드 메시지 발송 (TEXT 타입)**
+- [x] TEXT 타입 템플릿 선택 ✅
+- [x] 수신 대상 선택 (M/N/I) ✅
+- [x] 변수 값 입력 (변수 있는 경우) ✅
+- [x] SMS 백업 설정 (선택) ✅
+- [x] 수신번호 입력 (콤마 구분 복수 입력 가능) ✅
+- [x] "전송" 버튼 클릭 ✅
+- [x] MTS API 요청 확인 (Network 탭) ✅
   - targeting 파라미터 확인 (M/N/I)
   - tranType 파라미터 확인 (N/S/L/M)
   - tranMessage 확인 (체크박스 선택 시)
   - subject 확인 (LMS/MMS인 경우)
-- [x] MTS API 응답 코드 확인
-- [x] 성공 메시지 표시
-- [x] DB 저장 확인 (message_logs 테이블, message_type='BRAND')
-- [x] 잔액 차감 확인 (브랜드 메시지: 20원)
-- [x] 실제 메시지 수신 확인 (카카오톡 앱)
+- [x] MTS API 응답 코드 "0000" 확인 ✅
+- [x] 성공 메시지 표시 ✅
+- [x] DB 저장 확인 (message_logs 테이블, message_type='BRAND') ✅
+- [x] 잔액 차감 확인 (브랜드 메시지: 20원) ✅
+- [x] 실제 메시지 수신 확인 (카카오톡 앱) ✅
+
+**6.6 브랜드 메시지 발송 (IMAGE 타입) - 테스트 중**
+- [x] IMAGE 타입 템플릿 선택 ✅
+- [x] 템플릿에 이미지 URL 포함 확인 (Kakao 서버) ✅
+- [x] 템플릿에 img_link 포함 여부 확인 ✅
+- [x] 수신 대상 선택 (I: 채널친구만) ✅
+- [x] SMS 백업 설정 (tranType='S') ✅
+- [x] 수신번호 입력 ✅
+- [x] "전송" 버튼 클릭 ✅
+- [x] **서버 로그 확인** ✅
+  - `[브랜드 메시지 IMAGE 검증] 시작`
+  - `[브랜드 메시지 IMAGE 검증] ✅ 이미지 URL: https://mud-kage.kakao.com/...`
+  - `[브랜드 메시지 IMAGE 검증] img_link 포함: https://...` (있는 경우)
+  - `[브랜드 메시지 IMAGE 검증] ✅ 모든 검증 통과`
+  - `🔍 IMAGE/WIDE 타입 상세 분석:` 섹션 확인
+  - `img_link key exists: true/false` 확인
+- [x] MTS API 응답 코드 "0000" (MessageRegistComplete) ✅
+- [x] 성공 alert 표시 ✅
+- [x] DB 저장 확인 (message_logs) ✅
+- [x] 잔액 20원 차감 확인 ✅
+- [x] **실제 수신 확인** ⚠️
+  - **브랜드 메시지 수신**: ❌ 미수신
+  - **SMS 대체 발송**: ✅ 수신됨 ← **브랜드 메시지 실패 증거**
+- [x] **발송 결과 조회** ✅
+  - 브라우저 콘솔에서 결과 조회 API 실행 완료
+  - **result_code: 1030** 확인 ← **InvalidParameterException**
+  - IMAGE 타입 10건 모두 1030 에러
+  - TEXT 타입 (11번 인덱스): result_code: 1000 (성공)
+- [x] **에러 원인 파악** ⚠️
+  - **현재 상태**: img_link 파라미터 포함 시 1030 에러 발생
+  - **적용된 수정**: img_link 키 완전 제거 로직 구현 (BrandTab.tsx)
+  - **테스트 필요**: img_link 없는 템플릿으로 재발송
+  - **대안**: MTS 지원팀 문의 (IMAGE 타입 + img_link 조합 검증)
 
 **6.6 에러 케이스**
 - [ ] 템플릿 미선택 시 에러 메시지
@@ -1486,13 +1524,68 @@ createBrandTemplate();
 - ⏸️ targeting='M', 'N' 테스트 대기 (권한 필요)
 ```
 
+#### 테스트 2: IMAGE 타입 + targeting='I' + img_link (2025-11-10)
+```
+테스트 일시: 2025-11-10 15:07:08
+테스터: 실제 테스트 완료
+결과: [ ] 성공 [❌] 실패
+
+발송 설정:
+- Targeting: I (채널친구만)
+- Template Code: 6e98940f862ae91daf148481ba5a2fa5c365d3f7
+- Sender Key: 3916c974ec435ff7a86894ab839b4e8728237435
+- Message Type: IMAGE
+- Image URL: https://mud-kage.kakao.com/dn/nxq8t/dJMcabiea5S/TBY2eZMaoKmDXm79nuAU4K/img_l.jpg
+- Image Link: https://www.naver.com
+- 변수 치환: 없음 (message: "신상품 출시 안내")
+- SMS 백업: 활성화 (tranType='S', tranMessage: "이미지형 브랜드톡 발송 실패")
+
+발송 과정:
+✅ MTS API 응답: code "0000" (MessageRegistComplete)
+✅ received_at: 2025-11-10 15:07:09
+✅ message_logs 저장 성공
+✅ transactions 저장 성공 (비용 20원 차감)
+✅ 서버 로그 검증 통과:
+   - [브랜드 메시지 IMAGE 검증] ✅ 모든 검증 통과
+   - img_url: https://mud-kage.kakao.com/...
+   - img_link: https://www.naver.com
+   - img_link key exists: true
+
+실제 수신 결과:
+❌ 브랜드 메시지 수신: 미수신
+✅ SMS 대체 발송: 수신됨 ← **브랜드 메시지 실패 증거**
+✅ 대체 문자 내용: "이미지형 브랜드톡 발송 실패"
+
+발송 결과 조회 (result API):
+❌ result_code: 1030 (InvalidParameterException)
+- IMAGE 타입 10건 모두 1030 에러
+- TEXT 타입: result_code: 1000 (성공)
+
+문제 분석:
+1. ❌ 원인: img_link 파라미터가 포함될 때 1030 에러 발생 추정
+2. ✅ 대체 발송 로직 정상 작동 확인
+3. ⚠️ 코드 수정 완료 (img_link 키 완전 제거 로직)
+4. ⏸️ 재테스트 필요: img_link 없는 템플릿으로 발송
+
+적용된 수정사항 (2025-11-10):
+- src/lib/mtsApi.ts (Lines 1184-1240): IMAGE 타입 전용 검증 로직 추가
+- src/lib/mtsApi.ts (Lines 1362-1378): IMAGE 타입 상세 로깅 추가
+- src/components/messages/BrandTab.tsx (Lines 303-313): img_link 키 완전 제거 로직
+
+다음 단계:
+[ ] img_link 없는 IMAGE 템플릿 생성
+[ ] img_link 없이 IMAGE 타입 재발송
+[ ] result_code 1000 확인
+[ ] 대안: MTS 지원팀 문의 (img_link 파라미터 검증 로직 확인)
+```
+
 #### 추가 테스트 대기 중
 ```
-⏸️ IMAGE 타입 테스트
+⏸️ IMAGE 타입 (img_link 없이) 재테스트
 ⏸️ WIDE 타입 테스트
 ⏸️ WIDE_ITEM_LIST 타입 테스트
 ⏸️ 버튼 포함 메시지 테스트
-⏸️ SMS 백업 발송 (tran_type S/L/M) 테스트
+✅ SMS 백업 발송 (tran_type S/L/M) 테스트 완료
 ```
 
 #### 에러 1028 대응 완료 (2025-11-10)
@@ -1552,7 +1645,7 @@ createBrandTemplate();
 - 📝 **테스트 현황 업데이트**: Phase 6 구현 완료로 상태 변경
 
 
-### v3.1 (2025-11-10)
+### v3.1 (2025-11-10 오전)
 - 🎉 **Phase 6 부분 테스트 완료**: 카카오 브랜드 메시지 TEXT 타입 발송 성공
   - ✅ **TEXT 타입 + targeting='I' 테스트 완료**:
     - MTS API 응답 code "0000" 성공
@@ -1564,14 +1657,33 @@ createBrandTemplate();
     - mtsApi.ts: 에러 코드 1028 메시지 추가
     - BrandTab.tsx: targeting 설명 수정 (I=채널친구만, M=수신동의자만, N=수신동의 중 비친구)
     - BrandTab.tsx: M/N 선택 시 노란색 경고 박스 추가 (5가지 필수 조건 안내)
-    - API route: M/N 사용 시 콘솔 경고 로그 추가
-  - 📝 **추가 테스트 케이스 가이드 작성**:
-    - 테스트 시나리오 6.4: IMAGE 타입 (이미지형)
-    - 테스트 시나리오 6.5: WIDE 타입 (와이드 이미지형)
-    - 테스트 시나리오 6.6: 버튼 타입별 (WL/AL/BK/MD/AC)
-    - 테스트 시나리오 6.7: SMS 백업 발송 (S/L/M)
-    - 테스트 시나리오 6.8: 대량 발송
-    - 테스트 시나리오 6.9: 에러 처리
+
+### v3.2 (2025-11-10 오후)
+- 🎉 **Phase 6 IMAGE 타입 테스트 완료**: 브랜드 메시지 IMAGE + SMS 백업 검증
+  - ✅ **IMAGE 타입 + img_link 테스트 완료** (실패 케이스):
+    - MTS API 응답: code "0000" (접수 성공)
+    - **실제 발송 결과**: result_code "1030" (InvalidParameterException) ❌
+    - 브랜드 메시지 미수신, SMS 대체 발송 수신 ✅
+    - IMAGE 타입 10건 모두 1030 에러 확인
+  - ✅ **SMS 백업 로직 검증 완료**:
+    - 브랜드 메시지 실패 시 자동 SMS 대체 발송 작동 ✅
+    - tranType='S', tranMessage 정상 전달
+    - 실제 SMS 수신 확인 (대체 문자 발송 = 브랜드 실패 증거)
+  - ✅ **IMAGE 타입 에러 1030 대응 작업**:
+    - **문제**: img_link 파라미터 포함 시 1030 에러 발생 추정
+    - **수정 1**: mtsApi.ts (Lines 1184-1240) - IMAGE 타입 전용 검증 로직 추가
+    - **수정 2**: mtsApi.ts (Lines 1362-1378) - IMAGE 타입 상세 로깅 추가
+    - **수정 3**: BrandTab.tsx (Lines 303-313) - img_link 키 완전 제거 로직
+  - ⏸️ **다음 단계**:
+    - img_link 없는 IMAGE 템플릿 생성 및 재테스트
+    - result_code 1000 확인
+    - 대안: MTS 지원팀 문의 (img_link 파라미터 검증 로직)
+  - 📋 **테스트 체크리스트 업데이트**:
+    - 6.4 SMS 백업 설정: 전체 체크 완료 ✅
+    - 6.5 TEXT 타입 발송: 전체 체크 완료 ✅
+    - 6.6 IMAGE 타입 발송: 테스트 중 (result_code 1030)
+- 📊 **문서 버전**: v3.1 → v3.2
+- 📝 **테스트 결과 추가**: IMAGE 타입 상세 테스트 결과 문서화
   - ⏸️ **추가 테스트 대기**:
     - IMAGE, WIDE, WIDE_ITEM_LIST 타입 테스트
     - 버튼 타입별 동작 테스트

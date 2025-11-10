@@ -1181,16 +1181,74 @@ export async function sendKakaoBrand(
     const cleanToNumber = toNumber.replace(/-/g, '');
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
-    // 요청 본문
+    // IMAGE 타입 특별 검증
+    if (messageType === 'IMAGE' || messageType === 'WIDE') {
+      console.log('[브랜드 메시지 IMAGE 검증] 시작');
+
+      // 1. message 필드 검증 (IMAGE는 최대 400자)
+      if (!message || message.trim().length === 0) {
+        console.error('❌ IMAGE 타입은 message 필드가 필수입니다 (최소 1자)');
+        return {
+          success: false,
+          error: 'IMAGE 타입은 message 필드가 필수입니다',
+          errorCode: 'INVALID_IMAGE_MESSAGE'
+        };
+      }
+      if (message.length > 400) {
+        console.error(`❌ IMAGE 타입 message는 최대 400자입니다 (현재: ${message.length}자)`);
+        return {
+          success: false,
+          error: `IMAGE 타입 message는 최대 400자입니다 (현재: ${message.length}자)`,
+          errorCode: 'MESSAGE_TOO_LONG'
+        };
+      }
+
+      // 2. image URL 검증
+      if (attachment?.image) {
+        if (!attachment.image.img_url) {
+          console.error('❌ IMAGE 타입은 attachment.image.img_url이 필수입니다');
+          return {
+            success: false,
+            error: 'IMAGE 타입은 이미지 URL이 필수입니다',
+            errorCode: 'MISSING_IMAGE_URL'
+          };
+        }
+
+        // Kakao 이미지 서버 URL 검증
+        if (!attachment.image.img_url.startsWith('https://mud-kage.kakao.com/')) {
+          console.warn('⚠️ 이미지 URL이 Kakao 서버가 아닙니다:', attachment.image.img_url);
+        }
+
+        console.log('[브랜드 메시지 IMAGE 검증] ✅ 이미지 URL:', attachment.image.img_url);
+
+        // img_link 검증 (선택 사항)
+        if (attachment.image.img_link) {
+          console.log('[브랜드 메시지 IMAGE 검증] img_link 포함:', attachment.image.img_link);
+        } else {
+          console.log('[브랜드 메시지 IMAGE 검증] img_link 없음 (선택사항)');
+        }
+      } else {
+        console.error('❌ IMAGE 타입은 attachment.image가 필수입니다');
+        return {
+          success: false,
+          error: 'IMAGE 타입은 이미지가 필수입니다',
+          errorCode: 'MISSING_IMAGE'
+        };
+      }
+
+      console.log('[브랜드 메시지 IMAGE 검증] ✅ 모든 검증 통과');
+    }
+
+    // 요청 본문 (전문 방식: 평평한 구조)
     const requestBody: Record<string, unknown> = {
       auth_code: MTS_AUTH_CODE,
       sender_key: senderKey,
+      send_mode: '3', // 3: 즉시발송 (전문 방식)
       template_code: templateCode,
       phone_number: cleanToNumber,
       callback_number: cleanCallbackNumber,
       message: message,
       message_type: messageType,
-      send_mode: '3', // 3: 즉시발송 (MTS API 규격서 예제 참조)
       targeting: targeting, // 필수 파라미터 (M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구)
       tran_type: tranType,
       country_code: '82',
@@ -1233,9 +1291,21 @@ export async function sendKakaoBrand(
       requestBody.subject = subject;
     }
 
-    // 예약 발송 시간이 있으면 추가
+    // send_date는 전문방식에서 필수 필드
+    // sendDate 파라미터가 없으면 현재 시간 + 1분을 YYYYMMDDHHmmss 형식으로
     if (sendDate) {
       requestBody.send_date = sendDate;
+    } else {
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000) + (1 * 60 * 1000)); // KST + 1분
+      const yyyy = kstNow.getUTCFullYear();
+      const mm = String(kstNow.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(kstNow.getUTCDate()).padStart(2, '0');
+      const hh = String(kstNow.getUTCHours()).padStart(2, '0');
+      const min = String(kstNow.getUTCMinutes()).padStart(2, '0');
+      const ss = String(kstNow.getUTCSeconds()).padStart(2, '0');
+      requestBody.send_date = `${yyyy}${mm}${dd}${hh}${min}${ss}`;
+      console.log('[브랜드 메시지] send_date 자동 생성 (필수 필드):', requestBody.send_date);
     }
 
     // 현재 시간 확인 (브랜드 메시지는 08:00-20:00만 발송 가능)
@@ -1276,8 +1346,36 @@ export async function sendKakaoBrand(
       targeting: requestBody.targeting,
       hasAttachment: 'attachment' in requestBody,
       attachmentKeys: requestBody.attachment ? Object.keys(requestBody.attachment as object) : [],
-      fullRequestBody: requestBody
+      fullRequestBody: JSON.parse(JSON.stringify(requestBody)) // Deep clone for logging
     });
+
+    // API 호출 전 실제 전송 JSON 출력
+    const requestBodyString = JSON.stringify(requestBody);
+    console.log('========================================');
+    console.log('[브랜드 메시지] 실제 전송 JSON:');
+    console.log(requestBodyString);
+    console.log('========================================');
+    console.log('[브랜드 메시지] 실제 전송 JSON (파싱):');
+    console.log(JSON.parse(requestBodyString));
+    console.log('========================================');
+
+    // IMAGE/WIDE 타입 특별 로깅
+    if (messageType === 'IMAGE' || messageType === 'WIDE') {
+      console.log('🔍 IMAGE/WIDE 타입 상세 분석:');
+      console.log('- message_type:', messageType);
+      console.log('- message length:', message.length);
+      console.log('- message content:', message);
+      console.log('- attachment.image:', requestBody.attachment ? (requestBody.attachment as { image?: unknown }).image : 'undefined');
+      console.log('- attachment keys:', requestBody.attachment ? Object.keys(requestBody.attachment as object) : []);
+
+      if (requestBody.attachment && (requestBody.attachment as { image?: { img_url?: string; img_link?: string } }).image) {
+        const img = (requestBody.attachment as { image: { img_url?: string; img_link?: string } }).image;
+        console.log('  - img_url:', img.img_url);
+        console.log('  - img_link:', img.img_link || '(없음)');
+        console.log('  - img_link key exists:', 'img_link' in img);
+      }
+      console.log('========================================');
+    }
 
     // API 호출
     const response = await fetch(`${MTS_API_URL}/btalk/send/message/basic`, {
@@ -1285,7 +1383,7 @@ export async function sendKakaoBrand(
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
       },
-      body: JSON.stringify(requestBody),
+      body: requestBodyString,
     });
 
     console.log('[브랜드 메시지] HTTP 응답 상태:', {
@@ -1294,15 +1392,24 @@ export async function sendKakaoBrand(
       ok: response.ok
     });
 
-    const result = await response.json();
-    console.log('[브랜드 메시지] MTS API 응답:', {
-      code: result.code,
-      message: result.message,
-      msg_id: result.msg_id,
-      received_at: result.received_at,
-      allKeys: Object.keys(result),
-      fullResponse: JSON.stringify(result, null, 2)
-    });
+    // 원본 응답 텍스트 먼저 로깅
+    const responseText = await response.text();
+    console.log('========================================');
+    console.log('[브랜드 메시지] MTS API 원본 응답 (텍스트):');
+    console.log(responseText);
+    console.log('========================================');
+
+    const result = JSON.parse(responseText);
+    console.log('[브랜드 메시지] MTS API 파싱된 응답 - 상세 분석:');
+    console.log('- 모든 키:', Object.keys(result));
+    console.log('- code:', result.code);
+    console.log('- message:', result.message);
+    console.log('- received_at:', result.received_at);
+    console.log('- msg_id:', result.msg_id);
+    console.log('- msgid:', result.msgid);
+    console.log('- message_id:', result.message_id);
+    console.log('- 전체 객체:', JSON.stringify(result, null, 2));
+    console.log('========================================');
 
     // 성공 확인 (0000: 브랜드 메시지 성공)
     if (result.code === '0000' || result.code === '1000') {

@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
-import { X } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { X, Upload, Trash2 } from "lucide-react";
+
+interface UploadedImage {
+  fileId: string;
+  url: string;
+  name: string;
+}
 
 interface BrandTemplateModalProps {
   isOpen: boolean;
@@ -21,10 +27,93 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageLink, setImageLink] = useState("");
+  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  // 이미지 파일 업로드 핸들러 (카카오 서버에 업로드)
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 파일 타입 검증
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowedTypes.includes(file.type)) {
+      setError("JPG, JPEG, PNG 파일만 업로드 가능합니다.");
+      return;
+    }
+
+    // 파일 크기 검증 (5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError("이미지 크기는 5MB 이하여야 합니다.");
+      return;
+    }
+
+    setIsUploading(true);
+    setError("");
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("로그인이 필요합니다.");
+      }
+
+      // FormData 생성
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("senderKey", senderKey);
+
+      // 카카오 이미지 서버에 업로드
+      const response = await fetch("/api/messages/kakao/upload-image", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "이미지 업로드 실패");
+      }
+
+      // 업로드된 이미지 정보 저장
+      setUploadedImage({
+        fileId: result.fileId,
+        url: result.url,
+        name: file.name,
+      });
+
+      // imageUrl도 함께 업데이트
+      setImageUrl(result.url);
+
+      console.log("✅ 이미지 업로드 성공:", {
+        fileId: result.fileId,
+        url: result.url,
+        name: file.name,
+      });
+    } catch (err) {
+      console.error("이미지 업로드 오류:", err);
+      setError(err instanceof Error ? err.message : "이미지 업로드 중 오류가 발생했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // 업로드된 이미지 삭제
+  const handleDeleteImage = () => {
+    setUploadedImage(null);
+    setImageUrl("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +156,11 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
       setContent("");
       setImageUrl("");
       setImageLink("");
+      setUploadedImage(null);
       setChatBubbleType("TEXT");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
       onSuccess();
     } catch (err) {
@@ -157,24 +250,71 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
             </p>
           </div>
 
-          {/* 이미지 URL (IMAGE, WIDE 타입일 때만) */}
+          {/* 이미지 업로드 (IMAGE, WIDE 타입일 때만) */}
           {(chatBubbleType === "IMAGE" || chatBubbleType === "WIDE") && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  이미지 URL {chatBubbleType === "IMAGE" && <span className="text-red-500">*</span>}
+                  이미지 첨부 {chatBubbleType === "IMAGE" && <span className="text-red-500">*</span>}
                 </label>
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                  required={chatBubbleType === "IMAGE"}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  권장: 800x400px (2:1 비율)
-                </p>
+
+                {/* 파일 업로드 버튼 */}
+                {!uploadedImage && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="w-8 h-8 text-gray-400" />
+                        <span className="text-sm text-gray-600">
+                          {isUploading ? "업로드 중..." : "이미지 선택 (JPG, JPEG, PNG)"}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          권장: 800x400px (2:1 비율), 최대 5MB
+                        </span>
+                      </div>
+                    </button>
+                  </>
+                )}
+
+                {/* 이미지 미리보기 */}
+                {uploadedImage && (
+                  <div className="border border-gray-300 rounded-lg p-4">
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={uploadedImage.url}
+                        alt="업로드된 이미지"
+                        className="w-32 h-16 object-cover rounded border border-gray-200"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-700 truncate">
+                          {uploadedImage.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1 break-all">
+                          {uploadedImage.url}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDeleteImage}
+                        className="flex-shrink-0 p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="이미지 삭제"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -188,6 +328,9 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                   placeholder="https://example.com/promotion"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  이미지를 클릭했을 때 이동할 웹페이지 URL을 입력하세요
+                </p>
               </div>
             </>
           )}
