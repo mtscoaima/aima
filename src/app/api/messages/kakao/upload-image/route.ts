@@ -102,10 +102,6 @@ export async function POST(req: NextRequest) {
 
       buf = Buffer.from(converted);
 
-      console.log('[Kakao 이미지 최적화 완료]');
-      console.log(`원본: ${width}x${height}px`);
-      console.log(`변환: ${resizeWidth}x${targetHeight}px (2:1 비율)`);
-      console.log(`크기: ${buf.length} bytes (${Math.round(buf.length / 1024)}KB)`);
     } catch (err) {
       console.error('이미지 변환 실패:', err);
       return NextResponse.json({ error: "이미지 변환 실패" }, { status: 500 });
@@ -129,12 +125,6 @@ export async function POST(req: NextRequest) {
     const blob = new Blob([buf], { type: 'image/jpeg' });
     formData.append('image', blob, 'image.jpg');
 
-    console.log('========================================');
-    console.log('[Kakao 이미지 업로드 API 호출]');
-    console.log('시간:', new Date().toISOString());
-    console.log('엔드포인트:', `${MTS_TEMPLATE_API_URL}/mts/api/image/alimtalk/template`);
-    console.log('senderKey:', senderKey);
-    console.log('파일 크기:', buf.length, 'bytes');
 
     const res = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/image/alimtalk/template`, {
       method: 'POST',
@@ -143,9 +133,6 @@ export async function POST(req: NextRequest) {
 
     const responseText = await res.text();
 
-    console.log('MTS API 응답 상태:', res.status);
-    console.log('MTS API 응답 본문:', responseText);
-    console.log('========================================');
 
     if (!res.ok) {
       console.error('MTS Kakao 이미지 업로드 실패:', res.status, responseText);
@@ -160,10 +147,6 @@ export async function POST(req: NextRequest) {
 
     const data = JSON.parse(responseText);
 
-    console.log('========================================');
-    console.log('[MTS Kakao 이미지 업로드 API 전체 응답]');
-    console.log(JSON.stringify(data, null, 2));
-    console.log('========================================');
 
     // MTS API 응답 검증
     if (data.code !== '0000') {
@@ -190,8 +173,6 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log('MTS Kakao 이미지 업로드 성공!');
-    console.log('Kakao 이미지 URL:', imageUrl);
 
     return NextResponse.json({
       success: true,

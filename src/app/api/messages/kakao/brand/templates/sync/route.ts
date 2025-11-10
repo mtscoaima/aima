@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[브랜드 템플릿 동기화] 시작:', { userId, senderKey });
 
     // Supabase 클라이언트 생성
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`[브랜드 템플릿 동기화] ${templates.length}개 템플릿 동기화 시작`);
 
     let syncedCount = 0;
     let failedCount = 0;
@@ -69,7 +67,6 @@ export async function POST(request: NextRequest) {
     // 각 템플릿에 대해 MTS API로 최신 정보 조회
     for (const template of templates) {
       try {
-        console.log(`[브랜드 템플릿 동기화] 조회 중: ${template.template_code}`);
 
         const result = await getMtsBrandTemplate(template.template_code);
 
@@ -100,7 +97,6 @@ export async function POST(request: NextRequest) {
               error: updateError.message,
             });
           } else {
-            console.log(`[브랜드 템플릿 동기화] 성공: ${template.template_code} (status: ${mtsData.status})`);
             syncedCount++;
             results.push({
               template_code: template.template_code,
@@ -128,7 +124,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[브랜드 템플릿 동기화] 완료:', { syncedCount, failedCount });
 
     return NextResponse.json({
       success: true,

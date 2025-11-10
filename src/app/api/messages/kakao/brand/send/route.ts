@@ -51,29 +51,15 @@ const supabase = createClient(
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('[브랜드 메시지 API] 요청 수신');
-
     // JWT 인증 확인
     const authResult = validateAuthWithSuccess(request);
-    console.log('[브랜드 메시지 API] 인증 결과:', {
-      isValid: authResult.isValid,
-      hasUserInfo: !!authResult.userInfo,
-      userId: authResult.userInfo?.userId
-    });
 
     if (!authResult.isValid || !authResult.userInfo) {
-      console.error('[브랜드 메시지 API] 인증 실패');
       return authResult.errorResponse;
     }
 
     const { userId } = authResult.userInfo;
     const body = await request.json();
-    console.log('[브랜드 메시지 API] 요청 본문:', {
-      senderKey: body.senderKey,
-      templateCode: body.templateCode,
-      recipientsCount: body.recipients?.length,
-      targeting: body.targeting
-    });
 
     // 필수 파라미터 검증
     const {
@@ -157,12 +143,6 @@ export async function POST(request: NextRequest) {
     const costPerMessage = 20;
     const totalCost = recipients.length * costPerMessage;
 
-    console.log('[브랜드 메시지 API] 비용 계산:', {
-      recipientsCount: recipients.length,
-      costPerMessage,
-      totalCost
-    });
-
     // 발송 결과 저장
     const results = [];
     let successCount = 0;
@@ -189,13 +169,6 @@ export async function POST(request: NextRequest) {
           sendDate
         );
 
-        console.log('[브랜드 메시지 API] 발송 결과:', {
-          recipient: recipient.phone_number,
-          success: result.success,
-          msgId: result.msgId,
-          error: result.error
-        });
-
         if (result.success) {
           successCount++;
         } else {
@@ -211,7 +184,6 @@ export async function POST(request: NextRequest) {
         });
 
         // DB에 발송 이력 저장
-        console.log('[브랜드 메시지 API] message_logs 저장 시작');
         const { error: logError } = await supabase.from('message_logs').insert({
           user_id: userId,
           message_type: 'KAKAO_BRAND',
@@ -237,8 +209,6 @@ export async function POST(request: NextRequest) {
 
         if (logError) {
           console.error('[브랜드 메시지 API] message_logs 저장 실패:', logError);
-        } else {
-          console.log('[브랜드 메시지 API] message_logs 저장 성공');
         }
 
         // 성공 시 transactions 테이블에 사용 내역 기록 (성공 건수는 나중에 집계)
@@ -279,7 +249,6 @@ export async function POST(request: NextRequest) {
 
     // 성공한 건수가 있으면 transactions에 한번에 기록
     if (successCount > 0) {
-      console.log('[브랜드 메시지 API] transactions 저장 시작:', `${successCount}건`);
       const { error: txError } = await supabase.from('transactions').insert({
         user_id: userId,
         type: 'usage',
@@ -295,8 +264,6 @@ export async function POST(request: NextRequest) {
 
       if (txError) {
         console.error('[브랜드 메시지 API] transactions 저장 실패:', txError);
-      } else {
-        console.log('[브랜드 메시지 API] transactions 저장 성공');
       }
     }
 

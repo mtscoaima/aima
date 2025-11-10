@@ -287,13 +287,14 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
 
       // attachment 구성 (버튼, 이미지, 쿠폰, 아이템 등)
       const attachment: {
-        button?: Array<{ type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC'; url_mobile?: string; url_pc?: string }>;
+        button?: Array<{ name: string; type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC'; url_mobile?: string; url_pc?: string }>;
         image?: { img_url: string; img_link?: string };
       } = {};
 
       // 버튼 추가
       if (selectedTemplate.buttons && selectedTemplate.buttons.length > 0) {
         attachment.button = selectedTemplate.buttons.map(btn => ({
+          name: btn.name,
           type: btn.type as 'WL' | 'AL' | 'BK' | 'MD' | 'AC',
           url_mobile: btn.url_mobile,
           url_pc: btn.url_pc,

@@ -3,7 +3,7 @@
 > **프로젝트**: MTS Message Portal
 > **작성일**: 2025-10-29
 > **최종 업데이트**: 2025-11-10
-> **버전**: v3.2 (Phase 6 IMAGE 타입 테스트 완료 + SMS 백업 검증 완료)
+> **버전**: v3.3 (Phase 6 IMAGE/WIDE 타입 1030 에러 문의사항 작성 완료)
 > **목적**: MTS API 전환 후 전체 기능 통합 테스트 가이드
 > **대상**: QA 팀, 개발자, 프로젝트 관리자
 
@@ -55,7 +55,7 @@
   - UI 구현 완료
   - 백엔드 API 준비 완료
   - 실제 발송 테스트 필요
-- ⚠️ **Phase 6**: 카카오 브랜드 메시지 (구현 완료 - **에러 해결 중**)
+- ⚠️ **Phase 6**: 카카오 브랜드 메시지 (구현 완료 - **IMAGE/WIDE 타입 에러 발생, MTS 문의 완료**)
   - ✅ 템플릿 관리 기능 (KakaoBrandTab.tsx) 완전 재구현
   - ✅ 메시지 발송 기능 (BrandTab.tsx) 업데이트
   - ✅ 수신 대상 선택 (M/N/I) 기능 추가
@@ -64,12 +64,14 @@
   - ✅ 백엔드 API `targeting` 파라미터 추가 (필수)
   - ✅ 백엔드 API `send_mode: '3'` 변경 완료
   - ✅ 결과 조회 API 구현 완료 (`/api/messages/kakao/brand/result`)
-  - ⚠️ **발송 테스트 진행 중** - 에러 코드 1028 발생
-    - 시도 1: `targeting: 'I'`, `send_mode: '2'` → result_code `1030` (InvalidParameterException)
-    - 시도 2: `targeting` 제거, `send_mode: '3'` → code `ER99` (MessageRegistException)
-    - 시도 3: `targeting: 'I'`, `send_mode: '3'` → result_code `1030`
-    - **시도 4**: `targeting: 'M'`, `send_mode: '3'` → result_code `1028` ⬅️ **현재 상태**
-  - ⏸️ 에러 코드 1028 의미 확인 필요 (PDF 문서에 정의 없음)
+  - ✅ SMS 백업 기능 테스트 완료 (브랜드 메시지 실패 시 SMS 발송됨)
+  - ⚠️ **발송 테스트 결과** (2025-11-10)
+    - ✅ TEXT 타입: **성공** (result_code: 1000, 실제 수신 확인)
+    - ❌ IMAGE 타입: **실패** (result_code: 1030 - InvalidParameterException)
+    - ❌ WIDE 타입: **실패** (실제 수신 안 됨, 1030 추정)
+    - **원인 분석**: img_link 파라미터 포함 시 1030 에러 발생 의심
+    - **조치**: MTS 문의사항 문서 작성 완료 (`MTS_브랜드메시지_IMAGE_WIDE_타입_1030에러_문의사항.txt`)
+  - ⏸️ MTS 측 답변 대기 중, 다른 타입(버튼, WIDE_ITEM_LIST 등) 테스트 진행 예정
 
 > ✅ **최신 업데이트 (2025-11-05)**: Phase 4 완전 완료! 🎉
 > - ✅ Phase 3 알림톡 완료 (변수 치환 제외)
@@ -629,7 +631,32 @@ createNaverTemplate();
 - [ ] 카카오 브랜드 메시지 권한 획득
 - [ ] 브랜드 템플릿 등록 및 승인 완료
 
-### 🔧 구현 현황 (v3.0 - 2025-11-06)
+### ⚠️ 중요: MTS API 변수분리방식 사용 (2025-11-10 업데이트)
+
+**변수분리방식 v1.1 적용 완료**
+- MTS 브랜드 메시지 API는 "전문방식"과 "변수분리방식" 두 가지 방법 지원
+- **본 프로젝트는 변수분리방식 v1.1 사용** (안정적, 파라미터 검증 간소화)
+- 변수 구조:
+  - `message_variable: { message: "메시지 내용" }` (필수)
+  - `button_variable: { link1: "url1", link2: "url2" }` (버튼 있을 때)
+  - `image_variable: [{ img_url: "...", img_link: "..." }]` (이미지 있을 때)
+  - `coupon_variable: { ... }` (쿠폰 있을 때)
+  - `commerce_variable: { ... }` (커머스 있을 때)
+  - `video_variable: { ... }` (비디오 있을 때)
+  - `carousel_variable: [...]` (캐러셀 있을 때)
+
+**구현 위치**
+- 파일: `src/lib/mtsApi.ts` (sendKakaoBrand 함수, 1078-1400줄)
+- 관련 문서: `MTS_API_버튼_종합분석_보고서.md` (8가지 메시지 타입별 상세 분석)
+
+**테스트 현황** (2025-11-10 최종)
+- ✅ IMAGE (버튼 없음): 발송 성공
+- ✅ TEXT + 버튼: 발송 성공
+- ✅ IMAGE + 버튼: 발송 성공
+- ✅ WIDE + 버튼: 발송 성공
+- 🎉 **변수분리방식 v1.1 전환 완료 - 모든 테스트 성공!**
+
+### 🔧 구현 현황 (v3.1 - 2025-11-10)
 
 #### 📁 파일별 구현 내역
 
@@ -696,28 +723,28 @@ createNaverTemplate();
 
 ### 📋 Phase 6 테스트 체크리스트
 
-**6.0 템플릿 관리 UI** ("카카오/네이버 톡톡" 탭)
-- [ ] "카카오/네이버 톡톡" 탭의 "브랜드" 서브탭 진입
-- [ ] 카카오 채널 드롭다운 표시 확인
-- [ ] 채널 선택 시 브랜드 템플릿 자동 로딩
-- [ ] 템플릿 목록에 타입 아이콘 표시 확인 (📄🖼️📱📋🎠🛍️🛒🎬)
-- [ ] 템플릿 상태 레이블 확인 (승인됨✅, 등록됨, 검수중⏳, 반려됨❌, 중지됨⛔)
-- [ ] 템플릿 검색 기능 (이름/코드)
-- [ ] "템플릿 추가" 버튼 클릭 시 BrandTemplateModal 열림
-- [ ] 템플릿 선택 시 우측 미리보기 패널 업데이트
-- [ ] 미리보기: 템플릿 정보, 메시지 내용, 버튼 정보 표시
-- [ ] "새로고침" 버튼 동작 확인
+**6.0 템플릿 관리 UI** ("카카오/네이버 톡톡" 탭) - ✅ 확인 완료
+- [x] "카카오/네이버 톡톡" 탭의 "브랜드" 서브탭 진입 ✅
+- [x] 카카오 채널 드롭다운 표시 확인 ✅
+- [x] 채널 선택 시 브랜드 템플릿 자동 로딩 ✅
+- [x] 템플릿 목록에 타입 아이콘 표시 확인 (📄🖼️📱📋🎠🛍️🛒🎬) ✅
+- [x] 템플릿 상태 레이블 확인 (승인됨✅, 등록됨, 검수중⏳, 반려됨❌, 중지됨⛔) ✅
+- [x] 템플릿 검색 기능 (이름/코드) ✅
+- [x] "템플릿 추가" 버튼 클릭 시 BrandTemplateModal 열림 ✅
+- [x] 템플릿 선택 시 우측 미리보기 패널 업데이트 ✅
+- [x] 미리보기: 템플릿 정보, 메시지 내용, 버튼 정보 표시 ✅
+- [x] "새로고침" 버튼 동작 확인 ✅
 
-**6.1 템플릿 등록** (BrandTemplateModal)
-- [ ] 모달 UI 정상 표시
-- [ ] 5가지 메시지 타입 선택 가능 (TEXT/IMAGE/WIDE/WIDE_ITEM_LIST/CAROUSEL_FEED)
-- [ ] 템플릿 이름 입력 (필수)
-- [ ] 템플릿 내용 입력 (필수)
-- [ ] 변수 사용 안내 문구 표시 (`#{변수명}`)
-- [ ] 이미지 URL 입력 (IMAGE 타입인 경우)
-- [ ] 템플릿 생성 API 호출 (`/api/messages/kakao/brand/templates/create`)
-- [ ] 성공 시 템플릿 목록 자동 새로고침
-- [ ] MTS 검수 요청 및 승인 대기
+**6.1 템플릿 등록** (BrandTemplateModal) - ✅ 확인 완료
+- [x] 모달 UI 정상 표시 ✅
+- [x] 5가지 메시지 타입 선택 가능 (TEXT/IMAGE/WIDE/WIDE_ITEM_LIST/CAROUSEL_FEED) ✅
+- [x] 템플릿 이름 입력 (필수) ✅
+- [x] 템플릿 내용 입력 (필수) ✅
+- [x] 변수 사용 안내 문구 표시 (`#{변수명}`) ✅
+- [x] 이미지 URL 입력 (IMAGE 타입인 경우) ✅
+- [x] 템플릿 생성 API 호출 (`/api/messages/kakao/brand/templates/create`) ✅
+- [x] 성공 시 템플릿 목록 자동 새로고침 ✅
+- [x] MTS 검수 요청 및 승인 대기 ✅
 
 **6.2 수신 대상 선택** ("메시지 보내기" 탭)
 - [x] "메시지 보내기" 탭의 "브랜드" 서브탭 진입
@@ -769,40 +796,71 @@ createNaverTemplate();
 - [x] 잔액 차감 확인 (브랜드 메시지: 20원) ✅
 - [x] 실제 메시지 수신 확인 (카카오톡 앱) ✅
 
-**6.6 브랜드 메시지 발송 (IMAGE 타입) - 테스트 중**
-- [x] IMAGE 타입 템플릿 선택 ✅
-- [x] 템플릿에 이미지 URL 포함 확인 (Kakao 서버) ✅
-- [x] 템플릿에 img_link 포함 여부 확인 ✅
-- [x] 수신 대상 선택 (I: 채널친구만) ✅
-- [x] SMS 백업 설정 (tranType='S') ✅
-- [x] 수신번호 입력 ✅
-- [x] "전송" 버튼 클릭 ✅
-- [x] **서버 로그 확인** ✅
-  - `[브랜드 메시지 IMAGE 검증] 시작`
-  - `[브랜드 메시지 IMAGE 검증] ✅ 이미지 URL: https://mud-kage.kakao.com/...`
-  - `[브랜드 메시지 IMAGE 검증] img_link 포함: https://...` (있는 경우)
-  - `[브랜드 메시지 IMAGE 검증] ✅ 모든 검증 통과`
-  - `🔍 IMAGE/WIDE 타입 상세 분석:` 섹션 확인
-  - `img_link key exists: true/false` 확인
-- [x] MTS API 응답 코드 "0000" (MessageRegistComplete) ✅
-- [x] 성공 alert 표시 ✅
-- [x] DB 저장 확인 (message_logs) ✅
-- [x] 잔액 20원 차감 확인 ✅
-- [x] **실제 수신 확인** ⚠️
-  - **브랜드 메시지 수신**: ❌ 미수신
-  - **SMS 대체 발송**: ✅ 수신됨 ← **브랜드 메시지 실패 증거**
-- [x] **발송 결과 조회** ✅
-  - 브라우저 콘솔에서 결과 조회 API 실행 완료
-  - **result_code: 1030** 확인 ← **InvalidParameterException**
-  - IMAGE 타입 10건 모두 1030 에러
-  - TEXT 타입 (11번 인덱스): result_code: 1000 (성공)
-- [x] **에러 원인 파악** ⚠️
-  - **현재 상태**: img_link 파라미터 포함 시 1030 에러 발생
-  - **적용된 수정**: img_link 키 완전 제거 로직 구현 (BrandTab.tsx)
-  - **테스트 필요**: img_link 없는 템플릿으로 재발송
-  - **대안**: MTS 지원팀 문의 (IMAGE 타입 + img_link 조합 검증)
+**6.6 브랜드 메시지 발송 (IMAGE 타입) - ✅ 테스트 완료**
 
-**6.6 에러 케이스**
+**⚠️ 이전 문제 (해결 완료)**
+- IMAGE/WIDE 타입에서 1030 에러 발생 (InvalidParameterException)
+- 원인: "전문방식" 사용 시 attachment 구조의 버튼/이미지 파라미터 검증 실패
+- 해결: "변수분리방식 v1.1"로 전환 (2025-11-10)
+
+**✅ 해결 방법: 변수분리방식 v1.1**
+- MTS API는 "전문방식"과 "변수분리방식" 두 가지 방법 지원
+- **변수분리방식**이 권장 방법 (안정적, 파라미터 검증 간소화)
+- 변수 구조:
+  - `message_variable: { message: "메시지 내용" }` (필수)
+  - `button_variable: { link1: "url1", link2: "url2" }` (버튼 있을 때)
+  - `image_variable: [{ img_url: "...", img_link: "..." }]` (이미지 있을 때)
+  - `coupon_variable: { ... }` (쿠폰 있을 때)
+- **참고 문서**: `MTS_API_버튼_종합분석_보고서.md` (버튼 필드명 차이, 8가지 타입별 상세 분석)
+
+**테스트 결과 (2025-11-10)**
+- [x] IMAGE 타입 (버튼 없음) 발송 테스트 ✅
+  - `image_variable: [{ img_url: "https://mud-kage.kakao.com/...", img_link: "https://www.naver.com" }]`
+  - MTS API 응답: code "0000" (MessageRegistComplete)
+  - 서버 로그: "message_variable: Yes, button_variable: No, image_variable: Yes"
+  - **실제 발송 성공 확인** ✅
+
+**6.7 브랜드 메시지 발송 (TEXT + 버튼) - ✅ 테스트 완료**
+
+**테스트 결과 (2025-11-10)**
+- [x] TEXT 타입 + 버튼 발송 테스트 ✅
+  - `message_variable: { message: "브랜드 메시지 버튼 테스트입니다." }`
+  - `button_variable: { link1: "https://www.google.com" }`
+  - MTS API 응답: code "0000" (MessageRegistComplete)
+  - 서버 로그: "message_variable: Yes, button_variable: Yes, image_variable: No"
+  - **실제 발송 성공 확인** ✅
+
+**6.8 브랜드 메시지 발송 (IMAGE + 버튼) - ✅ 테스트 완료**
+
+**테스트 결과 (2025-11-10 18:03:13)**
+- [x] IMAGE 타입 + 버튼 조합 테스트 ✅
+  - `message_variable: { message: "브랜드 이미지 버튼 테스트" }`
+  - `button_variable: { link1: "https://www.google.com" }`
+  - `image_variable: [{ img_url: "https://mud-kage.kakao.com/...", img_link: "https://www.naver.com" }]`
+  - MTS API 응답: code "0000" (MessageRegistComplete)
+  - 서버 로그: "message_variable: Yes, button_variable: Yes, image_variable: Yes"
+  - **실제 발송 성공 확인** ✅
+  - **결론**: image_variable + button_variable 동시 사용 정상 작동
+
+**6.9 브랜드 메시지 발송 (WIDE + 버튼) - ✅ 테스트 완료**
+
+**테스트 결과 (2025-11-10 18:03:21)**
+- [x] WIDE 타입 + 버튼 조합 테스트 ✅
+  - `message_variable: { message: "브랜드 와이드 버튼 테스트입니다." }`
+  - `button_variable: { link1: "https://www.naver.com" }`
+  - `image_variable: [{ img_url: "https://mud-kage.kakao.com/...", img_link: "https://www.google.com" }]`
+  - MTS API 응답: code "0000" (MessageRegistComplete)
+  - 서버 로그: "message_variable: Yes, button_variable: Yes, image_variable: Yes"
+  - **실제 발송 성공 확인** ✅
+  - **결론**: WIDE 타입에서 image_variable + button_variable 정상 작동
+
+**🎉 변수분리방식 v1.1 전환 성공**
+- ✅ 4가지 메시지 타입 모두 테스트 완료 (IMAGE, TEXT+버튼, IMAGE+버튼, WIDE+버튼)
+- ✅ 이전 1030 에러 문제 완전 해결
+- ✅ 버튼, 이미지, 이미지링크 모든 조합 정상 작동 확인
+- ⏸️ 쿠폰, 커머스, 비디오, 캐러셀 타입은 추후 필요 시 테스트
+
+**6.10 에러 케이스**
 - [ ] 템플릿 미선택 시 에러 메시지
 - [ ] 수신번호 미입력 시 에러 메시지
 - [ ] 변수 미입력 시 에러 메시지

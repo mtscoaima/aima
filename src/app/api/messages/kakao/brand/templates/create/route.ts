@@ -96,6 +96,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 카카오 브랜드 메시지 템플릿 생성 API 호출
+    // 버튼 형식 변환은 mtsApi.ts에서 처리
+    // DB 저장: Frontend 형식 (type, url_mobile, url_pc)
     const result = await createBrandTemplate(
       authResult.userInfo.userId,
       senderKey,
@@ -108,7 +110,7 @@ export async function POST(request: NextRequest) {
       imageUrl,
       imageName,
       imageLink,
-      buttons
+      buttons // Frontend 형식 그대로 전달
     );
 
     if (result.success) {

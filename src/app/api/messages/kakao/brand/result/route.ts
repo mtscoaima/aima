@@ -14,8 +14,6 @@ import { getBrandMessageResult } from '@/lib/mtsApi';
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('[브랜드 메시지 결과 조회 API] 요청 수신');
-
     // JWT 인증 확인
     const authResult = validateAuthWithSuccess(request);
     if (!authResult.isValid || !authResult.userInfo) {
@@ -53,13 +51,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('[브랜드 메시지 결과 조회 API] 요청 파라미터:', {
-      senderKey,
-      sendDate,
-      page,
-      count,
-    });
-
     // MTS API 호출
     const result = await getBrandMessageResult(senderKey, sendDate, page, count);
 
@@ -91,11 +82,6 @@ export async function GET(request: NextRequest) {
         [key: string]: unknown;
       }>;
     };
-
-    console.log('[브랜드 메시지 결과 조회 API] 성공:', {
-      dataCount: responseData.data?.length || 0,
-      receivedAt: responseData.received_at,
-    });
 
     return NextResponse.json({
       success: true,

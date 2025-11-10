@@ -203,10 +203,6 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       formData.append("file", file);
       formData.append("senderKey", selectedProfile); // Kakao 업로드 API는 senderKey 필수
 
-      console.log('[친구톡 이미지 업로드 시작]');
-      console.log('senderKey:', selectedProfile);
-      console.log('파일명:', file.name);
-      console.log('파일 크기:', file.size, 'bytes');
 
       // Kakao 전용 이미지 업로드 API 호출
       // MTS 서버 이미지는 Kakao에서 접근 불가하므로 Kakao 서버에 업로드
@@ -242,8 +238,6 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         },
       ]);
 
-      console.log('[친구톡 Kakao 이미지 업로드 성공]');
-      console.log('Kakao 이미지 URL:', data.imageUrl);
     } catch (error) {
       console.error('[친구톡 이미지 업로드 실패]', error);
       setErrorMessage(error instanceof Error ? error.message : '이미지 업로드 실패');

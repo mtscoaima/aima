@@ -56,7 +56,6 @@ const NaverTemplateTab = () => {
   };
 
   const handleSuccess = () => {
-    console.log("템플릿 생성 성공");
     fetchTemplates(); // 목록 새로고침
   };
 

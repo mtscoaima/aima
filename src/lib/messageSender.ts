@@ -155,7 +155,6 @@ export async function sendMessage(
   if (!sendResult.success) {
     // 즉시 실패: 아직 차감하지 않았으므로 환불 불필요
     // 에러 코드 로깅 (ER15: 메시지 크기 초과, ER17: 미등록 발신번호 등)
-    console.log(`[발송 실패] 에러 코드: ${sendResult.errorCode}, 메시지: ${sendResult.error}`);
 
     // TODO: 전송 결과 API 연동 시, 비동기 전달 실패 케이스 처리
     // 1. 발송 성공 후 차감 완료
@@ -426,7 +425,6 @@ export async function refundBalance(
       return false;
     }
 
-    console.log(`[환불 완료] 사용자 ${userId}: ${amount}원 (사유: ${reason})`);
     return true;
   } catch (error) {
     console.error('잔액 환불 예외:', error);

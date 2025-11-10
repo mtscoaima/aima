@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
     const shouldSync = forceSync || shouldAutoSync(templates || []);
 
     if (shouldSync && templates && templates.length > 0) {
-      console.log(`[브랜드 템플릿 조회] 자동 동기화 시작 (강제: ${forceSync})`);
 
       // 백그라운드에서 동기화 (Promise 반환 없이)
       syncTemplatesInBackground(supabase, templates);
@@ -129,7 +128,6 @@ async function syncTemplatesInBackground(
             })
             .eq('id', template.id);
 
-          console.log(`[백그라운드 동기화] 성공: ${template.template_code}`);
         }
       } catch (err) {
         console.error(`[백그라운드 동기화] 실패: ${template.template_code}`, err);
