@@ -51,6 +51,8 @@ const MTS_ERROR_MESSAGES: Record<string, string> = {
   '1022': '닫힘 상태의 카카오톡 채널',
   '1023': '삭제된 카카오톡 채널',
   '1025': '채널 제재 상태로 인한 메시지 전송 실패',
+  '1028': '타게팅 옵션(M/N)을 사용할 수 없습니다. 필수 조건: 비즈니스 인증, 5만+ 친구수, 수신동의 파일, 알림톡 발송이력. 테스트는 타게팅 I(채널친구만)를 사용하세요.',
+  '1030': '파라미터 오류 (InvalidParameterException)',
 
   // 메시지 전송 오류 (3xxx)
   '3005': '메시지를 발송했으나 수신확인 안됨 (성공 불확실)',
@@ -1137,7 +1139,7 @@ export async function sendKakaoBrand(
   message: string,
   callbackNumber: string,
   messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' = 'TEXT',
-  targeting: 'M' | 'N' | 'I' = 'M',
+  targeting: 'M' | 'N' | 'I' = 'I', // 기본값 'I': 채널친구만. M/N은 5만+ 친구수 등 조건 필요
   attachment?: {
     button?: Array<{
       type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC';

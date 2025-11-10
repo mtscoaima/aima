@@ -134,6 +134,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Targeting 검증 및 경고
+    if (targeting === 'M' || targeting === 'N') {
+      console.warn(`⚠️ [브랜드 메시지] M/N 타게팅 사용됨. 필수 조건 확인 필요:`, {
+        targeting,
+        requirements: [
+          '비즈니스 인증받은 채널',
+          '채널 전화번호 등록',
+          '채널 친구수 5만 이상',
+          '광고성 정보 수신동의 증적파일',
+          '3개월 이내 알림톡 발송이력'
+        ],
+        warning: '조건 미충족 시 에러 1028 발생',
+        recommendation: '테스트는 targeting=I 사용 권장'
+      });
+    }
+
     // 예약 발송 시간 변환 (있는 경우)
     const sendDate = scheduledAt ? convertToMtsDateFormat(scheduledAt) : undefined;
 

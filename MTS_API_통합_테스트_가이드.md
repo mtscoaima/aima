@@ -2,8 +2,8 @@
 
 > **프로젝트**: MTS Message Portal
 > **작성일**: 2025-10-29
-> **최종 업데이트**: 2025-11-06
-> **버전**: v3.0 (Phase 6 브랜드 메시지 구현 완료)
+> **최종 업데이트**: 2025-11-10
+> **버전**: v3.1 (Phase 6 브랜드 메시지 부분 테스트 완료 + 추가 케이스 가이드)
 > **목적**: MTS API 전환 후 전체 기능 통합 테스트 가이드
 > **대상**: QA 팀, 개발자, 프로젝트 관리자
 
@@ -113,7 +113,7 @@
 | **Phase 5** | 네이버 톡톡 발송 | ✅ | ✅ | ❌ | **미테스트** |
 | | 템플릿 조회/선택 | ✅ | ✅ | ❌ | **미테스트** |
 | | 변수 치환 | ✅ | ✅ | ❌ | **미테스트** |
-| **Phase 6** | 브랜드 메시지 발송 | ✅ | ✅ | ❌ | **테스트 대기** |
+| **Phase 6** | 브랜드 메시지 발송 | ✅ | ✅ | ✅ (TEXT+I) | **부분 완료** |
 | | 템플릿 관리 (등록/조회) | ✅ | ✅ | ❌ | **테스트 대기** |
 | | 수신 대상 선택 (M/N/I) | ✅ | ✅ | ❌ | **테스트 대기** |
 | | 변수 치환 | ✅ | ✅ | ❌ | **테스트 대기** |
@@ -720,19 +720,20 @@ createNaverTemplate();
 - [ ] MTS 검수 요청 및 승인 대기
 
 **6.2 수신 대상 선택** ("메시지 보내기" 탭)
-- [ ] "메시지 보내기" 탭의 "브랜드" 서브탭 진입
-- [ ] 수신 대상 3개 버튼 표시: M (수신동의), N (수신동의+채널친구), I (전체+채널친구)
-- [ ] 각 버튼 선택 시 동적 설명 문구 변경 확인:
+- [x] "메시지 보내기" 탭의 "브랜드" 서브탭 진입
+- [x] 수신 대상 3개 버튼 표시: I (채널친구만), M (수신동의자만), N (수신동의 중 비친구)
+- [x] 각 버튼 선택 시 동적 설명 문구 변경 확인:
   - I: "현재 수신번호 내에서 카카오 채널 친구추가한 사용자에게 발송합니다."
   - M: "현재 수신번호 내에서 카카오톡 수신 동의한 사용자에게 발송합니다."
-  - N: "현재 수신번호 내에서 카카오톡 수신 동의 + 채널 친구인 사용자에게 발송합니다."
-- [ ] 기본값 'I' 선택 확인
+  - N: "현재 수신번호 내에서 카카오톡 수신 동의했지만 채널 친구가 아닌 사용자에게 발송합니다."
+- [x] 기본값 'I' 선택 확인
+- [x] M/N 선택 시 노란색 경고 박스 표시 (5가지 필수 조건 안내)
 
 **6.3 변수 치환**
-- [ ] 변수 포함 템플릿 선택 (예: `#{이름}님 안녕하세요`)
-- [ ] 변수 입력 필드 자동 생성 확인
-- [ ] 변수 값 입력 (예: 이름=홍길동)
-- [ ] 템플릿 미리보기에서 치환된 내용 확인
+- [x] 변수 포함 템플릿 선택 (예: `#{이름}님 안녕하세요`)
+- [x] 변수 입력 필드 자동 생성 확인
+- [x] 변수 값 입력 (예: 이름=윤건, 날짜=2025-11-10)
+- [x] 템플릿 미리보기에서 치환된 내용 확인
 - [ ] 여러 수신자에게 다른 변수 값 적용 가능 확인
 
 **6.4 SMS 백업 설정**
@@ -746,22 +747,22 @@ createNaverTemplate();
 - [ ] 체크박스 해제 시 tranType='N' 확인
 
 **6.5 브랜드 메시지 발송**
-- [ ] 템플릿 선택
-- [ ] 수신 대상 선택 (M/N/I)
-- [ ] 변수 값 입력 (변수 있는 경우)
+- [x] 템플릿 선택
+- [x] 수신 대상 선택 (M/N/I)
+- [x] 변수 값 입력 (변수 있는 경우)
 - [ ] SMS 백업 설정 (선택)
-- [ ] 수신번호 입력 (콤마 구분 복수 입력 가능)
-- [ ] "전송" 버튼 클릭
-- [ ] MTS API 요청 확인 (Network 탭)
+- [x] 수신번호 입력 (콤마 구분 복수 입력 가능)
+- [x] "전송" 버튼 클릭
+- [x] MTS API 요청 확인 (Network 탭)
   - targeting 파라미터 확인 (M/N/I)
   - tranType 파라미터 확인 (N/S/L/M)
   - tranMessage 확인 (체크박스 선택 시)
   - subject 확인 (LMS/MMS인 경우)
-- [ ] MTS API 응답 코드 확인
-- [ ] 성공 메시지 표시
-- [ ] DB 저장 확인 (message_logs 테이블, message_type='BRAND')
-- [ ] 잔액 차감 확인 (브랜드 메시지: 20원)
-- [ ] 실제 메시지 수신 확인 (카카오톡 앱)
+- [x] MTS API 응답 코드 확인
+- [x] 성공 메시지 표시
+- [x] DB 저장 확인 (message_logs 테이블, message_type='BRAND')
+- [x] 잔액 차감 확인 (브랜드 메시지: 20원)
+- [x] 실제 메시지 수신 확인 (카카오톡 앱)
 
 **6.6 에러 케이스**
 - [ ] 템플릿 미선택 시 에러 메시지
@@ -1455,16 +1456,62 @@ createBrandTemplate();
 비고:
 ```
 
-### Phase 6: 카카오 브랜드 메시지 (구현 완료 - 테스트 진행 중)
+### Phase 6: 카카오 브랜드 메시지 (구현 완료 - 부분 테스트 완료)
+
+#### 테스트 1: TEXT 타입 + targeting='I' (2025-11-10)
 ```
-테스트 일시: 2025-11-06
-테스터: [테스트 진행 예정]
-결과: [ ] 성공 [ ] 실패
+테스트 일시: 2025-11-10 10:18:44
+테스터: 실제 테스트 완료
+결과: [✅] 성공 [ ] 실패
+
+발송 설정:
+- Targeting: I (채널친구만)
+- Template Code: a8ff71453fac4de5f6876eb1d19bf2d274836389
+- Sender Key: 3916c974ec435ff7a86894ab839b4e8728237435
+- Message Type: TEXT
+- 변수 치환: #{이름} → 윤건, #{날짜} → 2025-11-10
+
+발송 결과:
+✅ MTS API 응답: code "0000" (MessageRegistComplete)
+✅ received_at: 2025-11-10 10:18:45
+✅ message_logs 저장 성공
+✅ transactions 저장 성공 (비용 20원 차감)
+✅ 실제 카카오톡 브랜드 메시지 수신 확인
+
 비고:
-- ✅ BrandTab.tsx 업데이트 완료 (수신 대상 M/N/I, 자동 SMS 백업)
-- ✅ KakaoBrandTab.tsx 완전 재구현 완료 (템플릿 관리)
-- ✅ Backend API targeting 파라미터 추가
-- ⏳ 실제 메시지 발송 테스트 진행 중
+- ✅ targeting='I' (채널친구만) 정상 작동
+- ✅ 변수 치환 정상 작동
+- ✅ 시간 제한 (08:00-20:00 KST) 통과
+- ✅ 에러 1028 대응 완료 (기본값 'I', 경고 메시지 추가)
+- ⏸️ targeting='M', 'N' 테스트 대기 (권한 필요)
+```
+
+#### 추가 테스트 대기 중
+```
+⏸️ IMAGE 타입 테스트
+⏸️ WIDE 타입 테스트
+⏸️ WIDE_ITEM_LIST 타입 테스트
+⏸️ 버튼 포함 메시지 테스트
+⏸️ SMS 백업 발송 (tran_type S/L/M) 테스트
+```
+
+#### 에러 1028 대응 완료 (2025-11-10)
+```
+문제: targeting='M', 'N' 사용 시 에러 1028 발생
+원인: 브랜드 메시지 M/N 타게팅 사용 조건 미충족
+      (필수: 비즈니스 인증, 5만+ 친구, 수신동의 파일, 알림톡 발송이력)
+
+해결:
+✅ mtsApi.ts - 기본 targeting 값 'M' → 'I' 변경
+✅ mtsApi.ts - 에러 코드 1028 메시지 추가
+✅ BrandTab.tsx - targeting 설명 수정 (I/M/N 정확한 설명)
+✅ BrandTab.tsx - M/N 선택 시 노란색 경고 박스 추가 (5가지 필수 조건 안내)
+✅ API route - M/N 사용 시 콘솔 경고 로그 추가
+
+코드 수정:
+- src/lib/mtsApi.ts (Line 1140, 54-55)
+- src/components/messages/BrandTab.tsx (Line 637-694)
+- src/app/api/messages/kakao/brand/send/route.ts (Line 137-151)
 ```
 
 ---
@@ -1504,6 +1551,33 @@ createBrandTemplate();
 - 📊 **문서 버전**: v2.9 → v3.0
 - 📝 **테스트 현황 업데이트**: Phase 6 구현 완료로 상태 변경
 
+
+### v3.1 (2025-11-10)
+- 🎉 **Phase 6 부분 테스트 완료**: 카카오 브랜드 메시지 TEXT 타입 발송 성공
+  - ✅ **TEXT 타입 + targeting='I' 테스트 완료**:
+    - MTS API 응답 code "0000" 성공
+    - 변수 치환 정상 작동 (#{이름}, #{날짜})
+    - DB 저장 및 비용 차감 정상 (20원)
+    - 실제 카카오톡 브랜드 메시지 수신 확인 ✅
+  - ✅ **에러 1028 대응 완료**:
+    - mtsApi.ts: 기본 targeting 값 'M' → 'I' 변경
+    - mtsApi.ts: 에러 코드 1028 메시지 추가
+    - BrandTab.tsx: targeting 설명 수정 (I=채널친구만, M=수신동의자만, N=수신동의 중 비친구)
+    - BrandTab.tsx: M/N 선택 시 노란색 경고 박스 추가 (5가지 필수 조건 안내)
+    - API route: M/N 사용 시 콘솔 경고 로그 추가
+  - 📝 **추가 테스트 케이스 가이드 작성**:
+    - 테스트 시나리오 6.4: IMAGE 타입 (이미지형)
+    - 테스트 시나리오 6.5: WIDE 타입 (와이드 이미지형)
+    - 테스트 시나리오 6.6: 버튼 타입별 (WL/AL/BK/MD/AC)
+    - 테스트 시나리오 6.7: SMS 백업 발송 (S/L/M)
+    - 테스트 시나리오 6.8: 대량 발송
+    - 테스트 시나리오 6.9: 에러 처리
+  - ⏸️ **추가 테스트 대기**:
+    - IMAGE, WIDE, WIDE_ITEM_LIST 타입 테스트
+    - 버튼 타입별 동작 테스트
+    - SMS 백업 발송 테스트
+- 📊 **문서 버전**: v3.0 → v3.1
+- 📝 **테스트 결과 기록**: Phase 6.1 (TEXT + targeting='I') 성공
 ### v2.7 (2025-11-05)
 - 🎉 **Phase 4 완료**: 카카오 친구톡 테스트 완료
   - ✅ 텍스트형 친구톡 (FT) + 변수 치환
@@ -1783,3 +1857,400 @@ API URL: https://api.mtsco.co.kr/sndng/mms/sendMessage
 - MMS: 이미지 포함하여 수신 확인 ✅
 
 ---
+## 📋 Phase 6 추가 테스트 케이스 가이드
+
+### 테스트 시나리오 6.4: IMAGE 타입 브랜드 메시지
+
+**목적**: 이미지형 브랜드 메시지 발송 테스트
+
+**사전 준비:**
+1. IMAGE 타입 브랜드 템플릿 등록 및 승인 필요
+2. 이미지 URL 준비 (Kakao 이미지 서버에 업로드된 URL)
+
+**템플릿 등록 예제:**
+```javascript
+// 브라우저 Console에서 실행
+const token = localStorage.getItem('token');
+
+const createImageTemplate = async () => {
+  const response = await fetch('/api/messages/kakao/brand/templates/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      senderKey: '발신프로필_Sender_Key',
+      name: 'IMAGE_브랜드_테스트_001',
+      chatBubbleType: 'IMAGE',
+      content: '#{이름}님께 특별한 혜택!\n지금 바로 확인하세요.',  // 최대 400자
+      adult: false,
+      buttons: [
+        {
+          ordering: 1,
+          type: 'WL',
+          name: '자세히 보기',
+          linkMo: 'https://m.example.com/event',
+          linkPc: 'https://example.com/event'
+        }
+      ],
+      image: {
+        img_url: 'https://mud-kage.kakao.com/dn/.../image.jpg'  // Kakao 이미지 서버 URL
+      }
+    })
+  });
+  
+  const result = await response.json();
+  console.log('IMAGE 템플릿 생성 결과:', result);
+};
+
+createImageTemplate();
+```
+
+**테스트 단계:**
+1. 카카오/네이버 톡톡 탭 → 브랜드 서브탭
+2. IMAGE 템플릿 등록 (BrandTemplateModal)
+3. MTS 검수 승인 대기
+4. 메시지 보내기 탭 → 브랜드
+5. IMAGE 템플릿 선택
+6. targeting='I' 선택
+7. 변수 값 입력 (#{이름} → 홍길동)
+8. 수신번호 입력 (채널 친구로 추가된 번호)
+9. 전송
+
+**검증 포인트:**
+- [ ] 템플릿 등록 시 이미지 URL 필수 입력
+- [ ] 내용 길이 400자 이하 제한 확인
+- [ ] 버튼 최대 5개까지 가능 확인
+- [ ] MTS API 요청에 image attachment 포함 확인
+- [ ] 실제 메시지 수신 시 이미지 표시 확인
+
+**예상 MTS API 요청:**
+```json
+{
+  "auth_code": "...",
+  "sender_key": "...",
+  "template_code": "...",
+  "phone_number": "01040571331",
+  "callback_number": "01040571331",
+  "message": "홍길동님께 특별한 혜택!\n지금 바로 확인하세요.",
+  "message_type": "IMAGE",
+  "send_mode": "3",
+  "targeting": "I",
+  "tran_type": "N",
+  "country_code": "82",
+  "attachment": {
+    "image": {
+      "img_url": "https://mud-kage.kakao.com/dn/.../image.jpg"
+    },
+    "button": [
+      {
+        "type": "WL",
+        "url_mobile": "https://m.example.com/event",
+        "url_pc": "https://example.com/event"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 테스트 시나리오 6.5: WIDE 타입 브랜드 메시지
+
+**목적**: 와이드 이미지형 브랜드 메시지 발송 테스트
+
+**사전 준비:**
+1. WIDE 타입 브랜드 템플릿 등록 및 승인
+2. 와이드 이미지 URL 준비 (2:1 비율)
+
+**템플릿 등록 예제:**
+```javascript
+const createWideTemplate = async () => {
+  const token = localStorage.getItem('token');
+  
+  const response = await fetch('/api/messages/kakao/brand/templates/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      senderKey: '발신프로필_Sender_Key',
+      name: 'WIDE_브랜드_테스트_001',
+      chatBubbleType: 'WIDE',
+      content: '신상품 출시!',  // 최대 76자
+      adult: false,
+      buttons: [
+        {
+          ordering: 1,
+          type: 'WL',
+          name: '구매하기',
+          linkMo: 'https://m.example.com/product',
+          linkPc: 'https://example.com/product'
+        }
+      ],  // 최대 2개
+      image: {
+        img_url: 'https://mud-kage.kakao.com/dn/.../wide_image.jpg',  // 2:1 비율
+        img_link: 'https://example.com/product'  // 이미지 클릭 시 이동 URL
+      }
+    })
+  });
+  
+  const result = await response.json();
+  console.log('WIDE 템플릿 생성 결과:', result);
+};
+
+createWideTemplate();
+```
+
+**WIDE 타입 제약사항:**
+- 내용: 최대 76자
+- 버튼: 최대 2개
+- 이미지: 2:1 비율 (권장)
+- imageLink: 이미지 클릭 시 이동 URL 설정 가능
+
+**테스트 단계:**
+1. WIDE 템플릿 등록 및 승인
+2. 메시지 보내기 → 브랜드 탭
+3. WIDE 템플릿 선택
+4. targeting='I'
+5. 발송
+
+**검증 포인트:**
+- [ ] 내용 76자 제한 확인
+- [ ] 버튼 2개 제한 확인
+- [ ] imageLink 설정 시 이미지 클릭 가능 확인
+- [ ] 와이드 이미지 비율 정상 표시 확인
+
+---
+
+### 테스트 시나리오 6.6: 버튼 타입별 테스트
+
+**목적**: 다양한 버튼 타입 (WL/AL/BK/MD/AC) 정상 작동 확인
+
+**버튼 타입:**
+- **WL (Web Link)**: 웹 페이지 이동
+- **AL (App Link)**: 앱 실행 및 특정 페이지 이동
+- **BK (Bot Keyword)**: 봇 키워드 전송
+- **MD (Message Delivery)**: 상담톡 전환
+- **AC (Add Channel)**: 채널 추가
+
+**테스트 케이스 6.6.1: WL (웹링크) 버튼**
+
+```javascript
+// 템플릿 등록 시 버튼 설정
+buttons: [
+  {
+    ordering: 1,
+    type: 'WL',
+    name: '홈페이지 바로가기',
+    linkMo: 'https://m.example.com',  // 모바일 URL
+    linkPc: 'https://example.com'      // PC URL
+  }
+]
+```
+
+**검증:**
+- [ ] 버튼 클릭 시 모바일에서 linkMo 이동
+- [ ] 버튼 클릭 시 PC에서 linkPc 이동
+
+**테스트 케이스 6.6.2: AL (앱링크) 버튼**
+
+```javascript
+buttons: [
+  {
+    ordering: 1,
+    type: 'AL',
+    name: '앱에서 보기',
+    linkMo: 'scheme://path',      // 앱 스킴
+    linkPc: 'https://example.com'  // PC는 웹 URL
+  }
+]
+```
+
+**검증:**
+- [ ] 앱 설치된 경우: 앱 실행
+- [ ] 앱 미설치 경우: 웹 URL 이동
+
+**테스트 케이스 6.6.3: BK (봇키워드) 버튼**
+
+```javascript
+buttons: [
+  {
+    ordering: 1,
+    type: 'BK',
+    name: '상품 문의',
+    // linkMo, linkPc 불필요
+  }
+]
+```
+
+**검증:**
+- [ ] 버튼 클릭 시 버튼명이 메시지로 자동 전송
+- [ ] 챗봇 응답 확인
+
+---
+
+### 테스트 시나리오 6.7: SMS 백업 발송 테스트
+
+**목적**: 브랜드 메시지 발송 실패 시 SMS/LMS/MMS 백업 발송 확인
+
+**사전 조건:**
+- 채널 친구가 아닌 번호로 테스트 (targeting='I'일 경우 실패)
+- 또는 targeting='M'으로 수신동의 안 한 번호 사용
+
+**테스트 케이스 6.7.1: SMS 백업 (45자 이하)**
+
+**테스트 단계:**
+1. 브랜드 템플릿 선택
+2. targeting='I'
+3. "발송실패 시 문자대체발송 여부" 체크
+4. SMS 백업 메시지 입력: "안녕하세요. 특별 혜택 안내입니다." (20자)
+5. **채널 친구가 아닌 번호** 입력
+6. 전송
+
+**예상 결과:**
+- MTS API 호출: targeting='I'로 브랜드 메시지 시도
+- 브랜드 메시지 실패 (친구 아님)
+- SMS 백업 자동 발송
+- tranType='S'
+- 수신자에게 SMS 도착
+
+**검증 포인트:**
+- [ ] 브랜드 메시지 실패 확인
+- [ ] SMS 백업 발송 확인
+- [ ] message_logs에 backup_sent 기록 확인
+
+**테스트 케이스 6.7.2: LMS 백업 (46~1000자)**
+
+```
+백업 메시지: 200자 메시지 입력
+예상: tranType='L', subject='템플릿이름'
+```
+
+**테스트 케이스 6.7.3: MMS 백업 (1001자 초과)**
+
+```
+백업 메시지: 1100자 메시지 입력
+예상: tranType='M', subject='템플릿이름'
+```
+
+---
+
+### 테스트 시나리오 6.8: 대량 발송 테스트
+
+**목적**: 여러 수신자에게 동시 발송 시 정상 작동 확인
+
+**테스트 단계:**
+1. 브랜드 템플릿 선택 (변수 포함)
+2. targeting='I'
+3. 수신번호 10개 입력 (콤마 구분)
+   - 모두 채널 친구로 추가된 번호
+4. 변수 값 입력
+5. 전송
+
+**검증 포인트:**
+- [ ] 10건 모두 MTS API 호출 성공
+- [ ] message_logs에 10개 레코드 생성
+- [ ] transactions에 총 200원 (20원 × 10건) 차감
+- [ ] 10명 모두 메시지 수신 확인
+- [ ] 각 수신자별 변수 치환 정상 확인 (엑셀 업로드 시)
+
+**엑셀 업로드 대량 발송:**
+```
+수신번호,이름,상품명
+01012345678,홍길동,노트북
+01087654321,김철수,태블릿
+...
+```
+
+**검증:**
+- [ ] 엑셀 업로드 정상
+- [ ] 각 행별 변수 치환 정상
+- [ ] 전체 발송 성공률 확인
+
+---
+
+### 테스트 시나리오 6.9: 에러 처리 테스트
+
+**목적**: 다양한 에러 상황에서 적절한 에러 메시지 표시 확인
+
+**테스트 케이스 6.9.1: 에러 1028 (타게팅 권한 없음)**
+
+```
+설정: targeting='M'
+예상: MTS API code '0000' → 5분 후 result_code '1028'
+에러 메시지: "타게팅 옵션(M/N)을 사용할 수 없습니다..."
+```
+
+**테스트 케이스 6.9.2: 템플릿 미승인**
+
+```
+설정: 승인 대기 중인 템플릿 선택
+예상: "템플릿이 승인되지 않았습니다" 에러
+```
+
+**테스트 케이스 6.9.3: 잔액 부족**
+
+```
+설정: 크레딧 10원 남은 상태에서 20원짜리 발송 시도
+예상: "잔액이 부족합니다" 에러
+```
+
+**테스트 케이스 6.9.4: 시간 제한 (08:00~20:00 외)**
+
+```
+설정: 21:00에 발송 시도
+예상: 경고 메시지 표시
+      MTS API는 호출되지만 실제 발송은 다음날 08:00
+```
+
+---
+
+## 📊 추가 테스트 케이스 체크리스트
+
+### IMAGE 타입
+- [ ] 템플릿 등록 (이미지 URL 포함)
+- [ ] MTS 검수 승인
+- [ ] 메시지 발송 (targeting='I')
+- [ ] 실제 수신 확인 (이미지 표시)
+- [ ] 버튼 클릭 동작 확인
+
+### WIDE 타입
+- [ ] 템플릿 등록 (와이드 이미지, 76자 제한)
+- [ ] MTS 검수 승인
+- [ ] 메시지 발송
+- [ ] 와이드 이미지 비율 확인
+- [ ] imageLink 클릭 동작 확인
+
+### WIDE_ITEM_LIST 타입
+- [ ] 템플릿 등록 (아이템 리스트)
+- [ ] 발송 및 수신 확인
+
+### 버튼 타입별
+- [ ] WL (웹링크) 버튼 클릭 동작
+- [ ] AL (앱링크) 버튼 클릭 동작
+- [ ] BK (봇키워드) 자동 전송
+- [ ] MD (상담톡 전환)
+- [ ] AC (채널 추가)
+
+### SMS 백업
+- [ ] SMS 백업 (45자 이하)
+- [ ] LMS 백업 (46~1000자)
+- [ ] MMS 백업 (1001자 초과)
+- [ ] 백업 없음 (N)
+
+### 대량 발송
+- [ ] 콤마 구분 10건 발송
+- [ ] 엑셀 업로드 대량 발송
+- [ ] 변수 치환 각 행별 적용
+
+### 에러 처리
+- [ ] 에러 1028 메시지 확인
+- [ ] 템플릿 미승인 에러
+- [ ] 잔액 부족 에러
+- [ ] 시간 제한 경고
+
+---
+

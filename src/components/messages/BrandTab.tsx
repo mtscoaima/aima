@@ -634,7 +634,7 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
                     : 'text-gray-600 bg-gray-50 border-transparent hover:bg-gray-100'
                 }`}
               >
-                전체
+                채널친구만 (I)
               </button>
               <button
                 onClick={() => setTargetingType('M')}
@@ -644,7 +644,7 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
                     : 'text-gray-600 bg-gray-50 border-transparent hover:bg-gray-100'
                 }`}
               >
-                수신동의자만
+                수신동의자만 (M)
               </button>
               <button
                 onClick={() => setTargetingType('N')}
@@ -654,7 +654,7 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
                     : 'text-gray-600 bg-gray-50 border-transparent hover:bg-gray-100'
                 }`}
               >
-                채널친구만
+                수신동의 중 비친구 (N)
               </button>
             </div>
 
@@ -662,14 +662,36 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <span className="text-sm font-medium">
-                  수신대상 : {targetingType === 'I' ? '전체' : targetingType === 'M' ? '수신동의자만' : '채널친구만'}
+                  수신대상 : {targetingType === 'I' ? '채널친구만' : targetingType === 'M' ? '수신동의자만' : '수신동의 중 비친구'}
                 </span>
               </div>
               <p className="text-sm text-gray-600">
                 {targetingType === 'I' && '현재 수신번호 내에서 카카오 채널 친구추가한 사용자에게 발송합니다.'}
                 {targetingType === 'M' && '현재 수신번호 내에서 카카오톡 수신 동의한 사용자에게 발송합니다.'}
-                {targetingType === 'N' && '현재 수신번호 내에서 카카오톡 수신 동의 + 채널 친구인 사용자에게 발송합니다.'}
+                {targetingType === 'N' && '현재 수신번호 내에서 카카오톡 수신 동의했지만 채널 친구가 아닌 사용자에게 발송합니다.'}
               </p>
+              {(targetingType === 'M' || targetingType === 'N') && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <span className="text-yellow-600 text-lg">⚠️</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-yellow-800 mb-1">
+                        M/N 타게팅 사용 조건
+                      </p>
+                      <ul className="text-xs text-yellow-700 space-y-1">
+                        <li>• 비즈니스 인증받은 채널</li>
+                        <li>• 채널 전화번호 등록 (대표 전화 or 고객센터 전화)</li>
+                        <li>• 채널 친구수 5만 이상</li>
+                        <li>• 광고성 정보 수신동의 증적파일 업로드</li>
+                        <li>• 3개월 이내 알림톡 발송이력</li>
+                      </ul>
+                      <p className="text-xs text-yellow-700 mt-2">
+                        조건 미충족 시 에러 1028 발생. 테스트는 '채널친구만(I)'을 사용하세요.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
