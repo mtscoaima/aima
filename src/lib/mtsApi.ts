@@ -1237,7 +1237,7 @@ export async function sendKakaoBrand(
 
     // coupon_variable (쿠폰이 있을 경우)
     if (attachment?.coupon) {
-      requestBody.coupon_variable = {
+      const couponVar: Record<string, string | number> = {
         description: attachment.coupon.description || '',
         url_mobile: attachment.coupon.url_mobile || attachment.coupon.mobileLink || '',
       };
@@ -1245,8 +1245,10 @@ export async function sendKakaoBrand(
       // url_pc는 선택 사항
       const urlPc = attachment.coupon.url_pc || attachment.coupon.pcLink;
       if (urlPc) {
-        requestBody.coupon_variable.url_pc = urlPc;
+        couponVar.url_pc = urlPc;
       }
+
+      requestBody.coupon_variable = couponVar;
     }
 
     // commerce_variable (커머스가 있을 경우)

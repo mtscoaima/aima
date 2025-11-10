@@ -79,7 +79,8 @@ export async function POST(req: NextRequest) {
     try {
       const metadata = await sharp(buf).metadata();
       const width = metadata.width || 0;
-      const height = metadata.height || 0;
+      // height는 이미지 메타데이터 확인용 (향후 비율 검증 시 사용 예정)
+      // const height = metadata.height || 0;
 
       // 최소 가로 500px 확인
       let resizeWidth = width;

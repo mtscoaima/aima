@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
               buttons: mtsData.buttons || template.buttons,
               image_url: mtsData.imageUrl || template.image_url,
               image_link: mtsData.imageLink || template.image_link,
-              modified_at: mtsData.modifiedAt ? new Date(mtsData.modifiedAt).toISOString() : template.modified_at,
+              modified_at: mtsData.modifiedAt ? new Date(mtsData.modifiedAt as string).toISOString() : template.modified_at,
               synced_at: new Date().toISOString(),
             })
             .eq('id', template.id);

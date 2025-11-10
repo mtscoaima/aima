@@ -141,7 +141,8 @@ export async function POST(request: NextRequest) {
 
     // 비용 계산 (브랜드 메시지: 20원)
     const costPerMessage = 20;
-    const totalCost = recipients.length * costPerMessage;
+    // totalCost는 향후 결제 시스템 연동 시 사용 예정
+    // const totalCost = recipients.length * costPerMessage;
 
     // 발송 결과 저장
     const results = [];

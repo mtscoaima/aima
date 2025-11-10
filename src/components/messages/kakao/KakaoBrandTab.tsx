@@ -282,7 +282,7 @@ const KakaoBrandTab = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-gray-600">상태:</span>
-                    <span>{getTemplateStatusLabel(selectedTemplate)}</span>
+                    <span>{getTemplateStatusLabel(selectedTemplate.status)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm mt-1">
                     <span className="text-gray-600">타입:</span>

@@ -103,7 +103,8 @@ function shouldAutoSync(templates: Array<{ synced_at: string | null }>): boolean
  * 백그라운드에서 템플릿 동기화 (비동기, 결과 반환 없음)
  */
 async function syncTemplatesInBackground(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   templates: Array<{ id: string; template_code: string; status: string; [key: string]: unknown }>
 ) {
   try {
@@ -123,7 +124,7 @@ async function syncTemplatesInBackground(
               buttons: mtsData.buttons,
               image_url: mtsData.imageUrl,
               image_link: mtsData.imageLink,
-              modified_at: mtsData.modifiedAt ? new Date(mtsData.modifiedAt).toISOString() : null,
+              modified_at: mtsData.modifiedAt ? new Date(mtsData.modifiedAt as string).toISOString() : null,
               synced_at: new Date().toISOString(),
             })
             .eq('id', template.id);

@@ -707,7 +707,7 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
                         <li>• 3개월 이내 알림톡 발송이력</li>
                       </ul>
                       <p className="text-xs text-yellow-700 mt-2">
-                        조건 미충족 시 에러 1028 발생. 테스트는 '채널친구만(I)'을 사용하세요.
+                        조건 미충족 시 에러 1028 발생. 테스트는 &apos;채널친구만(I)&apos;을 사용하세요.
                       </p>
                     </div>
                   </div>
