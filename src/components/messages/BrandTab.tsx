@@ -285,10 +285,23 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
         }
       }
 
-      // attachment 구성 (버튼, 이미지, 쿠폰, 아이템 등)
+      // attachment 구성 (버튼, 이미지, 비디오, 커머스, 캐러셀 등)
       const attachment: {
         button?: Array<{ name: string; type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC'; url_mobile?: string; url_pc?: string }>;
         image?: { img_url: string; img_link?: string };
+        video?: { videoUrl: string; thumbnailUrl: string };
+        commerce?: { title: string; regularPrice: number; discountPrice?: number; discountRate?: number; discountFixed?: number };
+        carousel?: Array<{
+          img_url: string;
+          url_mobile: string;
+          commerce_title?: string;
+          description?: string;
+          regular_price?: number;
+          discount_price?: number;
+          discount_rate?: number;
+          discount_fixed?: number;
+          title?: string;
+        }>;
       } = {};
 
       // 버튼 추가
@@ -313,13 +326,53 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
         }
       }
 
+      // 비디오 추가 (PREMIUM_VIDEO 타입일 때)
+      if (selectedTemplate.message_type === 'PREMIUM_VIDEO') {
+        if (selectedTemplate.video_url && selectedTemplate.thumbnail_url) {
+          attachment.video = {
+            videoUrl: selectedTemplate.video_url,
+            thumbnailUrl: selectedTemplate.thumbnail_url,
+          };
+        }
+      }
+
+      // 커머스 추가 (COMMERCE 타입일 때만 - 단일 상품)
+      if (selectedTemplate.message_type === 'COMMERCE') {
+        if (selectedTemplate.commerce_title && selectedTemplate.regular_price) {
+          attachment.commerce = {
+            title: selectedTemplate.commerce_title,
+            regularPrice: selectedTemplate.regular_price,
+            discountPrice: selectedTemplate.discount_price,
+            discountRate: selectedTemplate.discount_rate,
+            discountFixed: selectedTemplate.discount_fixed,
+          };
+        }
+      }
+
+      // 캐러셀 추가 (CAROUSEL_COMMERCE, CAROUSEL_FEED 타입일 때)
+      if (selectedTemplate.message_type === 'CAROUSEL_COMMERCE' || selectedTemplate.message_type === 'CAROUSEL_FEED') {
+        if (selectedTemplate.carousel_cards && selectedTemplate.carousel_cards.length > 0) {
+          attachment.carousel = selectedTemplate.carousel_cards.map(card => ({
+            img_url: card.img_url || '',
+            url_mobile: card.url_mobile || '',
+            commerce_title: card.commerce_title,
+            description: card.description,
+            regular_price: card.regular_price,
+            discount_price: card.discount_price,
+            discount_rate: card.discount_rate,
+            discount_fixed: card.discount_fixed,
+            title: card.title,
+          }));
+        }
+      }
+
       const result = await sendBrandMessage({
         senderKey: selectedProfile,
         templateCode: selectedTemplate.template_code,
         recipients: processedRecipients,
         message: selectedTemplate.content, // 원본 템플릿 (백업용)
         callbackNumber: callbackNumber,
-        messageType: selectedTemplate.message_type as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO',
+        messageType: selectedTemplate.message_type as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE',
         attachment: Object.keys(attachment).length > 0 ? attachment : undefined,
         targeting: targetingType, // 수신 대상 선택 (M/N/I)
         tranType: tranType,

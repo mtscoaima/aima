@@ -87,6 +87,33 @@ export interface BrandTemplate {
     url_mobile?: string;
     url_pc?: string;
   }>;
+  // PREMIUM_VIDEO 타입 필드
+  video_url?: string;      // 동영상 URL
+  thumbnail_url?: string;  // 썸네일 이미지 URL
+  // COMMERCE 타입 필드
+  commerce_title?: string; // 상품명
+  regular_price?: number;  // 정가
+  discount_price?: number; // 할인가
+  discount_rate?: number;  // 할인율 (%)
+  discount_fixed?: number; // 할인 금액 (원)
+  // WIDE_ITEM_LIST 타입 필드
+  items?: Array<{
+    img_url: string;       // 아이템 썸네일 이미지 URL
+    url_mobile: string;    // 아이템 클릭 시 이동 URL
+    title?: string;        // 아이템 제목 (선택)
+  }>;
+  // CAROUSEL_COMMERCE, CAROUSEL_FEED 타입 필드
+  carousel_cards?: Array<{
+    img_url?: string;          // 카드 이미지 URL
+    commerce_title?: string;   // 상품명 (CAROUSEL_COMMERCE)
+    regular_price?: number;    // 정가 (CAROUSEL_COMMERCE)
+    discount_price?: number;   // 할인가 (CAROUSEL_COMMERCE)
+    discount_rate?: number;    // 할인율 (CAROUSEL_COMMERCE)
+    discount_fixed?: number;   // 할인 금액 (CAROUSEL_COMMERCE)
+    url_mobile?: string;       // 카드 클릭 시 이동 URL
+    title?: string;            // 카드 제목 (CAROUSEL_FEED)
+    description?: string;      // 카드 설명 (CAROUSEL_FEED)
+  }>;
 }
 
 // 브랜드 메시지 발송 요청 타입
@@ -96,7 +123,7 @@ export interface BrandMessageSendRequest {
   recipients: Recipient[];
   message: string;
   callbackNumber: string;
-  messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO';
+  messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE';
   targeting?: 'M' | 'N' | 'I'; // M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구
   attachment?: {
     button?: Array<{
@@ -107,6 +134,17 @@ export interface BrandMessageSendRequest {
     image?: {
       img_url: string;
       img_link?: string;
+    };
+    video?: {
+      videoUrl: string;
+      thumbnailUrl: string;
+    };
+    commerce?: {
+      title: string;
+      regularPrice: number;
+      discountPrice?: number;
+      discountRate?: number;
+      discountFixed?: number;
     };
     coupon?: {
       description?: string;
@@ -309,15 +347,43 @@ export async function fetchBrandTemplates(senderKey: string, forceSync = false):
         image_url?: string;
         image_link?: string;
         buttons: unknown;
+        video_url?: string;
+        thumbnail_url?: string;
+        commerce_title?: string;
+        regular_price?: number;
+        discount_price?: number;
+        discount_rate?: number;
+        discount_fixed?: number;
+        items?: Array<{ img_url: string; url_mobile: string; title?: string }>;
+        carousel_cards?: Array<{
+          img_url?: string;
+          commerce_title?: string;
+          regular_price?: number;
+          discount_price?: number;
+          discount_rate?: number;
+          discount_fixed?: number;
+          url_mobile?: string;
+          title?: string;
+          description?: string;
+        }>;
       }) => ({
         template_code: template.template_code,
         template_name: template.template_name,
         content: template.content,
         message_type: template.chat_bubble_type,
         status: template.status,
-        image_url: template.image_url,      // 이미지 URL 매핑
-        image_link: template.image_link,    // 이미지 클릭 URL 매핑
+        image_url: template.image_url,
+        image_link: template.image_link,
         buttons: template.buttons,
+        video_url: template.video_url,
+        thumbnail_url: template.thumbnail_url,
+        commerce_title: template.commerce_title,
+        regular_price: template.regular_price,
+        discount_price: template.discount_price,
+        discount_rate: template.discount_rate,
+        discount_fixed: template.discount_fixed,
+        items: template.items,
+        carousel_cards: template.carousel_cards,
       }));
     }
 

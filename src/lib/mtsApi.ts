@@ -1073,7 +1073,7 @@ export async function sendKakaoBrand(
   toNumber: string,
   message: string,
   callbackNumber: string,
-  messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' = 'TEXT',
+  messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE' = 'TEXT',
   targeting: 'M' | 'N' | 'I' = 'I', // 기본값 'I': 채널친구만. M/N은 5만+ 친구수 등 조건 필요
   attachment?: {
     button?: Array<{
@@ -1121,6 +1121,17 @@ export async function sendKakaoBrand(
       thumbnail_url?: string;
       thumbnailUrl?: string;  // 카멜케이스 대응
     };
+    carousel?: Array<{
+      img_url?: string;
+      url_mobile?: string;
+      commerce_title?: string;
+      description?: string;
+      regular_price?: number;
+      discount_price?: number;
+      discount_rate?: number;
+      discount_fixed?: number;
+      title?: string;
+    }>;
   },
   tranType: 'N' | 'S' | 'L' | 'M' = 'N',
   tranMessage?: string,
@@ -1294,8 +1305,51 @@ export async function sendKakaoBrand(
       };
     }
 
-    // carousel_variable (캐러셀이 있을 경우)
-    // TODO: 캐러셀은 복잡한 구조이므로 향후 구현 필요
+    // carousel_variable (캐러셀이 있을 경우 - CAROUSEL_COMMERCE, CAROUSEL_FEED)
+    if (attachment?.carousel && Array.isArray(attachment.carousel) && attachment.carousel.length > 0) {
+      const carouselVar = attachment.carousel.map((card) => {
+        const cardVar: Record<string, string | number> = {};
+
+        // 이미지 URL
+        if (card.img_url) {
+          cardVar.img_url = card.img_url;
+        }
+
+        // 클릭 URL
+        if (card.url_mobile) {
+          cardVar.url_mobile = card.url_mobile;
+        }
+
+        // CAROUSEL_COMMERCE 필드
+        if (card.commerce_title) {
+          cardVar.title = card.commerce_title;  // commerce_title → title
+        }
+        if (card.description) {
+          cardVar.description = card.description;
+        }
+        if (card.regular_price !== undefined) {
+          cardVar.regular_price = card.regular_price;
+        }
+        if (card.discount_price !== undefined) {
+          cardVar.discount_price = card.discount_price;
+        }
+        if (card.discount_rate !== undefined) {
+          cardVar.discount_rate = card.discount_rate;
+        }
+        if (card.discount_fixed !== undefined) {
+          cardVar.discount_fixed = card.discount_fixed;
+        }
+
+        // CAROUSEL_FEED 필드
+        if (card.title) {
+          cardVar.title = card.title;
+        }
+
+        return cardVar;
+      });
+
+      requestBody.carousel_variable = carouselVar;
+    }
 
     // 전환 전송 메시지 추가
     if (tranMessage && tranType !== 'N') {
@@ -1346,6 +1400,7 @@ export async function sendKakaoBrand(
     console.log('coupon_variable:', requestBody.coupon_variable ? 'Yes' : 'No');
     console.log('commerce_variable:', requestBody.commerce_variable ? 'Yes' : 'No');
     console.log('video_variable:', requestBody.video_variable ? 'Yes' : 'No');
+    console.log('carousel_variable:', requestBody.carousel_variable ? 'Yes' : 'No');
     console.log('---');
     console.log('API URL:', `${MTS_API_URL}/btalk/send/message/basic`);
     console.log('실제 전송 requestBody:', JSON.stringify(requestBody, null, 2));
@@ -1893,6 +1948,33 @@ export async function createBrandTemplate(
     type: string;        // Frontend 형식: type (변경됨)
     url_mobile?: string; // Frontend 형식: url_mobile (변경됨)
     url_pc?: string;     // Frontend 형식: url_pc (변경됨)
+  }>,
+  // PREMIUM_VIDEO 필드
+  videoUrl?: string,
+  thumbnailUrl?: string,
+  // COMMERCE 필드
+  commerceTitle?: string,
+  regularPrice?: number,
+  discountPrice?: number,
+  discountRate?: number,
+  discountFixed?: number,
+  // WIDE_ITEM_LIST 필드
+  items?: Array<{
+    img_url: string;
+    url_mobile: string;
+    title?: string;
+  }>,
+  // CAROUSEL_COMMERCE, CAROUSEL_FEED 필드
+  carouselCards?: Array<{
+    img_url?: string;
+    commerce_title?: string;
+    regular_price?: number;
+    discount_price?: number;
+    discount_rate?: number;
+    discount_fixed?: number;
+    url_mobile?: string;
+    title?: string;
+    description?: string;
   }>
 ): Promise<MtsApiResult> {
   try {
@@ -1957,6 +2039,68 @@ export async function createBrandTemplate(
       }));
     }
 
+    // PREMIUM_VIDEO 필드 추가
+    if (videoUrl) {
+      requestBody.videoUrl = videoUrl;
+    }
+    if (thumbnailUrl) {
+      requestBody.thumbnailUrl = thumbnailUrl;
+    }
+
+    // COMMERCE 필드 추가
+    if (commerceTitle) {
+      requestBody.commerceTitle = commerceTitle;
+    }
+    if (regularPrice !== undefined) {
+      requestBody.regularPrice = regularPrice;
+    }
+    if (discountPrice !== undefined) {
+      requestBody.discountPrice = discountPrice;
+    }
+    if (discountRate !== undefined) {
+      requestBody.discountRate = discountRate;
+    }
+    if (discountFixed !== undefined) {
+      requestBody.discountFixed = discountFixed;
+    }
+
+    // WIDE_ITEM_LIST 필드 추가
+    // MTS API는 header, mainWideItem, subWideItemList 구조를 요구
+    // WIDE_ITEM_LIST는 최소 3개 아이템 필요 (mainWideItem 1개 + subWideItemList 2개)
+    if (items && items.length >= 3) {
+      requestBody.header = content; // 헤더는 content 사용
+
+      // 첫 번째 아이템: mainWideItem (2:1 비율 이미지)
+      requestBody.mainWideItem = {
+        title: items[0].title || '',
+        imageUrl: items[0].img_url,      // 카카오 업로드된 이미지 URL
+        imageName: imageName || 'main_item.jpg',
+        linkMobile: items[0].url_mobile
+      };
+
+      // 나머지 아이템들: subWideItemList (1:1 비율 이미지, 최소 2개 최대 3개)
+      requestBody.subWideItemList = items.slice(1, 4).map((item, index) => ({
+        title: item.title || '',
+        imageUrl: item.img_url,          // 카카오 업로드된 이미지 URL
+        imageName: `sub_item_${index + 1}.jpg`,
+        linkMobile: item.url_mobile
+      }));
+
+      // DB 저장용으로는 원본 items도 유지
+      requestBody.items = items;
+    } else if (items && items.length > 0 && items.length < 3) {
+      return {
+        success: false,
+        error: 'WIDE_ITEM_LIST 타입은 최소 3개의 아이템이 필요합니다. (메인 아이템 1개 + 서브 아이템 2개)',
+        errorCode: 'INSUFFICIENT_ITEMS',
+      };
+    }
+
+    // CAROUSEL_COMMERCE, CAROUSEL_FEED 필드 추가
+    if (carouselCards && carouselCards.length > 0) {
+      requestBody.carouselCards = carouselCards;
+    }
+
     // API 호출
     const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/direct/create/template`, {
       method: 'POST',
@@ -1998,7 +2142,7 @@ export async function createBrandTemplate(
             sender_group_key: senderGroupKey,
             template_code: templateData.code,
             template_name: templateData.name,
-            content: templateData.content,
+            content: content || templateData.content, // WIDE_ITEM_LIST는 header로 전송하므로 content 파라미터 사용
             chat_bubble_type: templateData.chatBubbleType,
             status: templateData.status,
             buttons: buttons, // Frontend 형식 저장 (변환 전 원본)
@@ -2007,6 +2151,19 @@ export async function createBrandTemplate(
             image_name: imageName,
             image_link: imageLink,
             adult: templateData.adult,
+            // PREMIUM_VIDEO 필드
+            video_url: videoUrl,
+            thumbnail_url: thumbnailUrl,
+            // COMMERCE 필드
+            commerce_title: commerceTitle,
+            regular_price: regularPrice,
+            discount_price: discountPrice,
+            discount_rate: discountRate,
+            discount_fixed: discountFixed,
+            // WIDE_ITEM_LIST 필드
+            items: items,
+            // CAROUSEL_COMMERCE, CAROUSEL_FEED 필드
+            carousel_cards: carouselCards,
             modified_at: templateData.modifiedAt ? new Date(templateData.modifiedAt) : null,
             synced_at: new Date(),
           });

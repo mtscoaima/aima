@@ -28,6 +28,19 @@ export async function POST(request: NextRequest) {
       imageName,
       imageLink,
       buttons,
+      // PREMIUM_VIDEO 필드
+      videoUrl,
+      thumbnailUrl,
+      // COMMERCE 필드
+      commerceTitle,
+      regularPrice,
+      discountPrice,
+      discountRate,
+      discountFixed,
+      // WIDE_ITEM_LIST 필드
+      items,
+      // CAROUSEL_COMMERCE, CAROUSEL_FEED 필드
+      carouselCards,
     } = body;
 
     // senderKey 또는 senderGroupKey 중 하나는 필수
@@ -110,7 +123,20 @@ export async function POST(request: NextRequest) {
       imageUrl,
       imageName,
       imageLink,
-      buttons // Frontend 형식 그대로 전달
+      buttons, // Frontend 형식 그대로 전달
+      // PREMIUM_VIDEO 필드
+      videoUrl,
+      thumbnailUrl,
+      // COMMERCE 필드
+      commerceTitle,
+      regularPrice,
+      discountPrice,
+      discountRate,
+      discountFixed,
+      // WIDE_ITEM_LIST 필드
+      items,
+      // CAROUSEL_COMMERCE, CAROUSEL_FEED 필드
+      carouselCards
     );
 
     if (result.success) {

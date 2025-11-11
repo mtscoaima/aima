@@ -213,7 +213,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       lastRefreshRef.current = Date.now();
 
       try {
-        const data = await transactionAPI.getTransactions(100, 0);
+        const data = await transactionAPI.getTransactions(10000, 0);
 
         const transactionsWithTimestamp = data.transactions.map(
           (transaction) => ({

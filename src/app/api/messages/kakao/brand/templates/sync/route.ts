@@ -83,6 +83,15 @@ export async function POST(request: NextRequest) {
               buttons: mtsData.buttons || template.buttons,
               image_url: mtsData.imageUrl || template.image_url,
               image_link: mtsData.imageLink || template.image_link,
+              // PREMIUM_VIDEO 필드
+              video_url: mtsData.videoUrl || template.video_url,
+              thumbnail_url: mtsData.thumbnailUrl || template.thumbnail_url,
+              // COMMERCE 필드
+              commerce_title: mtsData.commerceTitle || template.commerce_title,
+              regular_price: mtsData.regularPrice || template.regular_price,
+              discount_price: mtsData.discountPrice || template.discount_price,
+              discount_rate: mtsData.discountRate || template.discount_rate,
+              discount_fixed: mtsData.discountFixed || template.discount_fixed,
               modified_at: mtsData.modifiedAt ? new Date(mtsData.modifiedAt as string).toISOString() : template.modified_at,
               synced_at: new Date().toISOString(),
             })

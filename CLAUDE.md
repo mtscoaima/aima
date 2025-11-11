@@ -170,12 +170,14 @@ User data stored as JSONB for flexibility:
 Manual testing via documented scenarios:
 - `/docs/quick-test-scenarios.md` - 30-minute core features
 - `/docs/manual-test-guide-3weeks.md` - Comprehensive testing
-- `MTS_API_통합_테스트_가이드.md` - MTS API integration testing guide
+- `MTS_API_통합_테스트_가이드.md` - MTS API integration testing guide (v3.5)
   - Phase 1-2: SMS/LMS/MMS ✅ Completed
-  - Phase 3: Kakao AlimTalk ✅ Completed
+  - Phase 3: Kakao AlimTalk ✅ Completed (including variable templates)
   - Phase 4: Kakao FriendTalk ✅ Completed
-  - Phase 5: Naver TalkTalk ⏸️ Pending
-  - Phase 6: Kakao Brand Messages ⚠️ In Progress
+  - Phase 5: Naver TalkTalk ⏸️ Pending (UI/backend ready)
+  - Phase 6: Kakao Brand Messages ✅ **8 Types Implemented** (TEXT/IMAGE/WIDE verified, 5 new types UI ready, 변수분리방식 v1.1)
+    - Phase 6.0-6.4: TEXT/IMAGE/WIDE + buttons ✅ Verified (2025-11-10)
+    - Phase 6.5-6.9: WIDE_ITEM_LIST/PREMIUM_VIDEO/COMMERCE/CAROUSEL_COMMERCE/CAROUSEL_FEED ✅ UI Implemented (2025-11-11)
 - No automated test framework currently configured
 - Use Supabase dashboard for database verification
 - Check MTS API response codes in browser DevTools
@@ -271,11 +273,22 @@ Manual testing via documented scenarios:
 - Business verification via government API (`ODCLOUD_SERVICE_KEY`) is mandatory for certain features
 
 ### MTS API Migration Status
-- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, Kakao FriendTalk (FT/FI with buttons)
-- **In Progress**: Kakao Brand Messages (encountering error codes, see `MTS_브랜드메시지_에러1028_문의사항.txt`)
-- **Pending**: Naver TalkTalk (UI complete, testing pending), FriendTalk advanced types (FW/FL/FC)
+- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, Kakao FriendTalk (FT/FI with buttons), **Kakao Brand Messages (8 types implemented ✅)**
+- **Implemented, Testing Pending**: Naver TalkTalk (UI/backend complete), Brand Messages 5 new types (WIDE_ITEM_LIST, PREMIUM_VIDEO, COMMERCE, CAROUSEL_COMMERCE, CAROUSEL_FEED - UI/backend ready)
+- **Not Implemented**: FriendTalk advanced types (FW/FL/FC)
 - **Reference**: `MTS_API_통합_테스트_가이드.md` for detailed testing status
 - **Core Module**: `src/lib/mtsApi.ts` (1850 lines, 19 functions)
+- **Brand Messages**: Uses Variable Separation Method v1.1 (separate `message_variable`, `button_variable`, `image_variable`, `video_variable`, `commerce_variable`, etc.)
+  - ✅ **2025-11-10 업데이트**: 변수분리방식 v1.1 전환 완료, 이전 1030 에러 완전 해결
+  - ✅ **실제 발송 테스트 완료**: TEXT, IMAGE, WIDE 타입 + 버튼(최대 5개) 조합 모두 성공
+  - ✅ **2025-11-11 업데이트**: 신규 5개 타입 UI 구현 완료
+    - WIDE_ITEM_LIST: 이미지 업로드 + imageLink UI
+    - PREMIUM_VIDEO: 비디오/썸네일 업로드 UI, Supabase Storage kakao-videos 버킷
+    - COMMERCE: 상품 이미지 + 상품 정보 입력 UI (commerce_title, regular_price, discount_price, discount_rate, discount_fixed)
+    - CAROUSEL_COMMERCE/CAROUSEL_FEED: 기본 UI 구현
+    - DB 마이그레이션: kakao_brand_templates 테이블 7개 필드 추가
+    - 비디오 업로드 API: `/api/messages/kakao/upload-video` (Supabase Storage 연동)
+  - ⏸️ **다음 단계**: 5개 신규 타입 템플릿 등록 → MTS 검수 → 실제 발송 테스트
 
 ### Variable Substitution
 - SMS/MMS: Client-side substitution with `#{variable}` syntax
@@ -305,8 +318,49 @@ Manual testing via documented scenarios:
 - `/migrations/20251103_extend_sms_templates_for_friendtalk.sql` - FriendTalk template support
 
 ### Issue Tracking
-- `MTS_브랜드메시지_에러1028_문의사항.txt` - Kakao Brand Message error troubleshooting
+- `MTS_브랜드메시지_에러1028_문의사항.txt` - Kakao Brand Message error troubleshooting (resolved with 변수분리방식 v1.1)
 - `문서_업데이트_요약_20251103.md` - Documentation update summary
+
+## TypeScript Build Considerations
+
+### Known Type Patterns
+When working with MTS API or Supabase, you may encounter these TypeScript patterns:
+
+1. **Record<string, unknown> Assignment**: When building dynamic objects, create intermediate typed variables:
+   ```typescript
+   // ❌ Avoid direct assignment to unknown
+   requestBody.coupon_variable = {};
+   requestBody.coupon_variable.url_pc = url; // Type error
+
+   // ✅ Use intermediate variable
+   const couponVar: Record<string, string | number> = {
+     description: '',
+     url_mobile: ''
+   };
+   couponVar.url_pc = url; // Type safe
+   requestBody.coupon_variable = couponVar;
+   ```
+
+2. **Supabase Client Type**: For internal functions, use `any` with ESLint disable:
+   ```typescript
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   async function syncTemplatesInBackground(supabase: any, templates: Array<...>) {
+   ```
+
+3. **Date Constructor with Unknown Types**: Add type assertion:
+   ```typescript
+   // ❌ Type error with unknown
+   new Date(mtsData.modifiedAt)
+
+   // ✅ Type assertion
+   new Date(mtsData.modifiedAt as string)
+   ```
+
+4. **ESLint Warnings**: Comment unused variables intended for future use:
+   ```typescript
+   // totalCost는 향후 결제 시스템 연동 시 사용 예정
+   // const totalCost = recipients.length * costPerMessage;
+   ```
 
 ### Setup & Configuration
 - `README.md` - Detailed setup instructions for Supabase, Storage, Templates

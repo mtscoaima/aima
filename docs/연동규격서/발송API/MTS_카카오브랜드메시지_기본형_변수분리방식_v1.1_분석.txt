@@ -1,0 +1,428 @@
+================================================================================
+MTS 카카오 브랜드 메시지 기본형(변수분리방식) RESTful Interface Guide v1.1
+작성일자: 2025.09.20
+문서버전: 1.1
+분석일자: 2025-11-11
+================================================================================
+
+■ 문서 개정 이력
+- v1.0 (2025.07.30): 최초작성
+- v1.1 (2025.09.20): 발송 유형 타입 파라미터 추가, 여러건 전송 파라미터 구조 수정
+
+================================================================================
+1. 개요 및 기본 정보
+================================================================================
+
+1.1 목적
+- 카카오 브랜드 메시지 발송 DB 테이블 구조 정의
+- 고객의 카카오 브랜드 메시지 발송을 위한 DB 테이블 입력데이터 정의
+- Oracle DB 기반으로 작성
+
+1.2 HOST
+- [운영서버] https://api.mtsco.co.kr/
+
+1.3 선결 조건
+- MTS에 고객사로 등록 필요
+- MTS에서 auth_code 발급 및 전달
+- 고객사 전송 서버의 IP에서 auth_code 포함하여 필수 파라미터 전송
+
+1.4 브랜드 메시지 특징
+- 반드시 승인된 템플릿 필요
+- 수신 실패 시 전환전송(SMS, LMS) 가능
+- 띄어쓰기 포함 한글/영문 1,000자까지 발송 가능
+- 멀티미디어(이미지 등) 파일 전송 불가
+
+================================================================================
+2. 용어 정의
+================================================================================
+
+2.1 템플릿
+- 카카오 브랜드 메시지 발송을 위한 사전승인된 문구의 서식
+- 영업담당자를 통해 "발신프로필키" 발급
+- 관리자 사이트를 통해 템플릿 등록
+
+2.2 템플릿코드
+- 브랜드 메시지 승인 신청 시 작성한 템플릿의 고유 코드
+
+2.3 발신프로필키
+- 브랜드 메시지 전송을 위해 카카오 공식딜러사를 통해 발급받은 고유키
+
+2.4 전환전송
+- 브랜드 메시지 전송 실패 건을 타 메시지 채널(SMS/LMS)로 전환 전송
+- 메시지 전달률 향상
+- 사전등록된 발신번호 필수
+
+================================================================================
+3. API 엔드포인트 정보
+================================================================================
+
+3.1 브랜드 메시지 기본형(변수분리방식) 전송요청 - 단건
+- path: /btalk/send/message/basic
+- method: POST
+- header: Content-type: application/json
+
+3.2 브랜드 메시지 기본형(변수분리방식) 전송요청 - 여러건
+- path: /btalk/send/messages/basic
+- method: POST
+- header: Content-type: application/json
+
+3.3 브랜드 메시지 응답요청
+- path: /btalk/resp/messages
+- method: POST
+- header: Content-type: application/json
+- 참고: 발송 후 결과를 받기까지 최대 5분 소요
+
+================================================================================
+4. 메시지 타입 (message_type)
+================================================================================
+
+4.1 지원 타입
+1. TEXT: 텍스트
+2. IMAGE: 이미지
+3. WIDE: 와이드 이미지
+4. WIDE_ITEM_LIST: 와이드 리스트
+5. CAROUSEL_FEED: 캐러셀 피드
+6. PREMIUM_VIDEO: 프리미엄 동영상
+7. COMMERCE: 커머스
+8. CAROUSEL_COMMERCE: 캐러셀 커머스
+
+================================================================================
+5. 주요 파라미터 상세 (단건 전송)
+================================================================================
+
+5.1 필수 파라미터
+- auth_code: text(40) - MTS 발급 인증코드
+- sender_key: text(40) - 발신 프로필 키
+- send_date: text(14) - 발송 예정일 (기본값: MTS 서버 등록일시)
+- message_type: text(20) - 브랜드 메시지 타입
+- send_mode: text(1) - 브랜드 메시지 발송 유형 타입
+- targeting: text(1) - 타겟팅 타입 (M/N/I)
+  * M: 수신 동의 유저 (카카오톡 수신 동의)
+  * N: 수신 동의 유저 ∩ 채널 친구
+  * I: 발송 요청 대상 ∩ 채널 친구
+- template_code: text(30) - 템플릿코드
+- callback_number: text(15) - 발신 전화번호
+- message_variable: json - 메시지 변수
+- tran_type: text(1) - 전환전송 여부
+  * N: 전환전송 하지 않음
+  * S: SMS (90Byte)
+  * L: LMS (1,000자)
+  * M: MMS
+
+5.2 선택 파라미터
+- country_code: text(16) - 국가번호 (기본 82)
+- phone_number: text(16) - 사용자 전화번호
+- app_user_id: text(20) - 앱 유저 ID
+  * phone_number, app_user_id 중 하나는 반드시 존재
+  * 둘 다 있으면 phone_number 기준으로 발송
+- push_alarm: text(1) - 푸시 알람 여부 (기본 Y)
+- reseller_code: text(9) - KISA 전달용 재판매사 구분코드
+- button_variable: json - 버튼 변수
+- coupon_variable: json - 쿠폰 변수
+- image_variable: Json[] - 이미지 변수
+- video_variable: json - 비디오 변수
+- commerce_variable: json - 커머스 변수
+- carousel_variable: Json[] - 캐러셀 변수
+- tran_message: text(1000) - 전환전송 메시지
+- subject: text(20) - LMS 전송 시 필요한 제목
+- callback_url: text(512) - 전송결과를 보내줄 고객사 서버 Full URL
+- add_etc1~4: text(160) - 고객사 추가 정보 1~4
+- adult: text(1) - 성인용 메시지 확인 여부 (기본 N)
+
+================================================================================
+6. 변수 상세 정보
+================================================================================
+
+6.1 message_variable (메시지 변수)
+- TEXT, IMAGE, WIDE: 일반 본문 Text 영역의 변수
+- WIDE_ITEM_LIST: 와이드 리스트의 헤더, 타이틀, 링크 변수
+- PREMIUM_VIDEO: 헤더, Text 영역 변수
+- COMMERCE: 부가 정보 영역 변수
+
+예제:
+"message_variable":{"내용":"여름맞이할인이벤트!지금바로확인해보세요."}
+
+6.2 button_variable (버튼 변수)
+- TEXT, IMAGE, WIDE, WIDE_ITEM_LIST, PREMIUM_VIDEO, COMMERCE: 버튼 링크 변수
+
+예제:
+"button_variable":{"mobile 링크":"https://www.mystore.com/event/summersale"}
+
+6.3 coupon_variable (쿠폰 변수)
+- TEXT, IMAGE, WIDE, WIDE_ITEM_LIST, PREMIUM_VIDEO, COMMERCE: 쿠폰 링크 변수
+
+예제:
+"coupon_variable":{"할인금액":"5000","쿠폰링크":"https://www.mystore.com/coupon"}
+
+6.4 image_variable (이미지 변수)
+- IMAGE, WIDE: 1개의 값
+- WIDE_ITEM_LIST: 리스트 개수만큼
+- TEXT: 이미지 미지원
+- 입력하지 않으면 템플릿 이미지 사용, 입력 시 파라미터 이미지로 대체
+
+예제:
+"image_variable":[{"img_url":"https://cdn.mystore.com/images/banner.jpg","img_link":"https://www.mystore.com"}]
+
+6.5 video_variable (비디오 변수)
+- PREMIUM_VIDEO인 경우 사용
+- 입력하지 않으면 템플릿 비디오 사용, 입력 시 파라미터 비디오로 대체
+
+예제:
+"video_variable":{"video_url":"https://tv.kakao.com/channel/1506/cliplink/454718311","thumbnail_url":"https://t1.daumcdn.net/news/202504/27/sbsi/2025042721001329.jpg"}
+
+6.6 commerce_variable (커머스 변수)
+- COMMERCE인 경우 사용
+- 가격 관련 고정변수: "할인가격", "정상가격", "할인율", "정액할인가격"
+- 사용 가능 조합:
+  1) "할인가격"
+  2) "할인가격", "정상가격", "할인율"
+  3) "할인가격", "정상가격", "정액할인가격"
+
+예제:
+"commerce_variable":{"타이틀":"여름신상티셔츠","정상가격":"30000","할인가격":"15000","할인율":"50"}
+
+6.7 carousel_variable (캐러셀 변수)
+- CAROUSEL_FEED, CAROUSEL_COMMERCE인 경우 사용
+- CAROUSEL_FEED: 2개~템플릿 등록 캐러셀 수
+- CAROUSEL_COMMERCE: 2개~템플릿 등록 캐러셀 인트로 + 캐러셀 수
+- 캐러셀 인트로가 있으면 배열 첫번째에 입력
+- 변수 없는 캐러셀은 빈 오브젝트({})로 입력
+
+================================================================================
+7. 응답 코드
+================================================================================
+
+7.1 성공 응답
+- code: "0000" - MessageRegistComplete (성공)
+- received_at: 수신 시간 (realtime 발송 시)
+
+7.2 주요 에러 코드
+
+[1000번대 - 기본 검증 오류]
+- 1001: NoJsonBody - Request Body가 Json 형식이 아님
+- 1002: InvalidHubPartnerKey - 허브 파트너 키 유효하지 않음
+- 1003: InvalidSenderKey - 발신 프로필 키 유효하지 않음
+- 1004: NoValueJsonElement - Request Body에서 name을 찾을 수 없음
+- 1006: DeletedSender - 삭제된 발신프로필
+- 1007: StoppedSender - 차단 상태의 발신프로필
+- 1011: ContractNotFound - 계약정보를 찾을 수 없음
+- 1012: InvalidUserKeyException - 잘못된 형식의 유저키 요청
+- 1020: InvalidUserKeyException - 잘못된 형식의 유저키 요청
+- 1021: BlockedProfile - 차단 상태의 카카오톡 채널
+- 1022: DeactivatedProfile - 닫힘 상태의 카카오톡 채널
+- 1023: DeletedProfile - 삭제된 카카오톡 채널
+- 1024: DeletingProfile - 삭제대기 상태의 카카오톡 채널
+- 1025: SpammedProfile - 채널 제재 상태
+- 1030: InvalidParameterException - 잘못된 파라미터 요청
+
+[3000번대 - 메시지 전송 오류]
+- 3000: UnexpectedException - 예기치 않은 오류
+- 3005: AckTimeoutException - 수신확인 안됨 (성공불확실, 서버 암호화 보관 3일)
+- 3006: FailedToSendMessageException - 내부 시스템 오류로 전송 실패
+- 3008: InvalidPhoneNumberException - 전화번호 오류
+- 3010: JsonParseException - Json 파싱 오류
+- 3011: MessageNotFoundException - 메시지가 존재하지 않음
+- 3012: SerialNumberDuplicatedException - 메시지 일련번호 중복
+- 3013: MessageEmptyException - 메시지가 비어 있음
+- 3014: MessageLengthOverLimitException - 메시지 길이 제한 초과
+- 3015: TemplateNotFoundException - 템플릿을 찾을 수 없음
+- 3016: NoMatchedTemplateException - 메시지 내용이 템플릿과 불일치
+- 3018: NoSendAvailableException - 메시지 전송 불가
+- 3019: MessageNoUserException - 톡 유저가 아님
+- 3020: MessageUserBlockedAlimtalkException - 브랜드 메시지 수신 차단
+- 3021: MessageNotSupportedKakaotalkException - 카카오톡 최소 버전 미지원
+- 3022: NoSendAvailableTimeException - 발송 가능 시간 아님 (08시~20시)
+- 3024: MessageInvalidImageException - 이미지 전송 불가
+- 3025: ExceedMaxVariableLengthException - 변수 글자수 제한 초과
+- 3027: NoMatchedTemplateButtonException - 버튼이 템플릿과 불일치
+- 3028: NoMatchedTemplateTitleException - 강조표기 타이틀이 템플릿과 불일치
+- 3029: ExceedMaxTitleLengthException - 타이틀 길이 제한 초과 (50자)
+- 3051: InvalidateCarouselItemMinException/MaxException - 캐러셀 아이템 개수 불일치
+- 3052: CarouselMessageLengthOverLimitException - 캐러셀 메시지 길이 초과
+
+[ER 코드 - MTS 메시지 오류]
+- ER00: JSONParsingException - JSON 파싱 오류
+- ER01: InvalidAuthCodeException - 인증코드 없거나 유효하지 않음
+- ER02: InvalidSenderKeyException - 발신프로필키 없음
+- ER03: InvalidPhoneNumberAndAppUserIdException - 수신자번호/앱유저ID 없음
+- ER04: InvalidTemplateCodeException - 템플릿코드 없음
+- ER05: InvalidMessageException - 메시지 내용 없음
+- ER06: InvalidCallbackUrlException - 콜백URL 유효하지 않음
+- ER07: InvalidCallbackNumberException - 발신번호 유효하지 않음
+- ER08: InvalidDataException - DATA 항목 유효하지 않음
+- ER15: MessageSizeOverException - 메시지 내용이 너무 큼
+- ER16: TranMessageSizeOverException - 전환전송 메시지 크기 초과
+- ER17: NotAllowedCallbackNumber - 사전 승인받은 발신번호 아님
+- ER31: InvalidmessageTypeException - 잘못된 메시지 타입
+- ER98: NoMessageFoundException - 조건 일치 메시지 없음
+- ER99: MessageRegistException - 전송메시지 등록 실패
+
+================================================================================
+8. CALLBACK_URL 사용 시 전송결과 응답
+================================================================================
+
+8.1 기본 사항
+- JSON 형식으로 전송
+- 전송결과 요청 data 배열 내 JSON과 동일
+- 브랜드 메시지 후 전환전송 발생 시 2건 응답 (브랜드 결과 + 전환전송 결과)
+
+8.2 추가 파라미터
+- send_type: text(5) - 메시지 서비스 타입
+  * ATK: 알림톡
+  * FTK: 친구톡
+  * FTKV2: 친구톡V2
+  * BTK: 브랜드 메시지
+  * SMS: SMS
+  * MMS: MMS
+
+8.3 주의사항
+- http:// 또는 https:// 로 시작 필요
+- 매건마다 응답을 보내므로 DDOS 공격으로 인식될 수 있음
+- 응답요청 API Polling 방식 권장
+
+================================================================================
+9. 샘플 데이터 (요약)
+================================================================================
+
+9.1 TEXT 타입 샘플
+{
+  "auth_code":"iWy1fM7s85jftvM1Y4aN0Q==",
+  "send_mode":"2",
+  "sender_key":"df8b597658c2702fbbaddb0d828cee19a51f18ca",
+  "country_code":"82",
+  "callback_number":"025011980",
+  "message_type":"TEXT",
+  "phone_number":"01054308779",
+  "tran_type":"L",
+  "subject":"전환전송제목",
+  "template_code":"ac1ba7b703110005ec2bf4771ea7d12dc2ddaed3",
+  "targeting":"M",
+  "message_variable":{"aa":"aa"}
+}
+
+9.2 IMAGE 타입 샘플
+- TEXT 타입과 유사하나 image_variable 추가
+- button_variable로 버튼 링크 지정
+
+9.3 WIDE 타입 샘플
+- coupon_variable 추가 (상세내용, pcLink, mobileLink)
+- image_variable로 이미지 URL 및 링크 지정
+
+9.4 COMMERCE 타입 샘플
+- commerce_variable 필수
+  * 정상가격, 할인가격, 할인율, 정액할인가격
+
+9.5 CAROUSEL_FEED 타입 샘플
+- carousel_variable 배열 형태
+- 각 캐러셀별 message_variable, button_variable, image_variable, coupon_variable 지정
+
+================================================================================
+10. SMS/LMS/MMS 결과코드 (전환전송 시)
+================================================================================
+
+[SMS 결과코드]
+- 00: 성공
+- 03: 스팸
+- 10: 한도초과 발신제한
+- 11: 수신번호 정합성 오류
+- 31: Timeout, 음영지역, 파워오프
+- 34: 결번
+- 35: 단말기 파워오프
+- 36: 음영지역
+- 40: 발신번호 세칙오류
+- 41: 발신번호 변작으로 등록된 발신번호 사용
+- 50: 사전 미등록 발신번호사용
+- 55: 레포트 수신시간 만료
+
+[LMS/MMS 결과코드]
+- 1000: 성공
+- 03: 스팸
+- 10: 한도초과 발신제한
+- 40: 발신번호세칙 오류
+- 50: 사전 미등록 발신번호사용
+- 101: 메시지 내용 스팸
+- 103: 착신자 스팸
+- 104: 회신번호 스팸
+- 112: 레포트 수신시간 만료
+- 114: 문자 피싱 미등록으로 인한 차단
+- 1013: 결번
+- 1026: 음영지역
+- 2003: MMS Relay/Server가 주소를 찾을 수 없음
+- 2007: 규격에 맞지 않거나 부적당함
+- 2101: 올바른 컨텐츠가 아님
+- 2103: 미지원 단말
+- 4000: 요구된 서비스 실행 불가
+- 4005: 일반적인 서비스 에러
+- 6014: 수신자가 착신거절 신청자
+- 8880: 발송할 수 없는 이미지 파일 또는 업로드되지 않음
+
+================================================================================
+11. 구현 시 주의사항
+================================================================================
+
+11.1 필수 확인 사항
+- 발신프로필키(sender_key) 사전 발급 필수
+- 템플릿 사전 등록 및 승인 완료 필요
+- 전환전송 사용 시 사전등록 발신번호 필수
+- phone_number 또는 app_user_id 중 최소 1개 필수
+
+11.2 변수 처리
+- 메시지 본문 변수는 message_variable에 매핑
+- 버튼 링크는 button_variable에 매핑
+- 이미지는 image_variable에 배열 형태로 전달
+- 캐러셀은 carousel_variable에 배열 형태로 전달
+
+11.3 전환전송 설정
+- tran_type을 S/L/M으로 설정
+- tran_message에 전환전송 메시지 필수
+- LMS 전환 시 subject(제목) 필수
+- tran_message가 공백/null이면 전환전송 미실행
+
+11.4 발송 시간 제한
+- 친구톡/마케팅 메시지는 08시~20시만 발송 가능 (코드 3022)
+
+11.5 메시지 길이 제한
+- 기본 1,000자 제한
+- 타이틀: 50자
+- 헤더: 16자
+- 아이템 디스크립션: 23자
+- SMS 전환 시: 90Byte
+
+11.6 타겟팅 타입 선택
+- M: 수신 동의 유저 (카카오톡 수신 동의)
+- N: 수신 동의 유저 ∩ 채널 친구
+- I: 발송 요청 대상 ∩ 채널 친구
+
+================================================================================
+12. 구현 체크리스트
+================================================================================
+
+□ 1. auth_code 발급 완료
+□ 2. sender_key(발신프로필키) 발급 완료
+□ 3. 템플릿 등록 및 승인 완료
+□ 4. template_code 확보
+□ 5. 전환전송용 발신번호 사전 등록 (필요 시)
+□ 6. JSON 파라미터 구조 구현
+□ 7. message_variable 매핑 로직 구현
+□ 8. button_variable 처리 로직 구현 (필요 시)
+□ 9. image_variable 처리 로직 구현 (필요 시)
+□ 10. 전환전송 로직 구현 (필요 시)
+□ 11. callback_url 설정 및 응답 처리 (필요 시)
+□ 12. 에러 코드 처리 로직 구현
+□ 13. 응답 조회 API 구현 (/btalk/resp/messages)
+□ 14. 발송 시간 제한 검증 (08시~20시)
+□ 15. 메시지 길이 검증
+□ 16. 타겟팅 타입 선택 로직
+
+================================================================================
+13. 참고 문서
+================================================================================
+
+- MTS_API_통합_테스트_가이드.md (Phase 6: 브랜드 메시지)
+- src/lib/mtsApi.ts (sendKakaoBrandMessage 함수)
+- src/components/messages/BrandTab.tsx (UI 구현)
+- src/app/api/messages/kakao/brand/send/route.ts (API 엔드포인트)
+
+================================================================================
+끝
+================================================================================

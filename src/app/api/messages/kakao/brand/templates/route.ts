@@ -124,6 +124,19 @@ async function syncTemplatesInBackground(
               buttons: mtsData.buttons,
               image_url: mtsData.imageUrl,
               image_link: mtsData.imageLink,
+              // PREMIUM_VIDEO 필드
+              video_url: mtsData.videoUrl,
+              thumbnail_url: mtsData.thumbnailUrl,
+              // COMMERCE 필드
+              commerce_title: mtsData.commerceTitle,
+              regular_price: mtsData.regularPrice,
+              discount_price: mtsData.discountPrice,
+              discount_rate: mtsData.discountRate,
+              discount_fixed: mtsData.discountFixed,
+              // WIDE_ITEM_LIST 필드
+              items: mtsData.items,
+              // CAROUSEL_COMMERCE, CAROUSEL_FEED 필드
+              carousel_cards: mtsData.carouselCards,
               modified_at: mtsData.modifiedAt ? new Date(mtsData.modifiedAt as string).toISOString() : null,
               synced_at: new Date().toISOString(),
             })
