@@ -1975,6 +1975,12 @@ export async function createBrandTemplate(
     url_mobile?: string;
     title?: string;
     description?: string;
+    buttons?: Array<{
+      name: string;
+      type: string;        // Frontend 형식: type
+      url_mobile?: string; // Frontend 형식: url_mobile
+      url_pc?: string;     // Frontend 형식: url_pc
+    }>;
   }>
 ): Promise<MtsApiResult> {
   try {
@@ -2040,28 +2046,30 @@ export async function createBrandTemplate(
     }
 
     // PREMIUM_VIDEO 필드 추가
-    if (videoUrl) {
-      requestBody.videoUrl = videoUrl;
-    }
-    if (thumbnailUrl) {
-      requestBody.thumbnailUrl = thumbnailUrl;
+    // MTS API는 video 객체로 그룹화된 구조를 요구
+    if (chatBubbleType === 'PREMIUM_VIDEO' && videoUrl && thumbnailUrl) {
+      requestBody.video = {
+        videoUrl: videoUrl,
+        thumbnailUrl: thumbnailUrl,
+      };
     }
 
     // COMMERCE 필드 추가
-    if (commerceTitle) {
-      requestBody.commerceTitle = commerceTitle;
-    }
-    if (regularPrice !== undefined) {
-      requestBody.regularPrice = regularPrice;
-    }
-    if (discountPrice !== undefined) {
-      requestBody.discountPrice = discountPrice;
-    }
-    if (discountRate !== undefined) {
-      requestBody.discountRate = discountRate;
-    }
-    if (discountFixed !== undefined) {
-      requestBody.discountFixed = discountFixed;
+    // MTS API는 commerce 객체로 그룹화된 구조를 요구
+    if (chatBubbleType === 'COMMERCE' && commerceTitle && regularPrice !== undefined && discountPrice !== undefined) {
+      requestBody.commerce = {
+        title: commerceTitle,
+        regularPrice: regularPrice,
+        discountPrice: discountPrice,
+      };
+
+      // 할인율 또는 정액할인 추가 (선택 사항)
+      if (discountRate !== undefined) {
+        (requestBody.commerce as Record<string, unknown>).discountRate = discountRate;
+      }
+      if (discountFixed !== undefined) {
+        (requestBody.commerce as Record<string, unknown>).discountFixed = discountFixed;
+      }
     }
 
     // WIDE_ITEM_LIST 필드 추가
@@ -2097,8 +2105,86 @@ export async function createBrandTemplate(
     }
 
     // CAROUSEL_COMMERCE, CAROUSEL_FEED 필드 추가
-    if (carouselCards && carouselCards.length > 0) {
-      requestBody.carouselCards = carouselCards;
+    // MTS API는 "carousel" 파라미터명을 사용하며, 중첩된 구조 요구
+    if (chatBubbleType === 'CAROUSEL_FEED' || chatBubbleType === 'CAROUSEL_COMMERCE') {
+      if (!carouselCards || carouselCards.length === 0) {
+        return {
+          success: false,
+          error: `${chatBubbleType} 타입은 최소 1개 이상의 카드가 필요합니다.`,
+          errorCode: 'MISSING_CAROUSEL_CARDS',
+        };
+      }
+
+      // 최소 2개, 최대 6개 카드 검증
+      if (carouselCards.length < 2) {
+        return {
+          success: false,
+          error: `${chatBubbleType} 타입은 최소 2개 이상의 카드가 필요합니다.`,
+          errorCode: 'INSUFFICIENT_CAROUSEL_CARDS',
+        };
+      }
+      if (carouselCards.length > 6) {
+        return {
+          success: false,
+          error: `${chatBubbleType} 타입은 최대 6개까지 카드를 추가할 수 있습니다.`,
+          errorCode: 'TOO_MANY_CAROUSEL_CARDS',
+        };
+      }
+
+      // MTS API 요구 구조: { list: [...], tail?: {...} }
+      // Frontend에서 받은 carouselCards를 MTS API 형식으로 변환
+      const carouselList = carouselCards.map((card, index) => {
+        const transformedCard: Record<string, unknown> = {
+          header: card.title || '',         // title → header (max 16자)
+          content: card.description || '',  // description → content (max 76자)
+          imageUrl: card.img_url || '',     // img_url → imageUrl
+          imageName: `carousel_${index + 1}.jpg`, // imageName 자동 생성
+        };
+
+        // 버튼 변환: Frontend { name, type, url_mobile, url_pc } → MTS API { name, linkType, linkMobile, linkPc }
+        if (card.buttons && card.buttons.length > 0) {
+          transformedCard.buttons = card.buttons.map(btn => ({
+            name: btn.name,
+            linkType: btn.type,
+            linkMobile: btn.url_mobile,
+            linkPc: btn.url_pc,
+          }));
+        } else {
+          // 버튼이 없으면 기본 버튼 추가 (필수 요구사항)
+          transformedCard.buttons = [{
+            name: '자세히 보기',
+            linkType: 'WL',
+            linkMobile: card.url_mobile || 'https://example.com',
+          }];
+        }
+
+        // CAROUSEL_COMMERCE의 경우 각 카드에 commerce 객체 추가
+        if (chatBubbleType === 'CAROUSEL_COMMERCE') {
+          transformedCard.commerce = {
+            title: card.commerce_title || '',
+            regularPrice: card.regular_price || 0,
+            discountPrice: card.discount_price || 0,
+          };
+
+          // 할인율 또는 정액할인 추가
+          if (card.discount_rate !== undefined) {
+            (transformedCard.commerce as Record<string, unknown>).discountRate = card.discount_rate;
+          }
+          if (card.discount_fixed !== undefined) {
+            (transformedCard.commerce as Record<string, unknown>).discountFixed = card.discount_fixed;
+          }
+        }
+
+        return transformedCard;
+      });
+
+      // carousel 구조 생성
+      requestBody.carousel = {
+        list: carouselList,
+      };
+
+      // tail 링크가 있으면 추가 (선택 사항)
+      // 현재 UI에서는 tail을 지원하지 않으므로 추후 추가 가능
     }
 
     // API 호출

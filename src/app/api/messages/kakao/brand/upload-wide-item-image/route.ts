@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
 
 const MTS_TEMPLATE_API_URL = process.env.MTS_TEMPLATE_API_URL;
-const MTS_AUTH_CODE = process.env.MTS_AUTH_CODE;
+// MTS_AUTH_CODE는 향후 이미지 업로드 인증에 사용될 수 있음
+// const MTS_AUTH_CODE = process.env.MTS_AUTH_CODE;
 
 /**
  * POST /api/messages/kakao/brand/upload-wide-item-image

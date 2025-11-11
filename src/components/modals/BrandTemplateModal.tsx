@@ -84,6 +84,12 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
     title: string;
     description: string;
     uploadedFile: UploadedFile | null;
+    buttons: Array<{
+      name: string;
+      type: string;
+      url_mobile?: string;
+      url_pc?: string;
+    }>;
   }
   const [carouselFeedCards, setCarouselFeedCards] = useState<CarouselFeedCard[]>([]);
 
@@ -779,6 +785,13 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
       title: "",
       description: "",
       uploadedFile: null,
+      buttons: [
+        {
+          name: "자세히 보기",
+          type: "WL",
+          url_mobile: "",
+        }
+      ],
     };
     setCarouselFeedCards([...carouselFeedCards, newCard]);
     setError("");
@@ -971,6 +984,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                     url_mobile: card.url_mobile,
                     title: card.title,
                     description: card.description,
+                    buttons: card.buttons,
                   }))
               )
             : undefined,
@@ -1953,6 +1967,152 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                           rows={2}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
                         />
+                      </div>
+
+                      {/* 버튼 입력 (1-2개) */}
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-2">
+                          버튼 <span className="text-red-500">*</span>
+                          <span className="text-gray-500 ml-1">(최소 1개, 최대 2개)</span>
+                        </label>
+                        {card.buttons.map((button, btnIndex) => (
+                          <div key={btnIndex} className="border border-gray-200 rounded-lg p-3 mb-2">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-600">버튼 {btnIndex + 1}</span>
+                              {card.buttons.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updatedCards = carouselFeedCards.map(c =>
+                                      c.id === card.id
+                                        ? { ...c, buttons: c.buttons.filter((_, i) => i !== btnIndex) }
+                                        : c
+                                    );
+                                    setCarouselFeedCards(updatedCards);
+                                  }}
+                                  className="text-red-500 hover:text-red-700 text-xs"
+                                >
+                                  삭제
+                                </button>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">버튼명</label>
+                                <input
+                                  type="text"
+                                  value={button.name}
+                                  onChange={(e) => {
+                                    const updatedCards = carouselFeedCards.map(c =>
+                                      c.id === card.id
+                                        ? {
+                                            ...c,
+                                            buttons: c.buttons.map((btn, i) =>
+                                              i === btnIndex ? { ...btn, name: e.target.value } : btn
+                                            )
+                                          }
+                                        : c
+                                    );
+                                    setCarouselFeedCards(updatedCards);
+                                  }}
+                                  placeholder="자세히 보기"
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">링크 타입</label>
+                                <select
+                                  value={button.type}
+                                  onChange={(e) => {
+                                    const updatedCards = carouselFeedCards.map(c =>
+                                      c.id === card.id
+                                        ? {
+                                            ...c,
+                                            buttons: c.buttons.map((btn, i) =>
+                                              i === btnIndex ? { ...btn, type: e.target.value } : btn
+                                            )
+                                          }
+                                        : c
+                                    );
+                                    setCarouselFeedCards(updatedCards);
+                                  }}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                                >
+                                  <option value="WL">웹링크 (WL)</option>
+                                  <option value="AL">앱링크 (AL)</option>
+                                  <option value="BK">봇키워드 (BK)</option>
+                                  <option value="MD">메시지전달 (MD)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">모바일 URL</label>
+                                <input
+                                  type="url"
+                                  value={button.url_mobile || ''}
+                                  onChange={(e) => {
+                                    const updatedCards = carouselFeedCards.map(c =>
+                                      c.id === card.id
+                                        ? {
+                                            ...c,
+                                            buttons: c.buttons.map((btn, i) =>
+                                              i === btnIndex ? { ...btn, url_mobile: e.target.value } : btn
+                                            )
+                                          }
+                                        : c
+                                    );
+                                    setCarouselFeedCards(updatedCards);
+                                  }}
+                                  placeholder="https://example.com"
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">PC URL (선택)</label>
+                                <input
+                                  type="url"
+                                  value={button.url_pc || ''}
+                                  onChange={(e) => {
+                                    const updatedCards = carouselFeedCards.map(c =>
+                                      c.id === card.id
+                                        ? {
+                                            ...c,
+                                            buttons: c.buttons.map((btn, i) =>
+                                              i === btnIndex ? { ...btn, url_pc: e.target.value } : btn
+                                            )
+                                          }
+                                        : c
+                                    );
+                                    setCarouselFeedCards(updatedCards);
+                                  }}
+                                  placeholder="https://example.com"
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {card.buttons.length < 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updatedCards = carouselFeedCards.map(c =>
+                                c.id === card.id
+                                  ? {
+                                      ...c,
+                                      buttons: [
+                                        ...c.buttons,
+                                        { name: "버튼 " + (c.buttons.length + 1), type: "WL", url_mobile: "" }
+                                      ]
+                                    }
+                                  : c
+                              );
+                              setCarouselFeedCards(updatedCards);
+                            }}
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-xs text-gray-600"
+                          >
+                            + 버튼 추가
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
