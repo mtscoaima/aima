@@ -70,6 +70,33 @@ export interface FriendtalkSendRequest {
   tranType?: 'SMS' | 'LMS' | 'MMS';
   tranMessage?: string;
   scheduledAt?: string;
+  // FW/FL/FC 타입 전용 필드
+  headerText?: string;  // FL용 헤더
+  listItems?: Array<{   // FL용 아이템 리스트
+    title: string;
+    image?: {
+      fileId: string;
+      fileName: string;
+      fileSize: number;
+      preview: string;
+    };
+  }>;
+  carousels?: Array<{   // FC용 캐러셀
+    content: string;
+    image?: {
+      fileId: string;
+      fileName: string;
+      fileSize: number;
+      preview: string;
+    };
+    buttons: Array<{
+      name: string;
+      type: string;
+      url_mobile?: string;
+      url_pc?: string;
+    }>;
+  }>;
+  moreLink?: string;    // FC용 더보기 링크
 }
 
 // 브랜드 템플릿 타입

@@ -538,7 +538,34 @@ export async function sendMtsFriendtalk(
   buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>,
   tranType?: 'SMS' | 'LMS' | 'MMS',
   tranMessage?: string,
-  sendDate?: string
+  sendDate?: string,
+  // FW/FL/FC 타입 전용 필드
+  headerText?: string,  // FL용 헤더
+  listItems?: Array<{   // FL용 아이템 리스트
+    title: string;
+    image?: {
+      fileId: string;
+      fileName: string;
+      fileSize: number;
+      preview: string;
+    };
+  }>,
+  carousels?: Array<{   // FC용 캐러셀
+    content: string;
+    image?: {
+      fileId: string;
+      fileName: string;
+      fileSize: number;
+      preview: string;
+    };
+    buttons: Array<{
+      name: string;
+      type: string;
+      url_mobile?: string;
+      url_pc?: string;
+    }>;
+  }>,
+  moreLink?: string    // FC용 더보기 링크
 ): Promise<MtsApiResult> {
   try {
     if (!MTS_AUTH_CODE) {
@@ -576,9 +603,10 @@ export async function sendMtsFriendtalk(
     };
 
     // 첨부 파일 (이미지, 버튼) 추가
-    if (imageUrls || buttons) {
+    if (imageUrls || buttons || headerText || listItems || carousels) {
       const attachment: Record<string, unknown> = {};
 
+      // 기본 이미지 처리 (FT/FI/FW 타입)
       if (imageUrls && imageUrls.length > 0) {
         // FI/FW/FL/FC 타입은 단일 이미지 객체 사용 (배열 아님)
         // MTS API 규격: attachment.image = { img_url: "...", img_link: "..." }
@@ -588,7 +616,45 @@ export async function sendMtsFriendtalk(
         };
       }
 
-      if (buttons && buttons.length > 0) {
+      // FL (와이드 아이템 리스트형) 타입 처리
+      if (finalMessageType === 'FL' && (headerText || listItems)) {
+        if (headerText) {
+          attachment.header = headerText;
+        }
+
+        if (listItems && listItems.length > 0) {
+          // 아이템 리스트 (3-4개)
+          attachment.item_list = listItems.map((item) => ({
+            title: item.title,
+            ...(item.image ? { img_url: item.image.preview } : {})
+          }));
+        }
+      }
+
+      // FC (캐러셀형) 타입 처리
+      if (finalMessageType === 'FC' && carousels) {
+        if (carousels.length > 0) {
+          // 캐러셀 리스트 (2-6개)
+          attachment.carousel_list = carousels.map((carousel) => ({
+            content: carousel.content,
+            ...(carousel.image ? { img_url: carousel.image.preview } : {}),
+            buttons: carousel.buttons.map((btn) => ({
+              name: btn.name,
+              type: btn.type,
+              ...(btn.url_mobile ? { url_mobile: btn.url_mobile } : {}),
+              ...(btn.url_pc ? { url_pc: btn.url_pc } : {})
+            }))
+          }));
+        }
+
+        // 더보기 링크
+        if (moreLink) {
+          attachment.more_link = moreLink;
+        }
+      }
+
+      // 일반 버튼 (FT/FI/FW/FL만, FC는 캐러셀별 버튼 사용)
+      if (buttons && buttons.length > 0 && finalMessageType !== 'FC') {
         attachment.button = buttons;
       }
 

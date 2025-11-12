@@ -24,7 +24,8 @@ const supabase = createClient(
  *   messageType: 'FT'|'FI'|'FW'|'FL'|'FC'; // 메시지 타입
  *   adFlag: 'Y'|'N';                  // 광고 여부
  *   imageUrls?: string[];             // 이미지 URL 배열 (선택)
- *   buttons?: Array<{                 // 버튼 (선택)
+ *   imageLink?: string;               // 이미지 클릭 링크 (선택, FI/FW 타입)
+ *   buttons?: Array<{                 // 버튼 (선택, FT/FI/FW/FL만)
  *     name: string;
  *     type: string;
  *     url_mobile?: string;
@@ -33,6 +34,24 @@ const supabase = createClient(
  *   tranType?: 'SMS'|'LMS'|'MMS';     // 전환 발송 타입 (선택)
  *   tranMessage?: string;             // 전환 발송 메시지 (선택)
  *   scheduledAt?: string;             // 예약 발송 시간 (yyyy-MM-dd HH:mm 형식, 선택)
+ *   // FL (와이드 아이템 리스트형) 타입 전용 필드
+ *   headerText?: string;              // 헤더 (필수, 최대 20자)
+ *   listItems?: Array<{               // 아이템 리스트 (필수, 3-4개)
+ *     title: string;                  // 아이템 제목 (최대 25자, 줄바꿈 1개)
+ *     image?: { fileId, fileName, fileSize, preview };
+ *   }>;
+ *   // FC (캐러셀형) 타입 전용 필드
+ *   carousels?: Array<{               // 캐러셀 리스트 (필수, 2-6개)
+ *     content: string;                // 캐러셀 내용 (최대 180자, 줄바꿈 2개)
+ *     image?: { fileId, fileName, fileSize, preview };
+ *     buttons: Array<{                // 캐러셀별 버튼 (1-2개)
+ *       name: string;
+ *       type: string;
+ *       url_mobile?: string;
+ *       url_pc?: string;
+ *     }>;
+ *   }>;
+ *   moreLink?: string;                // 더보기 링크 (선택)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -60,6 +79,11 @@ export async function POST(request: NextRequest) {
       tranType,
       tranMessage,
       scheduledAt,
+      // FW/FL/FC 타입 전용 필드
+      headerText,
+      listItems,
+      carousels,
+      moreLink,
     } = body;
 
     if (!senderKey) {
@@ -105,6 +129,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // FL 타입 검증
+    if (messageType === 'FL') {
+      if (!headerText || headerText.trim().length === 0) {
+        return NextResponse.json(
+          { error: 'FL 타입은 헤더가 필요합니다.' },
+          { status: 400 }
+        );
+      }
+      if (!listItems || !Array.isArray(listItems) || listItems.length < 3 || listItems.length > 4) {
+        return NextResponse.json(
+          { error: 'FL 타입은 아이템 리스트가 3-4개 필요합니다.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // FC 타입 검증
+    if (messageType === 'FC') {
+      if (!carousels || !Array.isArray(carousels) || carousels.length < 2 || carousels.length > 6) {
+        return NextResponse.json(
+          { error: 'FC 타입은 캐러셀이 2-6개 필요합니다.' },
+          { status: 400 }
+        );
+      }
+    }
+
     // 예약 발송 시간 변환 (있는 경우)
     const sendDate = scheduledAt ? convertToMtsDateFormat(scheduledAt) : undefined;
 
@@ -131,7 +181,12 @@ export async function POST(request: NextRequest) {
           buttons,
           tranType,
           tranMessage,
-          sendDate
+          sendDate,
+          // FW/FL/FC 타입 전용 필드
+          headerText,
+          listItems,
+          carousels,
+          moreLink
         );
 
         if (result.success) {
@@ -166,11 +221,17 @@ export async function POST(request: NextRequest) {
             message_type: messageType,
             ad_flag: adFlag,
             image_urls: imageUrls,
+            image_link: imageLink,
             buttons: buttons,
             tran_type: tranType,
             tran_message: tranMessage,
             scheduled_at: scheduledAt,
             mts_msg_id: result.msgId,
+            // FW/FL/FC 타입 전용 필드
+            header_text: headerText,
+            list_items: listItems,
+            carousels: carousels,
+            more_link: moreLink,
           },
         });
 

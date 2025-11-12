@@ -398,7 +398,7 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
             ))}
           </div>
           <p className="text-xs text-gray-500 mt-3">
-            * 모든 수신자에게 동일하게 적용되는 변수입니다. 수신자별로 다른 값이 필요한 경우 "고급 설정" 버튼을 클릭하세요.
+            * 모든 수신자에게 동일하게 적용되는 변수입니다. 수신자별로 다른 값이 필요한 경우 &quot;고급 설정&quot; 버튼을 클릭하세요.
           </p>
         </div>
       )}

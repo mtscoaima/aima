@@ -5,9 +5,9 @@ import { X, Plus, Trash2 } from "lucide-react";
 
 interface FriendtalkButton {
   name: string; // 버튼명 (최대 14자)
-  type: 'WL'; // 웹링크 (초기 버전)
-  url_mobile: string; // 모바일 URL
-  url_pc?: string; // PC URL (선택)
+  type: 'WL' | 'AL' | 'BK' | 'MD'; // WL:웹링크, AL:앱링크, BK:봇키워드, MD:메시지전달
+  url_mobile?: string; // 모바일 URL (WL/AL에만 사용)
+  url_pc?: string; // PC URL (WL만 사용, 선택)
 }
 
 interface FriendtalkButtonModalProps {
@@ -77,19 +77,26 @@ const FriendtalkButtonModal: React.FC<FriendtalkButtonModalProps> = ({
         alert(`버튼 ${i + 1}: 버튼명을 입력해주세요.`);
         return;
       }
-      if (!button.url_mobile.trim()) {
-        alert(`버튼 ${i + 1}: 모바일 URL을 입력해주세요.`);
-        return;
-      }
-      // URL 형식 검증
-      try {
-        new URL(button.url_mobile);
-        if (button.url_pc && button.url_pc.trim()) {
-          new URL(button.url_pc);
+
+      // WL/AL 타입만 URL 필수
+      if (button.type === 'WL' || button.type === 'AL') {
+        if (!button.url_mobile || !button.url_mobile.trim()) {
+          alert(`버튼 ${i + 1}: ${button.type === 'WL' ? 'URL' : 'App Scheme'}을 입력해주세요.`);
+          return;
         }
-      } catch {
-        alert(`버튼 ${i + 1}: 올바른 URL 형식이 아닙니다.`);
-        return;
+
+        // WL은 URL 형식 검증, AL은 스킵 (scheme은 URL 형식이 아닐 수 있음)
+        if (button.type === 'WL') {
+          try {
+            new URL(button.url_mobile);
+            if (button.url_pc && button.url_pc.trim()) {
+              new URL(button.url_pc);
+            }
+          } catch {
+            alert(`버튼 ${i + 1}: 올바른 URL 형식이 아닙니다.`);
+            return;
+          }
+        }
       }
     }
 
@@ -104,7 +111,7 @@ const FriendtalkButtonModal: React.FC<FriendtalkButtonModalProps> = ({
           <div>
             <h2 className="text-lg font-semibold">친구톡 버튼 설정</h2>
             <p className="text-xs text-gray-500 mt-1">
-              웹링크(WL) 타입만 지원 | 최대 5개
+              WL(웹링크), AL(앱링크), BK(봇키워드), MD(메시지전달) | 최대 5개
             </p>
           </div>
           <button
@@ -168,37 +175,73 @@ const FriendtalkButtonModal: React.FC<FriendtalkButtonModalProps> = ({
                       />
                     </div>
 
-                    {/* 모바일 URL */}
+                    {/* 버튼 타입 */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        모바일 URL <span className="text-red-500">*</span>
+                        버튼 타입 <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="url"
-                        value={button.url_mobile}
+                      <select
+                        value={button.type}
                         onChange={(e) =>
-                          handleButtonChange(index, "url_mobile", e.target.value)
+                          handleButtonChange(index, "type", e.target.value as 'WL' | 'AL' | 'BK' | 'MD')
                         }
-                        placeholder="https://example.com"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                      />
+                      >
+                        <option value="WL">웹링크 (WL)</option>
+                        <option value="AL">앱링크 (AL)</option>
+                        <option value="BK">봇키워드 (BK)</option>
+                        <option value="MD">메시지전달 (MD)</option>
+                      </select>
                     </div>
 
-                    {/* PC URL */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        PC URL <span className="text-gray-400">(선택)</span>
-                      </label>
-                      <input
-                        type="url"
-                        value={button.url_pc || ""}
-                        onChange={(e) =>
-                          handleButtonChange(index, "url_pc", e.target.value)
-                        }
-                        placeholder="https://example.com (선택사항)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                    {/* WL/AL 타입일 때만 URL 입력 */}
+                    {(button.type === 'WL' || button.type === 'AL') && (
+                      <>
+                        {/* 모바일 URL / App Scheme */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            {button.type === 'WL' ? '모바일 URL' : 'App Scheme'} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={button.url_mobile || ""}
+                            onChange={(e) =>
+                              handleButtonChange(index, "url_mobile", e.target.value)
+                            }
+                            placeholder={button.type === 'WL' ? 'https://example.com' : 'myapp://path'}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+
+                        {/* WL 타입일 때만 PC URL */}
+                        {button.type === 'WL' && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              PC URL <span className="text-gray-400">(선택)</span>
+                            </label>
+                            <input
+                              type="url"
+                              value={button.url_pc || ""}
+                              onChange={(e) =>
+                                handleButtonChange(index, "url_pc", e.target.value)
+                              }
+                              placeholder="https://example.com (선택사항)"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* BK/MD 타입 안내 */}
+                    {(button.type === 'BK' || button.type === 'MD') && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-xs text-blue-800">
+                          {button.type === 'BK' && '봇키워드: 사용자가 버튼 클릭 시 자동으로 특정 키워드가 전송됩니다.'}
+                          {button.type === 'MD' && '메시지전달: 사용자가 버튼 클릭 시 상담원에게 연결됩니다.'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

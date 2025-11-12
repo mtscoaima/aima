@@ -50,11 +50,11 @@ npm run lint         # Check code quality
 - **Charting**: Chart.js, react-chartjs-2
 
 ### Directory Structure
-- `/src/app/` - Next.js app router pages and API routes (163 API endpoints, 57 pages)
+- `/src/app/` - Next.js app router pages and API routes (182 API endpoints, 57 pages)
   - `/api/` - Backend API endpoints (JWT auth, business logic)
     - `/messages/` - MTS messaging APIs (SMS, Kakao, Naver)
     - `/kakao/` - Kakao-specific APIs (profiles, templates, AlimTalk, FriendTalk, Brand)
-    - `/naver/` - Naver TalkTalk APIs
+    - `/naver/` - Naver TalkTalk APIs (partner, talk, templates, image upload)
     - `/auth/` - Authentication endpoints
     - `/users/` - User management
     - `/admin/` - Admin-only operations
@@ -62,19 +62,19 @@ npm run lint         # Check code quality
   - `/messages/` - Message composition interface
   - `/my-site/` - User profile and settings
   - Page routes follow folder structure
-- `/src/components/` - Reusable React components (78 components)
-  - `/messages/` - Message UI tabs (SMSTab, AlimtalkTab, FriendtalkTab, BrandTab, etc.)
+- `/src/components/` - Reusable React components (83 components)
+  - `/messages/` - Message UI tabs (MessageSendTab, AlimtalkTab, FriendtalkTab, BrandTab, NaverTalkContent)
   - `/kakao/` - Kakao-specific components (profile management, template management)
-  - `/modals/` - Reusable modals (template save/load, content modals)
+  - `/modals/` - Reusable modals (template save/load, content modals, TemplateVariableInputModal)
   - `/admin/` - Admin dashboard components
 - `/src/contexts/` - React contexts (AuthContext, BalanceContext, NotificationContext, PricingContext)
 - `/src/lib/` - Core utilities and API clients (16 modules)
-  - `mtsApi.ts` - MTS API core functions (1850 lines, 19 functions)
+  - `mtsApi.ts` - MTS API core functions (2,907 lines, 19 functions)
   - `supabase.ts` - Supabase client initialization
 - `/src/utils/` - Helper utilities (11 utilities)
-  - `kakaoApi.ts` - Kakao API wrappers (336 lines, 6 functions)
+  - `kakaoApi.ts` - Kakao API wrappers (566 lines, 6 functions)
 - `/src/hooks/` - Custom React hooks (3 hooks)
-- `/migrations/` - SQL migration files with timestamped naming
+- `/migrations/` - SQL migration files with timestamped naming (17 migrations)
 
 ### Authentication Flow
 1. Custom JWT implementation (not Supabase Auth)
@@ -173,7 +173,11 @@ Manual testing via documented scenarios:
 - `MTS_API_통합_테스트_가이드.md` - MTS API integration testing guide (v3.5)
   - Phase 1-2: SMS/LMS/MMS ✅ Completed
   - Phase 3: Kakao AlimTalk ✅ Completed (including variable templates)
-  - Phase 4: Kakao FriendTalk ✅ Completed
+  - Phase 4: Kakao FriendTalk ✅ **All 5 Types Completed** (FT/FI/FW/FL/FC, 2025-11-12)
+    - FT/FI: Text and Image types with button support (max 5 buttons)
+    - FW: Wide image type (imageLink, max 2 buttons)
+    - FL: Wide Item List type (header + 3-4 items, max 2 buttons)
+    - FC: Carousel type (2-6 carousels, 1-2 buttons each, moreLink)
   - Phase 5: Naver TalkTalk ✅ **Completed** (UI/backend fully integrated with variable system)
   - Phase 6: Kakao Brand Messages ✅ **8 Types Implemented** (TEXT/IMAGE/WIDE verified, 5 new types structure fixed, 변수분리방식 v1.1)
     - Phase 6.0-6.4: TEXT/IMAGE/WIDE + buttons ✅ Verified (2025-11-10)
@@ -276,13 +280,12 @@ Manual testing via documented scenarios:
 - Social authentication supports multiple providers (Google, Kakao, Naver)
 - Business verification via government API (`ODCLOUD_SERVICE_KEY`) is mandatory for certain features
 
-### MTS API Migration Status
-- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, Kakao FriendTalk (FT/FI with buttons), **Kakao Brand Messages (3 types: TEXT/IMAGE/WIDE verified ✅)**
-- **Structure Fixed, Testing Pending**: Brand Messages 5 new types (CAROUSEL_FEED, COMMERCE, CAROUSEL_COMMERCE, PREMIUM_VIDEO, WIDE_ITEM_LIST)
-- **Completed**: Naver TalkTalk ✅ (UI with variable system, backend API integration, template support)
-- **Not Implemented**: FriendTalk advanced types (FW/FL/FC)
+### MTS API Implementation Status
+- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, **Kakao FriendTalk (all 5 types: FT/FI/FW/FL/FC ✅ 2025-11-12)**, **Kakao Brand Messages (all 8 types ✅)**, **Naver TalkTalk ✅**
+- **Real Send Verified**: SMS/LMS/MMS, AlimTalk, FriendTalk FT/FI/FW/FL/FC, Brand Messages TEXT/IMAGE/WIDE
+- **Structure Verified, Real Send Pending**: Brand Messages (CAROUSEL_FEED, COMMERCE, CAROUSEL_COMMERCE, PREMIUM_VIDEO, WIDE_ITEM_LIST)
 - **Reference**: `MTS_API_통합_테스트_가이드.md` for detailed testing status
-- **Core Module**: `src/lib/mtsApi.ts` (1850 lines, 19 functions)
+- **Core Module**: `src/lib/mtsApi.ts` (2,907 lines, 19 functions)
 - **Brand Messages**: Uses Variable Separation Method v1.1 (separate `message_variable`, `button_variable`, `image_variable`, `video_variable`, `commerce_variable`, etc.)
   - ✅ **2025-11-10 업데이트**: 변수분리방식 v1.1 전환 완료, 이전 1030 에러 완전 해결
   - ✅ **실제 발송 테스트 완료**: TEXT, IMAGE, WIDE 타입 + 버튼(최대 5개) 조합 모두 성공
@@ -439,3 +442,168 @@ When working with MTS API or Supabase, you may encounter these TypeScript patter
 - `README.md` - Detailed setup instructions for Supabase, Storage, Templates
 - `NOTIFICATION_SETUP_GUIDE.md` - Notification system setup
 - `.env.local.example` - Environment variable template
+
+## Common Mistakes and Gotchas
+
+### 1. Variable Substitution Timing
+**Problem**: Replacing variables at the wrong layer causes errors or double-substitution.
+
+**Rule**:
+- **Client-side**: SMS/MMS, FriendTalk, Brand Messages → Use `replaceStandardVariables()` before sending
+- **Server-side**: AlimTalk, Naver TalkTalk → Send raw `#{variable}`, let MTS API substitute
+
+```typescript
+// ❌ WRONG - AlimTalk (MTS will fail to find #{variable})
+const message = replaceStandardVariables(template, vars);
+sendKakaoAlimtalk({ message });
+
+// ✅ CORRECT - AlimTalk
+sendKakaoAlimtalk({ message: template }); // MTS substitutes server-side
+
+// ✅ CORRECT - FriendTalk
+const message = replaceStandardVariables(template, vars);
+sendFriendtalk({ message }); // Already substituted
+```
+
+### 2. MTS API Nested Object Structures
+**Problem**: Many MTS API parameters require nested objects, not flat fields.
+
+**Common Cases**:
+- Brand CAROUSEL_FEED: `carousel_item_variable: { list: [...] }`
+- Brand COMMERCE: `commerce_variable: { commerce: {...} }`
+- Brand PREMIUM_VIDEO: `video_variable: { video: {...} }`
+- Naver TalkTalk: `attachments: { buttons: [...] }`
+
+```typescript
+// ❌ WRONG - Flat structure
+const requestBody = {
+  carousel_item_variable: [{ header, content, imageUrl }] // MTS rejects
+};
+
+// ✅ CORRECT - Nested structure
+const requestBody = {
+  carousel_item_variable: {
+    list: [{ header, content, imageUrl, buttons }]
+  }
+};
+```
+
+**Always check** `/docs/연동규격서/` for exact MTS API field structure.
+
+### 3. Missing JWT Authentication
+**Problem**: Forgetting `validateAuthWithSuccess()` causes 401 errors.
+
+```typescript
+// ❌ WRONG - No auth check
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  // Direct DB access without userId → Security hole
+}
+
+// ✅ CORRECT - Auth first
+export async function POST(request: NextRequest) {
+  const authResult = validateAuthWithSuccess(request);
+  if (!authResult.isValid) return authResult.errorResponse;
+  const { userId } = authResult.userInfo;
+  // Now safe to use userId
+}
+```
+
+### 4. Exposing Service Role Key
+**Problem**: Using `SUPABASE_SERVICE_ROLE_KEY` in client components bypasses RLS.
+
+```typescript
+// ❌ WRONG - Client component
+'use client';
+const supabase = createClient(url, serviceRoleKey); // Security vulnerability!
+
+// ✅ CORRECT - Server-side only
+// In API route:
+const supabase = createClient(url, serviceRoleKey); // OK
+```
+
+**Never**:
+- Import service role key in client components
+- Log service role key in console
+- Expose in browser DevTools Network tab
+
+### 5. Image Size Limits
+**Problem**: Different message types have different image size limits.
+
+- SMS/MMS: 300KB after Sharp optimization
+- Kakao FriendTalk: 500KB max
+- Kakao Brand: Varies by type (typically 500KB-2MB)
+- Naver: Check template requirements
+
+**Always** use Sharp for pre-processing before upload.
+
+### 6. Button Type Limits
+**Problem**: Each message type has different button count limits.
+
+- FriendTalk FT/FI: Max 5 buttons
+- FriendTalk FW/FL: Max 2 buttons
+- FriendTalk FC: Max 1-2 buttons **per carousel**
+- Brand Messages: Max 5 buttons
+- AlimTalk: Max 5 buttons
+
+### 7. Targeting Types (Brand Messages)
+**Problem**: Using 'M' or 'N' targeting without business verification fails.
+
+```typescript
+// ❌ WRONG - Production targeting without verification
+targetingType: 'M' // Fails if business conditions not met
+
+// ✅ CORRECT - Use 'I' for testing
+targetingType: 'I' // Internal test, works immediately
+```
+
+**Error Codes**:
+- 1028: Targeting issue (use 'I' for testing)
+- 3016: Message doesn't match template (check variable structure)
+
+### 8. Polling vs Realtime Subscriptions
+**Problem**: Creating Supabase Realtime subscriptions adds connection overhead.
+
+```typescript
+// ❌ AVOID - Realtime subscriptions
+const subscription = supabase
+  .channel('balance')
+  .on('postgres_changes', ...)
+  .subscribe();
+
+// ✅ CORRECT - Use polling pattern
+const interval = setInterval(async () => {
+  const { data } = await fetch('/api/balance');
+  setBalance(data);
+}, 30000);
+```
+
+**Why?** Polling is simpler, more deployment-compatible, and matches existing context patterns.
+
+### 9. MTS API Endpoint Routing
+**Problem**: Different message types route to different MTS servers.
+
+```typescript
+// Regular MTS API
+const url = `${MTS_API_URL}/v1/kakao/alimtalk/send`;
+
+// Template API (different host)
+const url = `${MTS_TEMPLATE_API_URL}/kakao/v2/template`;
+
+// Naver CARDINFO (special case)
+if (productCode === 'CARDINFO') {
+  const url = 'https://mtscard1.mtsco.co.kr:41310/v1/naver/talk/send';
+}
+```
+
+**Check** mtsApi.ts lines 970-1113 for Naver routing logic.
+
+### 10. Character Limits and Line Breaks
+**Problem**: MTS API validates character counts and line break limits strictly.
+
+- FW message: 76 chars, 1 line break
+- FL header: 20 chars, no line breaks
+- FL item title: 25 chars, 1 line break
+- FC content: 180 chars, 2 line breaks
+
+**UI validation** must match MTS API validation exactly.
