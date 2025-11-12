@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import NextImage from "next/image";
 import { X, Upload, Trash2 } from "lucide-react";
 
 interface UploadedFile {
@@ -40,6 +41,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
   // PREMIUM_VIDEO용 state
   const [videoUrl, setVideoUrl] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [uploadedVideo, setUploadedVideo] = useState<UploadedFile | null>(null);
   const [uploadedThumbnail, setUploadedThumbnail] = useState<UploadedFile | null>(null);
 
@@ -202,6 +204,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
   };
 
   // 업로드된 비디오 삭제
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDeleteVideo = () => {
     setUploadedVideo(null);
     setVideoUrl("");
@@ -421,7 +424,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const img = new Image();
+        const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
@@ -477,7 +480,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const img = new Image();
+        const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
@@ -1141,10 +1144,12 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                 {uploadedImage && (
                   <div className="border border-gray-300 rounded-lg p-4">
                     <div className="flex items-start gap-4">
-                      <img
+                      <NextImage
                         src={uploadedImage.url}
                         alt="업로드된 이미지"
-                        className="w-32 h-16 object-cover rounded border border-gray-200"
+                        width={128}
+                        height={64}
+                        className="object-cover rounded border border-gray-200"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-700 truncate">
@@ -1270,10 +1275,12 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                 {uploadedThumbnail && (
                   <div className="border border-gray-300 rounded-lg p-4">
                     <div className="flex items-start gap-4">
-                      <img
+                      <NextImage
                         src={uploadedThumbnail.url}
                         alt="썸네일"
-                        className="w-32 h-16 object-cover rounded border border-gray-200"
+                        width={128}
+                        height={64}
+                        className="object-cover rounded border border-gray-200"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-700 truncate">
@@ -1382,9 +1389,11 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                       )}
                       {item.uploadedFile && (
                         <div className="flex items-center gap-2 border border-gray-200 rounded p-2">
-                          <img
+                          <NextImage
                             src={item.uploadedFile.url}
                             alt={`아이템 ${index + 1}`}
+                            width={64}
+                            height={64}
                             className="w-12 h-12 object-cover rounded"
                           />
                           <span className="text-xs text-gray-600 flex-1 truncate">{item.uploadedFile.name}</span>
@@ -1472,7 +1481,9 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                 {uploadedCommerceImage && (
                   <div className="border border-gray-300 rounded-lg p-4">
                     <div className="flex items-start gap-4">
-                      <img
+                      <NextImage
+                        width={128}
+                        height={64}
                         src={uploadedCommerceImage.url}
                         alt="상품 이미지"
                         className="w-32 h-32 object-cover rounded border border-gray-200"
@@ -1694,10 +1705,12 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                         )}
                         {card.uploadedFile && (
                           <div className="flex items-center gap-2 border border-gray-200 rounded p-2">
-                            <img
+                            <NextImage
                               src={card.uploadedFile.url}
                               alt={`카드 ${index + 1}`}
-                              className="w-16 h-16 object-cover rounded"
+                              width={64}
+                              height={64}
+                              className="object-cover rounded"
                             />
                             <span className="text-xs text-gray-600 flex-1 truncate">
                               {card.uploadedFile.name}
@@ -1749,7 +1762,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                         <textarea
                           value={card.description}
                           onChange={(e) => handleCarouselCommerceCardChange(card.id, 'description', e.target.value)}
-                          placeholder="무더위? 귀여움으로 물하게 극복!"
+                          placeholder="무더위? 귀여움으로 쿨하게 극복!"
                           rows={2}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
                         />
@@ -1945,10 +1958,12 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                         )}
                         {card.uploadedFile && (
                           <div className="flex items-center gap-2 border border-gray-200 rounded p-2">
-                            <img
+                            <NextImage
                               src={card.uploadedFile.url}
                               alt={`카드 ${index + 1}`}
-                              className="w-16 h-16 object-cover rounded"
+                              width={64}
+                              height={64}
+                              className="object-cover rounded"
                             />
                             <span className="text-xs text-gray-600 flex-1 truncate">
                               {card.uploadedFile.name}
@@ -2000,7 +2015,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                         <textarea
                           value={card.description}
                           onChange={(e) => handleCarouselFeedCardChange(card.id, 'description', e.target.value)}
-                          placeholder="무더위? 귀여움으로 물하게 극복! 클링 소재로 물하게 살아남기🌊"
+                          placeholder="무더위? 귀여움으로 쿨하게 극복! 클링 소재로 쿨하게 살아남기🌊"
                           rows={2}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
                         />

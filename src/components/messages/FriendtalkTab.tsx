@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import NextImage from "next/image";
 import { Info, RefreshCw, Send, Image as ImageIcon, FileText, Upload, Save, X } from "lucide-react";
 import {
   fetchSenderProfiles,
@@ -593,10 +594,12 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             <div className="border border-gray-200 rounded-lg p-3">
               {uploadedImages.map((image, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <img
+                  <NextImage
                     src={image.preview}
                     alt={image.fileName}
-                    className="w-16 h-16 object-cover rounded border border-gray-200"
+                    width={64}
+                    height={64}
+                    className="object-cover rounded border border-gray-200"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-700 truncate">
