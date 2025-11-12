@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validMessageTypes = ['TEXT', 'IMAGE', 'WIDE', 'WIDE_ITEM_LIST', 'CAROUSEL_FEED', 'PREMIUM_VIDEO'];
+    const validMessageTypes = ['TEXT', 'IMAGE', 'WIDE', 'WIDE_ITEM_LIST', 'CAROUSEL_FEED', 'PREMIUM_VIDEO', 'COMMERCE', 'CAROUSEL_COMMERCE'];
     if (!validMessageTypes.includes(messageType)) {
       return NextResponse.json(
         { error: `메시지 타입이 올바르지 않습니다. (${validMessageTypes.join(', ')} 중 하나)` },

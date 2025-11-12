@@ -2047,10 +2047,16 @@ export async function createBrandTemplate(
 
     // PREMIUM_VIDEO 필드 추가
     // MTS API는 video 객체로 그룹화된 구조를 요구
-    if (chatBubbleType === 'PREMIUM_VIDEO' && videoUrl && thumbnailUrl) {
+    if (chatBubbleType === 'PREMIUM_VIDEO' && videoUrl) {
+      // 카카오 TV URL 형식 검증
+      const kakaoTvPattern = /^https:\/\/tv\.kakao\.com\/(v\/\d+|channel\/\d+\/cliplink\/\d+)$/;
+      if (!kakaoTvPattern.test(videoUrl)) {
+        throw new Error('올바른 카카오 TV URL 형식이 아닙니다. https://tv.kakao.com/v/숫자 형식이어야 합니다.');
+      }
+
       requestBody.video = {
         videoUrl: videoUrl,
-        thumbnailUrl: thumbnailUrl,
+        thumbnailUrl: thumbnailUrl || undefined,
       };
     }
 

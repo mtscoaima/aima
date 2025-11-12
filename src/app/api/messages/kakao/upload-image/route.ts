@@ -46,10 +46,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "유효하지 않은 토큰입니다" }, { status: 401 });
     }
 
-    // FormData에서 파일과 senderKey 추출
+    // FormData에서 파일, senderKey, cropRatio 추출
     const form = await req.formData();
     const f = form.get("file") as unknown as File | null;
     const senderKey = form.get("senderKey") as string | null;
+    const cropRatio = form.get("cropRatio") as string | null; // "2:1" 또는 "1:1"
 
     if (!f) {
       return NextResponse.json({ success: false, error: "file required" }, { status: 400 });
@@ -90,8 +91,15 @@ export async function POST(req: NextRequest) {
         resizeWidth = 500;
       }
 
-      // 2:1 비율로 조정 (가로:세로)
-      const targetHeight = Math.round(resizeWidth / 2);
+      // cropRatio에 따라 비율 결정
+      let targetHeight: number;
+      if (cropRatio === "1:1") {
+        // 1:1 정사각형 (CAROUSEL_COMMERCE, CAROUSEL_FEED용)
+        targetHeight = resizeWidth;
+      } else {
+        // 기본값: 2:1 비율 (가로:세로) - 친구톡/알림톡용
+        targetHeight = Math.round(resizeWidth / 2);
+      }
 
       const converted = await sharp(buf)
         .resize(resizeWidth, targetHeight, {

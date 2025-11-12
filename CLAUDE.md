@@ -175,9 +175,9 @@ Manual testing via documented scenarios:
   - Phase 3: Kakao AlimTalk ✅ Completed (including variable templates)
   - Phase 4: Kakao FriendTalk ✅ Completed
   - Phase 5: Naver TalkTalk ⏸️ Pending (UI/backend ready)
-  - Phase 6: Kakao Brand Messages ✅ **8 Types Implemented** (TEXT/IMAGE/WIDE verified, 5 new types UI ready, 변수분리방식 v1.1)
+  - Phase 6: Kakao Brand Messages ✅ **8 Types Implemented** (TEXT/IMAGE/WIDE verified, 5 new types structure fixed, 변수분리방식 v1.1)
     - Phase 6.0-6.4: TEXT/IMAGE/WIDE + buttons ✅ Verified (2025-11-10)
-    - Phase 6.5-6.9: WIDE_ITEM_LIST/PREMIUM_VIDEO/COMMERCE/CAROUSEL_COMMERCE/CAROUSEL_FEED ✅ UI Implemented (2025-11-11)
+    - Phase 6.5-6.9: WIDE_ITEM_LIST/PREMIUM_VIDEO/COMMERCE/CAROUSEL_COMMERCE/CAROUSEL_FEED ✅ Structure Fixed (2025-11-12)
 - No automated test framework currently configured
 - Use Supabase dashboard for database verification
 - Check MTS API response codes in browser DevTools
@@ -217,7 +217,11 @@ Manual testing via documented scenarios:
 3. Add MTS API function in `src/lib/mtsApi.ts`
 4. Update message type constants and TypeScript types
 5. Add template support in `sms_message_templates` table
-6. Test thoroughly with `MTS_API_통합_테스트_가이드.md`
+6. **Important**: Check MTS API documentation for required data structure
+   - Many MTS API parameters require **nested object structures**, not flat fields
+   - Example: CAROUSEL types need `{ list: [...] }`, COMMERCE needs `{ commerce: {...} }`, VIDEO needs `{ video: {...} }`
+   - Always verify field names match API spec (camelCase vs snake_case)
+7. Test thoroughly with `MTS_API_통합_테스트_가이드.md`
 
 ## Key Features
 
@@ -273,8 +277,9 @@ Manual testing via documented scenarios:
 - Business verification via government API (`ODCLOUD_SERVICE_KEY`) is mandatory for certain features
 
 ### MTS API Migration Status
-- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, Kakao FriendTalk (FT/FI with buttons), **Kakao Brand Messages (8 types implemented ✅)**
-- **Implemented, Testing Pending**: Naver TalkTalk (UI/backend complete), Brand Messages 5 new types (WIDE_ITEM_LIST, PREMIUM_VIDEO, COMMERCE, CAROUSEL_COMMERCE, CAROUSEL_FEED - UI/backend ready)
+- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, Kakao FriendTalk (FT/FI with buttons), **Kakao Brand Messages (3 types: TEXT/IMAGE/WIDE verified ✅)**
+- **Structure Fixed, Testing Pending**: Brand Messages 5 new types (CAROUSEL_FEED, COMMERCE, CAROUSEL_COMMERCE, PREMIUM_VIDEO, WIDE_ITEM_LIST)
+- **Implemented, Testing Pending**: Naver TalkTalk (UI/backend complete)
 - **Not Implemented**: FriendTalk advanced types (FW/FL/FC)
 - **Reference**: `MTS_API_통합_테스트_가이드.md` for detailed testing status
 - **Core Module**: `src/lib/mtsApi.ts` (1850 lines, 19 functions)
@@ -288,7 +293,14 @@ Manual testing via documented scenarios:
     - CAROUSEL_COMMERCE/CAROUSEL_FEED: 기본 UI 구현
     - DB 마이그레이션: kakao_brand_templates 테이블 7개 필드 추가
     - 비디오 업로드 API: `/api/messages/kakao/upload-video` (Supabase Storage 연동)
-  - ⏸️ **다음 단계**: 5개 신규 타입 템플릿 등록 → MTS 검수 → 실제 발송 테스트
+  - ✅ **2025-11-12 Critical Fix**: 신규 5개 타입 MTS API 구조 수정 완료
+    - **CAROUSEL_FEED**: 평면 배열 → `{ list: [...] }` 중첩 구조로 수정, buttons 필드 추가 (1-2개), header/content/imageUrl/imageName 필드명 변경
+    - **COMMERCE**: 평면 필드 → `{ commerce: { title, regularPrice, discountPrice, ... } }` 객체로 그룹화
+    - **CAROUSEL_COMMERCE**: CAROUSEL_FEED와 동일한 구조 + 각 카드 내 commerce 객체 중첩
+    - **PREMIUM_VIDEO**: 평면 필드 → `{ video: { videoUrl, thumbnailUrl } }` 객체로 그룹화
+    - **UI 개선**: CAROUSEL_FEED 카드별 버튼 입력 UI 추가 (1-2개, WL/AL/BK/MD 타입 선택)
+    - **최소/최대 검증**: CAROUSEL 타입 2-6개 카드 제한 추가
+  - ⏸️ **다음 단계**: 5개 신규 타입 템플릿 등록 UI 테스트 → MTS 검수 → 실제 발송 테스트
 
 ### Variable Substitution
 - SMS/MMS: Client-side substitution with `#{variable}` syntax

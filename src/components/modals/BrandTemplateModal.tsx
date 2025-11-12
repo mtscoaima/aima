@@ -47,6 +47,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
   const [commerceTitle, setCommerceTitle] = useState("");
   const [regularPrice, setRegularPrice] = useState("");
   const [discountPrice, setDiscountPrice] = useState("");
+  const [discountType, setDiscountType] = useState<'rate' | 'fixed'>('rate'); // 할인 타입 선택
   const [discountRate, setDiscountRate] = useState("");
   const [discountFixed, setDiscountFixed] = useState("");
   const [uploadedCommerceImage, setUploadedCommerceImage] = useState<UploadedFile | null>(null);
@@ -70,6 +71,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
     description: string;
     regular_price: number;
     discount_price?: number;
+    discount_type: 'rate' | 'fixed'; // 할인 타입 선택
     discount_rate?: number;
     discount_fixed?: number;
     uploadedFile: UploadedFile | null;
@@ -193,64 +195,10 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
   };
 
   // 비디오 파일 업로드 핸들러 (Supabase Storage에 업로드)
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // 파일 타입 검증
-    const allowedTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"];
-    if (!allowedTypes.includes(file.type)) {
-      setError("MP4, MOV, AVI, WEBM 파일만 업로드 가능합니다.");
-      return;
-    }
-
-    // 파일 크기 검증 (200MB)
-    const maxSize = 200 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError("비디오 크기는 200MB 이하여야 합니다.");
-      return;
-    }
-
-    setIsUploading(true);
-    setError("");
-
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("로그인이 필요합니다.");
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/messages/kakao/upload-video", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "비디오 업로드 실패");
-      }
-
-      setUploadedVideo({
-        fileId: result.fileId,
-        url: result.url,
-        name: file.name,
-      });
-
-      setVideoUrl(result.url);
-
-    } catch (err) {
-      console.error("비디오 업로드 오류:", err);
-      setError(err instanceof Error ? err.message : "비디오 업로드 중 오류가 발생했습니다.");
-    } finally {
-      setIsUploading(false);
-    }
+  // 카카오 TV URL 검증 함수
+  const validateKakaoTvUrl = (url: string): boolean => {
+    const kakaoTvPattern = /^https:\/\/tv\.kakao\.com\/(v\/\d+|channel\/\d+\/cliplink\/\d+)$/;
+    return kakaoTvPattern.test(url);
   };
 
   // 업로드된 비디오 삭제
@@ -670,6 +618,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
       description: "",
       regular_price: 0,
       discount_price: undefined,
+      discount_type: 'rate', // 기본값: 할인율
       discount_rate: undefined,
       discount_fixed: undefined,
       uploadedFile: null,
@@ -720,6 +669,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
       const formData = new FormData();
       formData.append("file", file);
       formData.append("senderKey", senderKey);
+      // CAROUSEL_COMMERCE는 2:1 비율 (cropRatio 미지정 시 기본값 2:1 사용)
 
       const response = await fetch("/api/messages/kakao/upload-image", {
         method: "POST",
@@ -839,6 +789,7 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
       const formData = new FormData();
       formData.append("file", file);
       formData.append("senderKey", senderKey);
+      // CAROUSEL_FEED는 2:1 비율 (cropRatio 미지정 시 기본값 2:1 사용)
 
       const response = await fetch("/api/messages/kakao/upload-image", {
         method: "POST",
@@ -905,6 +856,15 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
         setError("WIDE_ITEM_LIST는 최소 3개의 아이템이 필요합니다. (메인 아이템 1개 + 서브 아이템 2개)");
         setIsSubmitting(false);
         return;
+      }
+
+      // PREMIUM_VIDEO 카카오 TV URL 검증
+      if (chatBubbleType === "PREMIUM_VIDEO") {
+        if (!videoUrl || !validateKakaoTvUrl(videoUrl)) {
+          setError("올바른 카카오 TV URL을 입력해주세요.\n형식: https://tv.kakao.com/v/숫자 또는 https://tv.kakao.com/channel/숫자/cliplink/숫자");
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       // 버튼 검증
@@ -1225,67 +1185,51 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
             </>
           )}
 
-          {/* PREMIUM_VIDEO: 동영상 + 썸네일 업로드 */}
+          {/* PREMIUM_VIDEO: 카카오 TV URL 입력 + 썸네일 업로드 */}
           {chatBubbleType === "PREMIUM_VIDEO" && (
             <>
-              {/* 비디오 업로드 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  동영상 첨부 <span className="text-red-500">*</span>
-                </label>
-
-                {!uploadedVideo && (
-                  <>
-                    <input
-                      ref={videoInputRef}
-                      type="file"
-                      accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
-                      onChange={handleVideoUpload}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => videoInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              {/* 카카오 TV 업로드 안내 */}
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-800 mb-2">
+                  ℹ️ 카카오 TV 영상 URL 입력 방법
+                </p>
+                <ol className="text-xs text-blue-700 space-y-1 ml-4 list-decimal">
+                  <li>
+                    <a
+                      href="https://tv.kakao.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline font-medium"
                     >
-                      <div className="flex flex-col items-center gap-2">
-                        <Upload className="w-8 h-8 text-gray-400" />
-                        <span className="text-sm text-gray-600">
-                          {isUploading ? "업로드 중..." : "동영상 선택 (MP4, MOV, AVI, WEBM)"}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          최대 200MB
-                        </span>
-                      </div>
-                    </button>
-                  </>
-                )}
+                      카카오 TV
+                    </a>에 먼저 영상을 업로드하세요
+                  </li>
+                  <li>업로드된 영상의 URL을 복사하세요 (예: https://tv.kakao.com/v/123456)</li>
+                  <li>아래 입력란에 URL을 붙여넣으세요</li>
+                </ol>
+              </div>
 
-                {uploadedVideo && (
-                  <div className="border border-gray-300 rounded-lg p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-32 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
-                        <span className="text-gray-500 text-xs">VIDEO</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-700 truncate">
-                          {uploadedVideo.name}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1 break-all">
-                          {uploadedVideo.url}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleDeleteVideo}
-                        className="flex-shrink-0 p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
-                        title="비디오 삭제"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
+              {/* 비디오 URL 입력 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  카카오 TV 영상 URL <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://tv.kakao.com/v/123456789"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {videoUrl && !validateKakaoTvUrl(videoUrl) && (
+                  <p className="text-xs text-red-500 mt-1">
+                    ❌ 올바른 카카오 TV URL 형식이 아닙니다 (https://tv.kakao.com/v/숫자)
+                  </p>
+                )}
+                {videoUrl && validateKakaoTvUrl(videoUrl) && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✅ 올바른 URL 형식입니다
+                  </p>
                 )}
               </div>
 
@@ -1598,34 +1542,72 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    할인율 (%)
+              {/* 할인 타입 선택 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  할인 타입 선택 <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="rate"
+                      checked={discountType === 'rate'}
+                      onChange={(e) => {
+                        setDiscountType(e.target.value as 'rate' | 'fixed');
+                        setDiscountFixed(""); // 다른 필드 초기화
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">할인율 (%)</span>
                   </label>
-                  <input
-                    type="number"
-                    value={discountRate}
-                    onChange={(e) => setDiscountRate(e.target.value)}
-                    placeholder="20"
-                    min="0"
-                    max="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="fixed"
+                      checked={discountType === 'fixed'}
+                      onChange={(e) => {
+                        setDiscountType(e.target.value as 'rate' | 'fixed');
+                        setDiscountRate(""); // 다른 필드 초기화
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">정액할인 (원)</span>
+                  </label>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    정액할인 (원)
-                  </label>
-                  <input
-                    type="number"
-                    value={discountFixed}
+              {/* 할인 입력 필드 (선택된 타입에 따라 표시) */}
+              <div>
+                {discountType === 'rate' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      할인율 (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={discountRate}
+                      onChange={(e) => setDiscountRate(e.target.value)}
+                      placeholder="20"
+                      min="0"
+                      max="100"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      정액할인 (원)
+                    </label>
+                    <input
+                      type="number"
+                      value={discountFixed}
                     onChange={(e) => setDiscountFixed(e.target.value)}
-                    placeholder="300000"
+                    placeholder="5000"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -1633,6 +1615,11 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
           {/* CAROUSEL_COMMERCE: 다중 상품 카드 입력 */}
           {chatBubbleType === "CAROUSEL_COMMERCE" && (
             <>
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  ℹ️ 모든 상품 이미지는 자동으로 <strong>2:1 비율 (가로:세로)</strong>로 조정됩니다. (비율 걱정 없이 업로드하세요)
+                </p>
+              </div>
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">
@@ -1796,33 +1783,78 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            할인율 (%)
+                      {/* 할인 타입 선택 */}
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-2">
+                          할인 타입 선택 <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex gap-4 mb-2">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              value="rate"
+                              checked={card.discount_type === 'rate'}
+                              onChange={(e) => {
+                                const updatedCards = carouselCommerceCards.map(c =>
+                                  c.id === card.id
+                                    ? { ...c, discount_type: e.target.value as 'rate' | 'fixed', discount_fixed: undefined }
+                                    : c
+                                );
+                                setCarouselCommerceCards(updatedCards);
+                              }}
+                              className="mr-1.5"
+                            />
+                            <span className="text-xs text-gray-700">할인율 (%)</span>
                           </label>
-                          <input
-                            type="number"
-                            value={card.discount_rate || ''}
-                            onChange={(e) => handleCarouselCommerceCardChange(card.id, 'discount_rate', e.target.value ? parseInt(e.target.value) : undefined)}
-                            placeholder="20"
-                            min="0"
-                            max="100"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">
-                            정액할인 (원)
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              value="fixed"
+                              checked={card.discount_type === 'fixed'}
+                              onChange={(e) => {
+                                const updatedCards = carouselCommerceCards.map(c =>
+                                  c.id === card.id
+                                    ? { ...c, discount_type: e.target.value as 'rate' | 'fixed', discount_rate: undefined }
+                                    : c
+                                );
+                                setCarouselCommerceCards(updatedCards);
+                              }}
+                              className="mr-1.5"
+                            />
+                            <span className="text-xs text-gray-700">정액할인 (원)</span>
                           </label>
-                          <input
-                            type="number"
-                            value={card.discount_fixed || ''}
-                            onChange={(e) => handleCarouselCommerceCardChange(card.id, 'discount_fixed', e.target.value ? parseInt(e.target.value) : undefined)}
-                            placeholder="10000"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          />
                         </div>
+
+                        {/* 할인 입력 필드 (선택된 타입에 따라) */}
+                        {card.discount_type === 'rate' ? (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              할인율 (%)
+                            </label>
+                            <input
+                              type="number"
+                              value={card.discount_rate || ''}
+                              onChange={(e) => handleCarouselCommerceCardChange(card.id, 'discount_rate', e.target.value ? parseInt(e.target.value) : undefined)}
+                              placeholder="20"
+                              min="0"
+                              max="100"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              정액할인 (원)
+                            </label>
+                            <input
+                              type="number"
+                              value={card.discount_fixed || ''}
+                              onChange={(e) => handleCarouselCommerceCardChange(card.id, 'discount_fixed', e.target.value ? parseInt(e.target.value) : undefined)}
+                              placeholder="5000"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1834,6 +1866,11 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
           {/* CAROUSEL_FEED: 다중 피드 카드 입력 */}
           {chatBubbleType === "CAROUSEL_FEED" && (
             <>
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-700">
+                  ℹ️ 모든 피드 이미지는 자동으로 <strong>2:1 비율 (가로:세로)</strong>로 조정됩니다. (비율 걱정 없이 업로드하세요)
+                </p>
+              </div>
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">
