@@ -5,12 +5,15 @@ import {
   Info,
   HelpCircle,
   ChevronDown,
-  Send
+  Send,
+  Settings
 } from "lucide-react";
+import TemplateVariableInputModal from "../modals/TemplateVariableInputModal";
 
 interface Recipient {
   phone_number: string;
   name?: string;
+  variables?: Record<string, string>; // 수신자별 변수
 }
 
 interface NaverTalkContentProps {
@@ -41,6 +44,12 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // 템플릿 변수 관련 상태
+  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
+  const [commonVariables, setCommonVariables] = useState<Record<string, string>>({});
+  const [showVariableModal, setShowVariableModal] = useState(false);
+  const [recipientVariables, setRecipientVariables] = useState<Record<string, Record<string, string>>>({});
 
   // 템플릿 목록 로드
   const loadTemplates = async (navertalkIdValue: string) => {
@@ -83,16 +92,53 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
     }
   }, [navertalkId]);
 
-  // 템플릿 선택 시 내용 업데이트
+  // 템플릿에서 변수 추출 (#{변수명} 패턴)
+  const extractVariables = (text: string): string[] => {
+    const regex = /#\{([^}]+)\}/g;
+    const variables: string[] = [];
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (!variables.includes(match[1])) {
+        variables.push(match[1]);
+      }
+    }
+
+    return variables;
+  };
+
+  // 템플릿 선택 시 내용 업데이트 및 변수 추출
   const handleTemplateSelect = (templateCode: string) => {
     const template = templates.find(t => t.code === templateCode);
     if (template) {
       setSelectedTemplate(template);
       setTemplateContent(template.text);
+
+      // 템플릿에서 변수 추출
+      const variables = extractVariables(template.text);
+      setTemplateVariables(variables);
+
+      // 공통 변수 초기화
+      const initialVariables: Record<string, string> = {};
+      variables.forEach(varName => {
+        initialVariables[varName] = '';
+      });
+      setCommonVariables(initialVariables);
     } else {
       setSelectedTemplate(null);
       setTemplateContent("");
+      setTemplateVariables([]);
+      setCommonVariables({});
     }
+  };
+
+  // 모달에서 변수 저장
+  const handleSaveVariables = (
+    commonVars: Record<string, string>,
+    recipientVars: Record<string, Record<string, string>>
+  ) => {
+    setCommonVariables(commonVars);
+    setRecipientVariables(recipientVars);
   };
 
   // 네이버 톡톡 발송
@@ -118,11 +164,21 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
       return;
     }
 
+    // 변수 검증 (변수가 있는 경우)
+    if (templateVariables.length > 0) {
+      const emptyVariables = templateVariables.filter(varName => !commonVariables[varName]);
+      if (emptyVariables.length > 0) {
+        setError(`다음 변수를 입력해주세요: ${emptyVariables.join(', ')}`);
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
+      // 새 API 스펙에 맞게 요청 본문 구성
       const response = await fetch('/api/messages/naver/talk/send', {
         method: 'POST',
         headers: {
@@ -131,10 +187,37 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
         body: JSON.stringify({
           navertalkId,
           templateCode: selectedTemplate.code,
-          recipients,
-          text: templateContent,
+          recipients: recipients.map(r => {
+            // 수신자별 변수가 있으면 사용, 없으면 빈 객체 (서버에서 공통 변수로 병합됨)
+            const recipientVars = recipientVariables[r.phone_number];
+            const filteredVars: Record<string, string> = {};
+
+            // 빈 값이 아닌 변수만 전달
+            if (recipientVars) {
+              Object.keys(recipientVars).forEach(key => {
+                if (recipientVars[key]) {
+                  filteredVars[key] = recipientVars[key];
+                }
+              });
+            }
+
+            return {
+              phone_number: r.phone_number,
+              name: r.name,
+              variables: Object.keys(filteredVars).length > 0 ? filteredVars : undefined,
+            };
+          }),
+          templateParams: commonVariables, // 공통 변수 객체
           productCode,
-          buttons: selectedTemplate.buttons,
+          attachments: selectedTemplate.buttons ? {
+            buttons: selectedTemplate.buttons.map(btn => ({
+              type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
+              buttonCode: btn.name.substring(0, 10), // 임시 버튼 코드
+              buttonName: btn.name,
+              mobileUrl: btn.mobileUrl || btn.url,
+              pcUrl: btn.url,
+            })),
+          } : undefined,
         }),
       });
 
@@ -160,6 +243,16 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
 
   return (
     <>
+      {/* 변수 입력 모달 */}
+      <TemplateVariableInputModal
+        isOpen={showVariableModal}
+        onClose={() => setShowVariableModal(false)}
+        variables={templateVariables}
+        commonVariables={commonVariables}
+        recipients={recipients}
+        onSave={handleSaveVariables}
+      />
+
       {/* 상단 정보 바 */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
         <span className="text-sm text-gray-600">
@@ -259,14 +352,56 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
             placeholder="사용할 템플릿을 선택하면, 이곳에 템플릿 내용이 표시됩니다."
             className="w-full h-full bg-transparent border-none outline-none text-sm resize-none"
             value={templateContent}
-            onChange={(e) => setTemplateContent(e.target.value)}
+            readOnly
             rows={12}
           />
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          * 템플릿의 변수(#{'{'} {'}'})는 실제 값으로 치환하여 입력하세요.
+          * 템플릿의 변수는 아래에서 입력할 수 있습니다.
         </p>
       </div>
+
+      {/* 템플릿 변수 입력 */}
+      {templateVariables.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium" style={{ color: "#00a732" }}>
+              템플릿 변수 입력 (공통 변수)
+            </h3>
+            <button
+              onClick={() => setShowVariableModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              고급 설정 (수신자별 변수)
+            </button>
+          </div>
+          <div className="space-y-3">
+            {templateVariables.map((varName) => (
+              <div key={varName} className="flex items-center gap-3">
+                <label className="w-32 text-sm font-medium text-gray-700">
+                  #{`{${varName}}`}
+                </label>
+                <input
+                  type="text"
+                  placeholder={`${varName} 값을 입력하세요`}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                  value={commonVariables[varName] || ''}
+                  onChange={(e) => {
+                    setCommonVariables({
+                      ...commonVariables,
+                      [varName]: e.target.value,
+                    });
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-3">
+            * 모든 수신자에게 동일하게 적용되는 변수입니다. 수신자별로 다른 값이 필요한 경우 "고급 설정" 버튼을 클릭하세요.
+          </p>
+        </div>
+      )}
 
       {/* 발송실패 시 문자대체발송 여부 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">

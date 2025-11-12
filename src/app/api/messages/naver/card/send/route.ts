@@ -1,8 +1,8 @@
 /**
- * 네이버 톡톡 발송 API
+ * 네이버 카드 승인 알림 발송 API
  *
- * POST /api/messages/naver/talk/send
- * - 네이버 톡톡 스마트알림 발송
+ * POST /api/messages/naver/card/send
+ * - 네이버 카드 승인 알림 발송 (CARDINFO 전용 서버)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,8 +16,8 @@ const supabase = createClient(
 );
 
 /**
- * POST /api/messages/naver/talk/send
- * 네이버 톡톡 스마트알림 발송
+ * POST /api/messages/naver/card/send
+ * 네이버 카드 승인 알림 발송
  */
 export async function POST(request: NextRequest) {
   // JWT 인증 확인
@@ -36,9 +36,7 @@ export async function POST(request: NextRequest) {
       templateCode,
       recipients, // { phone_number: string, name?: string, variables?: Record<string, string> }[]
       templateParams, // 템플릿 변수 객체 (공통 변수)
-      productCode, // 'INFORMATION' | 'BENEFIT' | 'CARDINFO'
-      attachments, // { buttons?: Array<...>, sampleImageHashId?: string }
-      asyncSend, // 'Y' | 'N' (카드알림 전용)
+      asyncSend, // 'Y' | 'N' (필수 - 카드 승인 알림)
       sendDate,
     } = body;
 
@@ -71,9 +69,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!productCode || !['INFORMATION', 'BENEFIT', 'CARDINFO'].includes(productCode)) {
+    if (!asyncSend || !['Y', 'N'].includes(asyncSend)) {
       return NextResponse.json(
-        { error: 'productCode는 INFORMATION, BENEFIT, CARDINFO 중 하나여야 합니다.' },
+        { error: 'asyncSend는 Y 또는 N이어야 합니다.' },
         { status: 400 }
       );
     }
@@ -92,11 +90,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 네이버 톡톡 단가 계산
-    // INFORMATION/CARDINFO: 스마트알림 13원
-    // BENEFIT: 광고 20원
-    const NAVER_TALK_COST = productCode === 'BENEFIT' ? 20 : 13;
-    const totalCost = recipients.length * NAVER_TALK_COST;
+    // 네이버 카드 승인 알림 단가 (13원)
+    const NAVER_CARD_COST = 13;
+    const totalCost = recipients.length * NAVER_CARD_COST;
 
     // 잔액 확인
     if (user.balance < totalCost) {
@@ -130,13 +126,14 @@ export async function POST(request: NextRequest) {
           ? { ...templateParams, ...recipient.variables }
           : templateParams;
 
+        // productCode를 CARDINFO로 강제 설정하여 카드 승인 알림 전용 서버로 라우팅
         const result = await sendNaverTalk(
           navertalkId,
           templateCode,
           recipient.phone_number,
           recipientParams,
-          productCode,
-          attachments,
+          'CARDINFO', // 카드 승인 알림 전용
+          undefined, // attachments는 카드 승인 알림에서 사용 안 함
           asyncSend,
           sendDate
         );
@@ -151,18 +148,17 @@ export async function POST(request: NextRequest) {
             to_name: recipient.name || null,
             message_content: JSON.stringify(recipientParams), // 변수 객체 저장
             subject: null,
-            message_type: 'NAVERTALK',
+            message_type: 'NAVERTALK_CARD',
             sent_at: new Date().toISOString(),
             status: 'sent',
             error_message: null,
-            credit_used: NAVER_TALK_COST, // 네이버 스마트알림 13원, 광고 20원
+            credit_used: NAVER_CARD_COST, // 카드 승인 알림 13원
             metadata: {
               navertalk_id: navertalkId,
               template_code: templateCode,
-              product_code: productCode,
+              product_code: 'CARDINFO',
               template_params: recipientParams,
-              attachments: attachments || null,
-              async_send: asyncSend || null,
+              async_send: asyncSend,
               mts_msg_id: result.msgId,
             },
           });
@@ -194,7 +190,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 성공한 건수만큼 잔액 차감
-    const actualCost = successCount * NAVER_TALK_COST;
+    const actualCost = successCount * NAVER_CARD_COST;
 
     if (actualCost > 0) {
       // 잔액 차감
@@ -215,9 +211,9 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         type: 'usage',
         amount: -actualCost,
-        description: `네이버 톡톡 발송 (${successCount}건)`,
+        description: `네이버 카드 승인 알림 발송 (${successCount}건)`,
         metadata: {
-          message_type: 'NAVERTALK',
+          message_type: 'NAVERTALK_CARD',
           success_count: successCount,
           fail_count: failCount,
           navertalk_id: navertalkId,
@@ -230,7 +226,7 @@ export async function POST(request: NextRequest) {
     // 응답 반환
     return NextResponse.json({
       success: true,
-      message: `네이버 톡톡 발송 완료 (성공: ${successCount}건, 실패: ${failCount}건)`,
+      message: `네이버 카드 승인 알림 발송 완료 (성공: ${successCount}건, 실패: ${failCount}건)`,
       successCount,
       failCount,
       totalCost: actualCost,
@@ -238,10 +234,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('네이버 톡톡 발송 오류:', error);
+    console.error('네이버 카드 승인 알림 발송 오류:', error);
     return NextResponse.json(
       {
-        error: '네이버 톡톡 발송 중 오류가 발생했습니다.',
+        error: '네이버 카드 승인 알림 발송 중 오류가 발생했습니다.',
         details: error instanceof Error ? error.message : '알 수 없는 오류'
       },
       { status: 500 }
