@@ -16,6 +16,16 @@ interface SimpleContentSaveModalProps {
     buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
     imageUrl?: string;
     imageLink?: string;
+    // FW/FL/FC 타입 전용 필드 (2025-11-13 추가)
+    friendtalkMessageType?: string; // 'FT' | 'FI' | 'FW' | 'FL' | 'FC'
+    headerText?: string; // FL 헤더
+    listItems?: Array<{ title: string; image?: { fileId: string; fileName: string; fileSize: number; preview: string } }>; // FL 아이템
+    carousels?: Array<{
+      content: string;
+      image?: { fileId: string; fileName: string; fileSize: number; preview: string };
+      buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>
+    }>; // FC 캐러셀
+    moreLink?: string; // FC 더보기 링크
   };
   onSaveSuccess?: () => void;
 }
@@ -66,6 +76,12 @@ const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
           buttons: currentContent.buttons || null,
           imageUrl: currentContent.imageUrl || null,
           imageLink: currentContent.imageLink || null,
+          // FW/FL/FC 타입 전용 필드 (2025-11-13 추가)
+          friendtalkMessageType: currentContent.friendtalkMessageType || null,
+          headerText: currentContent.headerText || null,
+          listItems: currentContent.listItems || null,
+          carousels: currentContent.carousels || null,
+          moreLink: currentContent.moreLink || null,
         }),
       });
 

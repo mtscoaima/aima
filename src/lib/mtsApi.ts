@@ -602,18 +602,33 @@ export async function sendMtsFriendtalk(
       callback_number: cleanCallbackNumber,
     };
 
+    // FW/FI 타입 이미지 필수 검증
+    if ((finalMessageType === 'FW' || finalMessageType === 'FI') && (!imageUrls || imageUrls.length === 0)) {
+      return {
+        success: false,
+        error: `${finalMessageType} 타입은 이미지가 필수입니다.`,
+        errorCode: 'IMAGE_REQUIRED',
+      };
+    }
+
     // 첨부 파일 (이미지, 버튼) 추가
     if (imageUrls || buttons || headerText || listItems || carousels) {
       const attachment: Record<string, unknown> = {};
 
       // 기본 이미지 처리 (FT/FI/FW 타입)
       if (imageUrls && imageUrls.length > 0) {
-        // FI/FW/FL/FC 타입은 단일 이미지 객체 사용 (배열 아님)
+        // FI/FW 타입은 단일 이미지 객체 사용 (배열 아님)
         // MTS API 규격: attachment.image = { img_url: "...", img_link: "..." }
-        attachment.image = {
+        const imageObj: Record<string, string> = {
           img_url: imageUrls[0], // 첫 번째 이미지만 사용
-          ...(imageLink ? { img_link: imageLink } : {})
         };
+
+        // imageLink는 FW/FI 타입에서만 지원
+        if ((finalMessageType === 'FW' || finalMessageType === 'FI') && imageLink) {
+          imageObj.img_link = imageLink;
+        }
+
+        attachment.image = imageObj;
       }
 
       // FL (와이드 아이템 리스트형) 타입 처리
@@ -624,9 +639,11 @@ export async function sendMtsFriendtalk(
 
         if (listItems && listItems.length > 0) {
           // 아이템 리스트 (3-4개)
+          // 실험: imageLink를 각 아이템의 link로 추가
           attachment.item_list = listItems.map((item) => ({
             title: item.title,
-            ...(item.image ? { img_url: item.image.preview } : {})
+            ...(item.image ? { img_url: item.image.fileId } : {}), // Kakao 업로드된 fileId 사용
+            ...(imageLink ? { link: imageLink } : {}) // imageLink를 아이템 클릭 링크로 추가 (실험)
           }));
         }
       }
@@ -637,7 +654,7 @@ export async function sendMtsFriendtalk(
           // 캐러셀 리스트 (2-6개)
           attachment.carousel_list = carousels.map((carousel) => ({
             content: carousel.content,
-            ...(carousel.image ? { img_url: carousel.image.preview } : {}),
+            ...(carousel.image ? { img_url: carousel.image.fileId } : {}), // Kakao 업로드된 fileId 사용
             buttons: carousel.buttons.map((btn) => ({
               name: btn.name,
               type: btn.type,
@@ -676,6 +693,11 @@ export async function sendMtsFriendtalk(
     // API 호출 (V2 엔드포인트 사용)
     const apiUrl = `${MTS_API_URL}/v2/sndng/ftk/sendMessage`;
 
+    // 요청 body 전체 로그
+    console.log('=== [mtsApi] MTS 친구톡 최종 요청 ===');
+    console.log('API URL:', apiUrl);
+    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+    console.log('====================================');
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -686,6 +708,12 @@ export async function sendMtsFriendtalk(
     });
 
     const result = await response.json();
+
+    // MTS 서버 응답 로그
+    console.log('=== [mtsApi] MTS API 응답 ===');
+    console.log('HTTP Status:', response.status);
+    console.log('Response:', JSON.stringify(result, null, 2));
+    console.log('=============================');
 
 
     // 성공 확인 (0000 또는 1000: 친구톡 성공)

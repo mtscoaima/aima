@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!message) {
+    // FT/FI/FW 타입만 message 필드 필수 (FL/FC는 자체 필드 사용)
+    if (messageType !== 'FL' && messageType !== 'FC' && !message) {
       return NextResponse.json(
         { error: '메시지 내용이 필요합니다.' },
         { status: 400 }
@@ -169,6 +170,22 @@ export async function POST(request: NextRequest) {
         const phoneNumber = recipient.phone_number;
         const name = recipient.name || null;
 
+        // MTS API 호출 직전 로그
+        console.log('=== [API Route] MTS 친구톡 발송 요청 ===');
+        console.log('senderKey:', senderKey);
+        console.log('messageType:', messageType);
+        console.log('recipient:', phoneNumber);
+        console.log('message:', message);
+        console.log('buttons:', buttons);
+        console.log('imageUrls:', imageUrls);
+        console.log('imageLink:', imageLink);
+        console.log('adFlag:', adFlag);
+        console.log('headerText:', headerText);
+        console.log('listItems:', listItems);
+        console.log('carousels:', carousels);
+        console.log('moreLink:', moreLink);
+        console.log('=====================================');
+
         const result = await sendMtsFriendtalk(
           senderKey,
           phoneNumber,
@@ -188,6 +205,11 @@ export async function POST(request: NextRequest) {
           carousels,
           moreLink
         );
+
+        // MTS API 응답 로그
+        console.log('=== [API Route] MTS API 응답 ===');
+        console.log('result:', JSON.stringify(result, null, 2));
+        console.log('================================');
 
         if (result.success) {
           successCount++;

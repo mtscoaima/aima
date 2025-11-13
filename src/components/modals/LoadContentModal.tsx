@@ -16,6 +16,16 @@ interface LoadContentModalProps {
     buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>; // 추가
     imageUrl?: string; // 추가
     imageLink?: string; // 추가
+    // FW/FL/FC 타입 전용 필드 (2025-11-13 추가)
+    friendtalkMessageType?: string; // 'FT' | 'FI' | 'FW' | 'FL' | 'FC'
+    headerText?: string; // FL 헤더
+    listItems?: Array<{ title: string; image?: { fileId: string; fileName: string; fileSize: number; preview: string } }>; // FL 아이템
+    carousels?: Array<{
+      content: string;
+      image?: { fileId: string; fileName: string; fileSize: number; preview: string };
+      buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>
+    }>; // FC 캐러셀
+    moreLink?: string; // FC 더보기 링크
   }) => void;
 }
 
@@ -28,6 +38,17 @@ interface Template {
   buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>; // 추가
   image_url?: string; // 추가
   image_link?: string; // 추가
+  metadata?: { // FW/FL/FC 필드 저장 (2025-11-13 추가)
+    friendtalkMessageType?: string;
+    headerText?: string;
+    listItems?: Array<{ title: string; image?: { fileId: string; fileName: string; fileSize: number; preview: string } }>;
+    carousels?: Array<{
+      content: string;
+      image?: { fileId: string; fileName: string; fileSize: number; preview: string };
+      buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>
+    }>;
+    moreLink?: string;
+  };
   created_at: string;
 }
 
@@ -162,6 +183,12 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         buttons: template.buttons, // 추가
         imageUrl: template.image_url, // 추가
         imageLink: template.image_link, // 추가
+        // FW/FL/FC 필드 (metadata에서 추출, 2025-11-13 추가)
+        friendtalkMessageType: template.metadata?.friendtalkMessageType,
+        headerText: template.metadata?.headerText,
+        listItems: template.metadata?.listItems,
+        carousels: template.metadata?.carousels,
+        moreLink: template.metadata?.moreLink,
       });
     }
     onClose();

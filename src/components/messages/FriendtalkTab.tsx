@@ -225,7 +225,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       const formData = new FormData();
       formData.append("file", file);
       formData.append("senderKey", selectedProfile); // Kakao 업로드 API는 senderKey 필수
-
+      // FW/FT/FI 타입은 2:1 비율로 자동 크롭 (FW는 와이드형이므로 2:1 권장)
+      formData.append("cropRatio", "2:1");
 
       // Kakao 전용 이미지 업로드 API 호출
       // MTS 서버 이미지는 Kakao에서 접근 불가하므로 Kakao 서버에 업로드
@@ -320,6 +321,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       const formData = new FormData();
       formData.append("file", file);
       formData.append("senderKey", selectedProfile);
+      // FL 아이템 이미지는 2:1 비율로 자동 크롭 (MTS/Kakao 요구사항)
+      formData.append("cropRatio", "2:1");
 
       const response = await fetch("/api/messages/kakao/upload-image", {
         method: "POST",
@@ -404,6 +407,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       const formData = new FormData();
       formData.append("file", file);
       formData.append("senderKey", selectedProfile);
+      // FC 캐러셀 이미지는 2:1 비율로 자동 크롭 (와이드형)
+      formData.append("cropRatio", "2:1");
 
       const response = await fetch("/api/messages/kakao/upload-image", {
         method: "POST",
@@ -459,7 +464,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       return;
     }
 
-    if (!message.trim()) {
+    // FT/FI/FW 타입만 message 필드 검증 (FL/FC는 자체 필드 사용)
+    if (messageType !== 'FL' && messageType !== 'FC' && !message.trim()) {
       alert("메시지 내용을 입력해주세요.");
       return;
     }
@@ -472,6 +478,40 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     if (!callbackNumber) {
       alert("발신번호를 입력해주세요.");
       return;
+    }
+
+    // 타입별 이미지 필수 검증
+    if (messageType === 'FI' && uploadedImages.length === 0) {
+      alert("FI (이미지형) 타입은 이미지가 필수입니다.\n이미지를 업로드해주세요.");
+      return;
+    }
+
+    if (messageType === 'FW' && uploadedImages.length === 0) {
+      alert("FW (와이드형) 타입은 이미지가 필수입니다.\n이미지를 업로드해주세요.");
+      return;
+    }
+
+    if (messageType === 'FL') {
+      if (!headerText || headerText.trim().length === 0) {
+        alert("FL (와이드 아이템 리스트형) 타입은 헤더가 필수입니다.");
+        return;
+      }
+      if (listItems.length < 3 || listItems.length > 4) {
+        alert("FL (와이드 아이템 리스트형) 타입은 3-4개의 아이템이 필요합니다.");
+        return;
+      }
+      const itemsWithoutImage = listItems.filter(item => !item.image);
+      if (itemsWithoutImage.length > 0) {
+        alert("FL (와이드 아이템 리스트형) 타입은 모든 아이템에 이미지가 필수입니다.\n이미지가 없는 아이템이 있습니다.");
+        return;
+      }
+    }
+
+    if (messageType === 'FC') {
+      if (carousels.length < 2 || carousels.length > 6) {
+        alert("FC (캐러셀형) 타입은 2-6개의 캐러셀이 필요합니다.");
+        return;
+      }
     }
 
     // 친구톡 메시지 시간 체크 (08시~20시) - 모든 친구톡 메시지에 적용
@@ -535,6 +575,21 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
       for (const recipient of processedRecipients) {
         try {
+          // 발송 직전 로그
+          console.log('=== 친구톡 발송 요청 데이터 ===');
+          console.log('messageType:', selectedMessageType);
+          console.log('senderKey:', selectedProfile);
+          console.log('recipient:', recipient);
+          console.log('buttons:', buttons);
+          console.log('imageFileIds:', imageFileIds);
+          console.log('imageLink:', imageLink);
+          console.log('adFlag:', adFlag);
+          console.log('headerText:', messageType === 'FL' ? headerText : undefined);
+          console.log('listItems:', messageType === 'FL' ? listItems : undefined);
+          console.log('carousels:', messageType === 'FC' ? carousels : undefined);
+          console.log('moreLink:', messageType === 'FC' ? moreLink : undefined);
+          console.log('===========================');
+
           const result = await sendFriendtalk({
             senderKey: selectedProfile,
             recipients: [{ phone_number: recipient.phone_number, name: recipient.name }],
@@ -553,6 +608,11 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             carousels: messageType === 'FC' ? carousels : undefined,
             moreLink: messageType === 'FC' ? moreLink : undefined,
           });
+
+          // 발송 결과 로그
+          console.log('=== 친구톡 발송 결과 ===');
+          console.log('result:', result);
+          console.log('=======================');
 
           if (result.successCount > 0) successCount++;
           else failCount++;
@@ -745,13 +805,6 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               </button>
               <button
                 className="p-2 text-gray-500 hover:text-gray-700"
-                onClick={() => setShowImageUpload(!showImageUpload)}
-                title="이미지 첨부"
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
-              <button
-                className="p-2 text-gray-500 hover:text-gray-700"
                 onClick={() => setIsSaveModalOpen(true)}
                 title="템플릿 저장하기"
               >
@@ -797,18 +850,27 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               </div>
             </label>
             {uploadedImages.length === 0 && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 disabled:opacity-50"
-              >
-                <Upload className="w-4 h-4" />
-                {isUploading ? "업로드 중..." : "이미지 선택"}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isUploading ? "업로드 중..." : "이미지 선택"}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </>
             )}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-xs text-blue-800">
-              권장: 800×600px, 2:1 to 1:1 비율, 최대 500KB
+              권장: 2:1 비율 (자동 크롭 지원), 최대 500KB
             </div>
             {uploadedImages.length > 0 && (
               <div className="border border-gray-200 rounded-lg p-3">
@@ -959,10 +1021,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   <p className="text-xs text-gray-500 mt-1">{item.title.length} / 25자</p>
                 </div>
 
-                {/* 아이템 이미지 (필수, 1:1 비율, 500px 이상) */}
+                {/* 아이템 이미지 (필수, 2:1 비율, 500px 이상) */}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    이미지 (필수, 1:1 비율, 500px 이상)
+                    이미지 (필수, 2:1 비율 자동 크롭)
                   </label>
                   {!item.image ? (
                     <>
@@ -973,7 +1035,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                         이미지 선택
                       </button>
                       <input
-                        ref={(el) => (listItemFileInputRefs.current[index] = el)}
+                        ref={(el) => { listItemFileInputRefs.current[index] = el; }}
                         type="file"
                         accept="image/jpeg,image/jpg,image/png"
                         onChange={(e) => handleListItemImageUpload(index, e)}
@@ -1005,14 +1067,14 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         </div>
       )}
 
-      {/* 이미지 업로드 (토글) - FT/FI만 */}
-      {(messageType === 'FT' || messageType === 'FI') && showImageUpload && (
+      {/* 이미지 업로드 - FI 타입만 */}
+      {messageType === 'FI' && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium text-gray-700">
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
-                <span>이미지 첨부</span>
+                <span>이미지 (필수)</span>
               </div>
             </label>
             {uploadedImages.length === 0 && (
@@ -1085,9 +1147,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           )}
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="text-xs text-gray-700 space-y-1">
+            <div className="text-xs text-gray-700">
               <p>• 최대 1개, 5MB 이하, JPG/PNG 형식만 가능 (자동 최적화: 300KB 이하)</p>
-              <p>• 이미지를 첨부하면 자동으로 <strong>이미지형(FI)</strong>으로 발송됩니다</p>
             </div>
           </div>
         </div>
@@ -1158,7 +1219,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               {/* 캐러셀 이미지 (선택) */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  이미지 (선택)
+                  이미지 (선택, 2:1 비율 자동 크롭)
                 </label>
                 {!carousel.image ? (
                   <>
@@ -1169,7 +1230,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                       이미지 선택
                     </button>
                     <input
-                      ref={(el) => (carouselFileInputRefs.current[index] = el)}
+                      ref={(el) => { carouselFileInputRefs.current[index] = el; }}
                       type="file"
                       accept="image/jpeg,image/jpg,image/png"
                       onChange={(e) => handleCarouselImageUpload(index, e)}
@@ -1427,7 +1488,12 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       {/* 발송 버튼 */}
       <button
         onClick={handleSendFriendtalk}
-        disabled={isSending || isUploading || !selectedProfile || !message.trim()}
+        disabled={
+          isSending ||
+          isUploading ||
+          !selectedProfile ||
+          (messageType !== 'FL' && messageType !== 'FC' && !message.trim())
+        }
         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
       >
         {isUploading ? (

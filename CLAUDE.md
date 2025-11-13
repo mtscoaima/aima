@@ -26,7 +26,10 @@ When modifying database schema:
 ```bash
 # No automated test framework configured
 # Use manual testing scenarios in /docs/
-npm run lint         # Check code quality
+npm run lint         # Run ESLint checks
+
+# TypeScript type checking (without emitting files)
+npx tsc --noEmit     # Check all TypeScript errors across project
 ```
 
 ## Architecture
@@ -111,6 +114,10 @@ The application uses a layered approach for MTS API integration:
 ### Image Handling for MTS
 - **SMS/MMS Images**: Uploaded to MTS server, automatically optimized (PNG→JPEG, resize)
 - **Kakao Images**: Separate upload to Kakao image server for FriendTalk/Brand messages
+  - FT/FI: Single image upload (max 1)
+  - FL: Per-item image upload (3-4 items, each with 1:1 ratio image)
+  - FC: Per-carousel image upload (2-6 carousels, each with optional image)
+  - Upload handler: `handleListItemImageUpload()`, `handleCarouselImageUpload()`
 - **Sharp Processing**: Automatic format conversion, size limits enforced
 - **Storage**: Supabase Storage for user-uploaded images, MTS/Kakao for message delivery
 
@@ -157,6 +164,12 @@ User data stored as JSONB for flexibility:
 - `documents` - Uploaded file references
 - `agreement_info` - Terms acceptance
 
+**Template metadata** (`sms_message_templates.metadata` JSONB):
+- Kakao AlimTalk: `{ sender_key, template_code, buttons, imageUrl }`
+- Kakao FriendTalk: `{ sender_key, ad_flag, buttons, imageUrl, imageLink, friendtalkMessageType, headerText, listItems, carousels, moreLink }`
+- Kakao Brand: `{ sender_key, template_code, message_type, buttons, image, coupon, item }`
+- Naver TalkTalk: `{ partner_key, template_code, product_code, buttons, template_type, push_notice, table_info }`
+
 ## Security Considerations
 
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` to client
@@ -173,11 +186,12 @@ Manual testing via documented scenarios:
 - `MTS_API_통합_테스트_가이드.md` - MTS API integration testing guide (v3.5)
   - Phase 1-2: SMS/LMS/MMS ✅ Completed
   - Phase 3: Kakao AlimTalk ✅ Completed (including variable templates)
-  - Phase 4: Kakao FriendTalk ✅ **All 5 Types Completed** (FT/FI/FW/FL/FC, 2025-11-12)
-    - FT/FI: Text and Image types with button support (max 5 buttons)
-    - FW: Wide image type (imageLink, max 2 buttons)
-    - FL: Wide Item List type (header + 3-4 items, max 2 buttons)
-    - FC: Carousel type (2-6 carousels, 1-2 buttons each, moreLink)
+  - Phase 4: Kakao FriendTalk ✅ **All 5 Types Completed** (FT/FI/FW/FL/FC, 2025-11-13)
+    - FT/FI: Text and Image types with button support (max 5 buttons, WL/AL/BK/MD types)
+    - FW: Wide image type (imageLink, max 2 buttons, WL/AL/BK/MD types)
+    - FL: Wide Item List type (header + 3-4 items with individual images, max 2 buttons, WL/AL/BK/MD types)
+    - FC: Carousel type (2-6 carousels with individual images, 1-2 buttons each, moreLink, WL/AL/BK/MD types)
+    - ✅ **2025-11-13 Feature Complete**: Button type expansion (WL/AL/BK/MD), FL/FC item-level image upload, template save/load for all types
   - Phase 5: Naver TalkTalk ✅ **Completed** (UI/backend fully integrated with variable system)
   - Phase 6: Kakao Brand Messages ✅ **8 Types Implemented** (TEXT/IMAGE/WIDE verified, 5 new types structure fixed, 변수분리방식 v1.1)
     - Phase 6.0-6.4: TEXT/IMAGE/WIDE + buttons ✅ Verified (2025-11-10)
@@ -220,7 +234,11 @@ Manual testing via documented scenarios:
 2. Create API endpoint in `src/app/api/messages/[type]/send/route.ts`
 3. Add MTS API function in `src/lib/mtsApi.ts`
 4. Update message type constants and TypeScript types
-5. Add template support in `sms_message_templates` table
+5. Add template support in `sms_message_templates` table:
+   - Basic fields: `message_type`, `buttons`, `image_url`, `image_link`
+   - Complex/type-specific fields: Store in `metadata` JSONB column
+   - Update `/api/sms-templates` POST endpoint to handle new fields
+   - Update `SimpleContentSaveModal` and `LoadContentModal` interfaces
 6. **Important**: Check MTS API documentation for required data structure
    - Many MTS API parameters require **nested object structures**, not flat fields
    - Example: CAROUSEL types need `{ list: [...] }`, COMMERCE needs `{ commerce: {...} }`, VIDEO needs `{ video: {...} }`
@@ -281,11 +299,17 @@ Manual testing via documented scenarios:
 - Business verification via government API (`ODCLOUD_SERVICE_KEY`) is mandatory for certain features
 
 ### MTS API Implementation Status
-- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, **Kakao FriendTalk (all 5 types: FT/FI/FW/FL/FC ✅ 2025-11-12)**, **Kakao Brand Messages (all 8 types ✅)**, **Naver TalkTalk ✅**
+- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, **Kakao FriendTalk (all 5 types: FT/FI/FW/FL/FC ✅ 2025-11-13)**, **Kakao Brand Messages (all 8 types ✅)**, **Naver TalkTalk ✅**
 - **Real Send Verified**: SMS/LMS/MMS, AlimTalk, FriendTalk FT/FI/FW/FL/FC, Brand Messages TEXT/IMAGE/WIDE
 - **Structure Verified, Real Send Pending**: Brand Messages (CAROUSEL_FEED, COMMERCE, CAROUSEL_COMMERCE, PREMIUM_VIDEO, WIDE_ITEM_LIST)
 - **Reference**: `MTS_API_통합_테스트_가이드.md` for detailed testing status
 - **Core Module**: `src/lib/mtsApi.ts` (2,907 lines, 19 functions)
+- **FriendTalk Features** (2025-11-13):
+  - ✅ Button types: WL (웹링크), AL (앱링크), BK (봇키워드), MD (메시지전달)
+  - ✅ FL item-level image upload with hidden file inputs and refs
+  - ✅ FC carousel-level image upload with hidden file inputs and refs
+  - ✅ Template save/load includes: friendtalkMessageType, headerText, listItems (with images), carousels (with images/buttons), moreLink, imageLink
+  - ✅ Template data stored in `sms_message_templates.metadata` JSONB field for FW/FL/FC types
 - **Brand Messages**: Uses Variable Separation Method v1.1 (separate `message_variable`, `button_variable`, `image_variable`, `video_variable`, `commerce_variable`, etc.)
   - ✅ **2025-11-10 업데이트**: 변수분리방식 v1.1 전환 완료, 이전 1030 에러 완전 해결
   - ✅ **실제 발송 테스트 완료**: TEXT, IMAGE, WIDE 타입 + 버튼(최대 5개) 조합 모두 성공
@@ -399,6 +423,13 @@ Manual testing via documented scenarios:
 
 ## TypeScript Build Considerations
 
+### Known Build Issues
+
+1. **404 Page Static Generation Error**: The build process may fail during static page generation with error about `<Html>` import from `next/document`. This is a pre-existing issue unrelated to TypeScript errors. TypeScript compilation itself passes successfully (`✓ Compiled successfully`). If encountering this error:
+   - Verify TypeScript errors are fixed: `npx tsc --noEmit`
+   - Check that linting passes: `npm run lint`
+   - The static generation error requires separate investigation
+
 ### Known Type Patterns
 When working with MTS API or Supabase, you may encounter these TypeScript patterns:
 
@@ -432,7 +463,16 @@ When working with MTS API or Supabase, you may encounter these TypeScript patter
    new Date(mtsData.modifiedAt as string)
    ```
 
-4. **ESLint Warnings**: Comment unused variables intended for future use:
+4. **React Ref Callbacks**: Ref callbacks must return void, not a value:
+   ```typescript
+   // ❌ WRONG - Returns assignment value
+   ref={(el) => (fileInputRefs.current[index] = el)}
+
+   // ✅ CORRECT - Returns void with curly braces
+   ref={(el) => { fileInputRefs.current[index] = el; }}
+   ```
+
+5. **ESLint Warnings**: Comment unused variables intended for future use:
    ```typescript
    // totalCost는 향후 결제 시스템 연동 시 사용 예정
    // const totalCost = recipients.length * costPerMessage;
@@ -538,13 +578,19 @@ const supabase = createClient(url, serviceRoleKey); // OK
 **Always** use Sharp for pre-processing before upload.
 
 ### 6. Button Type Limits
-**Problem**: Each message type has different button count limits.
+**Problem**: Each message type has different button count limits and types.
 
-- FriendTalk FT/FI: Max 5 buttons
-- FriendTalk FW/FL: Max 2 buttons
-- FriendTalk FC: Max 1-2 buttons **per carousel**
+- FriendTalk FT/FI: Max 5 buttons (WL/AL/BK/MD types supported)
+- FriendTalk FW/FL: Max 2 buttons (WL/AL/BK/MD types supported)
+- FriendTalk FC: Max 1-2 buttons **per carousel** (WL/AL/BK/MD types supported)
 - Brand Messages: Max 5 buttons
 - AlimTalk: Max 5 buttons
+
+**Button Types**:
+- **WL** (웹링크): Requires url_mobile (required), url_pc (optional)
+- **AL** (앱링크): Requires app scheme in url_mobile (no URL format validation)
+- **BK** (봇키워드): No URL required, sends keyword on click
+- **MD** (메시지전달): No URL required, connects to agent
 
 ### 7. Targeting Types (Brand Messages)
 **Problem**: Using 'M' or 'N' targeting without business verification fails.

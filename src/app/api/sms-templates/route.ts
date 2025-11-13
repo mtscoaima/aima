@@ -70,7 +70,13 @@ export const POST = withAuth(async (request, userInfo) => {
     messageType = 'SMS', // 추가
     buttons, // 추가
     imageUrl, // 추가
-    imageLink // 추가
+    imageLink, // 추가
+    // FW/FL/FC 타입 전용 필드 (2025-11-13 추가)
+    friendtalkMessageType, // 'FT' | 'FI' | 'FW' | 'FL' | 'FC'
+    headerText, // FL 헤더
+    listItems, // FL 아이템 배열
+    carousels, // FC 캐러셀 배열
+    moreLink // FC 더보기 링크
   } = body;
 
   // 유효성 검증
@@ -81,6 +87,16 @@ export const POST = withAuth(async (request, userInfo) => {
   if (!content || !content.trim()) {
     return errorResponse("템플릿 내용이 필요합니다", 400);
   }
+
+  // metadata 구성 (FW/FL/FC 필드 포함)
+  const metadata: Record<string, unknown> = {};
+
+  // FW/FL/FC 타입 전용 필드가 있으면 metadata에 추가
+  if (friendtalkMessageType) metadata.friendtalkMessageType = friendtalkMessageType;
+  if (headerText) metadata.headerText = headerText;
+  if (listItems) metadata.listItems = listItems;
+  if (carousels) metadata.carousels = carousels;
+  if (moreLink) metadata.moreLink = moreLink;
 
   // 템플릿 저장
   const { data: template, error } = await supabase
@@ -95,6 +111,7 @@ export const POST = withAuth(async (request, userInfo) => {
       buttons: buttons || null, // 추가
       image_url: imageUrl || null, // 추가
       image_link: imageLink || null, // 추가
+      metadata: Object.keys(metadata).length > 0 ? metadata : null, // FW/FL/FC 필드 저장
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
