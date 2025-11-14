@@ -25,6 +25,7 @@ export interface SendMessageParams {
   subject?: string;
   messageType?: 'SMS' | 'LMS' | 'MMS';
   imageUrls?: string[]; // MMS용 이미지 파일 ID
+  skipCreditDeduction?: boolean; // 크레딧 차감 스킵 (시스템 메시지용)
   metadata?: Record<string, string | number | boolean>;
 }
 
@@ -69,7 +70,7 @@ export interface ScheduleMessageResult {
 export async function sendMessage(
   params: SendMessageParams
 ): Promise<SendMessageResult> {
-  const { userId, fromNumber, toNumber, toName, message, subject, imageUrls, metadata } = params;
+  const { userId, fromNumber, toNumber, toName, message, subject, imageUrls, skipCreditDeduction, metadata } = params;
 
   // 전화번호 정리 (하이픈 제거)
   const cleanPhone = toNumber.replace(/[^0-9]/g, '');
@@ -95,17 +96,19 @@ export async function sendMessage(
   }
 
   // 단가 계산
-  const creditRequired = getMessageCredit(messageType);
+  const creditRequired = skipCreditDeduction ? 0 : getMessageCredit(messageType);
 
-  // 1. 잔액 확인
-  const balance = await checkBalance(userId);
-  if (balance < creditRequired) {
-    return {
-      success: false,
-      messageType,
-      creditUsed: 0,
-      error: `광고머니가 부족합니다 (필요: ${creditRequired}원, 현재: ${balance}원)`
-    };
+  // 1. 잔액 확인 (시스템 메시지는 스킵)
+  if (!skipCreditDeduction) {
+    const balance = await checkBalance(userId);
+    if (balance < creditRequired) {
+      return {
+        success: false,
+        messageType,
+        creditUsed: 0,
+        error: `광고머니가 부족합니다 (필요: ${creditRequired}원, 현재: ${balance}원)`
+      };
+    }
   }
 
   // 2. 발신번호 조회 (fromNumber가 없으면 users.phone_number 사용)
@@ -169,13 +172,15 @@ export async function sendMessage(
     };
   }
 
-  // 4. 잔액 차감
-  await deductBalance(userId, creditRequired, messageType, {
-    ...metadata,
-    recipient: cleanPhone,
-    recipient_name: toName || '',
-    from_number: callbackNumber
-  });
+  // 4. 잔액 차감 (시스템 메시지는 스킵)
+  if (!skipCreditDeduction) {
+    await deductBalance(userId, creditRequired, messageType, {
+      ...metadata,
+      recipient: cleanPhone,
+      recipient_name: toName || '',
+      from_number: callbackNumber
+    });
+  }
 
   // 5. 발송 로그 저장 (optional)
   const logId = await saveMessageLog({
