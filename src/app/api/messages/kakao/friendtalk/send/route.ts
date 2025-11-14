@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { validateAuthWithSuccess } from '@/utils/authUtils';
-import { sendMtsFriendtalk, convertToMtsDateFormat } from '@/lib/mtsApi';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from "next/server";
+import { validateAuthWithSuccess } from "@/utils/authUtils";
+import { sendMtsFriendtalk, convertToMtsDateFormat } from "@/lib/mtsApi";
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 /**
@@ -88,76 +88,91 @@ export async function POST(request: NextRequest) {
 
     if (!senderKey) {
       return NextResponse.json(
-        { error: '발신 프로필 키가 필요합니다.' },
-        { status: 400 }
+        { error: "발신 프로필 키가 필요합니다." },
+        { status: 400 },
       );
     }
 
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
       return NextResponse.json(
-        { error: '수신자 목록이 필요합니다.' },
-        { status: 400 }
+        { error: "수신자 목록이 필요합니다." },
+        { status: 400 },
       );
     }
 
     // FT/FI/FW 타입만 message 필드 필수 (FL/FC는 자체 필드 사용)
-    if (messageType !== 'FL' && messageType !== 'FC' && !message) {
+    if (messageType !== "FL" && messageType !== "FC" && !message) {
       return NextResponse.json(
-        { error: '메시지 내용이 필요합니다.' },
-        { status: 400 }
+        { error: "메시지 내용이 필요합니다." },
+        { status: 400 },
       );
     }
 
     if (!callbackNumber) {
       return NextResponse.json(
-        { error: '발신번호가 필요합니다.' },
-        { status: 400 }
+        { error: "발신번호가 필요합니다." },
+        { status: 400 },
       );
     }
 
     // 메시지 타입이 제공된 경우에만 유효성 검사
-    if (messageType && !['FT', 'FI', 'FW', 'FL', 'FC'].includes(messageType)) {
+    if (messageType && !["FT", "FI", "FW", "FL", "FC"].includes(messageType)) {
       return NextResponse.json(
-        { error: '메시지 타입이 올바르지 않습니다. (FT, FI, FW, FL, FC 중 하나)' },
-        { status: 400 }
+        {
+          error:
+            "메시지 타입이 올바르지 않습니다. (FT, FI, FW, FL, FC 중 하나)",
+        },
+        { status: 400 },
       );
     }
 
-    if (!adFlag || !['Y', 'N'].includes(adFlag)) {
+    if (!adFlag || !["Y", "N"].includes(adFlag)) {
       return NextResponse.json(
-        { error: '광고 여부가 올바르지 않습니다. (Y 또는 N)' },
-        { status: 400 }
+        { error: "광고 여부가 올바르지 않습니다. (Y 또는 N)" },
+        { status: 400 },
       );
     }
 
     // FL 타입 검증
-    if (messageType === 'FL') {
+    if (messageType === "FL") {
       if (!headerText || headerText.trim().length === 0) {
         return NextResponse.json(
-          { error: 'FL 타입은 헤더가 필요합니다.' },
-          { status: 400 }
+          { error: "FL 타입은 헤더가 필요합니다." },
+          { status: 400 },
         );
       }
-      if (!listItems || !Array.isArray(listItems) || listItems.length < 3 || listItems.length > 4) {
+      if (
+        !listItems ||
+        !Array.isArray(listItems) ||
+        listItems.length < 3 ||
+        listItems.length > 4
+      ) {
         return NextResponse.json(
-          { error: 'FL 타입은 아이템 리스트가 3-4개 필요합니다.' },
-          { status: 400 }
+          { error: "FL 타입은 아이템 리스트가 3-4개 필요합니다." },
+          { status: 400 },
         );
       }
     }
 
     // FC 타입 검증
-    if (messageType === 'FC') {
-      if (!carousels || !Array.isArray(carousels) || carousels.length < 2 || carousels.length > 6) {
+    if (messageType === "FC") {
+      if (
+        !carousels ||
+        !Array.isArray(carousels) ||
+        carousels.length < 2 ||
+        carousels.length > 6
+      ) {
         return NextResponse.json(
-          { error: 'FC 타입은 캐러셀이 2-6개 필요합니다.' },
-          { status: 400 }
+          { error: "FC 타입은 캐러셀이 2-6개 필요합니다." },
+          { status: 400 },
         );
       }
     }
 
     // 예약 발송 시간 변환 (있는 경우)
-    const sendDate = scheduledAt ? convertToMtsDateFormat(scheduledAt) : undefined;
+    const sendDate = scheduledAt
+      ? convertToMtsDateFormat(scheduledAt)
+      : undefined;
 
     // 발송 결과 저장
     const results = [];
@@ -171,20 +186,19 @@ export async function POST(request: NextRequest) {
         const name = recipient.name || null;
 
         // MTS API 호출 직전 로그
-        console.log('=== [API Route] MTS 친구톡 발송 요청 ===');
-        console.log('senderKey:', senderKey);
-        console.log('messageType:', messageType);
-        console.log('recipient:', phoneNumber);
-        console.log('message:', message);
-        console.log('buttons:', buttons);
-        console.log('imageUrls:', imageUrls);
-        console.log('imageLink:', imageLink);
-        console.log('adFlag:', adFlag);
-        console.log('headerText:', headerText);
-        console.log('listItems:', listItems);
-        console.log('carousels:', carousels);
-        console.log('moreLink:', moreLink);
-        console.log('=====================================');
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         const result = await sendMtsFriendtalk(
           senderKey,
@@ -203,13 +217,12 @@ export async function POST(request: NextRequest) {
           headerText,
           listItems,
           carousels,
-          moreLink
+          moreLink,
         );
 
         // MTS API 응답 로그
-        console.log('=== [API Route] MTS API 응답 ===');
-        console.log('result:', JSON.stringify(result, null, 2));
-        console.log('================================');
+
+
 
         if (result.success) {
           successCount++;
@@ -226,15 +239,15 @@ export async function POST(request: NextRequest) {
         });
 
         // DB에 발송 이력 저장
-        const { error: dbError } = await supabase.from('message_logs').insert({
+        const { error: dbError } = await supabase.from("message_logs").insert({
           user_id: userId,
           to_number: phoneNumber,
           to_name: name,
           message_content: message,
           subject: null,
-          message_type: 'KAKAO_FRIENDTALK',
+          message_type: "KAKAO_FRIENDTALK",
           sent_at: result.success ? new Date().toISOString() : null,
-          status: result.success ? 'sent' : 'failed',
+          status: result.success ? "sent" : "failed",
           error_message: result.error || null,
           credit_used: result.success ? 20 : 0, // 친구톡 기본 단가 20원
           metadata: {
@@ -258,16 +271,16 @@ export async function POST(request: NextRequest) {
         });
 
         if (dbError) {
-          console.error(`DB 저장 실패 (${phoneNumber}):`, dbError);
+
         }
       } catch (error) {
         const phoneNumber = recipient.phone_number;
         failCount++;
-        console.error(`예외 발생 (수신자: ${phoneNumber}):`, error);
+
         results.push({
           recipient: phoneNumber,
           success: false,
-          error: error instanceof Error ? error.message : '알 수 없는 오류',
+          error: error instanceof Error ? error.message : "알 수 없는 오류",
         });
       }
     }
@@ -279,24 +292,27 @@ export async function POST(request: NextRequest) {
       const totalCost = successCount * unitPrice;
 
       // 트랜잭션 생성 (amount는 양수로 저장, UI에서 type='usage'일 때 - 표시)
-      const { error: transError } = await supabase.from('transactions').insert({
+      const { error: transError } = await supabase.from("transactions").insert({
         user_id: userId,
-        type: 'usage',
+        type: "usage",
         amount: totalCost, // 양수로 저장
         description: `카카오 친구톡 발송 (${successCount}건)`,
-        reference_id: results.filter(r => r.success).map(r => r.msgId).join(','),
+        reference_id: results
+          .filter((r) => r.success)
+          .map((r) => r.msgId)
+          .join(","),
         metadata: {
-          message_type: 'FRIENDTALK',
+          message_type: "FRIENDTALK",
           recipient_count: successCount,
           unit_price: unitPrice,
           message_type_detail: messageType,
           ad_flag: adFlag,
         },
-        status: 'completed',
+        status: "completed",
       });
 
       if (transError) {
-        console.error('트랜잭션 생성 실패:', transError);
+
       }
     }
 
@@ -309,10 +325,10 @@ export async function POST(request: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error('친구톡 발송 API 오류:', error);
+    console.error('친구톡 발송 중 예외 발생:', error);
     return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
-      { status: 500 }
+      { error: "서버 오류가 발생했습니다." },
+      { status: 500 },
     );
   }
 }

@@ -213,7 +213,6 @@ export async function sendMtsSMS(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (SMS):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -309,7 +308,6 @@ export async function sendMtsMMS(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (MMS):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -381,7 +379,6 @@ export async function uploadMtsImage(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (이미지 업로드):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -723,10 +720,6 @@ export async function sendMtsFriendtalk(
     const apiUrl = `${MTS_API_URL}/v2/sndng/ftk/sendMessage`;
 
     // 요청 body 전체 로그
-    console.log('=== [mtsApi] MTS 친구톡 최종 요청 ===');
-    console.log('API URL:', apiUrl);
-    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
-    console.log('====================================');
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -739,10 +732,6 @@ export async function sendMtsFriendtalk(
     const result = await response.json();
 
     // MTS 서버 응답 로그
-    console.log('=== [mtsApi] MTS API 응답 ===');
-    console.log('HTTP Status:', response.status);
-    console.log('Response:', JSON.stringify(result, null, 2));
-    console.log('=============================');
 
 
     // 성공 확인 (0000 또는 1000: 친구톡 성공)
@@ -766,7 +755,6 @@ export async function sendMtsFriendtalk(
       responseData: result,
     };
   } catch (error) {
-    console.error('[mtsApi.sendMtsFriendtalk] 오류:', error);
 
     if (error instanceof TypeError) {
       return {
@@ -840,7 +828,6 @@ export async function getMtsAlimtalkTemplates(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (템플릿 목록 조회):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -901,7 +888,6 @@ export async function getMtsAlimtalkTemplate(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (템플릿 조회):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -975,7 +961,6 @@ export async function getMtsSenderProfiles(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (발신 프로필 조회):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -1568,28 +1553,9 @@ export async function sendKakaoBrand(
     const isWithinTimeWindow = kstHour >= 8 && kstHour < 20;
 
     if (!isWithinTimeWindow) {
-      console.warn('⚠️ 경고: 현재 시간이 브랜드 메시지 발송 시간(08:00-20:00 KST) 외입니다!');
     }
 
     // API 호출
-    console.log('========================================');
-    console.log('[MTS 카카오 브랜드 메시지 API 호출 시작 - 변수분리방식 v1.1]');
-    console.log('시간:', new Date().toISOString());
-    console.log('메시지 타입:', messageType);
-    console.log('타게팅:', targeting);
-    console.log('시간대 확인:', isWithinTimeWindow ? '✅ 08:00-20:00 범위 내' : '⚠️ 범위 외');
-    console.log('---');
-    console.log('message_variable:', requestBody.message_variable ? 'Yes' : 'No');
-    console.log('button_variable:', requestBody.button_variable ? 'Yes' : 'No');
-    console.log('image_variable:', requestBody.image_variable ? 'Yes' : 'No');
-    console.log('coupon_variable:', requestBody.coupon_variable ? 'Yes' : 'No');
-    console.log('commerce_variable:', requestBody.commerce_variable ? 'Yes' : 'No');
-    console.log('video_variable:', requestBody.video_variable ? 'Yes' : 'No');
-    console.log('carousel_variable:', requestBody.carousel_variable ? 'Yes' : 'No');
-    console.log('---');
-    console.log('API URL:', `${MTS_API_URL}/btalk/send/message/basic`);
-    console.log('실제 전송 requestBody:', JSON.stringify(requestBody, null, 2));
-    console.log('========================================');
 
     const requestBodyString = JSON.stringify(requestBody);
     const response = await fetch(`${MTS_API_URL}/btalk/send/message/basic`, {
@@ -1603,10 +1569,6 @@ export async function sendKakaoBrand(
     const responseText = await response.text();
     const result = JSON.parse(responseText);
 
-    console.log('[MTS 카카오 브랜드 메시지 API 응답 수신]');
-    console.log('HTTP 상태:', response.status, response.statusText);
-    console.log('응답 데이터:', JSON.stringify(result, null, 2));
-    console.log('========================================\n');
 
     // 성공 확인
     if (result.code === '0000' || result.code === '1000') {
@@ -1619,7 +1581,7 @@ export async function sendKakaoBrand(
     }
 
     // 실패 시 에러 메시지 반환
-    console.error('[브랜드 메시지] 발송 실패:', {
+    console.error('브랜드 메시지 발송 실패:', {
       code: result.code,
       error: getErrorMessage(result.code) || result.message
     });
@@ -1630,7 +1592,6 @@ export async function sendKakaoBrand(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (브랜드 메시지):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -1691,7 +1652,6 @@ export async function getMtsCategoryList(): Promise<MtsApiResult> {
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (카테고리 조회):', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -1750,7 +1710,6 @@ export async function requestMtsSenderToken(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (토큰 요청):', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -1815,7 +1774,6 @@ export async function registerMtsSenderProfile(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (발신프로필 등록):', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -1889,7 +1847,6 @@ export async function createMtsAlimtalkTemplate(templateData: {
     }
 
     // 실패 시 에러 메시지 반환
-    console.error('❌ 템플릿 등록 실패:', result.message);
     return {
       success: false,
       error: result.message || '템플릿 등록 실패',
@@ -1897,7 +1854,6 @@ export async function createMtsAlimtalkTemplate(templateData: {
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (템플릿 등록):', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -1948,7 +1904,6 @@ export async function requestMtsTemplateInspection(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (템플릿 검수 요청):', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -1999,7 +1954,6 @@ export async function deleteMtsAlimtalkTemplate(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (템플릿 삭제):', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
@@ -2446,7 +2400,7 @@ export async function createBrandTemplate(
 
     if (contentType && contentType.includes('text/html')) {
       const htmlText = await response.text();
-      console.error('[브랜드 메시지] HTML 응답 받음 (처음 500자):', htmlText.substring(0, 500));
+      console.error('브랜드 메시지 템플릿 생성 API HTML 응답:', htmlText.substring(0, 500));
       return {
         success: false,
         error: '브랜드 메시지 템플릿 생성 API가 올바르지 않습니다. MTS에서 브랜드 메시지 권한을 확인해주세요.',
@@ -2500,11 +2454,11 @@ export async function createBrandTemplate(
           });
 
         if (dbError) {
-          console.error('[브랜드 템플릿] DB 저장 오류:', dbError);
+          console.error('브랜드 템플릿 DB 저장 실패:', dbError);
         }
       } catch (dbError) {
-        console.error('[브랜드 템플릿] DB 저장 예외:', dbError);
         // DB 저장 실패해도 MTS API 성공이므로 성공으로 처리
+        console.error('브랜드 템플릿 DB 저장 중 예외 발생:', dbError);
       }
 
       return {
@@ -2514,7 +2468,6 @@ export async function createBrandTemplate(
     }
 
     // 실패 시 에러 메시지 반환
-    console.error('[브랜드 메시지] 템플릿 생성 실패:', result.message);
     return {
       success: false,
       error: result.message || '카카오 브랜드 메시지 템플릿 생성 실패',
@@ -2522,7 +2475,6 @@ export async function createBrandTemplate(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (브랜드 메시지 템플릿 생성):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -2591,7 +2543,7 @@ export async function getMtsBrandTemplate(templateCode: string): Promise<MtsApiR
     }
 
     // 실패 시 에러 메시지 반환
-    console.error('[브랜드 템플릿 조회] 실패:', {
+    console.error('브랜드 템플릿 조회 실패:', {
       code: result.code,
       message: result.message,
     });
@@ -2602,7 +2554,6 @@ export async function getMtsBrandTemplate(templateCode: string): Promise<MtsApiR
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (브랜드 템플릿 조회):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -2674,7 +2625,7 @@ export async function getBrandMessageResult(
     }
 
     // 실패 시 에러 메시지 반환
-    console.error('[브랜드 메시지 결과 조회] 실패:', {
+    console.error('브랜드 메시지 결과 조회 실패:', {
       code: result.code,
       message: result.message,
     });
@@ -2685,7 +2636,6 @@ export async function getBrandMessageResult(
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (브랜드 메시지 결과 조회):', error);
 
     if (error instanceof TypeError) {
       return {

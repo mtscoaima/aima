@@ -463,18 +463,9 @@ export async function syncBrandTemplates(senderKey: string): Promise<{
 export async function sendBrandMessage(request: BrandMessageSendRequest) {
   try {
     const token = localStorage.getItem('accessToken');
-    console.log('[브랜드 메시지 클라이언트] accessToken:', token ? '존재함' : '없음');
-
     if (!token) {
       throw new Error('로그인이 필요합니다.');
     }
-
-    console.log('[브랜드 메시지 클라이언트] 발송 요청:', {
-      senderKey: request.senderKey,
-      templateCode: request.templateCode,
-      recipientsCount: request.recipients?.length,
-      targeting: request.targeting
-    });
 
     const response = await fetch('/api/messages/kakao/brand/send', {
       method: 'POST',
@@ -485,8 +476,6 @@ export async function sendBrandMessage(request: BrandMessageSendRequest) {
       body: JSON.stringify(request),
     });
 
-    console.log('[브랜드 메시지 클라이언트] 응답 상태:', response.status, response.statusText);
-
     if (!response.ok) {
       const error = await response.json();
       console.error('[브랜드 메시지 클라이언트] 에러 응답:', error);
@@ -494,7 +483,6 @@ export async function sendBrandMessage(request: BrandMessageSendRequest) {
     }
 
     const result = await response.json();
-    console.log('[브랜드 메시지 클라이언트] 발송 성공:', result);
     return result;
   } catch (error) {
     console.error('브랜드 메시지 발송 오류:', error);

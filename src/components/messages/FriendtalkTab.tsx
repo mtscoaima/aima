@@ -2,13 +2,25 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import NextImage from "next/image";
-import { Info, RefreshCw, Send, Image as ImageIcon, FileText, Upload, Save, X } from "lucide-react";
+import {
+  Info,
+  RefreshCw,
+  Send,
+  Image as ImageIcon,
+  FileText,
+  Upload,
+  Save,
+  X,
+} from "lucide-react";
 import {
   fetchSenderProfiles,
   sendFriendtalk,
   type SenderProfile,
 } from "@/utils/kakaoApi";
-import { replaceVariables as replaceStandardVariables, countReplaceableVariables } from '@/utils/messageVariables';
+import {
+  replaceVariables as replaceStandardVariables,
+  countReplaceableVariables,
+} from "@/utils/messageVariables";
 import SimpleContentSaveModal from "@/components/modals/SimpleContentSaveModal";
 import LoadContentModal from "@/components/modals/LoadContentModal";
 import FriendtalkButtonModal from "@/components/modals/FriendtalkButtonModal";
@@ -33,7 +45,7 @@ interface UploadedImage {
   preview: string;
 }
 
-type MessageType = 'FT' | 'FI' | 'FW' | 'FL' | 'FC';
+type MessageType = "FT" | "FI" | "FW" | "FL" | "FC";
 
 const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   recipients = [],
@@ -45,8 +57,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const [selectedProfile, setSelectedProfile] = useState<string>("");
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [adFlag, setAdFlag] = useState<'Y' | 'N'>('N');
-  const [messageType, setMessageType] = useState<MessageType>('FT');
+  const [adFlag, setAdFlag] = useState<"Y" | "N">("N");
+  const [messageType, setMessageType] = useState<MessageType>("FT");
   const [message, setMessage] = useState("");
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -55,7 +67,6 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const [errorMessage, setErrorMessage] = useState("");
 
   // UI 관련 state
-  const [showImageUpload, setShowImageUpload] = useState(false);
   const [imageLink, setImageLink] = useState("");
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,25 +74,43 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const carouselFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // 버튼 및 모달 관련 state
-  const [buttons, setButtons] = useState<Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>>([]);
+  const [buttons, setButtons] = useState<
+    Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>
+  >([]);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
-  const [loadModalActiveTab, setLoadModalActiveTab] = useState<"saved" | "recent">("saved");
+  const [loadModalActiveTab, setLoadModalActiveTab] = useState<
+    "saved" | "recent"
+  >("saved");
   const [isButtonModalOpen, setIsButtonModalOpen] = useState(false);
 
   // FW/FL/FC 전용 state
   const [headerText, setHeaderText] = useState(""); // FL용 헤더
-  const [listItems, setListItems] = useState<Array<{ title: string; image?: UploadedImage; url_mobile?: string; url_pc?: string }>>([
+  const [listItems, setListItems] = useState<
+    Array<{
+      title: string;
+      image?: UploadedImage;
+      url_mobile?: string;
+      url_pc?: string;
+    }>
+  >([
     { title: "", url_mobile: "", url_pc: "" },
     { title: "", url_mobile: "", url_pc: "" },
     { title: "", url_mobile: "", url_pc: "" },
   ]); // FL용 아이템 리스트
-  const [carousels, setCarousels] = useState<Array<{
-    header?: string;
-    content: string;
-    image?: UploadedImage;
-    buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
-  }>>([
+  const [carousels, setCarousels] = useState<
+    Array<{
+      header?: string;
+      content: string;
+      image?: UploadedImage;
+      buttons: Array<{
+        name: string;
+        type: string;
+        url_mobile?: string;
+        url_pc?: string;
+      }>;
+    }>
+  >([
     { header: "", content: "", buttons: [] },
     { header: "", content: "", buttons: [] },
   ]); // FC용 캐러셀
@@ -89,9 +118,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
   // 사용자 정보 (변수 치환용)
   const [userInfo, setUserInfo] = useState({
-    phone: '',
-    name: '',
-    companyName: '',
+    phone: "",
+    name: "",
+    companyName: "",
   });
 
   // 치환 가능한 변수 개수 계산
@@ -106,10 +135,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
+        const token = localStorage.getItem("accessToken");
         if (!token) return;
 
-        const response = await fetch('/api/users/me', {
+        const response = await fetch("/api/users/me", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -119,12 +148,12 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
         const data = await response.json();
         setUserInfo({
-          phone: data.phoneNumber || '',
-          name: data.name || '',
-          companyName: data.companyInfo?.companyName || '',
+          phone: data.phoneNumber || "",
+          name: data.name || "",
+          companyName: data.companyInfo?.companyName || "",
         });
       } catch (error) {
-        console.error('사용자 정보 조회 오류:', error);
+        console.error('사용자 정보 조회 실패:', error);
       }
     };
 
@@ -134,8 +163,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   // FL/FC 타입 선택 시 자동으로 광고 플래그 설정
   // MTS API 규격: FL(와이드아이템리스트), FC(캐러셀) 타입은 광고 발송만 가능
   useEffect(() => {
-    if (messageType === 'FL' || messageType === 'FC') {
-      setAdFlag('Y');
+    if (messageType === "FL" || messageType === "FC") {
+      setAdFlag("Y");
     }
   }, [messageType]);
 
@@ -152,8 +181,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         setSelectedProfile(profiles[0].sender_key);
       }
     } catch (error) {
-      console.error("발신 프로필 조회 실패:", error);
-      setErrorMessage(error instanceof Error ? error.message : "발신 프로필 조회 실패");
+
+      setErrorMessage(
+        error instanceof Error ? error.message : "발신 프로필 조회 실패",
+      );
     } finally {
       setIsLoadingProfiles(false);
     }
@@ -166,7 +197,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const newText = message.substring(0, start) + "#{변수명}" + message.substring(end);
+    const newText =
+      message.substring(0, start) + "#{변수명}" + message.substring(end);
     setMessage(newText);
 
     // 커서 위치 조정
@@ -190,14 +222,18 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   };
 
   // 이미지 업로드 핸들러
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // 파일 크기 검증 (클라이언트측 5MB, 백엔드에서 자동 최적화)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert(`이미지 크기는 5MB 이하여야 합니다.\n현재 크기: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+      alert(
+        `이미지 크기는 5MB 이하여야 합니다.\n현재 크기: ${(file.size / 1024 / 1024).toFixed(1)}MB`,
+      );
       event.target.value = "";
       return;
     }
@@ -255,7 +291,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       const data = await response.json();
 
       if (!data.success || !data.imageUrl) {
-        throw new Error('이미지 URL을 받지 못했습니다');
+        throw new Error("이미지 URL을 받지 못했습니다");
       }
 
       // 미리보기 URL 생성
@@ -270,11 +306,12 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           preview: previewUrl,
         },
       ]);
-
     } catch (error) {
-      console.error('[친구톡 이미지 업로드 실패]', error);
-      setErrorMessage(error instanceof Error ? error.message : '이미지 업로드 실패');
-      alert(error instanceof Error ? error.message : '이미지 업로드 실패');
+
+      setErrorMessage(
+        error instanceof Error ? error.message : "이미지 업로드 실패",
+      );
+      alert(error instanceof Error ? error.message : "이미지 업로드 실패");
     } finally {
       setIsUploading(false);
       event.target.value = "";
@@ -295,7 +332,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   // FL 아이템별 이미지 업로드
   const handleListItemImageUpload = async (
     itemIndex: number,
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -359,8 +396,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       };
       setListItems(newItems);
     } catch (error) {
-      console.error("[FL 아이템 이미지 업로드 실패]", error);
-      setErrorMessage(error instanceof Error ? error.message : "이미지 업로드 실패");
+
+      setErrorMessage(
+        error instanceof Error ? error.message : "이미지 업로드 실패",
+      );
       alert(error instanceof Error ? error.message : "이미지 업로드 실패");
     } finally {
       setIsUploading(false);
@@ -381,7 +420,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   // FC 캐러셀별 이미지 업로드
   const handleCarouselImageUpload = async (
     carouselIndex: number,
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -445,8 +484,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       };
       setCarousels(newCarousels);
     } catch (error) {
-      console.error("[FC 캐러셀 이미지 업로드 실패]", error);
-      setErrorMessage(error instanceof Error ? error.message : "이미지 업로드 실패");
+
+      setErrorMessage(
+        error instanceof Error ? error.message : "이미지 업로드 실패",
+      );
       alert(error instanceof Error ? error.message : "이미지 업로드 실패");
     } finally {
       setIsUploading(false);
@@ -464,7 +505,6 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     setCarousels(newCarousels);
   };
 
-
   // 친구톡 발송
   const handleSendFriendtalk = async () => {
     // 유효성 검사
@@ -474,7 +514,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     }
 
     // FT/FI/FW 타입만 message 필드 검증 (FL/FC는 자체 필드 사용)
-    if (messageType !== 'FL' && messageType !== 'FC' && !message.trim()) {
+    if (messageType !== "FL" && messageType !== "FC" && !message.trim()) {
       alert("메시지 내용을 입력해주세요.");
       return;
     }
@@ -490,33 +530,41 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     }
 
     // 타입별 이미지 필수 검증
-    if (messageType === 'FI' && uploadedImages.length === 0) {
-      alert("FI (이미지형) 타입은 이미지가 필수입니다.\n이미지를 업로드해주세요.");
+    if (messageType === "FI" && uploadedImages.length === 0) {
+      alert(
+        "FI (이미지형) 타입은 이미지가 필수입니다.\n이미지를 업로드해주세요.",
+      );
       return;
     }
 
-    if (messageType === 'FW' && uploadedImages.length === 0) {
-      alert("FW (와이드형) 타입은 이미지가 필수입니다.\n이미지를 업로드해주세요.");
+    if (messageType === "FW" && uploadedImages.length === 0) {
+      alert(
+        "FW (와이드형) 타입은 이미지가 필수입니다.\n이미지를 업로드해주세요.",
+      );
       return;
     }
 
-    if (messageType === 'FL') {
+    if (messageType === "FL") {
       if (!headerText || headerText.trim().length === 0) {
         alert("FL (와이드 아이템 리스트형) 타입은 헤더가 필수입니다.");
         return;
       }
       if (listItems.length < 3 || listItems.length > 4) {
-        alert("FL (와이드 아이템 리스트형) 타입은 3-4개의 아이템이 필요합니다.");
+        alert(
+          "FL (와이드 아이템 리스트형) 타입은 3-4개의 아이템이 필요합니다.",
+        );
         return;
       }
-      const itemsWithoutImage = listItems.filter(item => !item.image);
+      const itemsWithoutImage = listItems.filter((item) => !item.image);
       if (itemsWithoutImage.length > 0) {
-        alert("FL (와이드 아이템 리스트형) 타입은 모든 아이템에 이미지가 필수입니다.\n이미지가 없는 아이템이 있습니다.");
+        alert(
+          "FL (와이드 아이템 리스트형) 타입은 모든 아이템에 이미지가 필수입니다.\n이미지가 없는 아이템이 있습니다.",
+        );
         return;
       }
     }
 
-    if (messageType === 'FC') {
+    if (messageType === "FC") {
       if (carousels.length < 2 || carousels.length > 6) {
         alert("FC (캐러셀형) 타입은 2-6개의 캐러셀이 필요합니다.");
         return;
@@ -527,13 +575,17 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     const now = new Date();
     const hour = now.getHours();
     if (hour < 8 || hour >= 20) {
-      alert("친구톡 메시지는 08시~20시 사이에만 발송 가능합니다.\n(현재 시간: " + hour + "시)");
+      alert(
+        "친구톡 메시지는 08시~20시 사이에만 발송 가능합니다.\n(현재 시간: " +
+          hour +
+          "시)",
+      );
       return;
     }
 
     // 발송 확인
     const confirmed = window.confirm(
-      `${recipients.length}명에게 친구톡을 발송하시겠습니까?`
+      `${recipients.length}명에게 친구톡을 발송하시겠습니까?`,
     );
     if (!confirmed) return;
 
@@ -542,30 +594,42 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
     try {
       // 업로드된 이미지의 fileId 배열 생성
-      const imageFileIds = uploadedImages.map(img => img.fileId);
+      const imageFileIds = uploadedImages.map((img) => img.fileId);
 
       // 선택한 메시지 타입 사용 (자동 감지 아님)
       const selectedMessageType = messageType;
 
       // 각 수신자별로 변수 치환된 메시지 생성
-      const processedRecipients = recipients.map(recipient => {
+      const processedRecipients = recipients.map((recipient) => {
         // Step 1: 자동 변수 치환 (messageVariables.ts의 replaceStandardVariables 함수)
         let replacedMessage = replaceStandardVariables(
           message,
           {
             name: recipient.name,
             phone: recipient.phone_number,
-            groupName: recipient.group_name || recipient.variables?.['그룹명'],
+            groupName: recipient.group_name || recipient.variables?.["그룹명"],
           },
-          userInfo
+          userInfo,
         );
 
         // Step 2: 커스텀 변수 추가 치환 (SMS 발송과 동일한 로직)
         if (recipient.variables) {
           for (const [key, value] of Object.entries(recipient.variables)) {
             // 기본 변수가 아닌 커스텀 변수만 치환
-            if (!['이름', '전화번호', '그룹명', '오늘날짜', '현재시간', '요일', '발신번호', '회사명', '담당자명'].includes(key)) {
-              const pattern = new RegExp(`#{${key}}`, 'g');
+            if (
+              ![
+                "이름",
+                "전화번호",
+                "그룹명",
+                "오늘날짜",
+                "현재시간",
+                "요일",
+                "발신번호",
+                "회사명",
+                "담당자명",
+              ].includes(key)
+            ) {
+              const pattern = new RegExp(`#{${key}}`, "g");
               replacedMessage = replacedMessage.replace(pattern, value);
             }
           }
@@ -584,24 +648,11 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
       for (const recipient of processedRecipients) {
         try {
-          // 발송 직전 로그
-          console.log('=== 친구톡 발송 요청 데이터 ===');
-          console.log('messageType:', selectedMessageType);
-          console.log('senderKey:', selectedProfile);
-          console.log('recipient:', recipient);
-          console.log('buttons:', buttons);
-          console.log('imageFileIds:', imageFileIds);
-          console.log('imageLink:', imageLink);
-          console.log('adFlag:', adFlag);
-          console.log('headerText:', messageType === 'FL' ? headerText : undefined);
-          console.log('listItems:', messageType === 'FL' ? listItems : undefined);
-          console.log('carousels:', messageType === 'FC' ? carousels : undefined);
-          console.log('moreLink:', messageType === 'FC' ? moreLink : undefined);
-          console.log('===========================');
-
           const result = await sendFriendtalk({
             senderKey: selectedProfile,
-            recipients: [{ phone_number: recipient.phone_number, name: recipient.name }],
+            recipients: [
+              { phone_number: recipient.phone_number, name: recipient.name },
+            ],
             message: recipient.replacedMessage, // 치환된 메시지 사용
             callbackNumber: callbackNumber,
             messageType: selectedMessageType,
@@ -612,28 +663,21 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             tranType: enableSmsBackup ? "SMS" : undefined,
             tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
             // FW/FL/FC 추가 데이터
-            headerText: messageType === 'FL' ? headerText : undefined,
-            listItems: messageType === 'FL' ? listItems : undefined,
-            carousels: messageType === 'FC' ? carousels : undefined,
-            moreLink: messageType === 'FC' ? moreLink : undefined,
+            headerText: messageType === "FL" ? headerText : undefined,
+            listItems: messageType === "FL" ? listItems : undefined,
+            carousels: messageType === "FC" ? carousels : undefined,
+            moreLink: messageType === "FC" ? moreLink : undefined,
           });
-
-          // 발송 결과 로그
-          console.log('=== 친구톡 발송 결과 ===');
-          console.log('result:', result);
-          console.log('=======================');
 
           if (result.successCount > 0) successCount++;
           else failCount++;
         } catch (error) {
+          console.error('친구톡 발송 실패:', error);
           failCount++;
-          console.error(`발송 실패 (${recipient.phone_number}):`, error);
         }
       }
 
-      alert(
-        `친구톡 발송 완료\n성공: ${successCount}건\n실패: ${failCount}건`
-      );
+      alert(`친구톡 발송 완료\n성공: ${successCount}건\n실패: ${failCount}건`);
 
       if (onSendComplete) {
         onSendComplete({ successCount, failCount });
@@ -643,9 +687,11 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       setMessage("");
       setUploadedImages([]);
     } catch (error) {
-      console.error("친구톡 발송 실패:", error);
+
       alert(
-        error instanceof Error ? error.message : "친구톡 발송 중 오류가 발생했습니다."
+        error instanceof Error
+          ? error.message
+          : "친구톡 발송 중 오류가 발생했습니다.",
       );
     } finally {
       setIsSending(false);
@@ -688,7 +734,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               className="text-blue-600 hover:text-blue-700"
               disabled={isLoadingProfiles}
             >
-              <RefreshCw className={`w-4 h-4 ${isLoadingProfiles ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${isLoadingProfiles ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
         </label>
@@ -721,45 +769,59 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           <option value="FT">텍스트형 (FT)</option>
           <option value="FI">이미지형 (FI)</option>
           <option value="FW">와이드형 (FW) - 이미지 + 메시지 + 버튼</option>
-          <option value="FL">와이드 아이템 리스트형 (FL) - 헤더 + 아이템 3-4개</option>
+          <option value="FL">
+            와이드 아이템 리스트형 (FL) - 헤더 + 아이템 3-4개
+          </option>
           <option value="FC">캐러셀형 (FC) - 캐러셀 2-6개</option>
         </select>
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-blue-800 space-y-1">
-              {messageType === 'FT' && (
+              {messageType === "FT" && (
                 <>
-                  <p><strong>텍스트형</strong>: 텍스트만으로 구성된 메시지</p>
+                  <p>
+                    <strong>텍스트형</strong>: 텍스트만으로 구성된 메시지
+                  </p>
                   <p>• 최대 1,000자</p>
                 </>
               )}
-              {messageType === 'FI' && (
+              {messageType === "FI" && (
                 <>
-                  <p><strong>이미지형</strong>: 이미지 + 텍스트</p>
+                  <p>
+                    <strong>이미지형</strong>: 이미지 + 텍스트
+                  </p>
                   <p>• 이미지 1개, 최대 500KB</p>
                   <p>• 텍스트 최대 400자</p>
                 </>
               )}
-              {messageType === 'FW' && (
+              {messageType === "FW" && (
                 <>
-                  <p><strong>와이드형</strong>: 와이드 이미지 + 메시지 + 버튼 + 쿠폰</p>
+                  <p>
+                    <strong>와이드형</strong>: 와이드 이미지 + 메시지 + 버튼 +
+                    쿠폰
+                  </p>
                   <p>• 이미지: 800×600px 권장, 2:1 to 1:1 비율</p>
                   <p>• 메시지: 최대 76자, 줄바꿈 1개</p>
                   <p>• 버튼: 최대 2개</p>
                 </>
               )}
-              {messageType === 'FL' && (
+              {messageType === "FL" && (
                 <>
-                  <p><strong>와이드 아이템 리스트형</strong>: 헤더 + 아이템 리스트 + 버튼</p>
+                  <p>
+                    <strong>와이드 아이템 리스트형</strong>: 헤더 + 아이템
+                    리스트 + 버튼
+                  </p>
                   <p>• 헤더: 최대 20자 (줄바꿈 불가)</p>
                   <p>• 아이템: 3~4개, 각각 이미지 + 제목(25자)</p>
                   <p>• 버튼: 최대 2개</p>
                 </>
               )}
-              {messageType === 'FC' && (
+              {messageType === "FC" && (
                 <>
-                  <p><strong>캐러셀형</strong>: 여러 캐러셀 카드 + 더보기</p>
+                  <p>
+                    <strong>캐러셀형</strong>: 여러 캐러셀 카드 + 더보기
+                  </p>
                   <p>• 캐러셀: 2~6개</p>
                   <p>• 각 캐러셀: 최대 180자, 줄바꿈 2개</p>
                   <p>• 버튼: 각 캐러셀당 1~2개</p>
@@ -775,14 +837,14 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
-            checked={adFlag === 'Y'}
-            onChange={(e) => setAdFlag(e.target.checked ? 'Y' : 'N')}
-            disabled={messageType === 'FL' || messageType === 'FC'}
+            checked={adFlag === "Y"}
+            onChange={(e) => setAdFlag(e.target.checked ? "Y" : "N")}
+            disabled={messageType === "FL" || messageType === "FC"}
             className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <span className="text-sm font-medium text-gray-700">
             광고성 메시지 (08:00~20:00만 발송 가능)
-            {(messageType === 'FL' || messageType === 'FC') && (
+            {(messageType === "FL" || messageType === "FC") && (
               <span className="ml-2 text-xs text-blue-600 font-normal">
                 * FL/FC 타입은 광고 발송만 가능합니다
               </span>
@@ -792,7 +854,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       </div>
 
       {/* 메시지 내용 - FT/FI 타입 */}
-      {(messageType === 'FT' || messageType === 'FI') && (
+      {(messageType === "FT" || messageType === "FI") && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             메시지 내용
@@ -804,55 +866,55 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               onChange={(e) => setMessage(e.target.value)}
               placeholder="이곳에 문자 내용을 입력합니다&#10;치환문구 예시) #{이름}님 #{날짜} 방문 예약입니다."
               className="w-full p-3 border border-gray-300 rounded text-sm resize-none min-h-[300px]"
-              maxLength={messageType === 'FI' ? 400 : 1000}
+              maxLength={messageType === "FI" ? 400 : 1000}
             />
 
-          {/* 하단 도구바 */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-            <div className="flex items-center gap-3">
-              {/* 아이콘 버튼들 */}
-              <button
-                className="p-2 text-gray-500 hover:text-gray-700"
-                onClick={addReplaceText}
-                title="치환문구 추가"
-              >
-                <FileText className="w-4 h-4" />
-              </button>
-              <button
-                className="p-2 text-gray-500 hover:text-gray-700"
-                onClick={() => setIsSaveModalOpen(true)}
-                title="템플릿 저장하기"
-              >
-                <Save className="w-4 h-4" />
-              </button>
+            {/* 하단 도구바 */}
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center gap-3">
+                {/* 아이콘 버튼들 */}
+                <button
+                  className="p-2 text-gray-500 hover:text-gray-700"
+                  onClick={addReplaceText}
+                  title="치환문구 추가"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+                <button
+                  className="p-2 text-gray-500 hover:text-gray-700"
+                  onClick={() => setIsSaveModalOpen(true)}
+                  title="템플릿 저장하기"
+                >
+                  <Save className="w-4 h-4" />
+                </button>
 
-              {/* 텍스트 버튼들 */}
-              <button
-                className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
-                onClick={handleSavedContentClick}
-              >
-                저장내용
-              </button>
-              <button
-                className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
-                onClick={handleRecentSentClick}
-              >
-                최근발송
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">
-                {message.length} / {messageType === 'FI' ? '400' : '1,000'} 자
-              </span>
-              <Info className="w-4 h-4 text-gray-400" />
+                {/* 텍스트 버튼들 */}
+                <button
+                  className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+                  onClick={handleSavedContentClick}
+                >
+                  저장내용
+                </button>
+                <button
+                  className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+                  onClick={handleRecentSentClick}
+                >
+                  최근발송
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">
+                  {message.length} / {messageType === "FI" ? "400" : "1,000"} 자
+                </span>
+                <Info className="w-4 h-4 text-gray-400" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* FW (와이드형) 레이아웃 */}
-      {messageType === 'FW' && (
+      {messageType === "FW" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
           <h3 className="font-medium text-gray-900">와이드형 메시지</h3>
 
@@ -950,14 +1012,15 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               placeholder="https://example.com"
               className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
             />
-            <p className="text-xs text-gray-500">이미지 클릭 시 이동할 URL을 입력하세요</p>
+            <p className="text-xs text-gray-500">
+              이미지 클릭 시 이동할 URL을 입력하세요
+            </p>
           </div>
         </div>
       )}
 
-
       {/* FL (와이드 아이템 리스트형) 레이아웃 */}
-      {messageType === 'FL' && (
+      {messageType === "FL" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
           <h3 className="font-medium text-gray-900">와이드 아이템 리스트형</h3>
 
@@ -987,7 +1050,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                 <button
                   onClick={() => {
                     if (listItems.length < 4) {
-                      setListItems([...listItems, { title: "", url_mobile: "", url_pc: "" }]);
+                      setListItems([
+                        ...listItems,
+                        { title: "", url_mobile: "", url_pc: "" },
+                      ]);
                     }
                   }}
                   disabled={listItems.length >= 4}
@@ -1010,8 +1076,13 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             </div>
 
             {listItems.map((item, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-2">
-                <h4 className="text-sm font-medium text-gray-700">아이템 {index + 1}</h4>
+              <div
+                key={index}
+                className="border border-gray-200 rounded-lg p-3 space-y-2"
+              >
+                <h4 className="text-sm font-medium text-gray-700">
+                  아이템 {index + 1}
+                </h4>
 
                 {/* 아이템 제목 */}
                 <div>
@@ -1021,7 +1092,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   <textarea
                     value={item.title}
                     onChange={(e) => {
-                      const lineBreaks = (e.target.value.match(/\n/g) || []).length;
+                      const lineBreaks = (e.target.value.match(/\n/g) || [])
+                        .length;
                       if (lineBreaks <= 1) {
                         const newItems = [...listItems];
                         newItems[index].title = e.target.value;
@@ -1033,7 +1105,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                     rows={2}
                     maxLength={25}
                   />
-                  <p className="text-xs text-gray-500 mt-1">{item.title.length} / 25자</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {item.title.length} / 25자
+                  </p>
                 </div>
 
                 {/* 아이템 이미지 (필수, 2:1 비율, 500px 이상) */}
@@ -1045,12 +1119,16 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                     <>
                       <button
                         className="w-full px-3 py-2 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
-                        onClick={() => listItemFileInputRefs.current[index]?.click()}
+                        onClick={() =>
+                          listItemFileInputRefs.current[index]?.click()
+                        }
                       >
                         이미지 선택
                       </button>
                       <input
-                        ref={(el) => { listItemFileInputRefs.current[index] = el; }}
+                        ref={(el) => {
+                          listItemFileInputRefs.current[index] = el;
+                        }}
                         type="file"
                         accept="image/jpeg,image/jpg,image/png"
                         onChange={(e) => handleListItemImageUpload(index, e)}
@@ -1066,7 +1144,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                         height={32}
                         className="object-cover rounded"
                       />
-                      <span className="text-xs flex-1 truncate">{item.image.fileName}</span>
+                      <span className="text-xs flex-1 truncate">
+                        {item.image.fileName}
+                      </span>
                       <button
                         onClick={() => handleListItemImageRemove(index)}
                         className="text-red-600 hover:text-red-700"
@@ -1084,7 +1164,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   </label>
                   <input
                     type="url"
-                    value={item.url_mobile || ''}
+                    value={item.url_mobile || ""}
                     onChange={(e) => {
                       const newItems = [...listItems];
                       newItems[index].url_mobile = e.target.value;
@@ -1101,7 +1181,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   </label>
                   <input
                     type="url"
-                    value={item.url_pc || ''}
+                    value={item.url_pc || ""}
                     onChange={(e) => {
                       const newItems = [...listItems];
                       newItems[index].url_pc = e.target.value;
@@ -1118,7 +1198,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       )}
 
       {/* 이미지 업로드 - FI 타입만 */}
-      {messageType === 'FI' && (
+      {messageType === "FI" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium text-gray-700">
@@ -1147,11 +1227,16 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               <div className="text-blue-800 space-y-1">
                 <p className="font-medium">카카오 친구톡 이미지 안내</p>
                 <ul className="list-disc list-inside text-xs space-y-1 text-blue-700">
-                  <li>권장 비율: <strong>2:1 (가로:세로)</strong> - 예: 1000x500px, 800x400px</li>
+                  <li>
+                    권장 비율: <strong>2:1 (가로:세로)</strong> - 예:
+                    1000x500px, 800x400px
+                  </li>
                   <li>최소 크기: 가로 500px 이상</li>
                   <li>파일 형식: JPG, PNG</li>
                   <li>최대 용량: 500KB (자동 최적화)</li>
-                  <li className="text-amber-700 font-medium">⚠️ 2:1 비율이 아닌 이미지는 자동으로 중앙 기준 잘립니다</li>
+                  <li className="text-amber-700 font-medium">
+                    ⚠️ 2:1 비율이 아닌 이미지는 자동으로 중앙 기준 잘립니다
+                  </li>
                 </ul>
               </div>
             </div>
@@ -1198,14 +1283,17 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="text-xs text-gray-700">
-              <p>• 최대 1개, 5MB 이하, JPG/PNG 형식만 가능 (자동 최적화: 300KB 이하)</p>
+              <p>
+                • 최대 1개, 5MB 이하, JPG/PNG 형식만 가능 (자동 최적화: 300KB
+                이하)
+              </p>
             </div>
           </div>
         </div>
       )}
 
       {/* FC (캐러셀형) 레이아웃 */}
-      {messageType === 'FC' && (
+      {messageType === "FC" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
           <h3 className="font-medium text-gray-900">캐러셀형</h3>
 
@@ -1217,7 +1305,10 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               <button
                 onClick={() => {
                   if (carousels.length < 6) {
-                    setCarousels([...carousels, { header: "", content: "", buttons: [] }]);
+                    setCarousels([
+                      ...carousels,
+                      { header: "", content: "", buttons: [] },
+                    ]);
                   }
                 }}
                 disabled={carousels.length >= 6}
@@ -1240,8 +1331,13 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           </div>
 
           {carousels.map((carousel, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-3">
-              <h4 className="text-sm font-medium text-gray-700">캐러셀 {index + 1}</h4>
+            <div
+              key={index}
+              className="border border-gray-200 rounded-lg p-3 space-y-3"
+            >
+              <h4 className="text-sm font-medium text-gray-700">
+                캐러셀 {index + 1}
+              </h4>
 
               {/* 캐러셀 제목 (header) */}
               <div>
@@ -1250,7 +1346,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={carousel.header || ''}
+                  value={carousel.header || ""}
                   onChange={(e) => {
                     const newCarousels = [...carousels];
                     newCarousels[index].header = e.target.value;
@@ -1260,7 +1356,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                   maxLength={20}
                 />
-                <p className="text-xs text-gray-500 mt-1">{(carousel.header || '').length} / 20자</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {(carousel.header || "").length} / 20자
+                </p>
               </div>
 
               {/* 캐러셀 내용 */}
@@ -1271,7 +1369,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                 <textarea
                   value={carousel.content}
                   onChange={(e) => {
-                    const lineBreaks = (e.target.value.match(/\n/g) || []).length;
+                    const lineBreaks = (e.target.value.match(/\n/g) || [])
+                      .length;
                     if (lineBreaks <= 2) {
                       const newCarousels = [...carousels];
                       newCarousels[index].content = e.target.value;
@@ -1283,7 +1382,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   rows={4}
                   maxLength={180}
                 />
-                <p className="text-xs text-gray-500 mt-1">{carousel.content.length} / 180자</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {carousel.content.length} / 180자
+                </p>
               </div>
 
               {/* 캐러셀 이미지 (선택) */}
@@ -1295,12 +1396,16 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   <>
                     <button
                       className="w-full px-3 py-2 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
-                      onClick={() => carouselFileInputRefs.current[index]?.click()}
+                      onClick={() =>
+                        carouselFileInputRefs.current[index]?.click()
+                      }
                     >
                       이미지 선택
                     </button>
                     <input
-                      ref={(el) => { carouselFileInputRefs.current[index] = el; }}
+                      ref={(el) => {
+                        carouselFileInputRefs.current[index] = el;
+                      }}
                       type="file"
                       accept="image/jpeg,image/jpg,image/png"
                       onChange={(e) => handleCarouselImageUpload(index, e)}
@@ -1316,7 +1421,9 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                       height={32}
                       className="object-cover rounded"
                     />
-                    <span className="text-xs flex-1 truncate">{carousel.image.fileName}</span>
+                    <span className="text-xs flex-1 truncate">
+                      {carousel.image.fileName}
+                    </span>
                     <button
                       onClick={() => handleCarouselImageRemove(index)}
                       className="text-red-600 hover:text-red-700"
@@ -1350,14 +1457,18 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                 ) : (
                   <div className="space-y-2">
                     {carousel.buttons.map((button, btnIndex) => (
-                      <div key={btnIndex} className="bg-gray-50 p-2 rounded space-y-2">
+                      <div
+                        key={btnIndex}
+                        className="bg-gray-50 p-2 rounded space-y-2"
+                      >
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
                             value={button.name}
                             onChange={(e) => {
                               const newCarousels = [...carousels];
-                              newCarousels[index].buttons[btnIndex].name = e.target.value;
+                              newCarousels[index].buttons[btnIndex].name =
+                                e.target.value;
                               setCarousels(newCarousels);
                             }}
                             placeholder="버튼명 (최대 14자)"
@@ -1368,7 +1479,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                             value={button.type}
                             onChange={(e) => {
                               const newCarousels = [...carousels];
-                              newCarousels[index].buttons[btnIndex].type = e.target.value;
+                              newCarousels[index].buttons[btnIndex].type =
+                                e.target.value;
                               setCarousels(newCarousels);
                             }}
                             className="px-2 py-1 text-xs border border-gray-300 rounded"
@@ -1389,26 +1501,33 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                             <X className="w-3 h-3" />
                           </button>
                         </div>
-                        {(button.type === 'WL' || button.type === 'AL') && (
+                        {(button.type === "WL" || button.type === "AL") && (
                           <div className="space-y-1">
                             <input
                               type="text"
-                              value={button.url_mobile || ''}
+                              value={button.url_mobile || ""}
                               onChange={(e) => {
                                 const newCarousels = [...carousels];
-                                newCarousels[index].buttons[btnIndex].url_mobile = e.target.value;
+                                newCarousels[index].buttons[
+                                  btnIndex
+                                ].url_mobile = e.target.value;
                                 setCarousels(newCarousels);
                               }}
-                              placeholder={button.type === 'WL' ? 'Mobile URL (필수)' : 'App Scheme (필수)'}
+                              placeholder={
+                                button.type === "WL"
+                                  ? "Mobile URL (필수)"
+                                  : "App Scheme (필수)"
+                              }
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                             />
-                            {button.type === 'WL' && (
+                            {button.type === "WL" && (
                               <input
                                 type="text"
-                                value={button.url_pc || ''}
+                                value={button.url_pc || ""}
                                 onChange={(e) => {
                                   const newCarousels = [...carousels];
-                                  newCarousels[index].buttons[btnIndex].url_pc = e.target.value;
+                                  newCarousels[index].buttons[btnIndex].url_pc =
+                                    e.target.value;
                                   setCarousels(newCarousels);
                                 }}
                                 placeholder="PC URL (선택)"
@@ -1453,59 +1572,70 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               placeholder="https://example.com"
               className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
             />
-            <p className="text-xs text-gray-500">더보기 버튼 클릭 시 이동할 URL</p>
+            <p className="text-xs text-gray-500">
+              더보기 버튼 클릭 시 이동할 URL
+            </p>
           </div>
         </div>
       )}
 
       {/* 카카오톡 버튼 - FT/FI/FW/FL만 (FC는 캐러셀별 버튼 사용) */}
-      {messageType !== 'FC' && (
+      {messageType !== "FC" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="font-medium text-gray-700">카카오톡 버튼</span>
             <span className="text-xs text-gray-500">
-              (최대 {messageType === 'FW' || messageType === 'FL' ? '2' : '5'}개, WL/AL/BK/MD 지원)
+              (최대 {messageType === "FW" || messageType === "FL" ? "2" : "5"}
+              개, WL/AL/BK/MD 지원)
             </span>
           </div>
 
-        {buttons.length === 0 ? (
-          <div className="text-center py-4 border border-dashed border-gray-300 rounded">
-            <button
-              className="text-blue-600 text-sm hover:text-blue-700"
-              onClick={() => setIsButtonModalOpen(true)}
-            >
-              + 버튼 추가
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {buttons.map((button, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium text-sm">{button.name}</span>
-                  <span className="text-xs text-gray-500 ml-2">({button.type})</span>
-                </div>
-                <button
-                  onClick={() => {
-                    setButtons(buttons.filter((_, i) => i !== index));
-                  }}
-                  className="text-red-600 hover:text-red-700 text-xs px-2 py-1"
+          {buttons.length === 0 ? (
+            <div className="text-center py-4 border border-dashed border-gray-300 rounded">
+              <button
+                className="text-blue-600 text-sm hover:text-blue-700"
+                onClick={() => setIsButtonModalOpen(true)}
+              >
+                + 버튼 추가
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {buttons.map((button, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded"
                 >
-                  삭제
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={() => setIsButtonModalOpen(true)}
-              disabled={
-                (messageType === 'FW' || messageType === 'FL') ? buttons.length >= 2 : buttons.length >= 5
-              }
-              className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed"
-            >
-              + 버튼 추가 ({buttons.length}/{(messageType === 'FW' || messageType === 'FL') ? '2' : '5'})
-            </button>
-          </div>
-        )}
+                  <div>
+                    <span className="font-medium text-sm">{button.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      ({button.type})
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setButtons(buttons.filter((_, i) => i !== index));
+                    }}
+                    className="text-red-600 hover:text-red-700 text-xs px-2 py-1"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setIsButtonModalOpen(true)}
+                disabled={
+                  messageType === "FW" || messageType === "FL"
+                    ? buttons.length >= 2
+                    : buttons.length >= 5
+                }
+                className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                + 버튼 추가 ({buttons.length}/
+                {messageType === "FW" || messageType === "FL" ? "2" : "5"})
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1520,8 +1650,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           <span className="text-sm text-gray-600">
             {replaceableVariableCount === 0
               ? "내용에 치환 가능한 변수가 없습니다."
-              : `${replaceableVariableCount}개의 변수가 자동으로 치환됩니다.`
-            }
+              : `${replaceableVariableCount}개의 변수가 자동으로 치환됩니다.`}
           </span>
         </div>
       </div>
@@ -1562,7 +1691,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           isSending ||
           isUploading ||
           !selectedProfile ||
-          (messageType !== 'FL' && messageType !== 'FC' && !message.trim())
+          (messageType !== "FL" && messageType !== "FC" && !message.trim())
         }
         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
       >
@@ -1590,15 +1719,22 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         onClose={() => setIsSaveModalOpen(false)}
         currentContent={{
           content: message,
-          messageType: 'FRIENDTALK',
+          messageType: "FRIENDTALK",
           buttons: buttons.length > 0 ? buttons : undefined,
-          imageUrl: uploadedImages.length > 0 ? uploadedImages[0].fileId : undefined,
+          imageUrl:
+            uploadedImages.length > 0 ? uploadedImages[0].fileId : undefined,
           imageLink: imageLink.trim() || undefined,
           // FW/FL/FC 타입 전용 필드
           friendtalkMessageType: messageType,
           headerText: headerText.trim() || undefined,
-          listItems: messageType === 'FL' && listItems.length > 0 ? listItems : undefined,
-          carousels: messageType === 'FC' && carousels.length > 0 ? carousels : undefined,
+          listItems:
+            messageType === "FL" && listItems.length > 0
+              ? listItems
+              : undefined,
+          carousels:
+            messageType === "FC" && carousels.length > 0
+              ? carousels
+              : undefined,
           moreLink: moreLink.trim() || undefined,
         }}
         onSaveSuccess={() => {
@@ -1618,12 +1754,14 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           if (content.buttons) setButtons(content.buttons);
           if (content.imageUrl) {
             // 이미지 복원
-            setUploadedImages([{
-              fileId: content.imageUrl,
-              fileName: '불러온 이미지',
-              fileSize: 0,
-              preview: content.imageUrl,
-            }]);
+            setUploadedImages([
+              {
+                fileId: content.imageUrl,
+                fileName: "불러온 이미지",
+                fileSize: 0,
+                preview: content.imageUrl,
+              },
+            ]);
           }
           if (content.imageLink) setImageLink(content.imageLink);
 
@@ -1652,9 +1790,23 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       <FriendtalkButtonModal
         isOpen={isButtonModalOpen}
         onClose={() => setIsButtonModalOpen(false)}
-        buttons={buttons as Array<{ name: string; type: 'WL'; url_mobile: string; url_pc?: string }>}
+        buttons={
+          buttons as Array<{
+            name: string;
+            type: "WL";
+            url_mobile: string;
+            url_pc?: string;
+          }>
+        }
         onSave={(newButtons) => {
-          setButtons(newButtons as Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>);
+          setButtons(
+            newButtons as Array<{
+              name: string;
+              type: string;
+              url_mobile?: string;
+              url_pc?: string;
+            }>,
+          );
           setIsButtonModalOpen(false);
         }}
       />
