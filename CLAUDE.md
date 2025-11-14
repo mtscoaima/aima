@@ -2,9 +2,105 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Version**: 2.0 (Updated 2025-11-14)
+**Related Docs**: [MTS_API_통합_테스트_가이드.md](MTS_API_통합_테스트_가이드.md) | [README.md](README.md)
+
 ## Project Overview
 
 MTS Message is a Next.js 15 messaging portal application built with TypeScript and Supabase, designed for SMS/MMS marketing campaigns. It includes user authentication, campaign management, AI-powered content generation, and an admin dashboard.
+
+## Quick Start for New Developers
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Set up environment variables
+cp .env.local.example .env.local
+# Edit .env.local with your credentials (see Environment Variables section)
+
+# 3. Verify Supabase connection
+# - Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set
+# - Test connection in Supabase dashboard
+
+# 4. Run development server
+npm run dev
+
+# 5. Access application
+# Open http://localhost:3000 in browser
+# Check DevTools Console for any connection errors
+```
+
+**First-Time Setup Checklist**:
+- ✅ Environment variables configured (9 required variables)
+- ✅ Supabase project accessible (check dashboard)
+- ✅ MTS API credentials valid (test with `TEST_CALLING_NUMBER`)
+- ✅ Dev server starts without errors
+- ✅ Can login with test account
+
+## Troubleshooting Common Setup Issues
+
+### "supabaseKey is required" or "Invalid Supabase credentials"
+**Cause**: Missing or incorrect Supabase environment variables
+**Solution**:
+1. Verify `.env.local` file exists in project root
+2. Check `NEXT_PUBLIC_SUPABASE_URL` format: `https://xxx.supabase.co`
+3. Check `SUPABASE_SERVICE_ROLE_KEY` is the **service_role** key (not anon key)
+4. Restart dev server: `npm run dev`
+5. Clear browser cache and localStorage
+
+### "MTS API authentication failed" or "Invalid auth code"
+**Cause**: Incorrect MTS API credentials
+**Solution**:
+1. Verify `MTS_AUTH_CODE` in `.env.local`
+2. Check `MTS_API_URL=https://api.mtsco.co.kr` (no trailing slash)
+3. Check `MTS_TEMPLATE_API_URL=https://talks.mtsco.co.kr`
+4. Test with registered `TEST_CALLING_NUMBER`
+5. Contact MTS support to verify account status
+
+### "Token expired" or "Invalid token" errors
+**Cause**: JWT token issues or expired refresh token
+**Solution**:
+1. Check `JWT_SECRET` is set in `.env.local`
+2. Clear browser localStorage: `localStorage.clear()` in DevTools Console
+3. Re-login to get fresh tokens
+4. Check AuthContext is properly wrapping your app
+5. Verify API routes use `validateAuthWithSuccess()` middleware
+
+### Build fails with "Type error" or "Property does not exist"
+**Cause**: TypeScript compilation errors
+**Solution**:
+1. Run type check: `npx tsc --noEmit`
+2. Check for missing imports or incorrect type annotations
+3. Review TypeScript patterns in "TypeScript Build Considerations" section
+4. If 404 page static generation error: This is known issue, verify TS errors fixed separately
+
+### "Failed to fetch" or CORS errors
+**Cause**: API route not accessible or incorrect URL
+**Solution**:
+1. Verify dev server is running on `http://localhost:3000`
+2. Check API route path matches fetch URL
+3. Open DevTools Network tab to see actual error response
+4. Verify API route exports `POST` or `GET` function
+5. Check for JWT auth errors (401 status)
+
+### Database connection errors
+**Cause**: RLS policies blocking access or incorrect service role key
+**Solution**:
+1. Use Supabase SQL Editor to test queries directly
+2. Verify RLS policies allow service_role access
+3. Check API routes use `SUPABASE_SERVICE_ROLE_KEY` (not anon key)
+4. Never use service role key in client components (security risk!)
+5. Review Database Schema section for table structure
+
+### "Insufficient credits" or payment errors
+**Cause**: User account has no credits or payment gateway issues
+**Solution**:
+1. Check `transactions` table for user's credit balance
+2. Test payment with KG이니시스 test credentials
+3. Verify `NICEPAY_*` environment variables (if using NicePay)
+4. Check message costs in PricingContext
+5. Admin can manually add credits via Supabase dashboard
 
 ## Key Commands
 
@@ -53,31 +149,67 @@ npx tsc --noEmit     # Check all TypeScript errors across project
 - **Charting**: Chart.js, react-chartjs-2
 
 ### Directory Structure
-- `/src/app/` - Next.js app router pages and API routes (182 API endpoints, 57 pages)
-  - `/api/` - Backend API endpoints (JWT auth, business logic)
-    - `/messages/` - MTS messaging APIs (SMS, Kakao, Naver)
-    - `/kakao/` - Kakao-specific APIs (profiles, templates, AlimTalk, FriendTalk, Brand)
-    - `/naver/` - Naver TalkTalk APIs (partner, talk, templates, image upload)
-    - `/auth/` - Authentication endpoints
-    - `/users/` - User management
-    - `/admin/` - Admin-only operations
-  - `/admin/` - Admin dashboard pages
-  - `/messages/` - Message composition interface
-  - `/my-site/` - User profile and settings
-  - Page routes follow folder structure
-- `/src/components/` - Reusable React components (83 components)
-  - `/messages/` - Message UI tabs (MessageSendTab, AlimtalkTab, FriendtalkTab, BrandTab, NaverTalkContent)
-  - `/kakao/` - Kakao-specific components (profile management, template management)
-  - `/modals/` - Reusable modals (template save/load, content modals, TemplateVariableInputModal)
-  - `/admin/` - Admin dashboard components
-- `/src/contexts/` - React contexts (AuthContext, BalanceContext, NotificationContext, PricingContext)
-- `/src/lib/` - Core utilities and API clients (16 modules)
-  - `mtsApi.ts` - MTS API core functions (2,907 lines, 19 functions)
-  - `supabase.ts` - Supabase client initialization
-- `/src/utils/` - Helper utilities (11 utilities)
-  - `kakaoApi.ts` - Kakao API wrappers (566 lines, 6 functions)
-- `/src/hooks/` - Custom React hooks (3 hooks)
-- `/migrations/` - SQL migration files with timestamped naming (17 migrations)
+
+```
+mts-message/
+├── src/
+│   ├── app/                  # Next.js App Router (182 API endpoints, 57 pages)
+│   │   ├── api/             # Backend API endpoints
+│   │   │   ├── messages/    # Message sending APIs
+│   │   │   │   ├── send/route.ts          # SMS/LMS/MMS
+│   │   │   │   ├── kakao/
+│   │   │   │   │   ├── alimtalk/send/     # AlimTalk
+│   │   │   │   │   ├── friendtalk/send/   # FriendTalk (5 types)
+│   │   │   │   │   ├── brand/send/        # Brand Messages (8 types)
+│   │   │   │   │   └── upload-image/      # Kakao image upload
+│   │   │   │   └── naver/talk/send/       # Naver TalkTalk
+│   │   │   ├── kakao/       # Kakao management (profiles, templates)
+│   │   │   ├── naver/       # Naver management (partner, templates)
+│   │   │   ├── auth/        # Authentication (login, register, refresh)
+│   │   │   ├── users/       # User management
+│   │   │   └── admin/       # Admin operations (role-protected)
+│   │   ├── admin/           # Admin dashboard pages
+│   │   ├── messages/        # Message composition UI
+│   │   └── my-site/         # User profile and settings
+│   ├── components/          # React components (83 total)
+│   │   ├── messages/        # Message composition tabs
+│   │   │   ├── MessageSendTab.tsx        # SMS/MMS
+│   │   │   ├── AlimtalkTab.tsx          # Kakao AlimTalk
+│   │   │   ├── FriendtalkTab.tsx        # Kakao FriendTalk (FT/FI/FW/FL/FC)
+│   │   │   ├── BrandTab.tsx             # Kakao Brand (8 types)
+│   │   │   └── NaverTalkContent.tsx     # Naver TalkTalk
+│   │   ├── modals/          # Reusable modals
+│   │   │   ├── SimpleContentSaveModal.tsx  # Template save
+│   │   │   ├── LoadContentModal.tsx        # Template load
+│   │   │   └── TemplateVariableInputModal.tsx  # Variable editor
+│   │   ├── kakao/           # Kakao-specific features
+│   │   └── admin/           # Admin dashboard components
+│   ├── contexts/            # React Context providers
+│   │   ├── AuthContext.tsx         # JWT auth, token refresh
+│   │   ├── BalanceContext.tsx      # Credit balance (polling)
+│   │   ├── NotificationContext.tsx # Notifications (polling)
+│   │   └── PricingContext.tsx      # Dynamic pricing
+│   ├── lib/                 # Core utilities (16 modules)
+│   │   ├── mtsApi.ts        # ⭐ MTS API core (2,907 lines, 19 functions)
+│   │   ├── supabase.ts      # Supabase client
+│   │   └── jwt.ts           # Custom JWT implementation
+│   ├── utils/               # Helper utilities (11 modules)
+│   │   ├── kakaoApi.ts      # Kakao API wrappers (566 lines)
+│   │   └── replaceVariables.ts  # Variable substitution
+│   └── hooks/               # Custom React hooks (3 hooks)
+├── migrations/              # SQL migrations (17 files, timestamped)
+├── docs/                    # Testing and documentation
+│   ├── quick-test-scenarios.md      # 30-min test
+│   └── manual-test-guide-3weeks.md  # Full test suite
+└── MTS_API_통합_테스트_가이드.md   # Phase-by-phase test guide (v4.3)
+```
+
+**Key Files** (by importance):
+1. **[src/lib/mtsApi.ts](src/lib/mtsApi.ts)** - MTS API integration core (19 functions)
+2. **[src/components/messages/](src/components/messages/)** - Message UI tabs (5 tabs)
+3. **[src/app/api/messages/](src/app/api/messages/)** - Message sending endpoints
+4. **[src/contexts/AuthContext.tsx](src/contexts/AuthContext.tsx)** - Custom JWT authentication
+5. **[MTS_API_통합_테스트_가이드.md](MTS_API_통합_테스트_가이드.md)** - Testing guide
 
 ### Authentication Flow
 1. Custom JWT implementation (not Supabase Auth)
@@ -102,14 +234,49 @@ const supabase = createClient(url, serviceRoleKey)
 - Local storage for caching with fallback to API
 
 ### MTS API Integration Architecture
-The application uses a layered approach for MTS API integration:
-1. **Core Layer** (`src/lib/mtsApi.ts`): 19 core functions
-   - Message sending: `sendSMS()`, `sendKakaoAlimtalk()`, `sendKakaoFriendtalk()`, `sendKakaoBrandMessage()`, `sendNaverTalktalk()`
-   - Template management: `createKakaoTemplate()`, `getKakaoTemplates()`, etc.
-   - Profile management: `getKakaoProfiles()`, `registerKakaoProfile()`, etc.
-2. **Wrapper Layer** (`src/utils/kakaoApi.ts`): Simplified Kakao-specific wrappers
-3. **API Routes** (`src/app/api/messages/`, `/kakao/`, `/naver/`): HTTP endpoints with JWT auth
-4. **UI Components** (`src/components/messages/`): User-facing message composition tabs
+
+The application uses a **4-layer architecture** for MTS API integration:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 4: UI Components (User Interface)                     │
+│ - MessageSendTab.tsx, AlimtalkTab.tsx, FriendtalkTab.tsx   │
+│ - Handles user input, validation, file uploads              │
+└────────────────────────┬────────────────────────────────────┘
+                         │ HTTP Request (with JWT)
+┌────────────────────────▼────────────────────────────────────┐
+│ Layer 3: API Routes (Authentication & Business Logic)       │
+│ - /api/messages/send, /api/messages/kakao/*/send           │
+│ - JWT validation, user authorization, cost calculation      │
+└────────────────────────┬────────────────────────────────────┘
+                         │ Function call
+┌────────────────────────▼────────────────────────────────────┐
+│ Layer 2: Wrapper Layer (Optional, Kakao-specific helpers)   │
+│ - src/utils/kakaoApi.ts (simplified wrappers)              │
+└────────────────────────┬────────────────────────────────────┘
+                         │ Function call
+┌────────────────────────▼────────────────────────────────────┐
+│ Layer 1: Core MTS API Layer (MTS HTTP Client)              │
+│ - src/lib/mtsApi.ts (2,907 lines, 19 functions)            │
+│ - sendSMS(), sendKakaoAlimtalk(), sendKakaoFriendtalk()    │
+│ - Direct HTTP calls to MTS servers with auth codes          │
+└────────────────────────┬────────────────────────────────────┘
+                         │ HTTPS Request
+┌────────────────────────▼────────────────────────────────────┐
+│ External: MTS API Servers                                   │
+│ - api.mtsco.co.kr (main API)                               │
+│ - talks.mtsco.co.kr (template API)                         │
+│ - mtscard1.mtsco.co.kr:41310 (Naver CARDINFO)              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Message Flow Example** (SMS):
+1. User fills form in `MessageSendTab.tsx` → clicks "Send"
+2. Component calls `POST /api/messages/send` with payload
+3. API route validates JWT, checks credit balance
+4. API route calls `sendSMS()` from `mtsApi.ts`
+5. `sendSMS()` sends HTTPS request to MTS API
+6. MTS API returns result → API route logs to DB → UI shows result
 
 ### Image Handling for MTS
 - **SMS/MMS Images**: Uploaded to MTS server, automatically optimized (PNG→JPEG, resize)
@@ -204,47 +371,296 @@ Manual testing via documented scenarios:
 ## Common Development Tasks
 
 ### Adding New API Endpoint
-1. Create route file in `/src/app/api/[feature]/route.ts`
-2. Import Supabase client with service role key
-3. Implement JWT verification middleware
-4. Add proper error handling and validation
+
+**Step-by-step guide**:
+
+1. **Create route file**: `/src/app/api/[feature]/route.ts`
+   ```typescript
+   import { NextRequest, NextResponse } from 'next/server';
+   import { createClient } from '@supabase/supabase-js';
+   import { validateAuthWithSuccess } from '@/lib/jwt';
+
+   const supabase = createClient(
+     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+     process.env.SUPABASE_SERVICE_ROLE_KEY!
+   );
+
+   export async function POST(request: NextRequest) {
+     // 1. Validate JWT token
+     const authResult = validateAuthWithSuccess(request);
+     if (!authResult.isValid) return authResult.errorResponse;
+     const { userId, userRole } = authResult.userInfo;
+
+     try {
+       // 2. Parse request body
+       const body = await request.json();
+
+       // 3. Validate input
+       if (!body.requiredField) {
+         return NextResponse.json(
+           { error: 'Missing required field' },
+           { status: 400 }
+         );
+       }
+
+       // 4. Perform database operations
+       const { data, error } = await supabase
+         .from('your_table')
+         .insert({ ...body, user_id: userId });
+
+       if (error) throw error;
+
+       // 5. Return success response
+       return NextResponse.json({ success: true, data });
+     } catch (error) {
+       console.error('API error:', error);
+       return NextResponse.json(
+         { error: 'Internal server error' },
+         { status: 500 }
+       );
+     }
+   }
+   ```
+
+2. **Test the endpoint**:
+   - Use browser DevTools Network tab or Postman
+   - Include JWT token in Authorization header
+   - Check response status and body
+
+3. **Update TypeScript types** (if needed):
+   - Add interface in `src/types/` or inline
+   - Export types for reuse in components
 
 ### Creating New Page
-1. Add folder in `/src/app/` with `page.tsx`
-2. Use existing components from `/src/components/`
-3. Apply role-based access with `RoleGuard` component
-4. Follow existing CSS Module patterns
+
+**Step-by-step guide**:
+
+1. **Create page folder**: `/src/app/[feature]/page.tsx`
+   ```typescript
+   'use client';
+
+   import { useAuth } from '@/contexts/AuthContext';
+   import RoleGuard from '@/components/RoleGuard';
+   import styles from './page.module.css';
+
+   export default function FeaturePage() {
+     const { user } = useAuth();
+
+     return (
+       <RoleGuard allowedRoles={['USER', 'ADMIN']}>
+         <div className={styles.container}>
+           <h1>Feature Page</h1>
+           {/* Your content */}
+         </div>
+       </RoleGuard>
+     );
+   }
+   ```
+
+2. **Create CSS Module**: `/src/app/[feature]/page.module.css`
+   - Follow existing naming conventions
+   - Use CSS variables for colors/spacing
+
+3. **Add navigation link** (if needed):
+   - Update sidebar/nav component
+   - Add route to navigation config
+
+4. **Test access control**:
+   - Test with different user roles
+   - Verify unauthenticated users are redirected
 
 ### Modifying Database Schema
-1. Write SQL in Supabase dashboard
-2. Save migration in `/migrations/` with timestamp format: `YYYYMMDD_description.sql`
-3. Update TypeScript types if needed
-4. Test with existing data
-5. Document migration in `/migrations/README_*.md` if part of a feature phase
+
+**Step-by-step guide**:
+
+1. **Write SQL in Supabase SQL Editor**:
+   ```sql
+   -- Example: Adding new column
+   ALTER TABLE message_logs
+   ADD COLUMN new_field TEXT;
+
+   -- Example: Creating new table
+   CREATE TABLE new_feature (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id UUID REFERENCES users(id),
+     created_at TIMESTAMPTZ DEFAULT NOW(),
+     data JSONB
+   );
+
+   -- Add RLS policies
+   ALTER TABLE new_feature ENABLE ROW LEVEL SECURITY;
+   CREATE POLICY "Users can view own records"
+     ON new_feature FOR SELECT
+     USING (auth.uid() = user_id);
+   ```
+
+2. **Test SQL** in Supabase dashboard first
+3. **Save migration file**: `/migrations/YYYYMMDD_feature_name.sql`
+   - Format: `20251114_add_new_feature.sql`
+   - Copy exact SQL from Supabase editor
+
+4. **Update TypeScript types**:
+   ```typescript
+   // In src/types/database.ts or similar
+   export interface NewFeature {
+     id: string;
+     user_id: string;
+     created_at: string;
+     data: Record<string, unknown>;
+   }
+   ```
+
+5. **Test with existing data**:
+   - Run queries in Supabase SQL Editor
+   - Verify no breaking changes
+   - Check RLS policies work correctly
+
+6. **Document migration** (if part of feature phase):
+   - Update `/migrations/README_*.md`
+   - Note breaking changes or required actions
 
 ### Working with MTS API
-1. All MTS functions are in `src/lib/mtsApi.ts`
-2. Use environment variables: `MTS_AUTH_CODE`, `MTS_API_URL`, `MTS_TEMPLATE_API_URL`
-3. Test with `TEST_CALLING_NUMBER` from `.env.local`
-4. Check API responses in browser DevTools Network tab
-5. Verify message logs in `message_logs` table
-6. Reference `MTS_API_통합_테스트_가이드.md` for testing procedures
+
+**Quick reference**:
+
+1. **All MTS functions**: `src/lib/mtsApi.ts` (19 functions)
+2. **Environment variables**:
+   - `MTS_AUTH_CODE` - Your MTS API key
+   - `MTS_API_URL` - `https://api.mtsco.co.kr`
+   - `MTS_TEMPLATE_API_URL` - `https://talks.mtsco.co.kr`
+3. **Test number**: `TEST_CALLING_NUMBER` from `.env.local`
+4. **Debugging**:
+   - Check DevTools Network tab for request/response
+   - Verify `message_logs` table for delivery status
+   - Check `transactions` table for cost deduction
+5. **Testing guide**: `MTS_API_통합_테스트_가이드.md`
+
+**Available MTS functions**:
+```typescript
+// SMS/LMS/MMS
+await sendSMS({ recipients, message, callback, imageUrl });
+
+// Kakao AlimTalk (server-side variable substitution)
+await sendKakaoAlimtalk({ recipients, templateCode, variables });
+
+// Kakao FriendTalk (client-side variable substitution)
+await sendKakaoFriendtalk({ recipients, message, buttons, imageUrl });
+
+// Kakao Brand Messages
+await sendKakaoBrandMessage({ recipients, templateCode, variables });
+
+// Naver TalkTalk (server-side variable substitution)
+await sendNaverTalk({ recipients, templateCode, templateParams });
+```
 
 ### Adding New Message Type
-1. Add UI tab in `src/components/messages/[MessageType]Tab.tsx`
-2. Create API endpoint in `src/app/api/messages/[type]/send/route.ts`
-3. Add MTS API function in `src/lib/mtsApi.ts`
-4. Update message type constants and TypeScript types
-5. Add template support in `sms_message_templates` table:
-   - Basic fields: `message_type`, `buttons`, `image_url`, `image_link`
-   - Complex/type-specific fields: Store in `metadata` JSONB column
-   - Update `/api/sms-templates` POST endpoint to handle new fields
-   - Update `SimpleContentSaveModal` and `LoadContentModal` interfaces
-6. **Important**: Check MTS API documentation for required data structure
-   - Many MTS API parameters require **nested object structures**, not flat fields
-   - Example: CAROUSEL types need `{ list: [...] }`, COMMERCE needs `{ commerce: {...} }`, VIDEO needs `{ video: {...} }`
-   - Always verify field names match API spec (camelCase vs snake_case)
-7. Test thoroughly with `MTS_API_통합_테스트_가이드.md`
+
+**Complete step-by-step guide**:
+
+1. **Create UI Tab Component**: `src/components/messages/[Type]Tab.tsx`
+   - Copy existing tab as template (e.g., `FriendtalkTab.tsx`)
+   - Add form fields for message-specific data
+   - Handle file uploads (if needed)
+   - Implement validation
+
+2. **Add API Endpoint**: `src/app/api/messages/[type]/send/route.ts`
+   ```typescript
+   export async function POST(request: NextRequest) {
+     const authResult = validateAuthWithSuccess(request);
+     if (!authResult.isValid) return authResult.errorResponse;
+     const { userId } = authResult.userInfo;
+
+     const { recipients, message, ...otherFields } = await request.json();
+
+     // Call MTS API function
+     const result = await sendNewMessageType({
+       recipients,
+       message,
+       ...otherFields
+     });
+
+     // Log to database
+     await supabase.from('message_logs').insert({
+       user_id: userId,
+       message_type: 'NEW_TYPE',
+       recipients: recipients.length,
+       status: result.success ? 'sent' : 'failed'
+     });
+
+     return NextResponse.json(result);
+   }
+   ```
+
+3. **Add MTS API Function**: `src/lib/mtsApi.ts`
+   ```typescript
+   export async function sendNewMessageType(params: {
+     recipients: Array<{ phone: string }>;
+     message: string;
+     // ... other params
+   }) {
+     const requestBody = {
+       auth_code: process.env.MTS_AUTH_CODE,
+       recipients: params.recipients.map(r => ({
+         number: r.phone.replace(/^0/, '82')
+       })),
+       message: params.message,
+       // ... other fields
+     };
+
+     const response = await fetch(
+       `${process.env.MTS_API_URL}/v1/new-type/send`,
+       {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(requestBody)
+       }
+     );
+
+     return await response.json();
+   }
+   ```
+
+4. **Update Database Schema**:
+   ```sql
+   -- Add template support
+   ALTER TABLE sms_message_templates
+   ADD COLUMN IF NOT EXISTS new_type_field TEXT;
+
+   -- Or store in metadata JSONB for complex data
+   -- metadata: { buttons: [...], imageUrl: '...', ... }
+   ```
+
+5. **Add Template Save/Load Support**:
+   - Update `SimpleContentSaveModal.tsx` to include new fields
+   - Update `LoadContentModal.tsx` to restore new fields
+   - Store complex data in `metadata` JSONB column
+
+6. **Update TypeScript Types**:
+   ```typescript
+   // Add to message type enum
+   export type MessageType = 'SMS' | 'ALIMTALK' | 'NEW_TYPE';
+
+   // Add interface
+   export interface NewMessageTypePayload {
+     recipients: Recipient[];
+     message: string;
+     // ... other fields
+   }
+   ```
+
+7. **⚠️ Critical: Check MTS API Documentation**:
+   - Many MTS APIs require **nested object structures**
+   - Example: `{ list: [...] }`, `{ commerce: {...} }`, `{ video: {...} }`
+   - Verify field names (camelCase vs snake_case)
+   - Check character limits and validation rules
+
+8. **Test Thoroughly**:
+   - Follow `MTS_API_통합_테스트_가이드.md`
+   - Test UI validation
+   - Test API endpoint with Postman
+   - Test MTS API call with real phone number
+   - Verify database logging
+   - Check cost calculation and deduction
 
 ## Key Features
 
@@ -693,3 +1109,145 @@ if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !==
 - Show notice: "* FL/FC 타입은 광고 발송만 가능합니다"
 
 **Error Code**: ER99 (UnhandledDataProgressException) typically indicates wrong field structure or unnecessary fields.
+
+---
+
+## Documentation Cross-References
+
+### Testing Documentation
+- **[MTS_API_통합_테스트_가이드.md](MTS_API_통합_테스트_가이드.md)** (v4.3, 2025-11-14)
+  - Master test plan for MTS API integration
+  - Phase-by-phase testing procedures (Phase 1-6)
+  - Real message delivery verification results
+  - Known issues and workarounds
+  - **Use this for**: Testing new message types, debugging MTS API errors
+- **[docs/quick-test-scenarios.md](docs/quick-test-scenarios.md)**
+  - 30-minute core features test
+  - **Use this for**: Quick smoke testing before deployment
+- **[docs/manual-test-guide-3weeks.md](docs/manual-test-guide-3weeks.md)**
+  - Comprehensive 3-week test plan
+  - **Use this for**: Full regression testing
+
+### Codebase Analysis
+- **[MTS_MESSAGE_코드베이스_분석_v4.1.md](MTS_MESSAGE_코드베이스_분석_v4.1.md)** (v5.2, 2025-11-05)
+  - Complete file inventory (349 TypeScript files)
+  - API endpoint catalog (182 endpoints)
+  - Implementation status matrix
+  - Line-by-line code references
+  - **Use this for**: Understanding codebase structure, finding specific implementations
+
+### Migration & Schema
+- **[migrations/README_PHASE2_MIGRATIONS.md](migrations/README_PHASE2_MIGRATIONS.md)**
+  - Reservation message system migrations
+  - **Use this for**: Understanding database schema evolution
+- **[migrations/20251103_extend_sms_templates_for_friendtalk.sql](migrations/20251103_extend_sms_templates_for_friendtalk.sql)**
+  - FriendTalk template support migration
+  - **Use this for**: Template system schema reference
+
+### Setup Guides
+- **[README.md](README.md)**
+  - Detailed setup instructions for Supabase, Storage, Templates
+  - **Use this for**: Initial project setup
+- **[NOTIFICATION_SETUP_GUIDE.md](NOTIFICATION_SETUP_GUIDE.md)**
+  - Notification system setup
+  - **Use this for**: Configuring real-time notifications
+- **[.env.local.example](.env.local.example)**
+  - Environment variable template
+  - **Use this for**: Configuring environment variables
+
+### Issue Tracking & Troubleshooting
+- **[MTS_브랜드메시지_에러1028_문의사항.txt](MTS_브랜드메시지_에러1028_문의사항.txt)**
+  - Kakao Brand Message error troubleshooting (resolved with 변수분리방식 v1.1)
+  - **Use this for**: Understanding Brand Message targeting issues
+- **[문서_업데이트_요약_20251103.md](문서_업데이트_요약_20251103.md)**
+  - Documentation update summary
+  - **Use this for**: Tracking documentation changes
+
+### API Documentation Reference
+- **[docs/연동규격서/](docs/연동규격서/)** (if exists)
+  - MTS API specification documents
+  - **Use this for**: Verifying exact MTS API field structures
+
+## Architecture Decision Records
+
+### Why Custom JWT instead of Supabase Auth?
+**Decision**: Implement custom JWT authentication instead of using Supabase Auth.
+
+**Reasoning**:
+- Need for custom token expiration logic (1-hour access, 7-day refresh)
+- Social login integration requirements (Google, Kakao, Naver)
+- Business verification workflow via Korean government API
+- Independent auth system allows migration to other databases if needed
+
+**Trade-offs**:
+- More code to maintain (AuthContext, JWT validation middleware)
+- Manual token refresh implementation required
+- ✅ Full control over auth flow and token structure
+
+### Why Polling instead of Supabase Realtime?
+**Decision**: Use polling (30s intervals) instead of Supabase Realtime subscriptions.
+
+**Reasoning**:
+- Simpler implementation and debugging
+- No WebSocket connection management complexity
+- More deployment-compatible (works with all hosting providers)
+- Matches existing context patterns (NotificationContext, BalanceContext)
+- Lower connection overhead for small-scale application
+
+**Trade-offs**:
+- 30-second delay for updates vs instant
+- More API calls (though minimal for small user base)
+- ✅ Simpler, more maintainable code
+
+### Why JSONB for Template Metadata?
+**Decision**: Store complex template data (buttons, images, variables) in JSONB `metadata` column instead of separate columns.
+
+**Reasoning**:
+- Different message types have vastly different structures (FriendTalk FL vs AlimTalk vs Brand)
+- Flexible schema allows adding new message types without migrations
+- Single table simplifies template management UI
+- PostgreSQL JSONB provides indexing and query capabilities
+
+**Trade-offs**:
+- Less type safety in database layer (but TypeScript validates in app)
+- Requires careful JSONB query construction
+- ✅ Massive flexibility for evolving message formats
+
+## CLAUDE.md Version History
+
+### Version 2.0 (2025-11-14)
+**Major Enhancements**:
+- ✅ Added Quick Start section with first-time setup checklist
+- ✅ Added comprehensive Troubleshooting section (7 common issues)
+- ✅ Enhanced Directory Structure with visual tree and key files
+- ✅ Added Message Flow Architecture diagram (4-layer visualization)
+- ✅ Expanded Common Development Tasks with step-by-step code examples
+- ✅ Added Documentation Cross-References section
+- ✅ Added Architecture Decision Records (ADRs)
+- ✅ Added version history tracking
+- ✅ Updated MTS API status (Phase 4.5 complete, FL/FC ER99 resolved)
+
+**Content Stats**:
+- ~900 lines (up from ~695)
+- 11 major sections
+- 7 troubleshooting guides
+- 4 detailed development task guides
+- 3 architecture decision records
+
+### Version 1.0 (2025-11-05 - 2025-11-13)
+**Initial Comprehensive Version**:
+- Project overview and tech stack
+- Environment variables and database schema
+- MTS API integration status (Phases 1-6)
+- Authentication & security considerations
+- Testing approach (manual scenarios)
+- Common mistakes and gotchas (11 sections)
+- TypeScript build considerations
+- Variable substitution rules
+- Naver TalkTalk implementation details
+
+---
+
+**Last Updated**: 2025-11-14
+**Maintained By**: Development Team
+**Review Frequency**: Update after major features or breaking changes

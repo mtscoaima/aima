@@ -95,8 +95,8 @@ export async function sendMessage(
     messageType = determineMessageType(message);
   }
 
-  // 단가 계산
-  const creditRequired = skipCreditDeduction ? 0 : getMessageCredit(messageType);
+  // 단가 계산 (예약관리는 80원 고정, 일반 메시지는 타입별 단가)
+  const creditRequired = skipCreditDeduction ? 0 : getMessageCredit(messageType, metadata);
 
   // 1. 잔액 확인 (시스템 메시지는 스킵)
   if (!skipCreditDeduction) {
@@ -444,7 +444,16 @@ export async function refundBalance(
 /**
  * 메시지 타입별 단가 반환
  */
-function getMessageCredit(messageType: 'SMS' | 'LMS' | 'MMS'): number {
+function getMessageCredit(
+  messageType: 'SMS' | 'LMS' | 'MMS',
+  metadata?: Record<string, unknown>
+): number {
+  // 예약관리 출처인 경우 80원 고정 (정책표 기준)
+  if (metadata?.source === 'reservation') {
+    return 80;
+  }
+
+  // 일반 메시지
   switch (messageType) {
     case 'SMS':
       return 25;
