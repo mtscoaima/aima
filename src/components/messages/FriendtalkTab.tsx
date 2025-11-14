@@ -71,18 +71,19 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
   // FW/FL/FC 전용 state
   const [headerText, setHeaderText] = useState(""); // FL용 헤더
-  const [listItems, setListItems] = useState<Array<{ title: string; image?: UploadedImage }>>([
-    { title: "" },
-    { title: "" },
-    { title: "" },
+  const [listItems, setListItems] = useState<Array<{ title: string; image?: UploadedImage; url_mobile?: string; url_pc?: string }>>([
+    { title: "", url_mobile: "", url_pc: "" },
+    { title: "", url_mobile: "", url_pc: "" },
+    { title: "", url_mobile: "", url_pc: "" },
   ]); // FL용 아이템 리스트
   const [carousels, setCarousels] = useState<Array<{
+    header?: string;
     content: string;
     image?: UploadedImage;
     buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
   }>>([
-    { content: "", buttons: [] },
-    { content: "", buttons: [] },
+    { header: "", content: "", buttons: [] },
+    { header: "", content: "", buttons: [] },
   ]); // FC용 캐러셀
   const [moreLink, setMoreLink] = useState(""); // FC용 더보기 링크
 
@@ -129,6 +130,14 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
 
     fetchUserInfo();
   }, []);
+
+  // FL/FC 타입 선택 시 자동으로 광고 플래그 설정
+  // MTS API 규격: FL(와이드아이템리스트), FC(캐러셀) 타입은 광고 발송만 가능
+  useEffect(() => {
+    if (messageType === 'FL' || messageType === 'FC') {
+      setAdFlag('Y');
+    }
+  }, [messageType]);
 
   // 발신 프로필 조회
   const loadSenderProfiles = async () => {
@@ -768,10 +777,16 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             type="checkbox"
             checked={adFlag === 'Y'}
             onChange={(e) => setAdFlag(e.target.checked ? 'Y' : 'N')}
-            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            disabled={messageType === 'FL' || messageType === 'FC'}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <span className="text-sm font-medium text-gray-700">
             광고성 메시지 (08:00~20:00만 발송 가능)
+            {(messageType === 'FL' || messageType === 'FC') && (
+              <span className="ml-2 text-xs text-blue-600 font-normal">
+                * FL/FC 타입은 광고 발송만 가능합니다
+              </span>
+            )}
           </span>
         </label>
       </div>
@@ -972,7 +987,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                 <button
                   onClick={() => {
                     if (listItems.length < 4) {
-                      setListItems([...listItems, { title: "" }]);
+                      setListItems([...listItems, { title: "", url_mobile: "", url_pc: "" }]);
                     }
                   }}
                   disabled={listItems.length >= 4}
@@ -1060,6 +1075,41 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                       </button>
                     </div>
                   )}
+                </div>
+
+                {/* 아이템 클릭 시 이동 URL */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    모바일 URL (필수)
+                  </label>
+                  <input
+                    type="url"
+                    value={item.url_mobile || ''}
+                    onChange={(e) => {
+                      const newItems = [...listItems];
+                      newItems[index].url_mobile = e.target.value;
+                      setListItems(newItems);
+                    }}
+                    placeholder="https://example.com/mobile"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    PC URL (선택)
+                  </label>
+                  <input
+                    type="url"
+                    value={item.url_pc || ''}
+                    onChange={(e) => {
+                      const newItems = [...listItems];
+                      newItems[index].url_pc = e.target.value;
+                      setListItems(newItems);
+                    }}
+                    placeholder="https://example.com/pc"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                  />
                 </div>
               </div>
             ))}
@@ -1167,7 +1217,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               <button
                 onClick={() => {
                   if (carousels.length < 6) {
-                    setCarousels([...carousels, { content: "", buttons: [] }]);
+                    setCarousels([...carousels, { header: "", content: "", buttons: [] }]);
                   }
                 }}
                 disabled={carousels.length >= 6}
@@ -1192,6 +1242,26 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           {carousels.map((carousel, index) => (
             <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-3">
               <h4 className="text-sm font-medium text-gray-700">캐러셀 {index + 1}</h4>
+
+              {/* 캐러셀 제목 (header) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  제목 (최대 20자)
+                </label>
+                <input
+                  type="text"
+                  value={carousel.header || ''}
+                  onChange={(e) => {
+                    const newCarousels = [...carousels];
+                    newCarousels[index].header = e.target.value;
+                    setCarousels(newCarousels);
+                  }}
+                  placeholder="캐러셀 제목"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                  maxLength={20}
+                />
+                <p className="text-xs text-gray-500 mt-1">{(carousel.header || '').length} / 20자</p>
+              </div>
 
               {/* 캐러셀 내용 */}
               <div>

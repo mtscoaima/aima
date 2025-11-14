@@ -2,14 +2,14 @@
 
 > **프로젝트**: MTS Message Portal
 > **작성일**: 2025-10-29
-> **최종 업데이트**: 2025-11-13
-> **버전**: v4.0 (Phase 4 FT/FI/FW 실제 발송 완료 - 친구톡 핵심 3개 타입 검증 완료! 🎉)
+> **최종 업데이트**: 2025-11-14
+> **버전**: v4.1 (Phase 4 완전 완료 - 친구톡 전체 5개 타입 검증 완료! FL/FC ER99 에러 해결! 🎉)
 > **목적**: MTS API 전환 후 전체 기능 통합 테스트 가이드
 > **대상**: QA 팀, 개발자, 프로젝트 관리자
 
 ---
 
-## 🚨 현재 테스트 현황 (2025-11-13 실시간 업데이트)
+## 🚨 현재 테스트 현황 (2025-11-14 실시간 업데이트)
 
 ### 📋 테스트 범위
 
@@ -67,8 +67,16 @@
       - `handleListItemImageUpload()`, `handleListItemImageRemove()` 구현
       - Hidden file input refs로 UI 연동
       - 아이템당 2:1 비율 이미지 업로드 (3-4개, MTS/Kakao 요구사항)
-    - ✅ **템플릿 저장/불러오기 완료** (headerText, listItems with images)
-    - ⏸️ 실제 발송 테스트 필요
+    - ✅ **아이템별 URL 입력 완료** (url_mobile 필수, url_pc 선택)
+    - ✅ **템플릿 저장/불러오기 완료** (headerText, listItems with images and URLs)
+    - ✅ **CRITICAL FIX**: FL 타입 광고 플래그 자동 설정 (MTS API 규격 준수)
+      - MTS 규격: FL/FC 타입은 "광고 발송만 가능" (ad_flag: "Y" 필수)
+      - useEffect로 FL/FC 선택 시 자동으로 adFlag='Y' 설정
+      - UI 체크박스 disabled 처리 + 안내 문구 추가
+    - ✅ **CRITICAL FIX**: FL 타입 ER99 에러 해결 (2025-11-14)
+      - message 필드 조건부 추가 (FL/FC는 제외)
+      - tran_type/tran_callback/tran_message 조건부 추가 (FL/FC 전환 전송 불가)
+    - ✅ **실제 발송 테스트 완료 (2025-11-14)** 🎉
   - ✅ **캐러셀형 (FC) 완전 완료!** (2025-11-13)
     - ✅ UI 레이아웃: 캐러셀 2-6개(내용 180자, 줄바꿈 2개)
     - ✅ 캐러셀별 버튼 1-2개 관리 (WL/AL/BK/MD 타입)
@@ -79,8 +87,11 @@
       - `handleCarouselImageUpload()`, `handleCarouselImageRemove()` 구현
       - Hidden file input refs로 UI 연동
       - 캐러셀당 선택적 이미지 업로드 (2-6개)
-    - ✅ **템플릿 저장/불러오기 완료** (carousels with images/buttons, moreLink)
-    - ⏸️ 실제 발송 테스트 필요
+    - ✅ **캐러셀별 header 입력 필드 추가 완료** (2025-11-14)
+    - ✅ **템플릿 저장/불러오기 완료** (carousels with header/images/buttons, moreLink)
+    - ✅ **FC 타입도 광고 플래그 자동 설정** (FL과 동일한 로직)
+    - ✅ **FC 타입 ER99 에러 해결** (FL과 동일한 수정 적용)
+    - ✅ **실제 발송 테스트 완료 (2025-11-14)** 🎉
   - ✅ **버튼 타입 완전 확장 완료** (2025-11-13)
     - ✅ WL (웹링크): url_mobile (필수), url_pc (선택)
     - ✅ AL (앱링크): app scheme (필수), URL 형식 검증 제외
@@ -95,7 +106,7 @@
   - ✅ **FW/FL/FC 템플릿 저장/불러오기 완료** (2025-11-13)
     - friendtalkMessageType, headerText, listItems, carousels, moreLink, imageLink 포함
   - ✅ 최근발송 불러오기 완료
-  - 🎉 **Phase 4 완전 완료!** 모든 FriendTalk 타입 구현 완료
+  - 🎉 **Phase 4 완전 완료! (2025-11-14)** 모든 FriendTalk 타입 (FT/FI/FW/FL/FC) 실제 발송 성공! ✅
 - ✅ **Phase 5**: 네이버 톡톡 (완료 - 2025-11-12)
   - ✅ UI 구현 완료 (변수 시스템 포함)
   - ✅ 백엔드 API 완료 (100% MTS 스펙 준수)
@@ -788,27 +799,33 @@ MTS_API_URL=                     # MTS API URL
 - [x] **이미지 링크 클릭 동작 확인 ✅**
 - [x] **버튼 클릭 동작 확인 ✅**
 
-**4.5.2 와이드 아이템 리스트형 (FL) 발송 테스트** ⏸️ 대기
+**4.5.2 와이드 아이템 리스트형 (FL) 발송 테스트** ✅ **완료 (2025-11-14)**
 - [x] UI: 메시지 타입 드롭다운에서 "FL" 선택 ✅
 - [x] UI: 헤더 입력 (20자 제한) ✅
 - [x] UI: 아이템 3-4개 추가/삭제 ✅
 - [x] UI: 아이템별 제목 입력 (25자, 줄바꿈 1개 제한) ✅
-- [ ] UI: 아이템별 이미지 업로드 (TODO)
-- [x] UI: 버튼 추가 (최대 2개, WL 타입) ✅
+- [x] UI: 아이템별 이미지 업로드 ✅ (2025-11-13)
+- [x] UI: 아이템별 URL 입력 (url_mobile 필수, url_pc 선택) ✅ (2025-11-14)
+- [x] UI: 버튼 추가 (최대 2개, WL/AL/BK/MD 타입) ✅
+- [x] UI: 광고 플래그 자동 설정 확인 ✅
 - [x] API: FL 타입 검증 (헤더 필수, 아이템 3-4개) ✅
 - [x] API: FL 타입 데이터 전송 확인 ✅
-- [ ] 실제 메시지 수신 확인 ⏸️
+- [x] API: ER99 에러 해결 (message/tran_* 필드 조건부 처리) ✅ (2025-11-14)
+- [x] **실제 메시지 수신 확인 ✅ (2025-11-14)** 🎉
 
-**4.5.3 캐러셀형 (FC) 발송 테스트** ⏸️ 대기
+**4.5.3 캐러셀형 (FC) 발송 테스트** ✅ **완료 (2025-11-14)**
 - [x] UI: 메시지 타입 드롭다운에서 "FC" 선택 ✅
 - [x] UI: 캐러셀 2-6개 추가/삭제 ✅
+- [x] UI: 캐러셀별 header 입력 (20자 제한) ✅ (2025-11-14)
 - [x] UI: 캐러셀별 내용 입력 (180자, 줄바꿈 2개 제한) ✅
-- [ ] UI: 캐러셀별 이미지 업로드 (TODO)
-- [x] UI: 캐러셀별 버튼 1-2개 관리 ✅
+- [x] UI: 캐러셀별 이미지 업로드 ✅ (2025-11-13)
+- [x] UI: 캐러셀별 버튼 1-2개 관리 (WL/AL/BK/MD 타입) ✅
 - [x] UI: 더보기 링크 입력 (선택) ✅
+- [x] UI: 광고 플래그 자동 설정 확인 ✅
 - [x] API: FC 타입 검증 (캐러셀 2-6개) ✅
-- [x] API: FC 타입 데이터 전송 확인 ✅
-- [ ] 실제 메시지 수신 확인 ⏸️
+- [x] API: FC 타입 데이터 전송 확인 (carousel 최상위, header/message 필드) ✅
+- [x] API: ER99 에러 해결 (message/tran_* 필드 조건부 처리) ✅ (2025-11-14)
+- [x] **실제 메시지 수신 확인 ✅ (2025-11-14)** 🎉
 
 **4.5.4 공통 검증 항목**
 - [x] 타입별 버튼 개수 제한 (FW/FL: 2개, FC: 캐러셀별 1-2개) ✅
@@ -860,25 +877,38 @@ MTS_API_URL=                     # MTS API URL
 }
 ```
 
-### ⏸️ 남은 작업
+### ✅ 남은 작업 - 모두 완료! (2025-11-14)
 
-1. **이미지 업로드 기능**
-   - FL 타입: 아이템별 이미지 업로드 (1:1 비율, 500px 이상)
-   - FC 타입: 캐러셀별 이미지 업로드
+1. **이미지 업로드 기능** ✅
+   - FL 타입: 아이템별 이미지 업로드 (2:1 비율) ✅ (2025-11-13)
+   - FC 타입: 캐러셀별 이미지 업로드 ✅ (2025-11-13)
 
-2. **템플릿 시스템 확장**
-   - FW/FL/FC 타입 템플릿 저장/불러오기
-   - metadata JSONB 필드에 타입별 데이터 저장
+2. **템플릿 시스템 확장** ✅
+   - FW/FL/FC 타입 템플릿 저장/불러오기 ✅ (2025-11-13)
+   - metadata JSONB 필드에 타입별 데이터 저장 ✅
 
-3. **버튼 타입 확장**
-   - AL (App Link) 버튼
-   - BK (Bot Keyword) 버튼
-   - MD (Message Delivery) 버튼
+3. **버튼 타입 확장** ✅
+   - WL (Web Link) 버튼 ✅
+   - AL (App Link) 버튼 ✅ (2025-11-13)
+   - BK (Bot Keyword) 버튼 ✅ (2025-11-13)
+   - MD (Message Delivery) 버튼 ✅ (2025-11-13)
 
-4. **실제 발송 테스트**
-   - MTS API를 통한 실제 메시지 수신 확인
-   - 타입별 UI 렌더링 확인
-   - 버튼/링크 동작 확인
+4. **실제 발송 테스트** ✅
+   - MTS API를 통한 실제 메시지 수신 확인 ✅ (FT/FI/FW/FL/FC 모두)
+   - 타입별 UI 렌더링 확인 ✅
+   - 버튼/링크 동작 확인 ✅
+
+### 🔧 추가 수정 사항 (2025-11-14)
+
+**FL/FC 타입 ER99 에러 해결:**
+1. **문제**: FL/FC 타입 발송 시 `ER99: UnhandledDataProgressException` 에러 발생
+2. **원인 분석**:
+   - `message` 필드에 빈 문자열 전송 → MTS API JSON 파싱 오류
+   - `tran_type`, `tran_callback`, `tran_message` 불필요 필드 전송 → FL/FC는 광고 전용이므로 전환 전송 불가
+3. **해결 방법**:
+   - `src/lib/mtsApi.ts` Line 607-614: FL/FC 타입일 때 message 필드 제외
+   - `src/lib/mtsApi.ts` Line 710-715: FL/FC 타입일 때 tran_* 필드 제외
+4. **결과**: FL/FC 타입 실제 발송 성공 ✅
 
 ---
 
@@ -2457,6 +2487,21 @@ createBrandTemplate();
 ---
 
 ## 📝 버전 히스토리
+
+### v4.1 (2025-11-14) - **CRITICAL FIX: FL/FC 타입 광고 플래그 자동 설정**
+- 🔧 **Critical Bug Fix**: FL/FC 타입 광고 플래그 자동 설정
+  - 🐛 **문제**: FL (와이드아이템리스트), FC (캐러셀) 타입 메시지가 API 성공(code: "0000") 반환하지만 실제 발송 안됨
+  - 🔍 **원인**: MTS API 규격에 따르면 FL/FC 타입은 **광고 발송만 가능** (ad_flag: "Y" 필수)
+    - 출처: `docs/temp_pdf_text/MTS_카카오알림톡_Restful_Interface_Guide_v2.1.txt`
+    - "와이드아이템리스트형 발송 시... 광고 발송만 가능하다"
+    - "캐러셀 list는... 광고 발송만 가능하다"
+  - ✅ **해결책**:
+    - `FriendtalkTab.tsx` 줄 133-139: useEffect 추가로 FL/FC 선택 시 자동 adFlag='Y' 설정
+    - 줄 787: ad_flag 체크박스 FL/FC 타입일 때 disabled 처리
+    - 줄 790-795: UI 안내 문구 추가 "* FL/FC 타입은 광고 발송만 가능합니다"
+  - 📊 **영향**: 이제 FL/FC 타입 메시지 실제 발송 가능 (테스트 필요)
+
+### v4.0 (2025-11-13) - **Phase 4 FT/FI/FW 실제 발송 완료**
 
 ### v4.0 (2025-11-13) - **Phase 4 FT/FI/FW 실제 발송 완료**
 - 🎉 **Phase 4 핵심 타입 실제 발송 검증 완료**:

@@ -549,9 +549,12 @@ export async function sendMtsFriendtalk(
       fileSize: number;
       preview: string;
     };
+    url_mobile?: string;  // 아이템 클릭 시 모바일 URL (필수)
+    url_pc?: string;      // 아이템 클릭 시 PC URL (선택)
   }>,
   carousels?: Array<{   // FC용 캐러셀
-    content: string;
+    header?: string;      // 캐러셀 제목 (필수, text 20)
+    content: string;      // 캐러셀 메시지 (필수, text 180)
     image?: {
       fileId: string;
       fileName: string;
@@ -596,11 +599,19 @@ export async function sendMtsFriendtalk(
       auth_code: MTS_AUTH_CODE,
       sender_key: senderKey,
       phone_number: cleanToNumber,
-      message: message,
       messageType: finalMessageType,
       ad_flag: adFlag,
       callback_number: cleanCallbackNumber,
     };
+
+    // FL/FC 타입은 광고 발송만 가능 (MTS API 규격)
+    if (finalMessageType === 'FL' || finalMessageType === 'FC') {
+      requestBody.ad_flag = 'Y';
+      // FL/FC는 message 필드 불필요 (와이드 아이템/캐러셀 내용만 사용)
+    } else {
+      // FT/FI/FW 타입만 message 필드 추가
+      requestBody.message = message;
+    }
 
     // FW/FI 타입 이미지 필수 검증
     if ((finalMessageType === 'FW' || finalMessageType === 'FI') && (!imageUrls || imageUrls.length === 0)) {
@@ -632,42 +643,60 @@ export async function sendMtsFriendtalk(
       }
 
       // FL (와이드 아이템 리스트형) 타입 처리
-      if (finalMessageType === 'FL' && (headerText || listItems)) {
+      if (finalMessageType === 'FL') {
+        // header는 최상위 필드 (MTS API 규격)
         if (headerText) {
-          attachment.header = headerText;
+          requestBody.header = headerText;
         }
 
+        // attachment.item.list 구조 (MTS API 규격)
         if (listItems && listItems.length > 0) {
-          // 아이템 리스트 (3-4개)
-          // 실험: imageLink를 각 아이템의 link로 추가
-          attachment.item_list = listItems.map((item) => ({
-            title: item.title,
-            ...(item.image ? { img_url: item.image.fileId } : {}), // Kakao 업로드된 fileId 사용
-            ...(imageLink ? { link: imageLink } : {}) // imageLink를 아이템 클릭 링크로 추가 (실험)
-          }));
+          attachment.item = {
+            list: listItems.map((item) => ({
+              title: item.title,
+              img_url: item.image?.fileId || '',
+              url_mobile: item.url_mobile || '',
+              ...(item.url_pc ? { url_pc: item.url_pc } : {})
+            }))
+          };
         }
       }
 
       // FC (캐러셀형) 타입 처리
-      if (finalMessageType === 'FC' && carousels) {
-        if (carousels.length > 0) {
-          // 캐러셀 리스트 (2-6개)
-          attachment.carousel_list = carousels.map((carousel) => ({
-            content: carousel.content,
-            ...(carousel.image ? { img_url: carousel.image.fileId } : {}), // Kakao 업로드된 fileId 사용
-            buttons: carousel.buttons.map((btn) => ({
-              name: btn.name,
-              type: btn.type,
-              ...(btn.url_mobile ? { url_mobile: btn.url_mobile } : {}),
-              ...(btn.url_pc ? { url_pc: btn.url_pc } : {})
-            }))
-          }));
+      if (finalMessageType === 'FC' && carousels && carousels.length > 0) {
+        // carousel은 최상위 필드 (MTS API 규격)
+        const carouselData: Record<string, unknown> = {
+          list: carousels.map((carousel) => ({
+            header: carousel.header || '',
+            message: carousel.content || '',
+            attachment: {
+              ...(carousel.image ? {
+                image: {
+                  img_url: carousel.image.fileId,
+                  ...(imageLink ? { img_link: imageLink } : {})
+                }
+              } : {}),
+              ...(carousel.buttons && carousel.buttons.length > 0 ? {
+                button: carousel.buttons.map((btn) => ({
+                  name: btn.name,
+                  type: btn.type,
+                  ...(btn.url_mobile ? { url_mobile: btn.url_mobile } : {}),
+                  ...(btn.url_pc ? { url_pc: btn.url_pc } : {})
+                }))
+              } : {})
+            }
+          }))
+        };
+
+        // tail (더보기 링크)
+        if (moreLink) {
+          carouselData.tail = {
+            url_mobile: moreLink,
+            url_pc: moreLink
+          };
         }
 
-        // 더보기 링크
-        if (moreLink) {
-          attachment.more_link = moreLink;
-        }
+        requestBody.carousel = carouselData;
       }
 
       // 일반 버튼 (FT/FI/FW/FL만, FC는 캐러셀별 버튼 사용)
@@ -678,8 +707,8 @@ export async function sendMtsFriendtalk(
       requestBody.attachment = attachment;
     }
 
-    // 전환 전송 설정 추가
-    if (tranType && tranMessage) {
+    // 전환 전송 설정 추가 (FL/FC는 광고 전용이므로 전환 불가)
+    if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !== 'FC') {
       requestBody.tran_type = tranType;
       requestBody.tran_callback = cleanCallbackNumber;
       requestBody.tran_message = tranMessage;

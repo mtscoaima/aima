@@ -183,15 +183,16 @@ User data stored as JSONB for flexibility:
 Manual testing via documented scenarios:
 - `/docs/quick-test-scenarios.md` - 30-minute core features
 - `/docs/manual-test-guide-3weeks.md` - Comprehensive testing
-- `MTS_API_통합_테스트_가이드.md` - MTS API integration testing guide (v3.5)
+- `MTS_API_통합_테스트_가이드.md` - MTS API integration testing guide (v4.1, 2025-11-14)
   - Phase 1-2: SMS/LMS/MMS ✅ Completed
   - Phase 3: Kakao AlimTalk ✅ Completed (including variable templates)
-  - Phase 4: Kakao FriendTalk ✅ **All 5 Types Completed** (FT/FI/FW/FL/FC, 2025-11-13)
-    - FT/FI: Text and Image types with button support (max 5 buttons, WL/AL/BK/MD types)
-    - FW: Wide image type (imageLink, max 2 buttons, WL/AL/BK/MD types)
-    - FL: Wide Item List type (header + 3-4 items with individual images, max 2 buttons, WL/AL/BK/MD types)
-    - FC: Carousel type (2-6 carousels with individual images, 1-2 buttons each, moreLink, WL/AL/BK/MD types)
-    - ✅ **2025-11-13 Feature Complete**: Button type expansion (WL/AL/BK/MD), FL/FC item-level image upload, template save/load for all types
+  - Phase 4: Kakao FriendTalk ✅ **완전 완료 (2025-11-14)** - All 5 types real delivery verified
+    - FT/FI: Text and Image types with button support (max 5 buttons, WL/AL/BK/MD types) ✅
+    - FW: Wide image type (imageLink, max 2 buttons, WL/AL/BK/MD types) ✅
+    - FL: Wide Item List type (header + 3-4 items with individual images/URLs, max 2 buttons, WL/AL/BK/MD types) ✅
+    - FC: Carousel type (2-6 carousels with header/images, 1-2 buttons each, moreLink, WL/AL/BK/MD types) ✅
+    - ✅ **2025-11-13**: Button type expansion (WL/AL/BK/MD), FL/FC item-level image upload, template save/load
+    - ✅ **2025-11-14**: FL/FC ER99 error resolution (message/tran_* fields conditional handling), real delivery success
   - Phase 5: Naver TalkTalk ✅ **Completed** (UI/backend fully integrated with variable system)
   - Phase 6: Kakao Brand Messages ✅ **8 Types Implemented** (TEXT/IMAGE/WIDE verified, 5 new types structure fixed, 변수분리방식 v1.1)
     - Phase 6.0-6.4: TEXT/IMAGE/WIDE + buttons ✅ Verified (2025-11-10)
@@ -299,17 +300,20 @@ Manual testing via documented scenarios:
 - Business verification via government API (`ODCLOUD_SERVICE_KEY`) is mandatory for certain features
 
 ### MTS API Implementation Status
-- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, **Kakao FriendTalk (all 5 types: FT/FI/FW/FL/FC ✅ 2025-11-13)**, **Kakao Brand Messages (all 8 types ✅)**, **Naver TalkTalk ✅**
-- **Real Send Verified**: SMS/LMS/MMS, AlimTalk, FriendTalk FT/FI/FW/FL/FC, Brand Messages TEXT/IMAGE/WIDE
+- **Completed**: SMS/LMS/MMS, Kakao AlimTalk, **Kakao FriendTalk (all 5 types: FT/FI/FW/FL/FC ✅ 2025-11-14 완전 완료)**, **Kakao Brand Messages (all 8 types ✅)**, **Naver TalkTalk ✅**
+- **Real Send Verified**: SMS/LMS/MMS, AlimTalk, FriendTalk FT/FI/FW/FL/FC (모든 타입 실제 발송 성공), Brand Messages TEXT/IMAGE/WIDE
 - **Structure Verified, Real Send Pending**: Brand Messages (CAROUSEL_FEED, COMMERCE, CAROUSEL_COMMERCE, PREMIUM_VIDEO, WIDE_ITEM_LIST)
 - **Reference**: `MTS_API_통합_테스트_가이드.md` for detailed testing status
 - **Core Module**: `src/lib/mtsApi.ts` (2,907 lines, 19 functions)
-- **FriendTalk Features** (2025-11-13):
+- **FriendTalk Features** (2025-11-14):
   - ✅ Button types: WL (웹링크), AL (앱링크), BK (봇키워드), MD (메시지전달)
   - ✅ FL item-level image upload with hidden file inputs and refs
+  - ✅ FL item-level URL input (url_mobile required, url_pc optional)
   - ✅ FC carousel-level image upload with hidden file inputs and refs
-  - ✅ Template save/load includes: friendtalkMessageType, headerText, listItems (with images), carousels (with images/buttons), moreLink, imageLink
+  - ✅ FC carousel-level header input (max 20 chars)
+  - ✅ Template save/load includes: friendtalkMessageType, headerText, listItems (with images/URLs), carousels (with header/images/buttons), moreLink, imageLink
   - ✅ Template data stored in `sms_message_templates.metadata` JSONB field for FW/FL/FC types
+  - ✅ **FL/FC ER99 Error Resolution (2025-11-14)**: message 필드 및 tran_* 필드 조건부 처리로 실제 발송 성공
 - **Brand Messages**: Uses Variable Separation Method v1.1 (separate `message_variable`, `button_variable`, `image_variable`, `video_variable`, `commerce_variable`, etc.)
   - ✅ **2025-11-10 업데이트**: 변수분리방식 v1.1 전환 완료, 이전 1030 에러 완전 해결
   - ✅ **실제 발송 테스트 완료**: TEXT, IMAGE, WIDE 타입 + 버튼(최대 5개) 조합 모두 성공
@@ -653,3 +657,39 @@ if (productCode === 'CARDINFO') {
 - FC content: 180 chars, 2 line breaks
 
 **UI validation** must match MTS API validation exactly.
+
+### 11. FL/FC Type Special Requirements (Critical!)
+**Problem**: FL/FC types have unique requirements that cause ER99 errors if not handled correctly.
+
+**FL/FC are ad-only types** - They CANNOT use conversion fallback (tran_type/tran_callback/tran_message).
+
+**Critical Requirements** (Lines 607-614, 710-715 in `src/lib/mtsApi.ts`):
+```typescript
+// 1. NO message field for FL/FC types
+if (finalMessageType === 'FL' || finalMessageType === 'FC') {
+  requestBody.ad_flag = 'Y';  // Force ad flag
+  // Do NOT add message field
+} else {
+  requestBody.message = message;  // Only for FT/FI/FW
+}
+
+// 2. NO conversion fields for FL/FC types
+if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !== 'FC') {
+  requestBody.tran_type = tranType;
+  requestBody.tran_callback = cleanCallbackNumber;
+  requestBody.tran_message = tranMessage;
+}
+```
+
+**Why?**
+- FL/FC use `header`, `item.list`, or `carousel.list` instead of `message`
+- Empty `message: ""` causes MTS API JSON parsing error (ER99)
+- FL/FC are ad-only, so SMS conversion is not allowed
+- Including tran_* fields causes MTS API to reject the request
+
+**UI Requirements**:
+- Auto-set adFlag='Y' when FL/FC selected (useEffect in FriendtalkTab.tsx Line 135-139)
+- Disable ad flag checkbox for FL/FC types
+- Show notice: "* FL/FC 타입은 광고 발송만 가능합니다"
+
+**Error Code**: ER99 (UnhandledDataProgressException) typically indicates wrong field structure or unnecessary fields.
