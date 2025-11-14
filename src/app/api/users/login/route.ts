@@ -238,69 +238,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 로그인 시 발신번호 자동 추가 체크
-    if (user.phone_number) {
-      try {
-        // 사용자의 본인 전화번호가 발신번호로 등록되어 있는지 확인
-        const { data: existingSenderNumber } = await supabase
-          .from("sender_numbers")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("is_user_phone", true)
-          .maybeSingle();
-
-        if (!existingSenderNumber) {
-          // 본인 전화번호가 발신번호로 등록되어 있지 않은 경우 자동 추가
-          // 전화번호 정규화 (하이픈 형식으로)
-          let normalizedPhoneNumber = user.phone_number;
-          const digitsOnly = user.phone_number.replace(/[^0-9]/g, "");
-          const phoneRegexWithHyphen = /^010-[0-9]{4}-[0-9]{4}$/;
-          const phoneRegexWithoutHyphen = /^010[0-9]{8}$/;
-
-          if (phoneRegexWithHyphen.test(user.phone_number)) {
-            normalizedPhoneNumber = user.phone_number;
-          } else if (phoneRegexWithoutHyphen.test(digitsOnly)) {
-            normalizedPhoneNumber = digitsOnly.replace(
-              /(\d{3})(\d{4})(\d{4})/,
-              "$1-$2-$3"
-            );
-          }
-
-          // 기존 발신번호가 있는지 확인 (기본값 설정용)
-          const { count: senderCount } = await supabase
-            .from("sender_numbers")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", user.id);
-
-          const isFirstNumber = senderCount === 0;
-
-          // 발신번호 자동 추가
-          const { error: senderNumberError } = await supabase
-            .from("sender_numbers")
-            .insert({
-              user_id: user.id,
-              phone_number: normalizedPhoneNumber,
-              display_name: `${user.name} (본인)`,
-              is_default: isFirstNumber, // 첫 번째 발신번호면 기본값으로 설정
-              is_user_phone: true, // 본인 전화번호 표시
-              is_verified: false,
-              status: "ACTIVE",
-              created_at: updateTime,
-              updated_at: updateTime,
-            });
-
-          if (senderNumberError) {
-            console.error(
-              "로그인 시 발신번호 자동 추가 실패:",
-              senderNumberError
-            );
-          }
-        }
-      } catch (senderError) {
-        console.error("로그인 시 발신번호 체크 중 오류:", senderError);
-        // 발신번호 추가 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
-      }
-    }
+    // 발신번호 자동 추가 로직 제거됨 (users.phone_number 직접 사용)
 
     // 성공 응답
     return NextResponse.json(

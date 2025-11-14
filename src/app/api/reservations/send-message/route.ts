@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     let finalMessage = message;
     let recipientPhone = '';
     let recipientName = '';
-    let fromNumber: string | undefined;
 
     // 예약 정보가 있으면 조회
     if (reservationId) {
@@ -61,8 +60,7 @@ export async function POST(request: NextRequest) {
           *,
           spaces (
             id,
-            name,
-            host_contact_number_id
+            name
           )
         `)
         .eq('id', reservationId)
@@ -77,17 +75,6 @@ export async function POST(request: NextRequest) {
       recipientPhone = reservation.customer_phone;
       recipientName = reservation.customer_name;
 
-      // 호스트 연락처 조회 (발신번호)
-      if (reservation.spaces?.host_contact_number_id) {
-        const { data: senderNumber } = await supabase
-          .from('sender_numbers')
-          .select('phone_number')
-          .eq('id', reservation.spaces.host_contact_number_id)
-          .single();
-
-        fromNumber = senderNumber?.phone_number || undefined;
-      }
-
       // 템플릿이 선택된 경우 변수 치환
       if (templateId) {
         const { data: template } = await supabase
@@ -100,20 +87,14 @@ export async function POST(request: NextRequest) {
         if (template) {
           finalMessage = replaceTemplateVariables(message, {
             ...reservation,
-            space: {
-            ...reservation.spaces,
-            host_contact_number: fromNumber
-          }
+            space: reservation.spaces
           });
         }
       } else {
         // 템플릿 없이 직접 입력한 경우에도 변수 치환
         finalMessage = replaceTemplateVariables(message, {
           ...reservation,
-          space: {
-            ...reservation.spaces,
-            host_contact_number: fromNumber
-          }
+          space: reservation.spaces
         });
       }
     } else {
@@ -130,7 +111,6 @@ export async function POST(request: NextRequest) {
       // 공통 로직 사용 (messageSender.ts)
       const result = await sendMessage({
         userId,
-        fromNumber,
         toNumber: recipientPhone,
         toName: recipientName,
         message: finalMessage,
@@ -187,7 +167,6 @@ export async function POST(request: NextRequest) {
       const result = await scheduleMessage(
         {
           userId,
-          fromNumber,
           toNumber: recipientPhone,
           toName: recipientName,
           message: finalMessage,
