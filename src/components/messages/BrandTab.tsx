@@ -15,9 +15,217 @@ import { replaceVariables as replaceStandardVariables, countReplaceableVariables
 import ChannelRegistrationModal from "../kakao/ChannelRegistrationModal";
 import BrandTemplateModal from "../modals/BrandTemplateModal";
 
-interface BrandTabProps {
+// BrandData 인터페이스 export (MessageSendTab에서 사용)
+export interface BrandData {
+  selectedProfile: string;
+  selectedTemplate: BrandTemplate | null;
+  targetingType: 'M' | 'N' | 'I';
+  enableSmsBackup: boolean;
+  smsBackupMessage: string;
+  userInfo: { phone: string; name: string; companyName: string };
+}
+
+/**
+ * 브랜드 메시지 발송 함수 (export)
+ * @param recipients - 수신자 목록
+ * @param callbackNumber - 발신번호
+ * @param data - BrandData (selectedProfile, selectedTemplate, targetingType, enableSmsBackup, smsBackupMessage, userInfo)
+ * @param scheduledAt - 예약 발송 시간 (YYYYMMDDHHmmss 형식, optional)
+ * @returns { successCount, failCount }
+ */
+export async function sendBrandMessage_v2(params: {
   recipients: Recipient[];
   callbackNumber: string;
+  data: BrandData;
+  scheduledAt?: string;
+}) {
+  const { recipients, callbackNumber, data, scheduledAt } = params;
+  const { selectedProfile, selectedTemplate, targetingType, enableSmsBackup, smsBackupMessage, userInfo } = data;
+
+  // 유효성 검사
+  if (!selectedProfile) {
+    throw new Error("발신 프로필을 선택해주세요.");
+  }
+
+  if (!selectedTemplate) {
+    throw new Error("템플릿을 선택해주세요.");
+  }
+
+  if (recipients.length === 0) {
+    throw new Error("수신자를 추가해주세요.");
+  }
+
+  if (!callbackNumber) {
+    throw new Error("발신번호를 선택해주세요.");
+  }
+
+  // 전환 발송 메시지 검증
+  if (enableSmsBackup && !smsBackupMessage.trim()) {
+    throw new Error("문자대체발송 메시지를 입력해주세요.");
+  }
+
+  // 각 수신자별로 변수 치환된 메시지 생성
+  const processedRecipients = recipients.map(recipient => {
+    // Step 1: 표준 변수 치환 (messageVariables.ts의 replaceStandardVariables 함수)
+    let replacedMessage = replaceStandardVariables(
+      selectedTemplate.content,
+      {
+        name: recipient.name,
+        phone: recipient.phone_number,
+        groupName: recipient.group_name || recipient.variables?.['그룹명'],
+      },
+      userInfo
+    );
+
+    // Step 2: 커스텀 변수 추가 치환
+    if (recipient.variables) {
+      for (const [key, value] of Object.entries(recipient.variables)) {
+        // 기본 변수가 아닌 커스텀 변수만 치환
+        if (!['이름', '전화번호', '그룹명', '오늘날짜', '현재시간', '요일', '발신번호', '회사명', '담당자명'].includes(key)) {
+          const pattern = new RegExp(`#{${key}}`, 'g');
+          replacedMessage = replacedMessage.replace(pattern, value);
+        }
+      }
+    }
+
+    return {
+      ...recipient,
+      replacedMessage: replacedMessage,
+    };
+  });
+
+  // 자동 타입 결정 로직
+  let tranType: 'N' | 'S' | 'L' | 'M' = 'N';
+  let subject = '';
+
+  if (enableSmsBackup && smsBackupMessage) {
+    const messageLength = smsBackupMessage.length;
+
+    // 90바이트(한글 45자) 이하 → SMS
+    if (messageLength <= 45) {
+      tranType = 'S';
+    }
+    // 2000바이트(한글 1000자) 이하 → LMS
+    else if (messageLength <= 1000) {
+      tranType = 'L';
+      subject = selectedTemplate.template_name; // LMS는 제목 사용
+    }
+    // 2000바이트 초과 → MMS
+    else {
+      tranType = 'M';
+      subject = selectedTemplate.template_name; // MMS는 제목 사용
+    }
+  }
+
+  // attachment 구성 (버튼, 이미지, 비디오, 커머스, 캐러셀 등)
+  const attachment: {
+    button?: Array<{ name: string; type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC'; url_mobile?: string; url_pc?: string }>;
+    image?: { img_url: string; img_link?: string };
+    video?: { videoUrl: string; thumbnailUrl: string };
+    commerce?: { title: string; regularPrice: number; discountPrice?: number; discountRate?: number; discountFixed?: number };
+    carousel?: Array<{
+      img_url: string;
+      url_mobile: string;
+      commerce_title?: string;
+      description?: string;
+      regular_price?: number;
+      discount_price?: number;
+      discount_rate?: number;
+      discount_fixed?: number;
+      title?: string;
+    }>;
+  } = {};
+
+  // 버튼 추가
+  if (selectedTemplate.buttons && selectedTemplate.buttons.length > 0) {
+    attachment.button = selectedTemplate.buttons.map(btn => ({
+      name: btn.name,
+      type: btn.type as 'WL' | 'AL' | 'BK' | 'MD' | 'AC',
+      url_mobile: btn.url_mobile,
+      url_pc: btn.url_pc,
+    }));
+  }
+
+  // 이미지 추가 (IMAGE, WIDE 타입일 때)
+  if ((selectedTemplate.message_type === 'IMAGE' || selectedTemplate.message_type === 'WIDE') && selectedTemplate.image_url) {
+    attachment.image = {
+      img_url: selectedTemplate.image_url,
+    };
+
+    // img_link는 값이 실제로 있을 때만 추가 (undefined 키 제거)
+    if (selectedTemplate.image_link && selectedTemplate.image_link.trim() !== '') {
+      attachment.image.img_link = selectedTemplate.image_link;
+    }
+  }
+
+  // 비디오 추가 (PREMIUM_VIDEO 타입일 때)
+  if (selectedTemplate.message_type === 'PREMIUM_VIDEO') {
+    if (selectedTemplate.video_url && selectedTemplate.thumbnail_url) {
+      attachment.video = {
+        videoUrl: selectedTemplate.video_url,
+        thumbnailUrl: selectedTemplate.thumbnail_url,
+      };
+    }
+  }
+
+  // 커머스 추가 (COMMERCE 타입일 때만 - 단일 상품)
+  if (selectedTemplate.message_type === 'COMMERCE') {
+    if (selectedTemplate.commerce_title && selectedTemplate.regular_price) {
+      attachment.commerce = {
+        title: selectedTemplate.commerce_title,
+        regularPrice: selectedTemplate.regular_price,
+        discountPrice: selectedTemplate.discount_price,
+        discountRate: selectedTemplate.discount_rate,
+        discountFixed: selectedTemplate.discount_fixed,
+      };
+    }
+  }
+
+  // 캐러셀 추가 (CAROUSEL_COMMERCE, CAROUSEL_FEED 타입일 때)
+  if (selectedTemplate.message_type === 'CAROUSEL_COMMERCE' || selectedTemplate.message_type === 'CAROUSEL_FEED') {
+    if (selectedTemplate.carousel_cards && selectedTemplate.carousel_cards.length > 0) {
+      attachment.carousel = selectedTemplate.carousel_cards.map(card => ({
+        img_url: card.img_url || '',
+        url_mobile: card.url_mobile || '',
+        commerce_title: card.commerce_title,
+        description: card.description,
+        regular_price: card.regular_price,
+        discount_price: card.discount_price,
+        discount_rate: card.discount_rate,
+        discount_fixed: card.discount_fixed,
+        title: card.title,
+      }));
+    }
+  }
+
+  const result = await sendBrandMessage({
+    senderKey: selectedProfile,
+    templateCode: selectedTemplate.template_code,
+    recipients: processedRecipients,
+    message: selectedTemplate.content, // 원본 템플릿 (백업용)
+    callbackNumber: callbackNumber,
+    messageType: selectedTemplate.message_type as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE',
+    attachment: Object.keys(attachment).length > 0 ? attachment : undefined,
+    targeting: targetingType, // 수신 대상 선택 (M/N/I)
+    tranType: tranType,
+    tranMessage: tranType !== 'N' ? smsBackupMessage : undefined,
+    subject: subject || undefined,
+    sendDate: scheduledAt, // 예약 발송 지원
+  });
+
+  if (result.success) {
+    const successCount = result.results.filter((r: { success: boolean }) => r.success).length;
+    const failCount = result.results.filter((r: { success: boolean }) => !r.success).length;
+    return { successCount, failCount };
+  } else {
+    throw new Error(result.error || "브랜드 메시지 발송 실패");
+  }
+}
+
+interface BrandTabProps {
+  recipients?: Recipient[];
+  callbackNumber?: string;
+  onDataChange?: (data: BrandData) => void;
 }
 
 // 템플릿 타입 정보
@@ -64,7 +272,11 @@ const templateTypes: Record<string, { title: string; description: string; imageP
   }
 };
 
-const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
+const BrandTab: React.FC<BrandTabProps> = ({
+  recipients = [],
+  callbackNumber = "",
+  onDataChange,
+}) => {
   // 상태 관리
   const [senderProfiles, setSenderProfiles] = useState<SenderProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string>("");
@@ -144,6 +356,20 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
     }
   }, [selectedTemplate]);
 
+  // 데이터 변경 시 상위 컴포넌트로 전달
+  useEffect(() => {
+    if (onDataChange) {
+      onDataChange({
+        selectedProfile,
+        selectedTemplate,
+        targetingType,
+        enableSmsBackup,
+        smsBackupMessage,
+        userInfo,
+      });
+    }
+  }, [selectedProfile, selectedTemplate, targetingType, enableSmsBackup, smsBackupMessage, userInfo, onDataChange]);
+
   // 발신 프로필 조회
   const loadSenderProfiles = async () => {
     setIsLoadingProfiles(true);
@@ -195,33 +421,6 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
 
   // 브랜드 메시지 발송
   const handleSendBrandMessage = async () => {
-    // 유효성 검사
-    if (!selectedProfile) {
-      alert("발신 프로필을 선택해주세요.");
-      return;
-    }
-
-    if (!selectedTemplate) {
-      alert("템플릿을 선택해주세요.");
-      return;
-    }
-
-    if (recipients.length === 0) {
-      alert("수신자를 추가해주세요.");
-      return;
-    }
-
-    if (!callbackNumber) {
-      alert("발신번호를 선택해주세요.");
-      return;
-    }
-
-    // 전환 발송 메시지 검증
-    if (enableSmsBackup && !smsBackupMessage.trim()) {
-      alert("문자대체발송 메시지를 입력해주세요.");
-      return;
-    }
-
     // 발송 확인
     const confirmed = window.confirm(
       `${recipients.length}명에게 브랜드 메시지를 발송하시겠습니까?`
@@ -232,165 +431,27 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
     setErrorMessage("");
 
     try {
-      // 각 수신자별로 변수 치환된 메시지 생성
-      const processedRecipients = recipients.map(recipient => {
-        // Step 1: 표준 변수 치환 (messageVariables.ts의 replaceStandardVariables 함수)
-        let replacedMessage = replaceStandardVariables(
-          selectedTemplate.content,
-          {
-            name: recipient.name,
-            phone: recipient.phone_number,
-            groupName: recipient.group_name || recipient.variables?.['그룹명'],
-          },
-          userInfo
-        );
-
-        // Step 2: 커스텀 변수 추가 치환
-        if (recipient.variables) {
-          for (const [key, value] of Object.entries(recipient.variables)) {
-            // 기본 변수가 아닌 커스텀 변수만 치환
-            if (!['이름', '전화번호', '그룹명', '오늘날짜', '현재시간', '요일', '발신번호', '회사명', '담당자명'].includes(key)) {
-              const pattern = new RegExp(`#{${key}}`, 'g');
-              replacedMessage = replacedMessage.replace(pattern, value);
-            }
-          }
-        }
-
-        return {
-          ...recipient,
-          replacedMessage: replacedMessage,
-        };
-      });
-
-      // 자동 타입 결정 로직
-      let tranType: 'N' | 'S' | 'L' | 'M' = 'N';
-      let subject = '';
-
-      if (enableSmsBackup && smsBackupMessage) {
-        const messageLength = smsBackupMessage.length;
-
-        // 90바이트(한글 45자) 이하 → SMS
-        if (messageLength <= 45) {
-          tranType = 'S';
-        }
-        // 2000바이트(한글 1000자) 이하 → LMS
-        else if (messageLength <= 1000) {
-          tranType = 'L';
-          subject = selectedTemplate.template_name; // LMS는 제목 사용
-        }
-        // 2000바이트 초과 → MMS
-        else {
-          tranType = 'M';
-          subject = selectedTemplate.template_name; // MMS는 제목 사용
-        }
-      }
-
-      // attachment 구성 (버튼, 이미지, 비디오, 커머스, 캐러셀 등)
-      const attachment: {
-        button?: Array<{ name: string; type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC'; url_mobile?: string; url_pc?: string }>;
-        image?: { img_url: string; img_link?: string };
-        video?: { videoUrl: string; thumbnailUrl: string };
-        commerce?: { title: string; regularPrice: number; discountPrice?: number; discountRate?: number; discountFixed?: number };
-        carousel?: Array<{
-          img_url: string;
-          url_mobile: string;
-          commerce_title?: string;
-          description?: string;
-          regular_price?: number;
-          discount_price?: number;
-          discount_rate?: number;
-          discount_fixed?: number;
-          title?: string;
-        }>;
-      } = {};
-
-      // 버튼 추가
-      if (selectedTemplate.buttons && selectedTemplate.buttons.length > 0) {
-        attachment.button = selectedTemplate.buttons.map(btn => ({
-          name: btn.name,
-          type: btn.type as 'WL' | 'AL' | 'BK' | 'MD' | 'AC',
-          url_mobile: btn.url_mobile,
-          url_pc: btn.url_pc,
-        }));
-      }
-
-      // 이미지 추가 (IMAGE, WIDE 타입일 때)
-      if ((selectedTemplate.message_type === 'IMAGE' || selectedTemplate.message_type === 'WIDE') && selectedTemplate.image_url) {
-        attachment.image = {
-          img_url: selectedTemplate.image_url,
-        };
-
-        // img_link는 값이 실제로 있을 때만 추가 (undefined 키 제거)
-        if (selectedTemplate.image_link && selectedTemplate.image_link.trim() !== '') {
-          attachment.image.img_link = selectedTemplate.image_link;
-        }
-      }
-
-      // 비디오 추가 (PREMIUM_VIDEO 타입일 때)
-      if (selectedTemplate.message_type === 'PREMIUM_VIDEO') {
-        if (selectedTemplate.video_url && selectedTemplate.thumbnail_url) {
-          attachment.video = {
-            videoUrl: selectedTemplate.video_url,
-            thumbnailUrl: selectedTemplate.thumbnail_url,
-          };
-        }
-      }
-
-      // 커머스 추가 (COMMERCE 타입일 때만 - 단일 상품)
-      if (selectedTemplate.message_type === 'COMMERCE') {
-        if (selectedTemplate.commerce_title && selectedTemplate.regular_price) {
-          attachment.commerce = {
-            title: selectedTemplate.commerce_title,
-            regularPrice: selectedTemplate.regular_price,
-            discountPrice: selectedTemplate.discount_price,
-            discountRate: selectedTemplate.discount_rate,
-            discountFixed: selectedTemplate.discount_fixed,
-          };
-        }
-      }
-
-      // 캐러셀 추가 (CAROUSEL_COMMERCE, CAROUSEL_FEED 타입일 때)
-      if (selectedTemplate.message_type === 'CAROUSEL_COMMERCE' || selectedTemplate.message_type === 'CAROUSEL_FEED') {
-        if (selectedTemplate.carousel_cards && selectedTemplate.carousel_cards.length > 0) {
-          attachment.carousel = selectedTemplate.carousel_cards.map(card => ({
-            img_url: card.img_url || '',
-            url_mobile: card.url_mobile || '',
-            commerce_title: card.commerce_title,
-            description: card.description,
-            regular_price: card.regular_price,
-            discount_price: card.discount_price,
-            discount_rate: card.discount_rate,
-            discount_fixed: card.discount_fixed,
-            title: card.title,
-          }));
-        }
-      }
-
-      const result = await sendBrandMessage({
-        senderKey: selectedProfile,
-        templateCode: selectedTemplate.template_code,
-        recipients: processedRecipients,
-        message: selectedTemplate.content, // 원본 템플릿 (백업용)
+      const result = await sendBrandMessage_v2({
+        recipients: recipients,
         callbackNumber: callbackNumber,
-        messageType: selectedTemplate.message_type as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE',
-        attachment: Object.keys(attachment).length > 0 ? attachment : undefined,
-        targeting: targetingType, // 수신 대상 선택 (M/N/I)
-        tranType: tranType,
-        tranMessage: tranType !== 'N' ? smsBackupMessage : undefined,
-        subject: subject || undefined,
+        data: {
+          selectedProfile,
+          selectedTemplate,
+          targetingType,
+          enableSmsBackup,
+          smsBackupMessage,
+          userInfo,
+        },
+        scheduledAt: undefined,
       });
 
-      if (result.success) {
-        alert(
-          `브랜드 메시지 발송 완료\n성공: ${result.results.filter((r: { success: boolean }) => r.success).length}건\n실패: ${result.results.filter((r: { success: boolean }) => !r.success).length}건`
-        );
+      alert(
+        `브랜드 메시지 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`
+      );
 
-        // 폼 초기화
-        setEnableSmsBackup(false);
-        setSmsBackupMessage("");
-      } else {
-        throw new Error(result.error || "브랜드 메시지 발송 실패");
-      }
+      // 폼 초기화
+      setEnableSmsBackup(false);
+      setSmsBackupMessage("");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "브랜드 메시지 발송 중 오류가 발생했습니다.";
       setErrorMessage(errorMessage);
@@ -483,39 +544,41 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
                   </button>
                 )}
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 {!selectedProfile ? (
-                  <div className="text-center py-3.5 text-gray-500 text-sm">
+                  <div className="flex-1 text-center py-3.5 text-gray-500 text-sm">
                     먼저 카카오 채널을 선택해주세요.
                   </div>
                 ) : isLoadingTemplates ? (
-                  <div className="text-sm text-gray-500">로딩 중...</div>
+                  <div className="flex-1 text-sm text-gray-500">로딩 중...</div>
                 ) : brandTemplates.length > 0 ? (
-                  <select
-                    value={selectedTemplate?.template_code || ""}
-                    onChange={(e) => {
-                      const template = brandTemplates.find(
-                        (t) => t.template_code === e.target.value
-                      );
-                      if (template) handleTemplateSelect(template);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                  >
-                    <option value="">템플릿을 선택하세요</option>
-                    {brandTemplates.map((template) => (
-                      <option key={template.template_code} value={template.template_code}>
-                        {template.template_name} ({getTemplateStatusLabel(template.status)})
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      value={selectedTemplate?.template_code || ""}
+                      onChange={(e) => {
+                        const template = brandTemplates.find(
+                          (t) => t.template_code === e.target.value
+                        );
+                        if (template) handleTemplateSelect(template);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
+                    >
+                      <option value="">템플릿을 선택하세요</option>
+                      {brandTemplates.map((template) => (
+                        <option key={template.template_code} value={template.template_code}>
+                          {template.template_name} ({getTemplateStatusLabel(template.status)})
+                        </option>
+                      ))}
+                    </select>
+                    <button className="flex-shrink-0 bg-gray-100 text-gray-600 px-3 py-2 rounded text-sm hover:bg-gray-200 whitespace-nowrap">
+                      선택
+                    </button>
+                  </>
                 ) : (
-                  <div className="text-center py-3.5 text-gray-500 text-sm">
+                  <div className="flex-1 text-center py-3.5 text-gray-500 text-sm">
                     사용 가능한 템플릿이 없습니다.
                   </div>
                 )}
-                <button className="bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-200 ml-2">
-                  선택
-                </button>
               </div>
             </div>
           </div>
@@ -829,27 +892,7 @@ const BrandTab: React.FC<BrandTabProps> = ({ recipients, callbackNumber }) => {
         </p>
       </div>
 
-      {/* 발송 버튼 */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSendBrandMessage}
-          disabled={isSending || !selectedProfile || !selectedTemplate || recipients.length === 0}
-          className="flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-          style={{ backgroundColor: "#795548" }}
-        >
-          {isSending ? (
-            <>
-              <RefreshCw className="w-5 h-5 animate-spin" />
-              발송 중...
-            </>
-          ) : (
-            <>
-              <Send className="w-5 h-5" />
-              브랜드 메시지 발송
-            </>
-          )}
-        </button>
-      </div>
+      {/* 발송 버튼 제거 - MessageSendTab의 공통 전송/예약 준비 버튼 사용 */}
 
       {/* 채널 연동 모달 */}
       <ChannelRegistrationModal

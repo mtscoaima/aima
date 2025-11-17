@@ -19,16 +19,112 @@ interface Recipient {
   variables?: Record<string, string>;
 }
 
+export interface AlimtalkData {
+  selectedProfile: string;
+  selectedTemplate: AlimtalkTemplate | null;
+  enableSmsBackup: boolean;
+  smsBackupMessage: string;
+  userInfo: {
+    phone: string;
+    name: string;
+    company: string;
+  };
+}
+
+/**
+ * 알림톡 발송 함수 (MessageSendTab에서 호출)
+ * @param params - 발송 파라미터
+ * @param params.recipients - 수신자 목록
+ * @param params.callbackNumber - 발신번호
+ * @param params.data - AlimtalkTab의 현재 데이터
+ * @param params.scheduledAt - 예약 발송 시간 (YYYYMMDDHHmmss 형식, 즉시 발송 시 undefined)
+ * @returns 발송 결과 { successCount, failCount }
+ */
+export async function sendAlimtalkMessage(params: {
+  recipients: Recipient[];
+  callbackNumber: string;
+  data: AlimtalkData;
+  scheduledAt?: string;
+}) {
+  const { recipients, callbackNumber, data, scheduledAt } = params;
+  const { selectedProfile, selectedTemplate, enableSmsBackup, smsBackupMessage, userInfo } = data;
+
+  // 유효성 검사
+  if (!selectedProfile) {
+    throw new Error("발신 프로필을 선택해주세요.");
+  }
+
+  if (!selectedTemplate) {
+    throw new Error("템플릿을 선택해주세요.");
+  }
+
+  if (recipients.length === 0) {
+    throw new Error("수신자를 입력해주세요.");
+  }
+
+  if (!callbackNumber) {
+    throw new Error("발신번호를 입력해주세요.");
+  }
+
+  // 각 수신자별로 변수 치환된 메시지 생성
+  const processedRecipients = recipients.map(recipient => {
+    // Step 1: 표준 변수 치환 (messageVariables.ts의 replaceStandardVariables 함수)
+    let replacedMessage = replaceStandardVariables(
+      selectedTemplate.template_content,
+      {
+        name: recipient.name,
+        phone: recipient.phone_number,
+        groupName: recipient.group_name || recipient.variables?.['그룹명'],
+      },
+      userInfo
+    );
+
+    // Step 2: 커스텀 변수 추가 치환 (SMS 발송과 동일한 로직)
+    if (recipient.variables) {
+      for (const [key, value] of Object.entries(recipient.variables)) {
+        // 기본 변수가 아닌 커스텀 변수만 치환
+        if (!['이름', '전화번호', '그룹명', '오늘날짜', '현재시간', '요일', '발신번호', '회사명', '담당자명'].includes(key)) {
+          const pattern = new RegExp(`#{${key}}`, 'g');
+          replacedMessage = replacedMessage.replace(pattern, value);
+        }
+      }
+    }
+
+    return {
+      phone_number: recipient.phone_number,
+      name: recipient.name,
+      replacedMessage: replacedMessage,
+    };
+  });
+
+  // MTS API 호출
+  const result = await sendAlimtalk({
+    senderKey: selectedProfile,
+    templateCode: selectedTemplate.template_code,
+    recipients: processedRecipients,
+    message: selectedTemplate.template_content, // 원본 템플릿 (백업용)
+    callbackNumber: callbackNumber,
+    buttons: selectedTemplate.buttons,
+    tranType: enableSmsBackup ? "SMS" : undefined,
+    tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
+    sendDate: scheduledAt, // 예약 발송 시간 추가
+  });
+
+  return result;
+}
+
 interface AlimtalkTabProps {
   recipients?: Recipient[]; // 상위 컴포넌트에서 전달받는 수신자 목록 (전화번호 + 이름)
   callbackNumber?: string; // 발신번호
   onSendComplete?: (result: unknown) => void; // 발송 완료 콜백
+  onDataChange?: (data: AlimtalkData) => void; // 데이터 변경 시 상위로 전달
 }
 
 const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
   recipients = [],
   callbackNumber = "",
   onSendComplete,
+  onDataChange,
 }) => {
   // 상태 관리
   const [senderProfiles, setSenderProfiles] = useState<SenderProfile[]>([]);
@@ -123,6 +219,19 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
       setSelectedTemplate(null);
     }
   }, [selectedProfile]);
+
+  // 데이터 변경 시 상위 컴포넌트로 전달
+  useEffect(() => {
+    if (onDataChange) {
+      onDataChange({
+        selectedProfile,
+        selectedTemplate,
+        enableSmsBackup,
+        smsBackupMessage,
+        userInfo,
+      });
+    }
+  }, [selectedProfile, selectedTemplate, enableSmsBackup, smsBackupMessage, userInfo, onDataChange]);
 
   // 발신 프로필 조회
   const loadSenderProfiles = async () => {
@@ -413,32 +522,7 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
         )}
       </div>
 
-      {/* 발송 버튼 */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSendAlimtalk}
-          disabled={
-            isSending ||
-            !selectedProfile ||
-            !selectedTemplate ||
-            recipients.length === 0
-          }
-          className="flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-          style={{ backgroundColor: "#795548" }}
-        >
-          {isSending ? (
-            <>
-              <RefreshCw className="w-5 h-5 animate-spin" />
-              발송 중...
-            </>
-          ) : (
-            <>
-              <Send className="w-5 h-5" />
-              알림톡 발송
-            </>
-          )}
-        </button>
-      </div>
+      {/* 발송 버튼 제거 - MessageSendTab의 공통 전송/예약 준비 버튼 사용 */}
 
       {/* 채널 연동 모달 */}
       <ChannelRegistrationModal

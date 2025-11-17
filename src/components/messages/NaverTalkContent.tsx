@@ -16,9 +16,22 @@ interface Recipient {
   variables?: Record<string, string>; // 수신자별 변수
 }
 
+// NaverData export for parent component
+export interface NaverData {
+  navertalkId: string;
+  selectedTemplate: NaverTalkTemplate | null;
+  templateContent: string;
+  productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO';
+  smsBackup: boolean;
+  templateVariables: string[];
+  commonVariables: Record<string, string>;
+  recipientVariables: Record<string, Record<string, string>>;
+}
+
 interface NaverTalkContentProps {
   recipients: Recipient[];
   selectedSenderNumber?: string;
+  onDataChange?: (data: NaverData) => void;
 }
 
 interface NaverTalkTemplate {
@@ -34,7 +47,7 @@ interface NaverTalkTemplate {
   }>;
 }
 
-const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
+const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataChange }) => {
   const [navertalkId, setNavertalkId] = useState("");
   const [templates, setTemplates] = useState<NaverTalkTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<NaverTalkTemplate | null>(null);
@@ -91,6 +104,22 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
       loadTemplates(navertalkId);
     }
   }, [navertalkId]);
+
+  // 데이터 변경 시 상위로 전달
+  useEffect(() => {
+    if (onDataChange) {
+      onDataChange({
+        navertalkId,
+        selectedTemplate,
+        templateContent,
+        productCode,
+        smsBackup,
+        templateVariables,
+        commonVariables,
+        recipientVariables,
+      });
+    }
+  }, [navertalkId, selectedTemplate, templateContent, productCode, smsBackup, templateVariables, commonVariables, recipientVariables, onDataChange]);
 
   // 템플릿에서 변수 추출 (#{변수명} 패턴)
   const extractVariables = (text: string): string[] => {
@@ -422,20 +451,106 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients }) => {
           * 현재 네이버 톡톡은 SMS 백업 기능을 지원하지 않습니다.
         </p>
       </div>
-
-      {/* 발송 버튼 */}
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={handleSend}
-          disabled={loading || !navertalkId || !selectedTemplate || recipients.length === 0}
-          className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-        >
-          <Send className="w-4 h-4" />
-          {loading ? '발송 중...' : '네이버 톡톡 발송'}
-        </button>
-      </div>
     </>
   );
 };
+
+// 네이버 톡톡 발송 함수 (MessageSendTab에서 호출)
+export async function sendNaverTalkMessage(
+  naverData: NaverData,
+  recipients: Recipient[],
+  scheduledAt?: string // YYYYMMDDHHmmss 형식
+): Promise<{ success: boolean; message: string; successCount?: number; failCount?: number }> {
+  // 유효성 검사
+  if (!naverData.navertalkId) {
+    throw new Error('네이버톡 ID를 입력해주세요.');
+  }
+
+  if (!naverData.selectedTemplate) {
+    throw new Error('템플릿을 선택해주세요.');
+  }
+
+  if (recipients.length === 0) {
+    throw new Error('수신자를 추가해주세요.');
+  }
+
+  if (!naverData.templateContent) {
+    throw new Error('템플릿 내용이 비어 있습니다.');
+  }
+
+  // 변수 검증 (변수가 있는 경우)
+  if (naverData.templateVariables.length > 0) {
+    const emptyVariables = naverData.templateVariables.filter(
+      varName => !naverData.commonVariables[varName]
+    );
+    if (emptyVariables.length > 0) {
+      throw new Error(`다음 변수를 입력해주세요: ${emptyVariables.join(', ')}`);
+    }
+  }
+
+  // JWT 토큰 가져오기
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    throw new Error('로그인이 필요합니다.');
+  }
+
+  // API 요청
+  const response = await fetch('/api/messages/naver/talk/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      navertalkId: naverData.navertalkId,
+      templateCode: naverData.selectedTemplate.code,
+      recipients: recipients.map(r => {
+        // 수신자별 변수가 있으면 사용, 없으면 빈 객체 (서버에서 공통 변수로 병합됨)
+        const recipientVars = naverData.recipientVariables[r.phone_number];
+        const filteredVars: Record<string, string> = {};
+
+        // 빈 값이 아닌 변수만 전달
+        if (recipientVars) {
+          Object.keys(recipientVars).forEach(key => {
+            if (recipientVars[key]) {
+              filteredVars[key] = recipientVars[key];
+            }
+          });
+        }
+
+        return {
+          phone_number: r.phone_number,
+          name: r.name,
+          variables: Object.keys(filteredVars).length > 0 ? filteredVars : undefined,
+        };
+      }),
+      templateParams: naverData.commonVariables, // 공통 변수 객체
+      productCode: naverData.productCode,
+      attachments: naverData.selectedTemplate.buttons ? {
+        buttons: naverData.selectedTemplate.buttons.map(btn => ({
+          type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
+          buttonCode: btn.name.substring(0, 10), // 임시 버튼 코드
+          buttonName: btn.name,
+          mobileUrl: btn.mobileUrl || btn.url,
+          pcUrl: btn.url,
+        })),
+      } : undefined,
+      scheduledAt, // 예약 발송 시간 추가
+    }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || '네이버 톡톡 발송 실패');
+  }
+
+  return {
+    success: true,
+    message: result.message || `네이버 톡톡 발송 완료 (성공: ${result.successCount}건, 실패: ${result.failCount}건)`,
+    successCount: result.successCount,
+    failCount: result.failCount,
+  };
+}
 
 export default NaverTalkContent;

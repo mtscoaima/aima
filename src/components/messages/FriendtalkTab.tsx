@@ -33,10 +33,195 @@ interface Recipient {
   variables?: Record<string, string>;
 }
 
+export interface FriendtalkData {
+  selectedProfile: string;
+  messageType: "FT" | "FI" | "FW" | "FL" | "FC";
+  message: string;
+  adFlag: "Y" | "N";
+  uploadedImages: Array<{
+    fileId: string;
+    fileName: string;
+    fileSize: number;
+    preview: string;
+  }>;
+  buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
+  imageLink: string; // FW 타입 전용
+  headerText: string; // FL 타입 전용
+  listItems: Array<{
+    title: string;
+    url_mobile?: string;
+    url_pc?: string;
+    image?: {
+      fileId: string;
+      fileName: string;
+      fileSize: number;
+      preview: string;
+    };
+  }>; // FL 타입 전용
+  carousels: Array<{
+    header: string;
+    content: string;
+    image?: {
+      fileId: string;
+      fileName: string;
+      fileSize: number;
+      preview: string;
+    };
+    buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
+  }>; // FC 타입 전용
+  moreLink: string; // FC 타입 전용
+  enableSmsBackup: boolean;
+  smsBackupMessage: string;
+  userInfo: {
+    phone: string;
+    name: string;
+    company: string;
+  };
+}
+
+/**
+ * 친구톡 발송 함수 (MessageSendTab에서 호출)
+ * @param params - 발송 파라미터
+ * @param params.recipients - 수신자 목록
+ * @param params.callbackNumber - 발신번호
+ * @param params.data - FriendtalkTab의 현재 데이터
+ * @param params.scheduledAt - 예약 발송 시간 (YYYYMMDDHHmmss 형식, 즉시 발송 시 undefined)
+ * @returns 발송 결과 { successCount, failCount }
+ */
+export async function sendFriendtalkMessage(params: {
+  recipients: Recipient[];
+  callbackNumber: string;
+  data: FriendtalkData;
+  scheduledAt?: string;
+}) {
+  const { recipients, callbackNumber, data, scheduledAt } = params;
+  const {
+    selectedProfile,
+    messageType,
+    message,
+    adFlag,
+    uploadedImages,
+    buttons,
+    imageLink,
+    headerText,
+    listItems,
+    carousels,
+    moreLink,
+    enableSmsBackup,
+    smsBackupMessage,
+    userInfo,
+  } = data;
+
+  // 유효성 검사
+  if (!selectedProfile) {
+    throw new Error("발신 프로필을 선택해주세요.");
+  }
+
+  if (messageType !== "FL" && messageType !== "FC" && !message.trim()) {
+    throw new Error("메시지 내용을 입력해주세요.");
+  }
+
+  if (recipients.length === 0) {
+    throw new Error("수신자를 입력해주세요.");
+  }
+
+  if (!callbackNumber) {
+    throw new Error("발신번호를 입력해주세요.");
+  }
+
+  // 타입별 이미지 필수 검증
+  if (messageType === "FI" && uploadedImages.length === 0) {
+    throw new Error("FI (이미지형) 타입은 이미지가 필수입니다.");
+  }
+
+  if (messageType === "FW" && uploadedImages.length === 0) {
+    throw new Error("FW (와이드형) 타입은 이미지가 필수입니다.");
+  }
+
+  if (messageType === "FL") {
+    if (!headerText || headerText.trim().length === 0) {
+      throw new Error("FL (와이드 아이템 리스트형) 타입은 헤더가 필수입니다.");
+    }
+    if (listItems.length < 3 || listItems.length > 4) {
+      throw new Error("FL (와이드 아이템 리스트형) 타입은 3-4개의 아이템이 필요합니다.");
+    }
+    const itemsWithoutImage = listItems.filter((item) => !item.image);
+    if (itemsWithoutImage.length > 0) {
+      throw new Error("FL (와이드 아이템 리스트형) 타입은 모든 아이템에 이미지가 필수입니다.");
+    }
+  }
+
+  if (messageType === "FC") {
+    if (carousels.length < 2 || carousels.length > 6) {
+      throw new Error("FC (캐러셀형) 타입은 2-6개의 캐러셀이 필요합니다.");
+    }
+  }
+
+  // 각 수신자별로 변수 치환된 메시지 생성
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const recipient of recipients) {
+    try {
+      // Step 1: 표준 변수 치환
+      let replacedMessage = replaceStandardVariables(
+        message,
+        {
+          name: recipient.name,
+          phone: recipient.phone_number,
+          groupName: recipient.group_name || recipient.variables?.["그룹명"],
+        },
+        userInfo
+      );
+
+      // Step 2: 커스텀 변수 치환
+      if (recipient.variables) {
+        for (const [key, value] of Object.entries(recipient.variables)) {
+          if (
+            !["이름", "전화번호", "그룹명", "오늘날짜", "현재시간", "요일", "발신번호", "회사명", "담당자명"].includes(key)
+          ) {
+            const pattern = new RegExp(`#{${key}}`, "g");
+            replacedMessage = replacedMessage.replace(pattern, value);
+          }
+        }
+      }
+
+      // Step 3: 친구톡 발송
+      const result = await sendFriendtalk({
+        senderKey: selectedProfile,
+        recipients: [{ phone_number: recipient.phone_number, name: recipient.name }],
+        message: replacedMessage,
+        messageType: messageType,
+        adFlag: adFlag,
+        imageUrls: uploadedImages.length > 0 ? [uploadedImages[0].fileId] : undefined,
+        imageLink: messageType === "FW" ? imageLink : undefined,
+        buttons: buttons,
+        headerText: messageType === "FL" ? headerText : undefined,
+        listItems: messageType === "FL" ? listItems : undefined,
+        carousels: messageType === "FC" ? carousels : undefined,
+        moreLink: messageType === "FC" ? moreLink : undefined,
+        callbackNumber: callbackNumber,
+        tranType: enableSmsBackup ? "SMS" : undefined,
+        tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
+        sendDate: scheduledAt, // 예약 발송 시간 추가
+      });
+
+      if (result.successCount > 0) successCount++;
+      else failCount++;
+    } catch (error) {
+      console.error("친구톡 발송 실패:", error);
+      failCount++;
+    }
+  }
+
+  return { successCount, failCount };
+}
+
 interface FriendtalkTabProps {
   recipients?: Recipient[]; // 상위 컴포넌트에서 전달받는 수신자 목록 (전화번호 + 이름)
   callbackNumber?: string; // 발신번호
   onSendComplete?: (result: unknown) => void; // 발송 완료 콜백
+  onDataChange?: (data: FriendtalkData) => void; // 데이터 변경 시 상위로 전달
 }
 
 interface UploadedImage {
@@ -52,6 +237,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   recipients = [],
   callbackNumber = "",
   onSendComplete,
+  onDataChange,
 }) => {
   // 상태 관리
   const [senderProfiles, setSenderProfiles] = useState<SenderProfile[]>([]);
@@ -168,6 +354,48 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       setAdFlag("Y");
     }
   }, [messageType]);
+
+  // 데이터 변경 시 상위 컴포넌트로 전달
+  useEffect(() => {
+    if (onDataChange) {
+      onDataChange({
+        selectedProfile,
+        messageType,
+        message,
+        adFlag,
+        uploadedImages,
+        buttons,
+        imageLink,
+        headerText,
+        listItems,
+        carousels,
+        moreLink,
+        enableSmsBackup,
+        smsBackupMessage,
+        userInfo: {
+          phone: userInfo.phone,
+          name: userInfo.name,
+          company: userInfo.companyName,
+        },
+      });
+    }
+  }, [
+    selectedProfile,
+    messageType,
+    message,
+    adFlag,
+    uploadedImages,
+    buttons,
+    imageLink,
+    headerText,
+    listItems,
+    carousels,
+    moreLink,
+    enableSmsBackup,
+    smsBackupMessage,
+    userInfo,
+    onDataChange,
+  ]);
 
   // 메시지 타입 변경 시 모든 필드 초기화
   useEffect(() => {
@@ -1793,34 +2021,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         )}
       </div>
 
-      {/* 발송 버튼 */}
-      <button
-        onClick={handleSendFriendtalk}
-        disabled={
-          isSending ||
-          isUploading ||
-          !selectedProfile ||
-          (messageType !== "FL" && messageType !== "FC" && !message.trim())
-        }
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-      >
-        {isUploading ? (
-          <>
-            <RefreshCw className="w-5 h-5 animate-spin" />
-            <span>이미지 업로드 중...</span>
-          </>
-        ) : isSending ? (
-          <>
-            <RefreshCw className="w-5 h-5 animate-spin" />
-            <span>발송 중...</span>
-          </>
-        ) : (
-          <>
-            <Send className="w-5 h-5" />
-            <span>친구톡 발송</span>
-          </>
-        )}
-      </button>
+      {/* 발송 버튼 제거 - MessageSendTab의 공통 전송/예약 준비 버튼 사용 */}
 
       {/* 템플릿 저장 모달 */}
       <SimpleContentSaveModal
