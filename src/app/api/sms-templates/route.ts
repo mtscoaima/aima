@@ -84,8 +84,17 @@ export const POST = withAuth(async (request, userInfo) => {
     return errorResponse("템플릿 이름이 필요합니다", 400);
   }
 
-  if (!content || !content.trim()) {
+  // FL/FC 타입은 content가 비어있어도 metadata에 listItems/carousels가 있으면 허용
+  const isFLorFC = friendtalkMessageType === 'FL' || friendtalkMessageType === 'FC';
+  const hasListItems = listItems && Array.isArray(listItems) && listItems.length > 0;
+  const hasCarousels = carousels && Array.isArray(carousels) && carousels.length > 0;
+
+  if (!isFLorFC && (!content || !content.trim())) {
     return errorResponse("템플릿 내용이 필요합니다", 400);
+  }
+
+  if (isFLorFC && !hasListItems && !hasCarousels && (!headerText || !headerText.trim())) {
+    return errorResponse("FL/FC 타입은 헤더, 아이템 또는 캐러셀이 필요합니다", 400);
   }
 
   // metadata 구성 (FW/FL/FC 필드 포함)

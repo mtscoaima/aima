@@ -9,6 +9,7 @@ interface LoadContentModalProps {
   onClose: () => void;
   initialActiveTab?: string;
   messageTypeFilter?: string; // 추가: 'SMS' | 'FRIENDTALK'
+  friendtalkMessageTypeFilter?: string; // 추가: 'FT' | 'FI' | 'FW' | 'FL' | 'FC'
   onSelect?: (content: {
     subject?: string;
     content: string;
@@ -72,6 +73,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
   onClose,
   initialActiveTab = "saved",
   messageTypeFilter, // 추가
+  friendtalkMessageTypeFilter, // 추가
   onSelect,
 }) => {
   const router = useRouter();
@@ -266,11 +268,20 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
 
   // 필터링 및 정렬
   const filteredTemplates = templates
-    .filter(
-      (template) =>
+    .filter((template) => {
+      // 검색어 필터
+      const matchesSearch =
         template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        template.content.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+        template.content.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // FriendTalk 타입 필터 (FT/FI/FW/FL/FC)
+      const matchesFriendtalkType =
+        !friendtalkMessageTypeFilter || // 필터 없으면 모두 표시
+        !template.metadata?.friendtalkMessageType || // 구형 템플릿 (metadata 없음) - 모든 타입에서 표시
+        template.metadata.friendtalkMessageType === friendtalkMessageTypeFilter;
+
+      return matchesSearch && matchesFriendtalkType;
+    })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
       const dateB = new Date(b.created_at).getTime();

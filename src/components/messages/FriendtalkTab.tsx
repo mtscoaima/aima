@@ -11,6 +11,7 @@ import {
   Upload,
   Save,
   X,
+  Clock,
 } from "lucide-react";
 import {
   fetchSenderProfiles,
@@ -166,6 +167,22 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     if (messageType === "FL" || messageType === "FC") {
       setAdFlag("Y");
     }
+  }, [messageType]);
+
+  // 메시지 타입 변경 시 모든 필드 초기화
+  useEffect(() => {
+    // 모든 타입 변경 시 전체 필드 초기화 (각 타입 독립적으로 관리)
+    setMessage("");
+    setHeaderText("");
+    setListItems([]);
+    setCarousels([
+      { header: "", content: "", buttons: [] },
+      { header: "", content: "", buttons: [] }
+    ]);
+    setMoreLink("");
+    setImageLink("");
+    setUploadedImages([]);
+    setButtons([]);
   }, [messageType]);
 
   // 발신 프로필 조회
@@ -984,6 +1001,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
               메시지 내용 (최대 76자, 줄바꿈 1개)
             </label>
             <textarea
+              ref={messageInputRef}
               value={message}
               onChange={(e) => {
                 // 줄바꿈 개수 체크
@@ -992,12 +1010,51 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                   setMessage(e.target.value);
                 }
               }}
-              placeholder="와이드 메시지 내용을 입력하세요"
+              placeholder="와이드 메시지 내용을 입력하세요&#10;치환문구 예시) #{이름}님 #{날짜} 방문 예약입니다."
               className="w-full p-3 border border-gray-300 rounded text-sm resize-none"
               rows={3}
               maxLength={76}
             />
-            <p className="text-xs text-gray-500">{message.length} / 76자</p>
+
+            {/* 하단 도구바 */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+              <div className="flex items-center gap-3">
+                {/* 아이콘 버튼들 */}
+                <button
+                  className="p-2 text-gray-500 hover:text-gray-700"
+                  onClick={addReplaceText}
+                  title="치환문구 추가"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+                <button
+                  className="p-2 text-gray-500 hover:text-gray-700"
+                  onClick={() => setIsSaveModalOpen(true)}
+                  title="템플릿 저장하기"
+                >
+                  <Save className="w-4 h-4" />
+                </button>
+
+                {/* 텍스트 버튼들 */}
+                <button
+                  className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+                  onClick={handleSavedContentClick}
+                >
+                  저장내용
+                </button>
+                <button
+                  className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+                  onClick={handleRecentSentClick}
+                >
+                  최근발송
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">
+                  {message.length} / 76자
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* imageLink (선택) */}
@@ -1022,7 +1079,33 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       {/* FL (와이드 아이템 리스트형) 레이아웃 */}
       {messageType === "FL" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
-          <h3 className="font-medium text-gray-900">와이드 아이템 리스트형</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">와이드 아이템 리스트형</h3>
+            <div className="flex items-center gap-2">
+              <button
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200"
+                onClick={() => setIsSaveModalOpen(true)}
+                title="템플릿 저장하기"
+              >
+                <Save className="w-3.5 h-3.5" />
+                저장
+              </button>
+              <button
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200"
+                onClick={handleSavedContentClick}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                저장내용
+              </button>
+              <button
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded border border-green-200"
+                onClick={handleRecentSentClick}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                최근발송
+              </button>
+            </div>
+          </div>
 
           {/* 헤더 (최대 20자) */}
           <div className="space-y-2">
@@ -1295,7 +1378,33 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
       {/* FC (캐러셀형) 레이아웃 */}
       {messageType === "FC" && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
-          <h3 className="font-medium text-gray-900">캐러셀형</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">캐러셀형</h3>
+            <div className="flex items-center gap-2">
+              <button
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 bg-gray-50 hover:bg-gray-100 rounded border border-gray-200"
+                onClick={() => setIsSaveModalOpen(true)}
+                title="템플릿 저장하기"
+              >
+                <Save className="w-3.5 h-3.5" />
+                저장
+              </button>
+              <button
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200"
+                onClick={handleSavedContentClick}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                저장내용
+              </button>
+              <button
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded border border-green-200"
+                onClick={handleRecentSentClick}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                최근발송
+              </button>
+            </div>
+          </div>
 
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-gray-700">
@@ -1718,7 +1827,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
         currentContent={{
-          content: message,
+          // FL/FC 타입은 message를 사용하지 않음 (빈 문자열)
+          content: (messageType === "FL" || messageType === "FC") ? "" : message,
           messageType: "FRIENDTALK",
           buttons: buttons.length > 0 ? buttons : undefined,
           imageUrl:
@@ -1739,7 +1849,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         }}
         onSaveSuccess={() => {
           setIsSaveModalOpen(false);
-          alert("템플릿이 저장되었습니다.");
+          // alert은 SimpleContentSaveModal에서 이미 표시하므로 제거
         }}
       />
 
@@ -1749,6 +1859,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         onClose={() => setIsLoadModalOpen(false)}
         initialActiveTab={loadModalActiveTab}
         messageTypeFilter="FRIENDTALK"
+        friendtalkMessageTypeFilter={messageType}
         onSelect={(content) => {
           setMessage(content.content);
           if (content.buttons) setButtons(content.buttons);
@@ -1773,10 +1884,26 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             setHeaderText(content.headerText);
           }
           if (content.listItems && Array.isArray(content.listItems)) {
-            setListItems(content.listItems);
+            // 이미지 preview를 fileId(Kakao URL)로 복원
+            const restoredItems = content.listItems.map(item => ({
+              ...item,
+              image: item.image ? {
+                ...item.image,
+                preview: item.image.fileId  // Kakao URL을 preview로 사용
+              } : undefined
+            }));
+            setListItems(restoredItems);
           }
           if (content.carousels && Array.isArray(content.carousels)) {
-            setCarousels(content.carousels);
+            // 이미지 preview를 fileId(Kakao URL)로 복원
+            const restoredCarousels = content.carousels.map(carousel => ({
+              ...carousel,
+              image: carousel.image ? {
+                ...carousel.image,
+                preview: carousel.image.fileId  // Kakao URL을 preview로 사용
+              } : undefined
+            }));
+            setCarousels(restoredCarousels);
           }
           if (content.moreLink) {
             setMoreLink(content.moreLink);

@@ -5,18 +5,13 @@ import {
   Phone,
   Users,
   HelpCircle,
-  ChevronDown,
   FileText,
   Upload,
-  Plus,
-  Download,
   X
 } from "lucide-react";
 import SmsMessageContent from "./SmsMessageContent";
 import KakaoMessageContent from "./KakaoMessageContent";
 import NaverTalkContent from "./NaverTalkContent";
-import SaveContentModal from "../modals/SaveContentModal";
-import LoadContentModal from "../modals/LoadContentModal";
 import AddressBookModal from "../modals/AddressBookModal";
 import ExcelUploadModal from "../modals/ExcelUploadModal";
 import TextUploadModal from "../modals/TextUploadModal";
@@ -42,9 +37,6 @@ const MessageSendTab = () => {
   const [isExcelUploadModalOpen, setIsExcelUploadModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isTextUploadModalOpen, setIsTextUploadModalOpen] = useState(false);
-  const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
 
   // 사용자 발신번호 및 수신번호 상태
   const [userPhoneNumber, setUserPhoneNumber] = useState<string>("");
@@ -573,41 +565,6 @@ const MessageSendTab = () => {
           )}
         </div>
 
-        {/* 저장 섹션 */}
-        <div className="bg-white border border-gray-200 rounded-lg">
-          <button
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50"
-            onClick={() => setIsSaveDropdownOpen(!isSaveDropdownOpen)}
-          >
-            <span className="text-red-500 font-medium">저장</span>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform ${
-                isSaveDropdownOpen ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-
-          {isSaveDropdownOpen && (
-            <div className="p-3">
-              <div className="flex gap-2">
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
-                  onClick={() => setIsSaveModalOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                  새로 저장
-                </button>
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-blue-500 text-blue-500 rounded text-sm hover:bg-blue-50"
-                  onClick={() => setIsLoadModalOpen(true)}
-                >
-                  <Download className="w-4 h-4" />
-                  불러오기
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* 우측 섹션 */}
@@ -674,30 +631,7 @@ const MessageSendTab = () => {
       </div>
 
       {/* 모달들 */}
-      <SaveContentModal
-        isOpen={isSaveModalOpen}
-        onClose={() => setIsSaveModalOpen(false)}
-        currentContent={{
-          subject: messageData.subject,
-          content: messageData.content,
-          isAd: messageData.isAd,
-        }}
-        onSaveSuccess={() => {
-          // 저장 성공 시 필요한 작업
-        }}
-      />
-      <LoadContentModal
-        isOpen={isLoadModalOpen}
-        onClose={() => setIsLoadModalOpen(false)}
-        onSelect={(content) => {
-          setMessageData({
-            subject: content.subject || "",
-            content: content.content,
-            isAd: content.isAd || false,
-          });
-        }}
-      />
-       <AddressBookModal
+      <AddressBookModal
         isOpen={isAddressBookModalOpen}
         onClose={() => setIsAddressBookModalOpen(false)}
         onSelect={handleAddressBookSelect}

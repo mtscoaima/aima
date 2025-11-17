@@ -25,27 +25,27 @@ const VARIABLE_CATEGORIES: VariableCategory[] = [
     title: '수신자 정보',
     icon: '📋',
     variables: [
-      { name: '이름', placeholder: '#[이름]', description: '수신자 이름' },
-      { name: '전화번호', placeholder: '#[전화번호]', description: '수신자 전화번호' },
-      { name: '그룹명', placeholder: '#[그룹명]', description: '수신자가 속한 그룹명' },
+      { name: '이름', placeholder: '#{이름}', description: '수신자 이름' },
+      { name: '전화번호', placeholder: '#{전화번호}', description: '수신자 전화번호' },
+      { name: '그룹명', placeholder: '#{그룹명}', description: '수신자가 속한 그룹명' },
     ]
   },
   {
     title: '날짜/시간',
     icon: '📅',
     variables: [
-      { name: '오늘날짜', placeholder: '#[오늘날짜]', description: 'YYYY-MM-DD 형식' },
-      { name: '현재시간', placeholder: '#[현재시간]', description: 'HH:MM 형식' },
-      { name: '요일', placeholder: '#[요일]', description: '월/화/수/목/금/토/일' },
+      { name: '오늘날짜', placeholder: '#{오늘날짜}', description: 'YYYY-MM-DD 형식' },
+      { name: '현재시간', placeholder: '#{현재시간}', description: 'HH:MM 형식' },
+      { name: '요일', placeholder: '#{요일}', description: '월/화/수/목/금/토/일' },
     ]
   },
   {
     title: '발신자 정보',
     icon: '🏢',
     variables: [
-      { name: '발신번호', placeholder: '#[발신번호]', description: '사용자 전화번호 (회신용)' },
-      { name: '회사명', placeholder: '#[회사명]', description: '사용자 회사명' },
-      { name: '담당자명', placeholder: '#[담당자명]', description: '사용자 이름' },
+      { name: '발신번호', placeholder: '#{발신번호}', description: '사용자 전화번호 (회신용)' },
+      { name: '회사명', placeholder: '#{회사명}', description: '사용자 회사명' },
+      { name: '담당자명', placeholder: '#{담당자명}', description: '사용자 이름' },
     ]
   }
 ];

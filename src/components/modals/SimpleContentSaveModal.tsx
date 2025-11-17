@@ -48,8 +48,18 @@ const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
       return;
     }
 
-    if (!currentContent.content.trim()) {
+    // FL/FC 타입은 content가 비어있어도 headerText나 listItems/carousels가 있으면 허용
+    const isFLorFC = currentContent.friendtalkMessageType === 'FL' || currentContent.friendtalkMessageType === 'FC';
+    const hasListData = currentContent.listItems && currentContent.listItems.length > 0;
+    const hasCarouselData = currentContent.carousels && currentContent.carousels.length > 0;
+
+    if (!isFLorFC && !currentContent.content.trim()) {
       alert("저장할 메시지 내용이 없습니다.");
+      return;
+    }
+
+    if (isFLorFC && !hasListData && !hasCarouselData && !currentContent.headerText?.trim()) {
+      alert("저장할 내용이 없습니다. 헤더, 아이템 또는 캐러셀을 입력하세요.");
       return;
     }
 
@@ -131,14 +141,114 @@ const SimpleContentSaveModal: React.FC<SimpleContentSaveModalProps> = ({
             />
           </div>
 
-          {/* 내용 */}
+          {/* 내용 - 타입별 미리보기 */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">내용</label>
-            <textarea
-              value={currentContent.content}
-              readOnly
-              className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 resize-none"
-            />
+
+            {/* FT/FI/FW 타입: 메시지 내용 표시 */}
+            {(!currentContent.friendtalkMessageType ||
+              currentContent.friendtalkMessageType === 'FT' ||
+              currentContent.friendtalkMessageType === 'FI' ||
+              currentContent.friendtalkMessageType === 'FW') && (
+              <textarea
+                value={currentContent.content}
+                readOnly
+                className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 resize-none mb-3"
+              />
+            )}
+
+            {/* FL 타입: 헤더 + 아이템 목록 */}
+            {currentContent.friendtalkMessageType === 'FL' && (
+              <div className="space-y-2 mb-3">
+                <div className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50">
+                  <span className="font-medium">📝 헤더:</span> {currentContent.headerText || '(없음)'}
+                </div>
+                <div className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50">
+                  <div className="font-medium mb-1">아이템 목록:</div>
+                  {currentContent.listItems && currentContent.listItems.length > 0 ? (
+                    <ul className="space-y-1 text-xs">
+                      {currentContent.listItems.map((item, idx) => (
+                        <li key={idx} className="flex items-center gap-2">
+                          <span className="font-medium">#{idx + 1}</span>
+                          <span>{item.title}</span>
+                          {item.image && <span className="text-purple-600">📷</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-500">(아이템 없음)</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* FC 타입: 캐러셀 목록 */}
+            {currentContent.friendtalkMessageType === 'FC' && (
+              <div className="space-y-2 mb-3">
+                <div className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50">
+                  <div className="font-medium mb-1">캐러셀 카드:</div>
+                  {currentContent.carousels && currentContent.carousels.length > 0 ? (
+                    <ul className="space-y-2 text-xs">
+                      {currentContent.carousels.map((carousel, idx) => (
+                        <li key={idx} className="border-l-2 border-purple-400 pl-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">카드 {idx + 1}</span>
+                            {carousel.image && <span className="text-purple-600">📷</span>}
+                          </div>
+                          <p className="text-gray-700">{carousel.content}</p>
+                          {carousel.buttons && carousel.buttons.length > 0 && (
+                            <p className="text-gray-500 mt-1">버튼 {carousel.buttons.length}개</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-500">(캐러셀 없음)</p>
+                  )}
+                </div>
+                {currentContent.moreLink && (
+                  <div className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 truncate">
+                    <span className="font-medium">➕ 더보기:</span> {currentContent.moreLink}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 이미지 정보 (FT/FI/FW 공통) */}
+            {currentContent.imageUrl && (
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+                <span className="text-purple-600">📷</span>
+                <span className="text-gray-700">이미지 1개 포함</span>
+              </div>
+            )}
+
+            {/* 이미지 링크 (FW 전용) */}
+            {currentContent.friendtalkMessageType === 'FW' && currentContent.imageLink && (
+              <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm mb-2 truncate">
+                <span className="font-medium text-blue-700">🔗 클릭 시 이동:</span> {currentContent.imageLink}
+              </div>
+            )}
+
+            {/* 버튼 목록 (모든 타입 공통) */}
+            {currentContent.buttons && currentContent.buttons.length > 0 && (
+              <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm">
+                <div className="font-medium text-green-700 mb-1">버튼 ({currentContent.buttons.length}개)</div>
+                <ul className="space-y-1 text-xs">
+                  {currentContent.buttons.map((btn, idx) => {
+                    const typeLabel = btn.type === 'WL' ? '웹링크' :
+                                     btn.type === 'AL' ? '앱링크' :
+                                     btn.type === 'BK' ? '봇키워드' :
+                                     btn.type === 'MD' ? '메시지전달' : btn.type;
+                    return (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span className="font-medium">[{typeLabel}]</span>
+                        <span>{btn.name}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
 
           <button
