@@ -438,17 +438,17 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
           <input
             type="checkbox"
             id="smsBackupNaver"
-            className="rounded"
-            checked={smsBackup}
-            onChange={(e) => setSmsBackup(e.target.checked)}
+            className="rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            checked={false}
+            disabled={true}
           />
-          <label htmlFor="smsBackupNaver" className="text-sm text-gray-700">
-            발송실패 시 문자대체발송 여부
+          <label htmlFor="smsBackupNaver" className="text-sm text-gray-500">
+            발송실패 시 문자대체발송 여부 (현재 미지원)
           </label>
           <HelpCircle className="w-4 h-4 text-gray-400" />
         </div>
         <p className="text-xs text-gray-500 mt-2 ml-6">
-          * 현재 네이버 톡톡은 SMS 백업 기능을 지원하지 않습니다.
+          * 네이버 톡톡은 현재 SMS 문자대체발송을 지원하지 않습니다.
         </p>
       </div>
     </>

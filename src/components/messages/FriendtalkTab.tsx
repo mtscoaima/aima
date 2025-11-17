@@ -12,6 +12,7 @@ import {
   Save,
   X,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   fetchSenderProfiles,
@@ -25,6 +26,7 @@ import {
 import SimpleContentSaveModal from "@/components/modals/SimpleContentSaveModal";
 import LoadContentModal from "@/components/modals/LoadContentModal";
 import FriendtalkButtonModal from "@/components/modals/FriendtalkButtonModal";
+import VariableSelectModal from "../modals/VariableSelectModal";
 
 interface Recipient {
   phone_number: string;
@@ -270,6 +272,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     "saved" | "recent"
   >("saved");
   const [isButtonModalOpen, setIsButtonModalOpen] = useState(false);
+  const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
 
   // FW/FL/FC 전용 state
   const [headerText, setHeaderText] = useState(""); // FL용 헤더
@@ -435,22 +438,21 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     }
   };
 
-  // 치환문구 추가
-  const addReplaceText = () => {
+  // 변수 선택 핸들러
+  const handleVariableSelect = (variable: string) => {
     const textarea = messageInputRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const newText =
-      message.substring(0, start) + "#{변수명}" + message.substring(end);
+    const newText = message.substring(0, start) + variable + message.substring(end);
+
     setMessage(newText);
 
-    // 커서 위치 조정
+    // 커서 위치 복원
     setTimeout(() => {
-      textarea.selectionStart = start + 2;
-      textarea.selectionEnd = start + 6;
       textarea.focus();
+      textarea.setSelectionRange(start + variable.length, start + variable.length);
     }, 0);
   };
 
@@ -1089,13 +1091,19 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           />
           <span className="text-sm font-medium text-gray-700">
             광고성 메시지 (08:00~20:00만 발송 가능)
-            {(messageType === "FL" || messageType === "FC") && (
-              <span className="ml-2 text-xs text-blue-600 font-normal">
-                * FL/FC 타입은 광고 발송만 가능합니다
-              </span>
-            )}
           </span>
         </label>
+
+        {/* FL/FC 타입 전용 경고 박스 */}
+        {(messageType === "FL" || messageType === "FC") && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-yellow-800">
+              <strong>FL/FC 타입은 광고 발송만 가능합니다.</strong>
+              <p className="text-xs mt-1">해당 타입은 SMS 전환 발송도 지원하지 않습니다.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 메시지 내용 - FT/FI 타입 */}
@@ -1120,7 +1128,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                 {/* 아이콘 버튼들 */}
                 <button
                   className="p-2 text-gray-500 hover:text-gray-700"
-                  onClick={addReplaceText}
+                  onClick={() => setIsVariableModalOpen(true)}
                   title="치환문구 추가"
                 >
                   <FileText className="w-4 h-4" />
@@ -1250,7 +1258,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
                 {/* 아이콘 버튼들 */}
                 <button
                   className="p-2 text-gray-500 hover:text-gray-700"
-                  onClick={addReplaceText}
+                  onClick={() => setIsVariableModalOpen(true)}
                   title="치환문구 추가"
                 >
                   <FileText className="w-4 h-4" />
@@ -1999,12 +2007,20 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
             type="checkbox"
             checked={enableSmsBackup}
             onChange={(e) => setEnableSmsBackup(e.target.checked)}
-            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            disabled={messageType === "FL" || messageType === "FC"}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <span className="text-sm font-medium text-gray-700">
             전환 전송 사용 (친구톡 실패 시 SMS로 자동 전환)
           </span>
         </label>
+
+        {/* FL/FC 타입일 때 안내 메시지 */}
+        {(messageType === "FL" || messageType === "FC") && (
+          <p className="text-xs text-gray-500 ml-6">
+            * FL/FC 타입은 광고 전용으로 SMS 전환 발송을 지원하지 않습니다.
+          </p>
+        )}
 
         {enableSmsBackup && (
           <div className="ml-6 space-y-2">
@@ -2137,6 +2153,13 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
           );
           setIsButtonModalOpen(false);
         }}
+      />
+
+      {/* 변수 선택 모달 */}
+      <VariableSelectModal
+        isOpen={isVariableModalOpen}
+        onClose={() => setIsVariableModalOpen(false)}
+        onSelect={handleVariableSelect}
       />
     </div>
   );

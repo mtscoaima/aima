@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import AlimtalkTab, { type AlimtalkData } from "./AlimtalkTab";
 import FriendtalkTab, { type FriendtalkData } from "./FriendtalkTab";
 import BrandTab, { type BrandData } from "./BrandTab";
-import NaverTalkContent, { type NaverData } from "./NaverTalkContent";
 
 interface Recipient {
   phone_number: string;
@@ -17,7 +16,6 @@ interface KakaoMessageContentProps {
   onAlimtalkDataChange?: (data: AlimtalkData) => void;
   onFriendtalkDataChange?: (data: FriendtalkData) => void;
   onBrandDataChange?: (data: BrandData) => void;
-  onNaverDataChange?: (data: NaverData) => void;
   onKakaoTabChange?: (tab: string) => void;
 }
 
@@ -27,7 +25,6 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
   onAlimtalkDataChange,
   onFriendtalkDataChange,
   onBrandDataChange,
-  onNaverDataChange,
   onKakaoTabChange,
 }) => {
   const [activeKakaoTab, setActiveKakaoTab] = useState("alimtalk");
@@ -76,17 +73,6 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
         >
           브랜드 메시지
         </button>
-        <button
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${
-            activeKakaoTab === "naver"
-              ? "border border-[#00a732]"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-          style={activeKakaoTab === "naver" ? { backgroundColor: "#00a73220", color: "#00a732" } : {}}
-          onClick={() => setActiveKakaoTab("naver")}
-        >
-          네이버 톡톡
-        </button>
       </div>
 
       {/* 알림톡 탭 내용 */}
@@ -115,16 +101,6 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
           onDataChange={onBrandDataChange}
         />
       )}
-
-      {/* 네이버 톡톡 탭 내용 */}
-      {activeKakaoTab === "naver" && (
-        <NaverTalkContent
-          recipients={recipients}
-          selectedSenderNumber={selectedSenderNumber}
-          onDataChange={onNaverDataChange}
-        />
-      )}
-
     </>
   );
 };

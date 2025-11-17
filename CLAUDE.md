@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Version**: 2.0 (Updated 2025-11-14)
+**Version**: 2.1 (Updated 2025-11-17)
 **Related Docs**: [MTS_API_통합_테스트_가이드.md](MTS_API_통합_테스트_가이드.md) | [README.md](README.md)
 
 ## Project Overview
@@ -730,6 +730,11 @@ await sendNaverTalk({ recipients, templateCode, templateParams });
   - ✅ Template save/load includes: friendtalkMessageType, headerText, listItems (with images/URLs), carousels (with header/images/buttons), moreLink, imageLink
   - ✅ Template data stored in `sms_message_templates.metadata` JSONB field for FW/FL/FC types
   - ✅ **FL/FC ER99 Error Resolution (2025-11-14)**: message 필드 및 tran_* 필드 조건부 처리로 실제 발송 성공
+  - ✅ **2025-11-17**: Variable insertion UI integration completed
+    - FT/FI/FW types now use VariableSelectModal (same UX as SMS)
+    - 9 predefined variables available across 3 categories
+    - Replaced manual `#{변수명}` text insertion with modal-based selection
+    - Improved discoverability and reduced input errors
 - **Brand Messages**: Uses Variable Separation Method v1.1 (separate `message_variable`, `button_variable`, `image_variable`, `video_variable`, `commerce_variable`, etc.)
   - ✅ **2025-11-10 업데이트**: 변수분리방식 v1.1 전환 완료, 이전 1030 에러 완전 해결
   - ✅ **실제 발송 테스트 완료**: TEXT, IMAGE, WIDE 타입 + 버튼(최대 5개) 조합 모두 성공
@@ -1112,6 +1117,108 @@ if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !==
 
 ---
 
+## Variable Insertion UI Pattern
+
+### Overview
+The application provides a consistent variable insertion experience across message types that support client-side variable substitution.
+
+### Pattern: VariableSelectModal
+
+**Used in**: SMS/LMS/MMS, FriendTalk (FT/FI/FW types)
+
+**Available Variables** (9 total, 3 categories):
+
+**📌 수신자 정보**
+- `#{이름}` - Recipient name
+- `#{전화번호}` - Recipient phone number
+- `#{그룹명}` - Recipient group name
+
+**📅 날짜/시간**
+- `#{오늘날짜}` - Today's date
+- `#{현재시간}` - Current time
+- `#{요일}` - Day of week
+
+**👤 발신자 정보**
+- `#{발신번호}` - Sender phone number
+- `#{회사명}` - Company name
+- `#{담당자명}` - Contact person name
+
+### Implementation Pattern
+
+**Files involved**:
+- `src/components/modals/VariableSelectModal.tsx` - Reusable modal component
+- `src/components/messages/SmsMessageContent.tsx` - SMS implementation (reference)
+- `src/components/messages/FriendtalkTab.tsx` - FriendTalk implementation (Lines 71, 439-455, 1123, 1253)
+
+**Implementation steps**:
+
+1. **Import the modal component**:
+```typescript
+import VariableSelectModal from "../modals/VariableSelectModal";
+```
+
+2. **Add state for modal visibility**:
+```typescript
+const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
+```
+
+3. **Create variable selection handler**:
+```typescript
+const handleVariableSelect = (variable: string) => {
+  const textarea = messageInputRef.current;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const newText = message.substring(0, start) + variable + message.substring(end);
+
+  setMessage(newText);
+
+  // Restore focus and cursor position
+  setTimeout(() => {
+    textarea.focus();
+    textarea.setSelectionRange(start + variable.length, start + variable.length);
+  }, 0);
+};
+```
+
+4. **Update button to open modal**:
+```typescript
+<button
+  className="p-2 text-gray-500 hover:text-gray-700"
+  onClick={() => setIsVariableModalOpen(true)}
+  title="치환문구 추가"
+>
+  <FileText className="w-4 h-4" />
+</button>
+```
+
+5. **Add modal component**:
+```typescript
+<VariableSelectModal
+  isOpen={isVariableModalOpen}
+  onClose={() => setIsVariableModalOpen(false)}
+  onSelect={handleVariableSelect}
+/>
+```
+
+### Benefits
+
+- **Consistent UX**: Same variable selection across SMS and FriendTalk
+- **Better Discoverability**: Users can see all available variables
+- **Reduced Errors**: No manual typing of variable names
+- **Faster Input**: Click-to-insert is faster than typing
+
+### Alternative: Template-based Variable Systems
+
+For **server-side variable substitution** (AlimTalk, Naver TalkTalk):
+- No UI for variable insertion
+- Variables defined in templates
+- MTS API handles substitution
+- Use `TemplateVariableInputModal` for per-recipient variable values
+
+---
+
 ## Documentation Cross-References
 
 ### Testing Documentation
@@ -1215,6 +1322,20 @@ if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !==
 
 ## CLAUDE.md Version History
 
+### Version 2.1 (2025-11-17)
+**Enhancements**:
+- ✅ Added Variable Insertion UI Pattern section with complete implementation guide
+- ✅ Documented VariableSelectModal integration in FriendTalk (FT/FI/FW types)
+- ✅ Updated MTS API Implementation Status (FriendTalk variable UI completed)
+- ✅ Added predefined variables list (9 variables across 3 categories)
+- ✅ Included code examples for variable selection handler pattern
+
+**Content Stats**:
+- ~1,320 lines (up from ~900)
+- 12 major sections (added Variable Insertion UI Pattern)
+- 9 predefined variables documented
+- 5-step implementation guide for VariableSelectModal
+
 ### Version 2.0 (2025-11-14)
 **Major Enhancements**:
 - ✅ Added Quick Start section with first-time setup checklist
@@ -1248,6 +1369,6 @@ if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !==
 
 ---
 
-**Last Updated**: 2025-11-14
+**Last Updated**: 2025-11-17
 **Maintained By**: Development Team
 **Review Frequency**: Update after major features or breaking changes
