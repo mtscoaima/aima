@@ -2912,3 +2912,277 @@ export async function uploadNaverImage(
   }
 }
 
+// ============================================================================
+// 카카오 발신 프로필 그룹 관리 API (Section 9)
+// ============================================================================
+
+/**
+ * 9.1 그룹에 포함된 발신 프로필 조회
+ * POST /mts/api/group/sender
+ *
+ * @param groupKey - MTS에서 발급받은 그룹 키
+ * @returns 그룹에 속한 발신 프로필 목록
+ */
+export async function fetchGroupProfiles(
+  groupKey: string
+): Promise<MtsApiResult & { profiles?: Array<Record<string, unknown>> }> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    if (!groupKey || !groupKey.trim()) {
+      return {
+        success: false,
+        error: '그룹 키가 필요합니다.',
+        errorCode: 'INVALID_PARAMETER',
+      };
+    }
+
+    // 요청 본문
+    const requestBody = {
+      authCode: MTS_AUTH_CODE,
+      groupKey: groupKey.trim(),
+    };
+
+    console.log('[MTS API] 그룹 프로필 조회 요청:', { groupKey });
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/group/sender`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+    console.log('[MTS API] 그룹 프로필 조회 응답:', result);
+
+    // 성공 확인 (code: "200" or "0000" or "1000")
+    if (result.code === '200' || result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        profiles: result.senders || result.data || [],
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '그룹 프로필 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (그룹 프로필 조회):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 9.2 그룹에 발신 프로필 추가
+ * POST /mts/api/group/sender/add
+ *
+ * @param groupKey - MTS에서 발급받은 그룹 키
+ * @param senderKey - 추가할 발신 프로필 키
+ * @returns 추가 성공 여부
+ */
+export async function addProfileToGroup(
+  groupKey: string,
+  senderKey: string
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    if (!groupKey || !groupKey.trim()) {
+      return {
+        success: false,
+        error: '그룹 키가 필요합니다.',
+        errorCode: 'INVALID_PARAMETER',
+      };
+    }
+
+    if (!senderKey || !senderKey.trim()) {
+      return {
+        success: false,
+        error: '발신 프로필 키가 필요합니다.',
+        errorCode: 'INVALID_PARAMETER',
+      };
+    }
+
+    // 요청 본문
+    const requestBody = {
+      authCode: MTS_AUTH_CODE,
+      groupKey: groupKey.trim(),
+      senderKey: senderKey.trim(),
+    };
+
+    console.log('[MTS API] 그룹에 프로필 추가 요청:', { groupKey, senderKey });
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/group/sender/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+    console.log('[MTS API] 그룹에 프로필 추가 응답:', result);
+
+    // 성공 확인 (code: "200")
+    if (result.code === '200' || result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '그룹에 프로필 추가 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (그룹에 프로필 추가):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 9.3 그룹에서 발신 프로필 삭제
+ * POST /mts/api/group/sender/remove
+ *
+ * @param groupKey - MTS에서 발급받은 그룹 키
+ * @param senderKey - 삭제할 발신 프로필 키
+ * @returns 삭제 성공 여부
+ */
+export async function removeProfileFromGroup(
+  groupKey: string,
+  senderKey: string
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    if (!groupKey || !groupKey.trim()) {
+      return {
+        success: false,
+        error: '그룹 키가 필요합니다.',
+        errorCode: 'INVALID_PARAMETER',
+      };
+    }
+
+    if (!senderKey || !senderKey.trim()) {
+      return {
+        success: false,
+        error: '발신 프로필 키가 필요합니다.',
+        errorCode: 'INVALID_PARAMETER',
+      };
+    }
+
+    // 요청 본문
+    const requestBody = {
+      authCode: MTS_AUTH_CODE,
+      groupKey: groupKey.trim(),
+      senderKey: senderKey.trim(),
+    };
+
+    console.log('[MTS API] 그룹에서 프로필 삭제 요청:', { groupKey, senderKey });
+
+    // API 호출
+    const response = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/group/sender/remove`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+    console.log('[MTS API] 그룹에서 프로필 삭제 응답:', result);
+
+    // 성공 확인 (code: "200")
+    if (result.code === '200' || result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '그룹에서 프로필 삭제 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (그룹에서 프로필 삭제):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+
