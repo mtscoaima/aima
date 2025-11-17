@@ -151,3 +151,87 @@ async function syncTemplatesInBackground(
     console.error('[백그라운드 동기화] 전체 실패:', error);
   }
 }
+
+/**
+ * DELETE /api/messages/kakao/brand/templates
+ * 카카오 브랜드 메시지 템플릿 삭제
+ *
+ * 쿼리 파라미터:
+ * - id: 템플릿 ID (필수)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    // JWT 인증 확인
+    const authResult = validateAuthWithSuccess(request);
+    if (!authResult.isValid || !authResult.userInfo) {
+      return authResult.errorResponse;
+    }
+
+    const userId = authResult.userInfo.userId;
+
+    // URL 파라미터에서 id 추출
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id || !id.trim()) {
+      return NextResponse.json(
+        { error: '템플릿 ID가 필요합니다' },
+        { status: 400 }
+      );
+    }
+
+    // Supabase 클라이언트 생성
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 템플릿 존재 여부 및 권한 확인
+    const { data: template, error: fetchError } = await supabase
+      .from('kakao_brand_templates')
+      .select('id, user_id')
+      .eq('id', id.trim())
+      .single();
+
+    if (fetchError || !template) {
+      return NextResponse.json(
+        { error: '템플릿을 찾을 수 없습니다' },
+        { status: 404 }
+      );
+    }
+
+    // 권한 체크 (본인 템플릿만 삭제 가능)
+    if (template.user_id !== userId) {
+      return NextResponse.json(
+        { error: '템플릿을 삭제할 권한이 없습니다' },
+        { status: 403 }
+      );
+    }
+
+    // 템플릿 삭제
+    const { error: deleteError } = await supabase
+      .from('kakao_brand_templates')
+      .delete()
+      .eq('id', id.trim())
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      console.error('브랜드 템플릿 삭제 오류:', deleteError);
+      return NextResponse.json(
+        { error: '템플릿 삭제에 실패했습니다' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: '템플릿이 삭제되었습니다',
+    });
+  } catch (error) {
+    console.error('브랜드 템플릿 삭제 API 오류:', error);
+    return NextResponse.json(
+      {
+        error: '템플릿 삭제 중 오류가 발생했습니다',
+        details: error instanceof Error ? error.message : '알 수 없는 오류',
+      },
+      { status: 500 }
+    );
+  }
+}

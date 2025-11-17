@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Info, RefreshCw, Plus } from "lucide-react";
+import { Info, RefreshCw, Plus, Trash2 } from "lucide-react";
 import {
   fetchSenderProfiles,
   fetchBrandTemplates,
@@ -47,6 +47,7 @@ const KakaoBrandTab = () => {
   // 로딩 상태
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
 
   // 기타 상태
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,6 +108,52 @@ const KakaoBrandTab = () => {
   // 템플릿 선택 핸들러
   const handleTemplateSelect = (template: BrandTemplate) => {
     setSelectedTemplate(template);
+  };
+
+  // 템플릿 삭제 핸들러
+  const handleDeleteTemplate = async (template: BrandTemplate, event: React.MouseEvent) => {
+    event.stopPropagation(); // 카드 클릭 이벤트 방지
+
+    const confirmed = window.confirm(
+      `"${template.template_name}" 템플릿을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingTemplateId(template.id);
+    setErrorMessage("");
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(
+        `/api/messages/kakao/brand/templates?id=${template.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "템플릿 삭제 실패");
+      }
+
+      // 삭제 성공 시 템플릿 목록 새로고침
+      if (selectedTemplate?.id === template.id) {
+        setSelectedTemplate(null);
+      }
+      if (selectedProfile) {
+        await loadBrandTemplates(selectedProfile);
+      }
+    } catch (error) {
+      console.error("브랜드 템플릿 삭제 실패:", error);
+      setErrorMessage(error instanceof Error ? error.message : "템플릿 삭제 실패");
+    } finally {
+      setDeletingTemplateId(null);
+    }
   };
 
   // 검색 필터링된 템플릿 목록
@@ -240,13 +287,23 @@ const KakaoBrandTab = () => {
                     }`}
                   >
                     <div className="flex items-start justify-between mb-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-1">
                         <span className="text-lg">{getTemplateTypeIcon(template.message_type)}</span>
                         <span className="font-medium text-sm">{template.template_name}</span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        {getTemplateStatusLabel(template.status)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          {getTemplateStatusLabel(template.status)}
+                        </span>
+                        <button
+                          onClick={(e) => handleDeleteTemplate(template, e)}
+                          disabled={deletingTemplateId === template.id}
+                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="템플릿 삭제"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                     <div className="text-xs text-gray-500 truncate">
                       코드: {template.template_code}

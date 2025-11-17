@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Info, RefreshCw, Plus } from "lucide-react";
+import { Info, RefreshCw, Plus, Trash2 } from "lucide-react";
 import {
   fetchSenderProfiles,
   fetchAlimtalkTemplates,
@@ -50,6 +50,7 @@ const KakaoAlimtalkTab = () => {
   // 로딩 상태
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 기타 상태
   const [errorMessage, setErrorMessage] = useState("");
@@ -109,6 +110,50 @@ const KakaoAlimtalkTab = () => {
   // 템플릿 선택 핸들러
   const handleTemplateSelect = (template: AlimtalkTemplate) => {
     setSelectedTemplate(template);
+  };
+
+  // 템플릿 삭제 핸들러
+  const handleDeleteTemplate = async () => {
+    if (!selectedTemplate) return;
+
+    const confirmed = window.confirm(
+      `"${selectedTemplate.template_name}" 템플릿을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    setErrorMessage("");
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch(
+        `/api/messages/kakao/alimtalk/templates?id=${selectedTemplate.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "템플릿 삭제 실패");
+      }
+
+      // 삭제 성공 시 템플릿 목록 새로고침
+      setSelectedTemplate(null);
+      if (selectedProfile) {
+        await loadTemplates(selectedProfile);
+      }
+    } catch (error) {
+      console.error("템플릿 삭제 실패:", error);
+      setErrorMessage(error instanceof Error ? error.message : "템플릿 삭제 실패");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -188,6 +233,15 @@ const KakaoAlimtalkTab = () => {
                     >
                       <RefreshCw className={`w-4 h-4 ${isLoadingTemplates ? 'animate-spin' : ''}`} />
                       새로고침
+                    </button>
+                    <button
+                      onClick={handleDeleteTemplate}
+                      disabled={!selectedTemplate || isDeleting}
+                      className="flex items-center gap-1 px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="선택한 템플릿 삭제"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      삭제
                     </button>
                     <button
                       onClick={() => setIsTemplateModalOpen(true)}

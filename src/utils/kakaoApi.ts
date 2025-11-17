@@ -101,6 +101,7 @@ export interface FriendtalkSendRequest {
 
 // 브랜드 템플릿 타입
 export interface BrandTemplate {
+  id: string;  // 데이터베이스 UUID (삭제 시 필요)
   template_code: string;
   template_name: string;
   content: string;
@@ -366,6 +367,7 @@ export async function fetchBrandTemplates(senderKey: string, forceSync = false):
     // DB에서 조회한 템플릿 데이터를 BrandTemplate 형식으로 변환
     if (result.success && result.templates) {
       return result.templates.map((template: {
+        id: string;  // UUID 추가
         template_code: string;
         template_name: string;
         content: string;
@@ -394,6 +396,7 @@ export async function fetchBrandTemplates(senderKey: string, forceSync = false):
           description?: string;
         }>;
       }) => ({
+        id: template.id,  // UUID 매핑 추가
         template_code: template.template_code,
         template_name: template.template_name,
         content: template.content,

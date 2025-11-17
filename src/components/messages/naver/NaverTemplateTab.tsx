@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ChevronDown, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, FileText, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import NaverTemplateCreateModal from "./NaverTemplateCreateModal";
 
 interface NaverTemplate {
@@ -28,6 +28,7 @@ const NaverTemplateTab = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [templates, setTemplates] = useState<NaverTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<number | null>(null);
 
   // 템플릿 목록 조회
   useEffect(() => {
@@ -57,6 +58,46 @@ const NaverTemplateTab = () => {
 
   const handleSuccess = () => {
     fetchTemplates(); // 목록 새로고침
+  };
+
+  // 템플릿 삭제 핸들러
+  const handleDeleteTemplate = async (template: NaverTemplate) => {
+    const confirmed = window.confirm(
+      `"${template.code}" 템플릿을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingTemplateId(template.id);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/messages/naver/templates/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          partnerKey: template.partner_key,
+          templateCode: template.code,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "템플릿 삭제 실패");
+      }
+
+      // 삭제 성공 시 템플릿 목록 새로고침
+      await fetchTemplates();
+    } catch (error) {
+      console.error("네이버 템플릿 삭제 실패:", error);
+      alert(error instanceof Error ? error.message : "템플릿 삭제 실패");
+    } finally {
+      setDeletingTemplateId(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -182,7 +223,7 @@ const NaverTemplateTab = () => {
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {/* 테이블 헤더 */}
         <div className="bg-gray-50 border-b border-gray-200">
-          <div className="grid grid-cols-7 gap-4 p-4 text-sm font-medium text-gray-700">
+          <div className="grid grid-cols-8 gap-4 p-4 text-sm font-medium text-gray-700">
             <div>회원 ID</div>
             <div>템플릿 코드</div>
             <div>내용</div>
@@ -190,6 +231,7 @@ const NaverTemplateTab = () => {
             <div>카테고리</div>
             <div>상태</div>
             <div>생성일</div>
+            <div className="text-center">작업</div>
           </div>
         </div>
 
@@ -209,7 +251,7 @@ const NaverTemplateTab = () => {
           templates.map((template) => (
             <div
               key={template.id}
-              className="grid grid-cols-7 gap-4 p-4 border-b border-gray-200 hover:bg-gray-50"
+              className="grid grid-cols-8 gap-4 p-4 border-b border-gray-200 hover:bg-gray-50"
             >
               <div className="text-sm font-mono text-gray-600">
                 {template.partner_key}
@@ -231,6 +273,16 @@ const NaverTemplateTab = () => {
               </div>
               <div className="text-sm text-gray-600">
                 {new Date(template.created_at).toLocaleDateString("ko-KR")}
+              </div>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleDeleteTemplate(template)}
+                  disabled={deletingTemplateId === template.id}
+                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="템플릿 삭제"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))

@@ -233,7 +233,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
     return `${year}-${month}-${day} ${hours}:${minutes}`;
   };
 
-  const handleDeleteTemplate = async (templateId: number) => {
+  const handleDeleteTemplate = async (templateId: number | string) => {
     if (!confirm("이 템플릿을 삭제하시겠습니까?")) {
       return;
     }
@@ -244,12 +244,51 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         throw new Error("로그인이 필요합니다");
       }
 
-      const response = await fetch(`/api/sms-templates?id=${templateId}`, {
+      // 메시지 타입별 API 엔드포인트 매핑
+      const messageType = messageTypeFilter || 'SMS';
+      let endpoint = '';
+
+      switch (messageType) {
+        case 'ALIMTALK':
+          endpoint = `/api/messages/kakao/alimtalk/templates?id=${templateId}`;
+          break;
+        case 'BRAND':
+          endpoint = `/api/messages/kakao/brand/templates?id=${templateId}`;
+          break;
+        case 'NAVER':
+          // 네이버는 body로 전달 (DELETE with body)
+          endpoint = `/api/messages/naver/templates/delete`;
+          break;
+        case 'SMS':
+        case 'FRIENDTALK':
+        default:
+          endpoint = `/api/sms-templates?id=${templateId}`;
+          break;
+      }
+
+      const requestOptions: RequestInit = {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      });
+      };
+
+      // 네이버 톡톡은 body에 데이터 전달
+      if (messageType === 'NAVER') {
+        // 템플릿에서 partnerKey와 code 추출 필요
+        const template = templates.find(t => t.id === templateId);
+        if (!template || !template.metadata) {
+          throw new Error("템플릿 정보를 찾을 수 없습니다");
+        }
+
+        requestOptions.body = JSON.stringify({
+          partnerKey: template.metadata.partnerKey,
+          templateCode: template.metadata.code || template.name,
+        });
+      }
+
+      const response = await fetch(endpoint, requestOptions);
 
       if (!response.ok) {
         const data = await response.json();
