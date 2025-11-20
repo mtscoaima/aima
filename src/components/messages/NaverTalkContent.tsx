@@ -3,12 +3,9 @@
 import React, { useState, useEffect } from "react";
 import {
   Info,
-  HelpCircle,
   ChevronDown,
-  Send,
-  Settings
+  RefreshCw
 } from "lucide-react";
-import TemplateVariableInputModal from "../modals/TemplateVariableInputModal";
 
 interface Recipient {
   phone_number: string;
@@ -22,10 +19,7 @@ export interface NaverData {
   selectedTemplate: NaverTalkTemplate | null;
   templateContent: string;
   productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO';
-  smsBackup: boolean;
-  templateVariables: string[];
-  commonVariables: Record<string, string>;
-  recipientVariables: Record<string, Record<string, string>>;
+  buttonUrls: Record<string, { mobileUrl: string; pcUrl?: string }>; // buttonCode를 key로 사용
 }
 
 interface NaverTalkContentProps {
@@ -35,36 +29,72 @@ interface NaverTalkContentProps {
 }
 
 interface NaverTalkTemplate {
+  id: number;
+  partner_key: string;
   code: string;
   name: string;
   text: string;
   categoryCode: string;
+  product_code: string;
+  status: string;
   buttons?: Array<{
     type: string;
-    name: string;
+    buttonCode: string;
+    buttonName: string;
     url?: string;
     mobileUrl?: string;
   }>;
 }
 
+interface NaverAccount {
+  id: number;
+  partner_key: string;
+  talk_name: string | null;
+  created_at: string;
+}
+
 const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataChange }) => {
+  // 계정 관련 상태
+  const [accounts, setAccounts] = useState<NaverAccount[]>([]);
   const [navertalkId, setNavertalkId] = useState("");
+
+  // 템플릿 관련 상태
   const [templates, setTemplates] = useState<NaverTalkTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<NaverTalkTemplate | null>(null);
   const [templateContent, setTemplateContent] = useState("");
   const [productCode, setProductCode] = useState<'INFORMATION' | 'BENEFIT' | 'CARDINFO'>('INFORMATION');
-  const [smsBackup, setSmsBackup] = useState(false);
+  const [buttonUrls, setButtonUrls] = useState<Record<string, { mobileUrl: string; pcUrl?: string }>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // 템플릿 변수 관련 상태
-  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
-  const [commonVariables, setCommonVariables] = useState<Record<string, string>>({});
-  const [showVariableModal, setShowVariableModal] = useState(false);
-  const [recipientVariables, setRecipientVariables] = useState<Record<string, Record<string, string>>>({});
+  // 계정 목록 조회
+  const loadAccounts = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('/api/naver/accounts', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-  // 템플릿 목록 로드
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        const accountList = result.data || [];
+        setAccounts(accountList);
+
+        // 첫 번째 계정 자동 선택
+        if (accountList.length > 0 && accountList[0].partner_key) {
+          setNavertalkId(accountList[0].partner_key);
+        }
+      }
+    } catch (error) {
+      console.error('계정 조회 실패:', error);
+    }
+  };
+
+  // 템플릿 목록 로드 (DB에서 조회)
   const loadTemplates = async (navertalkIdValue: string) => {
     if (!navertalkIdValue) return;
 
@@ -72,10 +102,12 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
     setError(null);
 
     try {
-      const response = await fetch(`/api/naver/templates?navertalkId=${navertalkIdValue}&page=1&count=100`, {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('/api/naver/templates/list', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -85,11 +117,12 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
         throw new Error(result.error || '템플릿 목록 조회 실패');
       }
 
-      if (result.data?.template_list) {
-        setTemplates(result.data.template_list);
-      } else {
-        setTemplates([]);
-      }
+      // DB에서 조회한 템플릿을 partner_key로 필터링
+      const filteredTemplates = (result.data || []).filter(
+        (t: NaverTalkTemplate) => t.partner_key === navertalkIdValue
+      );
+      setTemplates(filteredTemplates);
+
     } catch (err) {
       console.error('템플릿 조회 오류:', err);
       setError(err instanceof Error ? err.message : '템플릿 조회 중 오류가 발생했습니다.');
@@ -97,6 +130,11 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
       setLoading(false);
     }
   };
+
+  // 컴포넌트 마운트 시 계정 목록 로드
+  useEffect(() => {
+    loadAccounts();
+  }, []);
 
   // 네이버톡 ID 변경 시 템플릿 목록 로드
   useEffect(() => {
@@ -113,68 +151,41 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
         selectedTemplate,
         templateContent,
         productCode,
-        smsBackup,
-        templateVariables,
-        commonVariables,
-        recipientVariables,
+        buttonUrls,
       });
     }
-  }, [navertalkId, selectedTemplate, templateContent, productCode, smsBackup, templateVariables, commonVariables, recipientVariables, onDataChange]);
+  }, [navertalkId, selectedTemplate, templateContent, productCode, buttonUrls, onDataChange]);
 
-  // 템플릿에서 변수 추출 (#{변수명} 패턴)
-  const extractVariables = (text: string): string[] => {
-    const regex = /#\{([^}]+)\}/g;
-    const variables: string[] = [];
-    let match;
-
-    while ((match = regex.exec(text)) !== null) {
-      if (!variables.includes(match[1])) {
-        variables.push(match[1]);
-      }
-    }
-
-    return variables;
-  };
-
-  // 템플릿 선택 시 내용 업데이트 및 변수 추출
+  // 템플릿 선택 시 내용 업데이트
   const handleTemplateSelect = (templateCode: string) => {
     const template = templates.find(t => t.code === templateCode);
     if (template) {
       setSelectedTemplate(template);
       setTemplateContent(template.text);
 
-      // 템플릿에서 변수 추출
-      const variables = extractVariables(template.text);
-      setTemplateVariables(variables);
-
-      // 공통 변수 초기화
-      const initialVariables: Record<string, string> = {};
-      variables.forEach(varName => {
-        initialVariables[varName] = '';
-      });
-      setCommonVariables(initialVariables);
+      // 버튼 URL 초기화
+      const initialUrls: Record<string, { mobileUrl: string; pcUrl?: string }> = {};
+      if (template.buttons) {
+        template.buttons.forEach((btn) => {
+          initialUrls[btn.buttonCode] = {
+            mobileUrl: btn.mobileUrl || btn.url || '',
+            pcUrl: btn.url || ''
+          };
+        });
+      }
+      setButtonUrls(initialUrls);
     } else {
       setSelectedTemplate(null);
       setTemplateContent("");
-      setTemplateVariables([]);
-      setCommonVariables({});
+      setButtonUrls({});
     }
-  };
-
-  // 모달에서 변수 저장
-  const handleSaveVariables = (
-    commonVars: Record<string, string>,
-    recipientVars: Record<string, Record<string, string>>
-  ) => {
-    setCommonVariables(commonVars);
-    setRecipientVariables(recipientVars);
   };
 
   // 네이버 톡톡 발송
   const handleSend = async () => {
     // 유효성 검사
     if (!navertalkId) {
-      setError('네이버톡 ID를 입력해주세요.');
+      setError('네이버톡 계정을 선택해주세요.');
       return;
     }
 
@@ -193,11 +204,17 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
       return;
     }
 
-    // 변수 검증 (변수가 있는 경우)
-    if (templateVariables.length > 0) {
-      const emptyVariables = templateVariables.filter(varName => !commonVariables[varName]);
-      if (emptyVariables.length > 0) {
-        setError(`다음 변수를 입력해주세요: ${emptyVariables.join(', ')}`);
+    // 버튼 URL 검증
+    if (selectedTemplate.buttons && selectedTemplate.buttons.length > 0) {
+      const missingUrls: string[] = [];
+      selectedTemplate.buttons.forEach(btn => {
+        const urls = buttonUrls[btn.buttonCode];
+        if (!urls || !urls.mobileUrl) {
+          missingUrls.push(btn.buttonName);
+        }
+      });
+      if (missingUrls.length > 0) {
+        setError(`다음 버튼의 모바일 URL을 입력해주세요: ${missingUrls.join(', ')}`);
         return;
       }
     }
@@ -212,40 +229,29 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
         body: JSON.stringify({
           navertalkId,
           templateCode: selectedTemplate.code,
-          recipients: recipients.map(r => {
-            // 수신자별 변수가 있으면 사용, 없으면 빈 객체 (서버에서 공통 변수로 병합됨)
-            const recipientVars = recipientVariables[r.phone_number];
-            const filteredVars: Record<string, string> = {};
-
-            // 빈 값이 아닌 변수만 전달
-            if (recipientVars) {
-              Object.keys(recipientVars).forEach(key => {
-                if (recipientVars[key]) {
-                  filteredVars[key] = recipientVars[key];
-                }
-              });
-            }
-
-            return {
-              phone_number: r.phone_number,
-              name: r.name,
-              variables: Object.keys(filteredVars).length > 0 ? filteredVars : undefined,
-            };
-          }),
-          templateParams: commonVariables, // 공통 변수 객체
+          recipients: recipients.map(r => ({
+            phone_number: r.phone_number,
+            name: r.name,
+            variables: r.variables, // 수신자별 변수 (있는 경우)
+          })),
+          templateParams: {}, // MTS API가 서버에서 #{변수} 치환 처리
           productCode,
           attachments: selectedTemplate.buttons ? {
-            buttons: selectedTemplate.buttons.map(btn => ({
-              type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
-              buttonCode: btn.name.substring(0, 10), // 임시 버튼 코드
-              buttonName: btn.name,
-              mobileUrl: btn.mobileUrl || btn.url,
-              pcUrl: btn.url,
-            })),
+            buttons: selectedTemplate.buttons.map(btn => {
+              const urls = buttonUrls[btn.buttonCode] || { mobileUrl: '', pcUrl: '' };
+              return {
+                type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
+                buttonCode: btn.buttonCode,
+                buttonName: btn.buttonName,
+                mobileUrl: urls.mobileUrl,
+                pcUrl: urls.pcUrl || urls.mobileUrl,
+              };
+            }),
           } : undefined,
         }),
       });
@@ -272,16 +278,6 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
 
   return (
     <>
-      {/* 변수 입력 모달 */}
-      <TemplateVariableInputModal
-        isOpen={showVariableModal}
-        onClose={() => setShowVariableModal(false)}
-        variables={templateVariables}
-        commonVariables={commonVariables}
-        recipients={recipients}
-        onSave={handleSaveVariables}
-      />
-
       {/* 상단 정보 바 */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
         <span className="text-sm text-gray-600">
@@ -308,18 +304,29 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
         </div>
       )}
 
-      {/* 네이버톡 ID 입력 */}
+      {/* 네이버톡 계정 선택 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <h3 className="font-medium mb-3" style={{ color: "#00a732" }}>네이버톡 ID</h3>
-        <input
-          type="text"
-          placeholder="네이버톡 ID를 입력하세요"
-          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-          value={navertalkId}
-          onChange={(e) => setNavertalkId(e.target.value)}
-        />
+        <h3 className="font-medium mb-3" style={{ color: "#00a732" }}>네이버톡 계정</h3>
+        {accounts.length === 0 ? (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+            등록된 계정이 없습니다. 먼저 &quot;카카오/네이버 톡톡&quot; → &quot;네이버톡톡&quot; → &quot;톡톡 아이디&quot; 탭에서 계정을 등록해주세요.
+          </div>
+        ) : (
+          <select
+            value={navertalkId}
+            onChange={(e) => setNavertalkId(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+          >
+            <option value="">계정을 선택하세요</option>
+            {accounts.map((account) => (
+              <option key={account.id} value={account.partner_key}>
+                {account.talk_name || account.partner_key}
+              </option>
+            ))}
+          </select>
+        )}
         <p className="text-xs text-gray-500 mt-2">
-          * 네이버 톡톡 관리자 센터에서 발급받은 ID를 입력하세요.
+          * 네이버 톡톡 관리 탭에서 등록한 계정을 선택하세요.
         </p>
       </div>
 
@@ -328,7 +335,18 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
         {/* 좌측: 템플릿 선택 */}
         <div className="flex-1">
           <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="font-medium mb-3" style={{ color: "#00a732" }}>템플릿 선택</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium" style={{ color: "#00a732" }}>템플릿 선택</h3>
+              <button
+                onClick={() => navertalkId && loadTemplates(navertalkId)}
+                disabled={loading || !navertalkId}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="템플릿 목록 새로고침"
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                새로고침
+              </button>
+            </div>
             <div className="relative">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm appearance-none bg-white"
@@ -345,9 +363,14 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
               </select>
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
-            {templates.length === 0 && navertalkId && (
+            {templates.length === 0 && navertalkId && !loading && (
               <p className="text-xs text-red-500 mt-2">
-                등록된 템플릿이 없습니다.
+                등록된 템플릿이 없습니다. 템플릿 관리 탭에서 템플릿을 생성하거나, 새로고침 버튼을 눌러 다시 시도해주세요.
+              </p>
+            )}
+            {loading && (
+              <p className="text-xs text-gray-500 mt-2">
+                템플릿 목록 조회 중...
               </p>
             )}
           </div>
@@ -386,71 +409,79 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
           />
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          * 템플릿의 변수는 아래에서 입력할 수 있습니다.
+          * 템플릿에 #{"{"}변수명{"}"} 형식으로 작성된 변수는 발송 시 자동으로 치환됩니다.
         </p>
       </div>
 
-      {/* 템플릿 변수 입력 */}
-      {templateVariables.length > 0 && (
+      {/* 버튼 URL 입력 */}
+      {selectedTemplate && selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium" style={{ color: "#00a732" }}>
-              템플릿 변수 입력 (공통 변수)
-            </h3>
-            <button
-              onClick={() => setShowVariableModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              고급 설정 (수신자별 변수)
-            </button>
-          </div>
-          <div className="space-y-3">
-            {templateVariables.map((varName) => (
-              <div key={varName} className="flex items-center gap-3">
-                <label className="w-32 text-sm font-medium text-gray-700">
-                  #{`{${varName}}`}
-                </label>
-                <input
-                  type="text"
-                  placeholder={`${varName} 값을 입력하세요`}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
-                  value={commonVariables[varName] || ''}
-                  onChange={(e) => {
-                    setCommonVariables({
-                      ...commonVariables,
-                      [varName]: e.target.value,
-                    });
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 mt-3">
-            * 모든 수신자에게 동일하게 적용되는 변수입니다. 수신자별로 다른 값이 필요한 경우 &quot;고급 설정&quot; 버튼을 클릭하세요.
+          <h3 className="font-medium mb-3" style={{ color: "#00a732" }}>버튼 URL 설정</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            * 템플릿 등록 시에는 버튼 이름만 저장되며, 발송 시 각 버튼의 URL을 입력해야 합니다.
           </p>
+          <div className="space-y-4">
+            {selectedTemplate.buttons.map((btn, index) => {
+              const buttonCode = btn.buttonCode;
+              return (
+                <div key={index} className="border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium text-gray-700">버튼 #{index + 1}:</span>
+                    <span className="text-sm text-gray-600">{btn.buttonName}</span>
+                    <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded">
+                      {btn.type === 'WEB_LINK' ? '웹 링크' : '앱 링크'}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        모바일 URL <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={btn.type === 'APP_LINK' ? '예: myapp://action' : 'https://example.com'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                        value={buttonUrls[buttonCode]?.mobileUrl || ''}
+                        onChange={(e) => {
+                          setButtonUrls({
+                            ...buttonUrls,
+                            [buttonCode]: {
+                              ...buttonUrls[buttonCode],
+                              mobileUrl: e.target.value
+                            }
+                          });
+                        }}
+                      />
+                    </div>
+                    {btn.type === 'WEB_LINK' && (
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">
+                          PC URL (선택사항)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://example.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                          value={buttonUrls[buttonCode]?.pcUrl || ''}
+                          onChange={(e) => {
+                            setButtonUrls({
+                              ...buttonUrls,
+                              [buttonCode]: {
+                                ...buttonUrls[buttonCode],
+                                pcUrl: e.target.value
+                              }
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
-
-      {/* 발송실패 시 문자대체발송 여부 */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="smsBackupNaver"
-            className="rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            checked={false}
-            disabled={true}
-          />
-          <label htmlFor="smsBackupNaver" className="text-sm text-gray-500">
-            발송실패 시 문자대체발송 여부 (현재 미지원)
-          </label>
-          <HelpCircle className="w-4 h-4 text-gray-400" />
-        </div>
-        <p className="text-xs text-gray-500 mt-2 ml-6">
-          * 네이버 톡톡은 현재 SMS 문자대체발송을 지원하지 않습니다.
-        </p>
-      </div>
     </>
   );
 };
@@ -463,7 +494,7 @@ export async function sendNaverTalkMessage(
 ): Promise<{ success: boolean; message: string; successCount?: number; failCount?: number }> {
   // 유효성 검사
   if (!naverData.navertalkId) {
-    throw new Error('네이버톡 ID를 입력해주세요.');
+    throw new Error('네이버톡 계정을 선택해주세요.');
   }
 
   if (!naverData.selectedTemplate) {
@@ -478,13 +509,17 @@ export async function sendNaverTalkMessage(
     throw new Error('템플릿 내용이 비어 있습니다.');
   }
 
-  // 변수 검증 (변수가 있는 경우)
-  if (naverData.templateVariables.length > 0) {
-    const emptyVariables = naverData.templateVariables.filter(
-      varName => !naverData.commonVariables[varName]
-    );
-    if (emptyVariables.length > 0) {
-      throw new Error(`다음 변수를 입력해주세요: ${emptyVariables.join(', ')}`);
+  // 버튼 URL 검증
+  if (naverData.selectedTemplate.buttons && naverData.selectedTemplate.buttons.length > 0) {
+    const missingUrls: string[] = [];
+    naverData.selectedTemplate.buttons.forEach(btn => {
+      const urls = naverData.buttonUrls[btn.buttonCode];
+      if (!urls || !urls.mobileUrl) {
+        missingUrls.push(btn.buttonName);
+      }
+    });
+    if (missingUrls.length > 0) {
+      throw new Error(`다음 버튼의 모바일 URL을 입력해주세요: ${missingUrls.join(', ')}`);
     }
   }
 
@@ -504,36 +539,24 @@ export async function sendNaverTalkMessage(
     body: JSON.stringify({
       navertalkId: naverData.navertalkId,
       templateCode: naverData.selectedTemplate.code,
-      recipients: recipients.map(r => {
-        // 수신자별 변수가 있으면 사용, 없으면 빈 객체 (서버에서 공통 변수로 병합됨)
-        const recipientVars = naverData.recipientVariables[r.phone_number];
-        const filteredVars: Record<string, string> = {};
-
-        // 빈 값이 아닌 변수만 전달
-        if (recipientVars) {
-          Object.keys(recipientVars).forEach(key => {
-            if (recipientVars[key]) {
-              filteredVars[key] = recipientVars[key];
-            }
-          });
-        }
-
-        return {
-          phone_number: r.phone_number,
-          name: r.name,
-          variables: Object.keys(filteredVars).length > 0 ? filteredVars : undefined,
-        };
-      }),
-      templateParams: naverData.commonVariables, // 공통 변수 객체
+      recipients: recipients.map(r => ({
+        phone_number: r.phone_number,
+        name: r.name,
+        variables: r.variables, // 수신자별 변수 (있는 경우)
+      })),
+      templateParams: {}, // MTS API가 서버에서 #{변수} 치환 처리
       productCode: naverData.productCode,
       attachments: naverData.selectedTemplate.buttons ? {
-        buttons: naverData.selectedTemplate.buttons.map(btn => ({
-          type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
-          buttonCode: btn.name.substring(0, 10), // 임시 버튼 코드
-          buttonName: btn.name,
-          mobileUrl: btn.mobileUrl || btn.url,
-          pcUrl: btn.url,
-        })),
+        buttons: naverData.selectedTemplate.buttons.map(btn => {
+          const urls = naverData.buttonUrls[btn.buttonCode] || { mobileUrl: '', pcUrl: '' };
+          return {
+            type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
+            buttonCode: btn.buttonCode,
+            buttonName: btn.buttonName,
+            mobileUrl: urls.mobileUrl,
+            pcUrl: urls.pcUrl || urls.mobileUrl, // PC URL이 없으면 모바일 URL 사용
+          };
+        }),
       } : undefined,
       scheduledAt, // 예약 발송 시간 추가
     }),

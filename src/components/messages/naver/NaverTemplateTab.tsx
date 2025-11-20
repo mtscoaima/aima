@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ChevronDown, FileText, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronDown, FileText, ChevronLeft, ChevronRight, Trash2, RefreshCw } from "lucide-react";
 import NaverTemplateCreateModal from "./NaverTemplateCreateModal";
 
 interface NaverTemplate {
@@ -19,6 +19,12 @@ interface NaverTemplate {
   updated_at: string;
 }
 
+interface NaverAccount {
+  id: number;
+  partner_key: string;
+  talk_name: string | null;
+}
+
 const NaverTemplateTab = () => {
   const [selectedStatus, setSelectedStatus] = useState("전체");
   const [templateStatus, setTemplateStatus] = useState("전체");
@@ -29,10 +35,14 @@ const NaverTemplateTab = () => {
   const [templates, setTemplates] = useState<NaverTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingTemplateId, setDeletingTemplateId] = useState<number | null>(null);
+  const [accounts, setAccounts] = useState<NaverAccount[]>([]);
+  const [selectedPartnerKey, setSelectedPartnerKey] = useState<string>("");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // 템플릿 목록 조회
   useEffect(() => {
     fetchTemplates();
+    fetchAccounts();
   }, []);
 
   const fetchTemplates = async () => {
@@ -53,6 +63,75 @@ const NaverTemplateTab = () => {
       console.error("템플릿 목록 조회 오류:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/naver/accounts", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const accountList = result.data || [];
+        setAccounts(accountList);
+
+        // 첫 번째 계정을 기본 선택
+        if (accountList.length > 0 && !selectedPartnerKey) {
+          setSelectedPartnerKey(accountList[0].partner_key);
+        }
+      }
+    } catch (error) {
+      console.error("계정 목록 조회 오류:", error);
+    }
+  };
+
+  // NOTE: MTS API에 네이버 톡톡 템플릿 목록 조회 엔드포인트가 없어서
+  // MTS 동기화 기능은 제공하지 않습니다.
+  // 템플릿 생성 시 자동으로 DB에 저장되며, DB 기반으로 목록을 관리합니다.
+
+  // 템플릿 상태 업데이트 (검수중 템플릿만)
+  const handleUpdateStatus = async () => {
+    if (!confirm("검수중인 템플릿의 상태를 MTS에서 확인하여 업데이트하시겠습니까?")) {
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/naver/templates/status/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}), // 모든 검수중 템플릿 업데이트
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(
+          result.message ||
+            `${result.updatedCount}개의 템플릿 상태가 업데이트되었습니다.`
+        );
+        await fetchTemplates(); // 목록 새로고침
+      } else {
+        throw new Error(result.error || "상태 업데이트 실패");
+      }
+    } catch (error) {
+      console.error("템플릿 상태 업데이트 오류:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "상태 업데이트 중 오류가 발생했습니다."
+      );
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -192,13 +271,46 @@ const NaverTemplateTab = () => {
 
       {/* 액션 버튼 */}
       <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* 파트너키 선택 드롭다운 */}
+          <div className="relative">
+            <select
+              value={selectedPartnerKey}
+              onChange={(e) => setSelectedPartnerKey(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg appearance-none bg-white pr-8 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              disabled={accounts.length === 0}
+            >
+              {accounts.length === 0 ? (
+                <option value="">계정 없음</option>
+              ) : (
+                accounts.map((account) => (
+                  <option key={account.id} value={account.partner_key}>
+                    {account.talk_name || account.partner_key}
+                  </option>
+                ))
+              )}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+          </div>
+
+          {/* 템플릿 생성 버튼 */}
           <button
             onClick={() => setIsModalOpen(true)}
             className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm hover:bg-green-700"
           >
             <FileText className="w-4 h-4" />
             네이버 템플릿 생성
+          </button>
+
+          {/* 상태 업데이트 버튼 */}
+          <button
+            onClick={handleUpdateStatus}
+            disabled={isUpdatingStatus}
+            className="border border-blue-600 text-blue-600 px-4 py-2 rounded-lg flex items-center gap-2 text-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="검수중인 템플릿의 상태를 MTS에서 확인하여 업데이트합니다"
+          >
+            <RefreshCw className={`w-4 h-4 ${isUpdatingStatus ? "animate-spin" : ""}`} />
+            {isUpdatingStatus ? "상태 확인 중..." : "템플릿 상태 업데이트"}
           </button>
         </div>
 

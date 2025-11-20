@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Plus, Trash2, Upload, Image as ImageIcon, FileText } from "lucide-react";
+import VariableSelectModal from "../../modals/VariableSelectModal";
 
 interface NaverTemplateCreateModalProps {
   isOpen: boolean;
@@ -18,9 +19,7 @@ interface NaverAccount {
 interface Button {
   type: "WEB_LINK" | "APP_LINK";
   buttonCode: string;
-  name: string;
-  url?: string;
-  mobileUrl?: string;
+  buttonName: string;
 }
 
 const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
@@ -35,8 +34,13 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
   const [productCode, setProductCode] = useState<"INFORMATION" | "BENEFIT" | "CARDINFO">("INFORMATION");
   const [categoryCode, setCategoryCode] = useState("S001");
   const [buttons, setButtons] = useState<Button[]>([]);
+  const [uploadedImageHashId, setUploadedImageHashId] = useState<string>("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 계정 목록 조회
   useEffect(() => {
@@ -75,9 +79,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       {
         type: "WEB_LINK",
         buttonCode: `BTN${buttons.length + 1}`.padStart(6, "0"),
-        name: "",
-        url: "",
-        mobileUrl: "",
+        buttonName: "",
       },
     ]);
   };
@@ -90,6 +92,80 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
     const newButtons = [...buttons];
     newButtons[index] = { ...newButtons[index], [field]: value };
     setButtons(newButtons);
+  };
+
+  // 이미지 업로드 핸들러
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!partnerKey) {
+      setError('파트너키를 먼저 선택해주세요.');
+      return;
+    }
+
+    // 파일 크기 검증 (5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      setError('이미지 파일 크기는 5MB 이하여야 합니다.');
+      return;
+    }
+
+    // 파일 타입 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('지원하지 않는 이미지 형식입니다. (JPG, PNG, GIF만 가능)');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`/api/naver/image/upload?navertalkId=${partnerKey}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '이미지 업로드 실패');
+      }
+
+      setUploadedImageHashId(result.imageHashId);
+      setSuccess('이미지 업로드 성공');
+
+      // 3초 후 성공 메시지 제거
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+    } catch (err) {
+      console.error('이미지 업로드 오류:', err);
+      setError(err instanceof Error ? err.message : '이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+
+    // 파일 입력 초기화
+    e.target.value = '';
+  };
+
+  // 이미지 제거 핸들러
+  const handleRemoveImage = () => {
+    setUploadedImageHashId('');
+    setSuccess('이미지가 제거되었습니다.');
+    setTimeout(() => {
+      setSuccess(null);
+    }, 2000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,7 +209,10 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
           text: text.trim(),
           productCode,
           categoryCode,
-          buttons: buttons.length > 0 ? buttons : undefined,
+          buttons: buttons.length > 0
+            ? buttons.filter(btn => btn.buttonName.trim() !== '')
+            : undefined,
+          sampleImageHashId: uploadedImageHashId || undefined,
         }),
       });
 
@@ -161,7 +240,26 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
     setProductCode("INFORMATION");
     setCategoryCode("S001");
     setButtons([]);
+    setUploadedImageHashId("");
     setError(null);
+    setSuccess(null);
+  };
+
+  const handleVariableSelect = (variable: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = text.substring(0, start) + variable + text.substring(end);
+
+    setText(newText);
+
+    // Restore focus and cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + variable.length, start + variable.length);
+    }, 0);
   };
 
   if (!isOpen) return null;
@@ -185,6 +283,13 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
               {error}
+            </div>
+          )}
+
+          {/* 성공 메시지 */}
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+              {success}
             </div>
           )}
 
@@ -234,19 +339,31 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
 
             {/* 템플릿 내용 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                템플릿 내용 <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  템플릿 내용 <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsVariableModalOpen(true)}
+                  className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                  title="치환문구 추가"
+                  disabled={isLoading}
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </div>
               <textarea
+                ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="예: #{name}님, 예약이 완료되었습니다.&#10;예약일시: #{date}&#10;감사합니다."
+                placeholder="예: #{이름}님, 예약이 완료되었습니다.&#10;예약일시: #{오늘날짜}&#10;감사합니다."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 min-h-[100px]"
                 disabled={isLoading}
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                변수 사용 가능: #{"{"}변수명{"}"} (예: #{"{"}name{"}"}, #{"{"}date{"}"})
+                치환문구 버튼을 클릭하여 변수를 삽입할 수 있습니다.
               </p>
             </div>
 
@@ -293,6 +410,64 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
               </select>
             </div>
 
+            {/* 이미지 업로드 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                이미지 첨부 (선택사항)
+              </label>
+
+              {uploadedImageHashId ? (
+                <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">이미지 업로드 완료</p>
+                        <p className="text-xs text-gray-500">Hash ID: {uploadedImageHashId.substring(0, 20)}...</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="text-red-500 hover:text-red-700"
+                      disabled={isUploadingImage || isLoading}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 hover:bg-green-50 transition-colors">
+                      <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 mb-1">
+                        {isUploadingImage ? "업로드 중..." : "클릭하여 이미지 업로드"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        JPG, PNG, GIF (최대 5MB)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      disabled={isUploadingImage || isLoading || !partnerKey}
+                    />
+                  </label>
+                  {!partnerKey && (
+                    <p className="text-xs text-yellow-600 mt-1">
+                      * 이미지 업로드는 파트너키 선택 후 가능합니다.
+                    </p>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                템플릿에 포함될 이미지를 업로드하세요. 업로드된 이미지는 템플릿 검수 시 함께 제출됩니다.
+              </p>
+            </div>
+
             {/* 버튼 */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -326,48 +501,42 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
+                        <label className="block text-xs text-gray-600 mb-1">버튼 타입</label>
+                        <select
+                          value={button.type}
+                          onChange={(e) => handleButtonChange(index, "type", e.target.value as "WEB_LINK" | "APP_LINK")}
+                          className="w-full px-2 py-1 text-sm border rounded"
+                        >
+                          <option value="WEB_LINK">웹 링크</option>
+                          <option value="APP_LINK">앱 링크</option>
+                        </select>
+                      </div>
+                      <div>
                         <label className="block text-xs text-gray-600 mb-1">버튼 코드</label>
                         <input
                           type="text"
                           value={button.buttonCode}
                           onChange={(e) => handleButtonChange(index, "buttonCode", e.target.value)}
-                          className="w-full px-2 py-1 text-sm border rounded"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">버튼 이름</label>
-                        <input
-                          type="text"
-                          value={button.name}
-                          onChange={(e) => handleButtonChange(index, "name", e.target.value)}
-                          placeholder="예: 예약 확인하기"
+                          placeholder="예: BTN000001"
                           className="w-full px-2 py-1 text-sm border rounded"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-600 mb-1">웹 링크 (PC)</label>
+                      <label className="block text-xs text-gray-600 mb-1">버튼 이름</label>
                       <input
-                        type="url"
-                        value={button.url || ""}
-                        onChange={(e) => handleButtonChange(index, "url", e.target.value)}
-                        placeholder="https://example.com"
-                        className="w-full px-2 py-1 text-sm border rounded"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">웹 링크 (모바일)</label>
-                      <input
-                        type="url"
-                        value={button.mobileUrl || ""}
-                        onChange={(e) => handleButtonChange(index, "mobileUrl", e.target.value)}
-                        placeholder="https://m.example.com"
+                        type="text"
+                        value={button.buttonName}
+                        onChange={(e) => handleButtonChange(index, "buttonName", e.target.value)}
+                        placeholder="예: 예약 확인하기"
                         className="w-full px-2 py-1 text-sm border rounded"
                       />
                     </div>
                   </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    * 버튼 URL은 메시지 발송 시 설정합니다.
+                  </p>
                 </div>
               ))}
             </div>
@@ -392,6 +561,13 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
             </button>
           </div>
         </form>
+
+        {/* Variable Select Modal */}
+        <VariableSelectModal
+          isOpen={isVariableModalOpen}
+          onClose={() => setIsVariableModalOpen(false)}
+          onSelect={handleVariableSelect}
+        />
       </div>
     </div>
   );

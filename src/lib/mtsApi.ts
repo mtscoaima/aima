@@ -979,10 +979,17 @@ export async function getMtsSenderProfiles(
 }
 
 /**
- * 네이버 톡톡 템플릿 목록 조회
- * @param navertalkId 네이버 톡톡 ID
- * @param page 페이지 번호 (기본: 1)
- * @param count 페이지당 개수 (기본: 100)
+ * ⚠️ 사용 불가: MTS API에 해당 엔드포인트 미존재
+ *
+ * 네이버 톡톡 템플릿 목록 조회 API는 MTS에서 제공하지 않습니다.
+ * MTS 네이버 톡톡 API는 개별 템플릿 조회만 지원합니다:
+ * - 엔드포인트: /naver/v1/template/{partnerKey}/{templateCode}
+ * - 목록 조회 API 없음
+ *
+ * 따라서 이 함수는 호출 시 HTML 응답을 받아 JSON 파싱 에러가 발생합니다.
+ * 네이버 톡톡 템플릿은 생성 시 DB에 저장하여 관리해야 합니다.
+ *
+ * @deprecated MTS API 미지원
  */
 export async function getNaverTalkTemplates(
   partnerKey: string,
@@ -1978,6 +1985,7 @@ export async function deleteMtsAlimtalkTemplate(
  * @param benefit 혜택 정보 (혜택형 전용)
  */
 export async function createNaverTalkTemplate(
+  userId: number,
   partnerKey: string,
   code: string,
   text: string,
@@ -2076,6 +2084,32 @@ export async function createNaverTalkTemplate(
 
     // 성공 확인
     if (result.success === true) {
+      // DB에 템플릿 저장
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        const { error: dbError } = await supabase
+          .from('naver_talk_templates')
+          .insert({
+            user_id: userId,
+            partner_key: partnerKey,
+            code: code,
+            text: text,
+            product_code: productCode,
+            category_code: categoryCode,
+            buttons: buttons ? JSON.parse(JSON.stringify(buttons)) : null,
+            status: 'PENDING', // 기본값: 검수 대기
+          });
+
+        if (dbError) {
+          console.error('[네이버 톡톡] DB 저장 실패:', dbError);
+          // MTS 성공은 유지, DB 실패만 로그
+        }
+      } catch (dbError) {
+        console.error('[네이버 톡톡] DB 저장 중 예외 발생:', dbError);
+        // MTS 성공은 유지
+      }
+
       return {
         success: true,
         responseData: result,
@@ -2101,6 +2135,161 @@ export async function createNaverTalkTemplate(
       };
     }
 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * ⚠️ 사용 불가: MTS API에 템플릿 목록 조회 엔드포인트 미존재
+ *
+ * MTS에서 네이버 톡톡 템플릿 목록을 조회하여 DB에 동기화하는 함수입니다.
+ * 그러나 MTS API가 템플릿 목록 조회를 지원하지 않아 사용할 수 없습니다.
+ *
+ * 네이버 톡톡 템플릿은 아래 방식으로만 DB에 저장됩니다:
+ * 1. createNaverTalkTemplate() 호출 시 자동 DB 저장
+ * 2. MTS 웹 콘솔에서 생성한 템플릿은 개별 조회 후 수동 등록 필요
+ *
+ * @deprecated MTS API 미지원 (getNaverTalkTemplates 의존)
+ */
+export async function syncNaverTalkTemplates(
+  userId: number,
+  partnerKey: string
+): Promise<MtsApiResult> {
+  try {
+    // 1. MTS에서 템플릿 목록 조회
+    const result = await getNaverTalkTemplates(partnerKey, 1, 100);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || 'MTS 템플릿 목록 조회 실패',
+        errorCode: result.errorCode,
+      };
+    }
+
+    // 2. 응답 데이터에서 템플릿 목록 추출
+    const responseData = result.responseData as Record<string, unknown>;
+    const templates = (responseData?.templates || responseData?.data || []) as Array<Record<string, unknown>>;
+
+    if (!Array.isArray(templates) || templates.length === 0) {
+      return {
+        success: true,
+        responseData: { syncCount: 0, message: 'MTS에 등록된 템플릿이 없습니다.' },
+      };
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    let syncCount = 0;
+    let errorCount = 0;
+
+    // 3. 각 템플릿을 DB에 저장 (upsert)
+    for (const template of templates) {
+      try {
+        const { error } = await supabase
+          .from('naver_talk_templates')
+          .upsert(
+            {
+              user_id: userId,
+              partner_key: partnerKey,
+              code: template.code as string,
+              name: template.name as string || template.code as string,
+              text: template.text as string,
+              product_code: template.productCode as string || 'INFORMATION',
+              category_code: template.categoryCode as string || 'S001',
+              buttons: template.buttons ? JSON.parse(JSON.stringify(template.buttons)) : null,
+              status: (template.status as string) || 'REGISTERED',
+              template_id: template.templateId as string || null,
+            },
+            {
+              onConflict: 'partner_key,code', // 중복 시 업데이트
+            }
+          );
+
+        if (error) {
+          console.error(`[네이버 톡톡] 템플릿 동기화 실패 (code: ${template.code}):`, error);
+          errorCount++;
+        } else {
+          syncCount++;
+        }
+      } catch (err) {
+        console.error(`[네이버 톡톡] 템플릿 동기화 중 예외 (code: ${template.code}):`, err);
+        errorCount++;
+      }
+    }
+
+    return {
+      success: true,
+      responseData: {
+        syncCount,
+        totalCount: templates.length,
+        errorCount,
+        message: `${syncCount}개의 템플릿이 동기화되었습니다.${errorCount > 0 ? ` (실패: ${errorCount}개)` : ''}`,
+      },
+    };
+  } catch (error) {
+    console.error('[네이버 톡톡] 템플릿 동기화 오류:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '템플릿 동기화 중 오류가 발생했습니다.',
+      errorCode: 'SYNC_ERROR',
+    };
+  }
+}
+
+/**
+ * 네이버 톡톡 개별 템플릿 조회
+ * @param partnerKey 파트너 키
+ * @param templateCode 템플릿 코드
+ * @returns 템플릿 정보
+ */
+export async function getNaverTalkTemplate(
+  partnerKey: string,
+  templateCode: string
+): Promise<MtsApiResult> {
+  try {
+    // 환경 변수 확인
+    if (!MTS_API_URL) {
+      return {
+        success: false,
+        error: 'MTS_API_URL이 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // API 호출
+    const response = await fetch(
+      `${MTS_API_URL}/naver/v1/template/${partnerKey}/${templateCode}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      }
+    );
+
+    const result = await response.json();
+
+    // 성공 확인
+    if (result.success === true && result.template) {
+      return {
+        success: true,
+        responseData: result.template,
+      };
+    }
+
+    // 실패 시 에러 메시지 반환
+    return {
+      success: false,
+      error: result.message || '템플릿 조회 실패',
+      errorCode: result.code || 'UNKNOWN_ERROR',
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('[네이버 톡톡] 템플릿 조회 오류:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',

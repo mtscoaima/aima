@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
 import { createClient } from '@supabase/supabase-js';
-import { getMtsAlimtalkTemplate } from '@/lib/mtsApi';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,15 +8,16 @@ const supabase = createClient(
 );
 
 /**
- * 카카오 알림톡 템플릿 동기화 API
+ * 카카오 알림톡 템플릿 동기화 API (Bulk 최적화)
  * POST /api/kakao/templates/sync
  *
  * Query Parameters:
  * - senderKey: 발신 프로필 키 (필수)
  *
  * 설명:
- * - DB에 저장된 템플릿들의 최신 상태를 MTS API로 조회하여 동기화
- * - status 등 변경사항 반영
+ * - DB에 저장된 템플릿들의 최신 상태를 MTS API Bulk 엔드포인트로 조회하여 동기화
+ * - 1회 API 호출로 모든 템플릿 조회 (이전: N번 호출)
+ * - status, inspection_status 등 변경사항 반영
  */
 export async function POST(request: NextRequest) {
   try {
@@ -81,34 +81,75 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 각 템플릿에 대해 MTS API 조회 및 업데이트
+    // MTS API Bulk 조회로 변경 (최적화)
     const syncResults = [];
     let syncedCount = 0;
     let failedCount = 0;
 
-    for (const template of templates) {
-      try {
-        // MTS API로 최신 정보 조회
-        const result = await getMtsAlimtalkTemplate(
-          senderKey,
-          template.template_code,
-          'S'
-        );
+    try {
+      // Bulk API로 모든 템플릿 조회 (1회 호출)
+      const { getMtsAlimtalkTemplates } = await import('@/lib/mtsApi');
+      const bulkResult = await getMtsAlimtalkTemplates(senderKey, 1, 1000);
 
-        if (result.success && result.responseData) {
-          const mtsResponse = result.responseData as Record<string, unknown>;
-          const mtsData = (mtsResponse.data as Record<string, unknown>) || mtsResponse;
+      if (!bulkResult.success || !bulkResult.responseData) {
+        return NextResponse.json({
+          success: false,
+          error: bulkResult.error || 'MTS API Bulk 조회 실패',
+          errorCode: bulkResult.errorCode,
+          syncedCount: 0,
+          failedCount: templates.length,
+        });
+      }
 
+      // MTS API 응답에서 template_list 추출
+      const mtsResponse = bulkResult.responseData as Record<string, unknown>;
+      const mtsTemplates = (mtsResponse.template_list as Array<Record<string, unknown>>) || [];
+
+      if (mtsTemplates.length === 0) {
+        return NextResponse.json({
+          success: true,
+          message: 'MTS에 등록된 템플릿이 없습니다.',
+          syncedCount: 0,
+          failedCount: 0,
+          totalCount: 0,
+        });
+      }
+
+      // 템플릿 코드로 매핑 (빠른 조회)
+      const mtsTemplateMap = new Map<string, Record<string, unknown>>();
+      for (const mtsTemplate of mtsTemplates) {
+        const code = mtsTemplate.code as string;
+        if (code) {
+          mtsTemplateMap.set(code, mtsTemplate);
+        }
+      }
+
+      // DB 템플릿과 MTS 템플릿 매칭 및 업데이트
+      for (const template of templates) {
+        const mtsData = mtsTemplateMap.get(template.template_code);
+
+        if (!mtsData) {
+          // MTS에 없는 템플릿 (삭제됨)
+          failedCount++;
+          syncResults.push({
+            templateCode: template.template_code,
+            success: false,
+            error: 'MTS에 템플릿이 존재하지 않습니다 (삭제되었을 수 있음)',
+          });
+          continue;
+        }
+
+        try {
           // DB 업데이트
           const { error: updateError } = await supabase
             .from('kakao_alimtalk_templates')
             .update({
-              template_name: (mtsData.templateName as string) || template.template_name,
-              template_content: (mtsData.templateContent as string) || template.template_content,
+              template_name: (mtsData.name as string) || template.template_name,
+              template_content: (mtsData.text as string) || template.template_content,
               template_message_type: (mtsData.templateMessageType as string) || template.template_message_type,
               template_emphasize_type: (mtsData.templateEmphasizeType as string) || template.template_emphasize_type,
               status: (mtsData.status as string) || template.status,
-              inspection_status: (mtsData.inspectionStatus as string) || template.inspection_status,
+              inspection_status: (mtsData.templateStatusType as string) || template.inspection_status,
               buttons: mtsData.buttons ? (mtsData.buttons as object) : template.buttons,
               quick_replies: mtsData.quickReplies ? (mtsData.quickReplies as object) : template.quick_replies,
               category_code: (mtsData.categoryCode as string) || template.category_code,
@@ -130,29 +171,28 @@ export async function POST(request: NextRequest) {
             syncResults.push({
               templateCode: template.template_code,
               success: true,
-              inspectionStatus: mtsData.inspectionStatus,
+              inspectionStatus: mtsData.templateStatusType,
               status: mtsData.status,
             });
           }
-        } else {
-          // MTS API 조회 실패 (템플릿이 삭제되었을 수 있음)
+        } catch (error) {
+          console.error(`템플릿 ${template.template_code} 동기화 오류:`, error);
           failedCount++;
           syncResults.push({
             templateCode: template.template_code,
             success: false,
-            error: result.error || 'MTS API 조회 실패',
-            errorCode: result.errorCode,
+            error: error instanceof Error ? error.message : '알 수 없는 오류',
           });
         }
-      } catch (error) {
-        console.error(`템플릿 ${template.template_code} 동기화 오류:`, error);
-        failedCount++;
-        syncResults.push({
-          templateCode: template.template_code,
-          success: false,
-          error: error instanceof Error ? error.message : '알 수 없는 오류',
-        });
       }
+    } catch (error) {
+      console.error('Bulk 동기화 오류:', error);
+      return NextResponse.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Bulk 동기화 중 오류 발생',
+        syncedCount: 0,
+        failedCount: templates.length,
+      });
     }
 
     return NextResponse.json({

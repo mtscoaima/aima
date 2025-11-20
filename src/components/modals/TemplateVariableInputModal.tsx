@@ -99,13 +99,22 @@ const TemplateVariableInputModal: React.FC<TemplateVariableInputModalProps> = ({
                     placeholder={`${varName} 값을 입력하세요`}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     value={commonVariables[varName] || ''}
+                    maxLength={100}
                     onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.length > 100) {
+                        alert(`⚠️ 변수 값은 최대 100자까지 입력 가능합니다.\n현재: ${value.length}자`);
+                        return;
+                      }
                       setCommonVariables({
                         ...commonVariables,
-                        [varName]: e.target.value,
+                        [varName]: value,
                       });
                     }}
                   />
+                  <span className="text-xs text-gray-400 ml-2">
+                    {commonVariables[varName]?.length || 0}/100
+                  </span>
                 </div>
               ))}
             </div>
@@ -149,21 +158,32 @@ const TemplateVariableInputModal: React.FC<TemplateVariableInputModalProps> = ({
                         </td>
                         {variables.map((varName) => (
                           <td key={varName} className="px-4 py-3">
-                            <input
-                              type="text"
-                              placeholder={`공통값: ${commonVariables[varName] || '(미입력)'}`}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                              value={recipientVariables[recipient.phone_number]?.[varName] || ''}
-                              onChange={(e) => {
-                                setRecipientVariables({
-                                  ...recipientVariables,
-                                  [recipient.phone_number]: {
-                                    ...recipientVariables[recipient.phone_number],
-                                    [varName]: e.target.value,
-                                  },
-                                });
-                              }}
-                            />
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="text"
+                                placeholder={`공통값: ${commonVariables[varName] || '(미입력)'}`}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                                value={recipientVariables[recipient.phone_number]?.[varName] || ''}
+                                maxLength={100}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value.length > 100) {
+                                    alert(`⚠️ 변수 값은 최대 100자까지 입력 가능합니다.\n현재: ${value.length}자`);
+                                    return;
+                                  }
+                                  setRecipientVariables({
+                                    ...recipientVariables,
+                                    [recipient.phone_number]: {
+                                      ...recipientVariables[recipient.phone_number],
+                                      [varName]: value,
+                                    },
+                                  });
+                                }}
+                              />
+                              <span className="text-xs text-gray-400">
+                                {recipientVariables[recipient.phone_number]?.[varName]?.length || 0}/100
+                              </span>
+                            </div>
                           </td>
                         ))}
                       </tr>

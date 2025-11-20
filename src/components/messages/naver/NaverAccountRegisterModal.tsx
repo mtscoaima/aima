@@ -18,6 +18,11 @@ const NaverAccountRegisterModal: React.FC<NaverAccountRegisterModalProps> = ({
   const [talkName, setTalkName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<{
+    message?: string;
+    troubleshooting?: string[];
+    details?: unknown;
+  } | null>(null);
   const [issuedPartnerKey, setIssuedPartnerKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -27,6 +32,7 @@ const NaverAccountRegisterModal: React.FC<NaverAccountRegisterModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setErrorDetails(null);
     setIssuedPartnerKey(null);
 
     if (!talkAccountId.trim()) {
@@ -59,6 +65,12 @@ const NaverAccountRegisterModal: React.FC<NaverAccountRegisterModalProps> = ({
       const result = await response.json();
 
       if (!response.ok) {
+        // 상세 에러 정보 저장
+        setErrorDetails({
+          message: result.message,
+          troubleshooting: result.troubleshooting,
+          details: result.details,
+        });
         throw new Error(result.error || "파트너 키 발급 실패");
       }
 
@@ -77,6 +89,7 @@ const NaverAccountRegisterModal: React.FC<NaverAccountRegisterModalProps> = ({
 
     } catch (err) {
       console.error("파트너 키 발급 오류:", err);
+      console.error("상세 에러 정보:", errorDetails);
       setError(err instanceof Error ? err.message : "파트너 키 발급 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
@@ -109,8 +122,42 @@ const NaverAccountRegisterModal: React.FC<NaverAccountRegisterModalProps> = ({
 
         {/* 에러 메시지 */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-            {error}
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded">
+            <h4 className="font-medium text-red-800 mb-2 flex items-center gap-2">
+              <X className="w-5 h-5" />
+              등록 실패
+            </h4>
+            <p className="text-sm text-red-700 mb-3">{error}</p>
+
+            {/* API에서 반환한 상세 메시지 */}
+            {errorDetails?.message && errorDetails.message !== error && (
+              <div className="text-sm text-red-600 mb-3 bg-red-100 p-2 rounded border border-red-300">
+                <strong>상세:</strong> {errorDetails.message}
+              </div>
+            )}
+
+            {/* 해결 방법 안내 */}
+            {errorDetails?.troubleshooting && errorDetails.troubleshooting.length > 0 && (
+              <div className="text-sm text-red-600 space-y-1">
+                <p className="font-medium">✅ 해결 방법:</p>
+                <ol className="list-decimal ml-5 space-y-1">
+                  {errorDetails.troubleshooting.map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* 사업자 등록 에러일 경우 특별 안내 */}
+            {(error.includes('사업자 등록') || errorDetails?.message?.includes('사업자 등록')) && (
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-300 rounded text-sm">
+                <p className="font-medium text-yellow-800 mb-2">⚠️ 사업자 등록 필요</p>
+                <p className="text-yellow-700 text-xs">
+                  네이버 톡톡 파트너센터에서 <strong>&quot;계정대표 변경&quot;</strong> 메뉴를 찾아
+                  사업자 정보를 등록해주세요. 또는 계정이 아직 검수 대기 중일 수 있습니다 (1-2일 소요).
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
       productCode,
       categoryCode,
       buttons,
+      sampleImageHashId,
     } = body;
 
     // 필수 파라미터 검증
@@ -71,12 +72,17 @@ export async function POST(request: NextRequest) {
 
     // 네이버 톡톡 템플릿 생성 API 호출
     const result = await createNaverTalkTemplate(
+      authResult.userInfo.userId, // userId 추가
       partnerKey,
       code,
       text,
       productCode,
       categoryCode,
-      buttons
+      buttons,
+      undefined, // templateType
+      undefined, // pushNotice
+      undefined, // tableInfo
+      sampleImageHashId
     );
 
     if (result.success) {

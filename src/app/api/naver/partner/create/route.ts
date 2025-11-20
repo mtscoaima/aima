@@ -39,7 +39,19 @@ export async function POST(request: NextRequest) {
     // MTS API 호출 - 파트너 키 발급
     const mtsUrl = `${mtsApiUrl}/naver/v1/partner/${partnerId}/create`;
 
-    console.log('[네이버 파트너 키 발급] MTS API 호출:', mtsUrl);
+    // === 상세 요청 로그 시작 ===
+    console.log('=== [네이버 파트너 키 발급] MTS API 호출 시작 ===');
+    console.log('요청 URL:', mtsUrl);
+    console.log('요청 Method:', 'POST');
+    console.log('요청 Headers:', {
+      'Content-Type': 'application/json',
+      'auth_code': `${mtsAuthCode.substring(0, 4)}****`, // 보안을 위해 마스킹
+    });
+    console.log('요청 Body:', JSON.stringify({
+      partnerId,
+      talkName: talkName || '(미입력)',
+    }, null, 2));
+    console.log('partnerId 형식 검증:', /^W[A-Z0-9]{6}$/.test(partnerId) ? '✅ 통과' : '❌ 실패 (W+6자리 영문/숫자 아님)');
 
     const mtsResponse = await fetch(mtsUrl, {
       method: 'POST',
@@ -52,18 +64,21 @@ export async function POST(request: NextRequest) {
     // 응답을 텍스트로 먼저 받아서 확인
     const responseText = await mtsResponse.text();
 
-    console.log('[네이버 파트너 키 발급] MTS API 응답 (Raw):', {
-      status: mtsResponse.status,
-      statusText: mtsResponse.statusText,
-      responseText: responseText.substring(0, 500), // 처음 500자만 로그
-    });
+    // === 상세 응답 로그 ===
+    console.log('=== [네이버 파트너 키 발급] MTS API 응답 ===');
+    console.log('응답 Status Code:', mtsResponse.status);
+    console.log('응답 Status Text:', mtsResponse.statusText);
+    console.log('응답 Headers:', JSON.stringify(Object.fromEntries(mtsResponse.headers.entries()), null, 2));
+    console.log('응답 Body (Raw):', responseText);
 
     // JSON 파싱 시도
     let mtsResult;
     try {
       mtsResult = JSON.parse(responseText);
+      console.log('응답 Body (Parsed):', JSON.stringify(mtsResult, null, 2));
     } catch (parseError) {
       console.error('[네이버 파트너 키 발급] JSON 파싱 실패:', parseError);
+      console.error('파싱 실패한 응답 텍스트 (전체):', responseText);
       return NextResponse.json(
         {
           error: 'MTS API가 유효하지 않은 응답을 반환했습니다. 이 API 엔드포인트가 존재하지 않을 수 있습니다.',
@@ -77,10 +92,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[네이버 파트너 키 발급] MTS API 응답 (Parsed):', {
-      status: mtsResponse.status,
-      result: mtsResult,
-    });
+    // === 응답 필드 분석 ===
+    console.log('=== [네이버 파트너 키 발급] 응답 필드 분석 ===');
+    console.log('mtsResult.success:', mtsResult.success);
+    console.log('mtsResult.message:', mtsResult.message);
+    console.log('mtsResult.errorMessage:', mtsResult.errorMessage);
+    console.log('mtsResult.partnerKey:', mtsResult.partnerKey);
+    console.log('mtsResult.partner_key:', mtsResult.partner_key);
+    console.log('전체 필드 목록:', Object.keys(mtsResult));
+    console.log('전체 응답 객체:', JSON.stringify(mtsResult, null, 2));
 
     // MTS API 에러 처리
     if (!mtsResponse.ok) {
@@ -98,10 +118,31 @@ export async function POST(request: NextRequest) {
     const partnerKey = mtsResult.partnerKey || mtsResult.partner_key;
 
     if (!partnerKey) {
-      console.error('[네이버 파트너 키 발급] partnerKey가 응답에 없음:', mtsResult);
+      console.error('=== [네이버 파트너 키 발급 실패] 디버깅 정보 ===');
+      console.error('입력한 partnerId:', partnerId);
+      console.error('partnerId 형식 검증:', /^W[A-Z0-9]{6}$/.test(partnerId) ? '✅ 형식 통과' : '❌ 형식 불일치');
+      console.error('MTS API 응답:', JSON.stringify(mtsResult, null, 2));
+      console.error('에러 메시지:', mtsResult.message || mtsResult.errorMessage || '(에러 메시지 없음)');
+      console.error('');
+      console.error('=== 권장 조치 사항 ===');
+      console.error('1. 네이버 톡톡 파트너센터(https://partner.talk.naver.com/)에서 계정 승인 상태 확인');
+      console.error('2. partnerId가 W로 시작하는 7자리 영문/숫자인지 재확인 (예: WF6BPKH)');
+      console.error('3. 파트너센터 > 계정대표 변경 메뉴에서 사업자 정보 등록 여부 확인');
+      console.error('4. 계정이 검수 대기 중이라면 1-2일 후 재시도');
+      console.error('5. 문제 지속 시 MTS 고객지원(1577-1603) 문의');
+      console.error('===========================');
+
       return NextResponse.json(
         {
           error: '파트너 키 발급 실패: MTS API 응답에 partnerKey가 없습니다.',
+          message: mtsResult.message || mtsResult.errorMessage || 'MTS API가 partnerKey를 반환하지 않았습니다.',
+          troubleshooting: [
+            '네이버 톡톡 파트너센터에서 계정 승인 상태 확인',
+            'partnerId 형식이 W+6자리 영문/숫자인지 확인',
+            '파트너센터에서 사업자 정보 등록 확인',
+            '계정 검수 대기 중이라면 1-2일 후 재시도',
+            '문제 지속 시 MTS 고객지원(1577-1603) 문의'
+          ],
           details: mtsResult,
         },
         { status: 500 }

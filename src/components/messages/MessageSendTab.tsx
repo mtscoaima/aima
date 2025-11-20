@@ -328,9 +328,9 @@ const MessageSendTab = () => {
         }
       }
     } else if (activeMessageTab === "naver") {
-      // TODO: NaverData validation
-      if (!naverData) {
-        alert("네이버 톡톡 데이터를 로드하는 중입니다");
+      // NaverData validation
+      if (!naverData || !naverData.navertalkId || !naverData.selectedTemplate) {
+        alert("네이버 톡톡 계정과 템플릿을 선택해주세요");
         return;
       }
     }
@@ -419,16 +419,16 @@ const MessageSendTab = () => {
 
           alert(`브랜드 메시지 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
           setRecipients([]);
-
-        } else if (activeKakaoTab === "naver") {
-          if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
-
-          const result = await sendNaverTalkMessage(naverData, recipients, undefined);
-
-          alert(`네이버 톡톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
-          setRecipients([]);
         }
 
+      } else if (activeMessageTab === "naver") {
+        // 네이버 톡톡 전송
+        if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
+
+        const result = await sendNaverTalkMessage(naverData, recipients, undefined);
+
+        alert(`네이버 톡톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
+        setRecipients([]);
       }
 
     } catch (err) {
@@ -536,16 +536,16 @@ const MessageSendTab = () => {
 
           alert(`브랜드 메시지 예약 완료\n예약된 수신자: ${recipients.length}명`);
           setRecipients([]);
-
-        } else if (activeKakaoTab === "naver") {
-          if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
-
-          const result = await sendNaverTalkMessage(naverData, recipients, scheduledAt);
-
-          alert(`네이버 톡톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
-          setRecipients([]);
         }
 
+      } else if (activeMessageTab === "naver") {
+        // 네이버 톡톡 예약
+        if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
+
+        const result = await sendNaverTalkMessage(naverData, recipients, scheduledAt);
+
+        alert(`네이버 톡톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
+        setRecipients([]);
       }
 
     } catch (err) {
@@ -584,6 +584,7 @@ const MessageSendTab = () => {
           <NaverTalkContent
             recipients={recipients}
             selectedSenderNumber={userPhoneNumber}
+            onDataChange={setNaverData}
           />
         );
       default:
