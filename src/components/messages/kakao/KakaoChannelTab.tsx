@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, Plus, HelpCircle, Mail, RefreshCw, Info } from "lucide-react";
+import { Search, Plus, RefreshCw, Info } from "lucide-react";
 import {
   fetchSenderProfiles,
   type SenderProfile,

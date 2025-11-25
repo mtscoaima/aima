@@ -1071,36 +1071,40 @@ export async function getNaverTalkTemplates(
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
  */
 /**
- * 네이버 톡톡 스마트알림 발송 (규격서 v1.7 준수)
+ * 네이버 톡톡 스마트알림 발송 (규격서 v1.2 준수)
  *
  * @param partnerKey 파트너 키
  * @param templateCode 템플릿 코드
- * @param phoneNumber 수신자 전화번호 (국가코드 포함 권장: 821012345678)
+ * @param phoneNumber 수신자 전화번호
+ * @param message 메시지 내용 (변수 포함 가능)
+ * @param callbackNumber 발신전화번호
  * @param templateParams 템플릿 변수 객체 (예: { name: '홍길동', amount: '10,000원' })
- * @param productCode 상품 코드 (INFORMATION/BENEFIT/CARDINFO)
+ * @param productCode 상품 코드 (INFORMATION/BENEFIT)
  * @param attachments 첨부 정보 (버튼, 이미지 등)
- * @param asyncSend 비동기 발송 여부 (카드알림 전용, 기본값: 'Y')
+ * @param tranType 전환전송 유형 (S: SMS, L: LMS, N: 없음)
+ * @param tranMessage 전환전송 메시지
  * @param sendDate 예약 발송 시간 (yyyy-MM-dd HH:mm)
  */
 export async function sendNaverTalk(
   partnerKey: string,
   templateCode: string,
   phoneNumber: string,
+  message: string,
+  callbackNumber: string,
   templateParams: Record<string, string>,
-  productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO',
+  productCode: 'INFORMATION' | 'BENEFIT',
   attachments?: {
     buttons?: Array<{
-      type: 'WEB_LINK' | 'APP_LINK';
       buttonCode: string;
-      buttonName: string;
       pcUrl?: string;
       mobileUrl?: string;
       iOsAppScheme?: string;
       aOsAppScheme?: string;
     }>;
-    sampleImageHashId?: string;
+    imageHashId?: string;
   },
-  asyncSend?: 'Y' | 'N',
+  tranType?: 'S' | 'L' | 'N',
+  tranMessage?: string,
   sendDate?: string
 ): Promise<MtsApiResult> {
   try {
@@ -1113,14 +1117,9 @@ export async function sendNaverTalk(
       };
     }
 
-    // 전화번호 정규화 (하이픈 제거, 국가코드 추가)
-    let cleanPhoneNumber = phoneNumber.replace(/-/g, '');
-    if (!cleanPhoneNumber.startsWith('82')) {
-      // 010으로 시작하면 82로 변환
-      if (cleanPhoneNumber.startsWith('010')) {
-        cleanPhoneNumber = '82' + cleanPhoneNumber.substring(1);
-      }
-    }
+    // 전화번호 정규화 (하이픈 제거)
+    const cleanPhoneNumber = phoneNumber.replace(/-/g, '');
+    const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
     // messageKey 생성 (YYYYMMDD-일련번호)
     const now = new Date();
@@ -1128,46 +1127,60 @@ export async function sendNaverTalk(
     const randomSeq = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
     const messageKey = `${dateStr}-${randomSeq}`;
 
-    // 요청 본문 (규격서 준수)
+    // 요청 본문 (규격서 v1.2 준수 - snake_case)
     const requestBody: Record<string, unknown> = {
       auth_code: MTS_AUTH_CODE,
-      messageKey: messageKey,
-      templateCode: templateCode,
-      phoneNumber: cleanPhoneNumber,
-      templateParams: templateParams,
+      partner_key: partnerKey,
+      callback_number: cleanCallbackNumber,
+      phone_number: cleanPhoneNumber,
+      template_code: templateCode,
+      message: message,
+      add_etc1: messageKey, // 메시지 고유키
     };
 
-    // 선택 파라미터: attachments
+    // 선택 파라미터: template_params
+    if (templateParams && Object.keys(templateParams).length > 0) {
+      requestBody.template_params = templateParams;
+    }
+
+    // 선택 파라미터: product_code
+    if (productCode) {
+      requestBody.product_code = productCode;
+    }
+
+    // 선택 파라미터: attachment (단수형)
     if (attachments) {
-      const attachmentsObj: Record<string, unknown> = {};
+      const attachmentObj: Record<string, unknown> = {};
 
       if (attachments.buttons && attachments.buttons.length > 0) {
-        attachmentsObj.buttons = attachments.buttons;
+        // buttons → button (복수 → 단수)
+        attachmentObj.button = attachments.buttons;
       }
 
-      if (attachments.sampleImageHashId) {
-        attachmentsObj.sampleImageHashId = attachments.sampleImageHashId;
+      if (attachments.imageHashId) {
+        attachmentObj.imageHashId = attachments.imageHashId;
       }
 
-      if (Object.keys(attachmentsObj).length > 0) {
-        requestBody.attachments = attachmentsObj;
+      if (Object.keys(attachmentObj).length > 0) {
+        requestBody.attachment = attachmentObj; // attachments → attachment
       }
     }
 
-    // 선택 파라미터: asyncSend (카드알림 전용)
-    if (asyncSend) {
-      requestBody.asyncSend = asyncSend;
+    // 전환전송 설정
+    if (tranType && tranType !== 'N') {
+      requestBody.tran_type = tranType;
+      if (tranMessage) {
+        requestBody.tran_message = tranMessage;
+      }
     }
 
     // 예약 발송 시간
     if (sendDate) {
-      requestBody.sendDate = convertToMtsDateFormat(sendDate);
+      requestBody.send_date = convertToMtsDateFormat(sendDate);
     }
 
-    // API URL 결정 (CARDINFO는 별도 서버)
-    const apiUrl = productCode === 'CARDINFO'
-      ? `https://mtscard1.mtsco.co.kr:41310/v1/${partnerKey}/send`
-      : `${MTS_API_URL}/sndng/nti/sendMessage`;
+    // API URL (규격서 v1.2)
+    const apiUrl = `${MTS_API_URL}/sndng/ntk/sendMessage`;
 
     console.log('[네이버 톡톡] 발송 요청:', {
       apiUrl,
@@ -1176,6 +1189,7 @@ export async function sendNaverTalk(
       phoneNumber: cleanPhoneNumber,
       templateParams,
       hasAttachments: !!attachments,
+      requestBody: JSON.stringify(requestBody, null, 2),
     });
 
     // API 호출
@@ -1187,7 +1201,24 @@ export async function sendNaverTalk(
       body: JSON.stringify(requestBody),
     });
 
-    const result = await response.json();
+    console.log('[네이버 톡톡] HTTP 응답 상태:', response.status, response.statusText);
+
+    // 응답 텍스트 먼저 확인
+    const responseText = await response.text();
+    console.log('[네이버 톡톡] 응답 원본:', responseText);
+
+    // JSON 파싱 시도
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[네이버 톡톡] JSON 파싱 실패:', parseError);
+      return {
+        success: false,
+        error: `MTS API 응답 파싱 실패: ${responseText.substring(0, 200)}`,
+        errorCode: 'PARSE_ERROR',
+      };
+    }
 
     console.log('[네이버 톡톡] 발송 응답:', result);
 

@@ -5,7 +5,6 @@ import NextImage from "next/image";
 import {
   Info,
   RefreshCw,
-  Send,
   Image as ImageIcon,
   FileText,
   Upload,
@@ -61,7 +60,7 @@ export interface FriendtalkData {
     };
   }>; // FL 타입 전용
   carousels: Array<{
-    header: string;
+    header?: string;
     content: string;
     image?: {
       fileId: string;
@@ -77,7 +76,7 @@ export interface FriendtalkData {
   userInfo: {
     phone: string;
     name: string;
-    company: string;
+    companyName: string;
   };
 }
 
@@ -205,7 +204,7 @@ export async function sendFriendtalkMessage(params: {
         callbackNumber: callbackNumber,
         tranType: enableSmsBackup ? "SMS" : undefined,
         tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
-        sendDate: scheduledAt, // 예약 발송 시간 추가
+        scheduledAt: scheduledAt, // 예약 발송 시간 추가
       });
 
       if (result.successCount > 0) successCount++;
@@ -245,6 +244,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
   const [senderProfiles, setSenderProfiles] = useState<SenderProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string>("");
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  // isSending 상태는 sendFriendtalkMessage 함수에서 상위 컴포넌트가 관리하므로 주석 처리
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSending, setIsSending] = useState(false);
   const [adFlag, setAdFlag] = useState<"Y" | "N">("N");
   const [messageType, setMessageType] = useState<MessageType>("FT");
@@ -375,11 +376,7 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
         moreLink,
         enableSmsBackup,
         smsBackupMessage,
-        userInfo: {
-          phone: userInfo.phone,
-          name: userInfo.name,
-          company: userInfo.companyName,
-        },
+        userInfo: userInfo,
       });
     }
   }, [
@@ -752,7 +749,8 @@ const FriendtalkTab: React.FC<FriendtalkTabProps> = ({
     setCarousels(newCarousels);
   };
 
-  // 친구톡 발송
+  // 친구톡 발송 (sendFriendtalkMessage로 대체되어 현재 미사용, 향후 UI 발송 버튼 추가 시 사용)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSendFriendtalk = async () => {
     // 유효성 검사
     if (!selectedProfile) {

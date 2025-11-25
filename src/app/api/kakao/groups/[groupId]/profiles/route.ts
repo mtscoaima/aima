@@ -25,7 +25,7 @@ const supabase = createClient(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   // JWT 인증 확인
   const authResult = validateAuth(request);
@@ -33,7 +33,7 @@ export async function GET(
   const { userId } = authResult.userInfo!;
 
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // 그룹 정보 조회 (본인 것만)
     const { data: group, error: groupError } = await supabase
@@ -83,7 +83,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   // JWT 인증 확인
   const authResult = validateAuth(request);
@@ -91,7 +91,7 @@ export async function POST(
   const { userId } = authResult.userInfo!;
 
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
     const body = await request.json();
     const { senderKey, profileId } = body;
 
@@ -183,7 +183,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   // JWT 인증 확인
   const authResult = validateAuth(request);
@@ -191,7 +191,7 @@ export async function DELETE(
   const { userId } = authResult.userInfo!;
 
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // URL에서 쿼리 파라미터 추출
     const { searchParams } = new URL(request.url);

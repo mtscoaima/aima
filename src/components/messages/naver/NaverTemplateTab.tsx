@@ -43,6 +43,7 @@ const NaverTemplateTab = () => {
   useEffect(() => {
     fetchTemplates();
     fetchAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTemplates = async () => {

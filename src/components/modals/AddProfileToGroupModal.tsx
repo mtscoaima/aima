@@ -34,8 +34,6 @@ const AddProfileToGroupModal: React.FC<AddProfileToGroupModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   // 프로필 목록 조회 (그룹에 속하지 않은 프로필만)
   const fetchAvailableProfiles = async () => {
     setLoading(true);
@@ -154,7 +152,11 @@ const AddProfileToGroupModal: React.FC<AddProfileToGroupModalProps> = ({
       setSelectedProfileId(null);
       setSearchQuery('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, groupId]);
+
+  // 모달이 닫혀 있으면 렌더링하지 않음 (모든 Hooks 호출 이후에 배치)
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">

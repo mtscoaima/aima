@@ -11,6 +11,7 @@ export interface SenderProfile {
 
 // 알림톡 템플릿 타입
 export interface AlimtalkTemplate {
+  id?: string;  // 데이터베이스 UUID (삭제 시 필요)
   template_code: string;
   template_name: string;
   template_content: string;

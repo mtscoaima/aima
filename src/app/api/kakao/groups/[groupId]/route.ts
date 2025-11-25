@@ -19,7 +19,7 @@ const supabase = createClient(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   // JWT 인증 확인
   const authResult = validateAuth(request);
@@ -27,7 +27,7 @@ export async function GET(
   const { userId } = authResult.userInfo!;
 
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // 그룹 정보 조회 (본인 것만)
     const { data: group, error } = await supabase
@@ -76,7 +76,7 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   // JWT 인증 확인
   const authResult = validateAuth(request);
@@ -84,7 +84,7 @@ export async function DELETE(
   const { userId } = authResult.userInfo!;
 
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // 그룹 존재 확인 (본인 것만)
     const { data: group, error: checkError } = await supabase

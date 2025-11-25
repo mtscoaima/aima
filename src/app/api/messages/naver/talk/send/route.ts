@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendNaverTalk } from '@/lib/mtsApi';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
+import { checkBalance } from '@/lib/messageSender';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,6 +23,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   // JWT 인증 확인
   const authResult = validateAuthWithSuccess(request);
+
   if (!authResult.isValid || !authResult.userInfo) {
     return authResult.errorResponse;
   }
@@ -31,14 +33,18 @@ export async function POST(request: NextRequest) {
   try {
     // 요청 본문 파싱
     const body = await request.json();
+
     const {
       navertalkId, // partnerKey
       templateCode,
+      message, // 메시지 내용 (템플릿 내용)
+      callbackNumber, // 발신번호
       recipients, // { phone_number: string, name?: string, variables?: Record<string, string> }[]
       templateParams, // 템플릿 변수 객체 (공통 변수)
-      productCode, // 'INFORMATION' | 'BENEFIT' | 'CARDINFO'
-      attachments, // { buttons?: Array<...>, sampleImageHashId?: string }
-      asyncSend, // 'Y' | 'N' (카드알림 전용)
+      productCode, // 'INFORMATION' | 'BENEFIT'
+      attachments, // { buttons?: Array<...>, imageHashId?: string }
+      tranType, // 전환전송 유형 ('S' | 'L' | 'N')
+      tranMessage, // 전환전송 메시지
       sendDate,
     } = body;
 
@@ -71,26 +77,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!productCode || !['INFORMATION', 'BENEFIT', 'CARDINFO'].includes(productCode)) {
+    if (!productCode || !['INFORMATION', 'BENEFIT'].includes(productCode)) {
       return NextResponse.json(
-        { error: 'productCode는 INFORMATION, BENEFIT, CARDINFO 중 하나여야 합니다.' },
+        { error: 'productCode는 INFORMATION, BENEFIT 중 하나여야 합니다.' },
         { status: 400 }
       );
     }
 
-    // 사용자 잔액 조회
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('balance, phone_number')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !user) {
+    if (!message) {
       return NextResponse.json(
-        { error: '사용자 정보를 찾을 수 없습니다.' },
-        { status: 404 }
+        { error: 'message(메시지 내용)가 필요합니다.' },
+        { status: 400 }
       );
     }
+
+    if (!callbackNumber) {
+      return NextResponse.json(
+        { error: 'callbackNumber(발신번호)가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 사용자 잔액 조회 (transactions 테이블 기반)
+    const currentBalance = await checkBalance(userId);
 
     // 네이버 톡톡 단가 계산
     // INFORMATION/CARDINFO: 스마트알림 13원
@@ -99,12 +108,12 @@ export async function POST(request: NextRequest) {
     const totalCost = recipients.length * NAVER_TALK_COST;
 
     // 잔액 확인
-    if (user.balance < totalCost) {
+    if (currentBalance < totalCost) {
       return NextResponse.json(
         {
           error: '잔액이 부족합니다.',
           required: totalCost,
-          current: user.balance
+          current: currentBalance
         },
         { status: 402 }
       );
@@ -134,10 +143,13 @@ export async function POST(request: NextRequest) {
           navertalkId,
           templateCode,
           recipient.phone_number,
+          message,
+          callbackNumber,
           recipientParams,
           productCode,
           attachments,
-          asyncSend,
+          tranType,
+          tranMessage,
           sendDate
         );
 
@@ -162,7 +174,7 @@ export async function POST(request: NextRequest) {
               product_code: productCode,
               template_params: recipientParams,
               attachments: attachments || null,
-              async_send: asyncSend || null,
+              tran_type: tranType || null,
               mts_msg_id: result.msgId,
             },
           });
@@ -193,28 +205,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 성공한 건수만큼 잔액 차감
+    // 성공한 건수만큼 잔액 차감 (transactions 테이블에 기록)
     const actualCost = successCount * NAVER_TALK_COST;
 
     if (actualCost > 0) {
-      // 잔액 차감
-      const { error: balanceError } = await supabase
-        .from('users')
-        .update({
-          balance: user.balance - actualCost,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
-      if (balanceError) {
-        console.error('잔액 차감 실패:', balanceError);
-      }
-
       // transactions 테이블에 기록
-      await supabase.from('transactions').insert({
+      const { error: transactionError } = await supabase.from('transactions').insert({
         user_id: userId,
         type: 'usage',
-        amount: -actualCost,
+        amount: actualCost, // 양수로 저장 (type='usage'일 때 차감으로 처리)
         description: `네이버 톡톡 발송 (${successCount}건)`,
         metadata: {
           message_type: 'NAVERTALK',
@@ -225,9 +224,12 @@ export async function POST(request: NextRequest) {
         },
         status: 'completed',
       });
+
+      if (transactionError) {
+        console.error('네이버 톡톡 거래 기록 실패:', transactionError);
+      }
     }
 
-    // 응답 반환
     return NextResponse.json({
       success: true,
       message: `네이버 톡톡 발송 완료 (성공: ${successCount}건, 실패: ${failCount}건)`,
@@ -239,6 +241,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('네이버 톡톡 발송 오류:', error);
+
     return NextResponse.json(
       {
         error: '네이버 톡톡 발송 중 오류가 발생했습니다.',

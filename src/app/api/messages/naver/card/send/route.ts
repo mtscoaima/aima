@@ -3,21 +3,17 @@
  *
  * POST /api/messages/naver/card/send
  * - 네이버 카드 승인 알림 발송 (CARDINFO 전용 서버)
+ *
+ * NOTE: CARDINFO는 별도 서버(mtscard1.mtsco.co.kr:41310)를 사용하므로
+ * 현재 미구현 상태입니다. 별도 API 엔드포인트 확인 필요.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { sendNaverTalk } from '@/lib/mtsApi';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * POST /api/messages/naver/card/send
- * 네이버 카드 승인 알림 발송
+ * 네이버 카드 승인 알림 발송 - 현재 미지원
  */
 export async function POST(request: NextRequest) {
   // JWT 인증 확인
@@ -26,10 +22,20 @@ export async function POST(request: NextRequest) {
     return authResult.errorResponse;
   }
 
-  const { userId } = authResult.userInfo;
+  // CARDINFO는 별도 서버를 사용하므로 현재 미지원
+  return NextResponse.json(
+    {
+      error: '카드 승인 알림(CARDINFO)은 현재 지원되지 않습니다. MTS 담당자에게 문의하세요.',
+      details: 'CARDINFO requires separate server (mtscard1.mtsco.co.kr:41310)'
+    },
+    { status: 501 }
+  );
+
+  /*
+  // 향후 구현 시 별도 함수 필요
+  // 아래 코드는 참고용으로 남겨둡니다.
 
   try {
-    // 요청 본문 파싱
     const body = await request.json();
     const {
       navertalkId, // partnerKey
@@ -243,4 +249,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  */
 }

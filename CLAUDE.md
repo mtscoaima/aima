@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Version**: 2.1 (Updated 2025-11-17)
+**Version**: 2.3 (Updated 2025-11-25)
 **Related Docs**: [MTS_API_통합_테스트_가이드.md](MTS_API_통합_테스트_가이드.md) | [README.md](README.md)
 
 ## Project Overview
@@ -785,7 +785,9 @@ await sendNaverTalk({ recipients, templateCode, templateParams });
    - Advanced variable input modal trigger button
    - Automatic variable detection on template selection
    - Read-only template content (variables entered separately)
+   - **Button URL input UI**: Templates store `buttonCode` and `buttonName` only; URLs entered at send time
    - Button structure conversion: UI buttons → `attachments: { buttons: [...] }` format
+   - **Critical**: Button interface uses `buttonCode` and `buttonName` fields (NOT `name`)
 
 3. **Variable Modal** - [src/components/modals/TemplateVariableInputModal.tsx](src/components/modals/TemplateVariableInputModal.tsx)
    - Excel-style table interface for per-recipient variables
@@ -811,6 +813,31 @@ await sendNaverTalk({ recipients, templateCode, templateParams });
 - ✅ Image attachment (sampleImageHashId)
 - ✅ Dual server routing (CARDINFO vs others)
 - ✅ Async/scheduled sending support
+
+**Button Handling** (⚠️ Critical Implementation Detail):
+1. **Template Registration**: Stores only `buttonCode` and `buttonName` (NO URLs)
+   ```typescript
+   interface NaverTalkTemplate {
+     buttons?: Array<{
+       type: 'WEB_LINK' | 'APP_LINK';
+       buttonCode: string;  // Unique identifier (e.g., "BTN000001")
+       buttonName: string;  // Display text (e.g., "배송 조회")
+     }>;
+   }
+   ```
+
+2. **Message Send**: URLs provided dynamically per message
+   ```typescript
+   // User enters URLs in NaverTalkContent UI
+   buttonUrls[btn.buttonCode] = {
+     mobileUrl: 'https://tracking.example.com/12345',  // Required
+     pcUrl: 'https://tracking.example.com/12345'       // Optional for WEB_LINK
+   };
+   ```
+
+3. **Why This Design?**: Enables **dynamic URLs per recipient** (e.g., unique tracking links)
+   - Example from MTS docs: "배송조회 (배송사, 송장번호가 매번 다른 경우)"
+   - Template defines button appearance, send-time defines button action
 
 **Testing Status**:
 - ✅ Backend API verified (100% MTS spec compliant)
@@ -854,6 +881,7 @@ await sendNaverTalk({ recipients, templateCode, templateParams });
    - Verify TypeScript errors are fixed: `npx tsc --noEmit`
    - Check that linting passes: `npm run lint`
    - The static generation error requires separate investigation
+   - Additional prerendering errors may appear (e.g., `TypeError: Cannot read properties of undefined (reading 'env')`) - these are also unrelated to TypeScript and occur during static generation phase
 
 ### Known Type Patterns
 When working with MTS API or Supabase, you may encounter these TypeScript patterns:
@@ -901,6 +929,25 @@ When working with MTS API or Supabase, you may encounter these TypeScript patter
    ```typescript
    // totalCost는 향후 결제 시스템 연동 시 사용 예정
    // const totalCost = recipients.length * costPerMessage;
+   ```
+
+6. **Next.js 15 Dynamic Route Params**: In Next.js 15, `params` in dynamic routes is now a Promise:
+   ```typescript
+   // ❌ OLD - Next.js 14 style (causes type error)
+   export async function GET(
+     request: NextRequest,
+     { params }: { params: { groupId: string } }
+   ) {
+     const { groupId } = params; // Error in Next.js 15
+   }
+
+   // ✅ NEW - Next.js 15 style
+   export async function GET(
+     request: NextRequest,
+     { params }: { params: Promise<{ groupId: string }> }
+   ) {
+     const { groupId } = await params; // Must await
+   }
    ```
 
 ### Setup & Configuration
@@ -1322,6 +1369,38 @@ For **server-side variable substitution** (AlimTalk, Naver TalkTalk):
 
 ## CLAUDE.md Version History
 
+### Version 2.3 (2025-11-25)
+**Enhancements**:
+- ✅ Added Next.js 15 Dynamic Route Params pattern to TypeScript Build Considerations
+- ✅ Updated Known Build Issues section with additional prerendering error information
+- ✅ Documented the `params: Promise<{}>` migration pattern for dynamic API routes
+
+**Bug Fixes Documented**:
+- Fixed dynamic route params type errors in `/api/kakao/groups/[groupId]/route.ts` and `/api/kakao/groups/[groupId]/profiles/route.ts`
+- Added `templateVariables` and `smsBackup` properties to `NaverData` interface
+- Added `partnerKey` and `code` properties to `LoadContentModal` metadata type
+- Added `id` property to `AlimtalkTemplate` interface
+
+**Content Stats**:
+- ~1,450 lines (up from ~1,350)
+- Added Next.js 15 migration pattern documentation
+
+### Version 2.2 (2025-11-21)
+**Enhancements**:
+- ✅ Added Naver TalkTalk Button Handling section with critical implementation details
+- ✅ Documented button structure: `buttonCode` and `buttonName` fields (NOT `name`)
+- ✅ Explained two-phase button handling: template registration vs message send
+- ✅ Added code examples for button URL management
+- ✅ Clarified dynamic URL pattern for per-recipient customization
+
+**Bug Fixes Documented**:
+- Fixed NaverTalkContent.tsx button field access (`btn.name` → `btn.buttonCode`, `btn.buttonName`)
+- Updated 7 locations in NaverTalkContent.tsx for correct button interface usage
+
+**Content Stats**:
+- ~1,350 lines (up from ~1,320)
+- Added "Button Handling" subsection under "Naver TalkTalk Implementation Details"
+
 ### Version 2.1 (2025-11-17)
 **Enhancements**:
 - ✅ Added Variable Insertion UI Pattern section with complete implementation guide
@@ -1369,6 +1448,6 @@ For **server-side variable substitution** (AlimTalk, Naver TalkTalk):
 
 ---
 
-**Last Updated**: 2025-11-17
+**Last Updated**: 2025-11-25
 **Maintained By**: Development Team
 **Review Frequency**: Update after major features or breaking changes

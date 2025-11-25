@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Info, RefreshCw, Send, HelpCircle } from "lucide-react";
+import { Info, RefreshCw, HelpCircle } from "lucide-react";
 import Image from "next/image";
 import {
   fetchSenderProfiles,
@@ -210,7 +210,7 @@ export async function sendBrandMessage_v2(params: {
     tranType: tranType,
     tranMessage: tranType !== 'N' ? smsBackupMessage : undefined,
     subject: subject || undefined,
-    sendDate: scheduledAt, // 예약 발송 지원
+    scheduledAt: scheduledAt, // 예약 발송 지원
   });
 
   if (result.success) {
@@ -284,7 +284,6 @@ const BrandTab: React.FC<BrandTabProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState<BrandTemplate | null>(null);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [selectedFormatType, setSelectedFormatType] = useState<keyof typeof templateTypes>("WIDE");
 
   // 수신 대상 선택 (targeting)
@@ -419,7 +418,8 @@ const BrandTab: React.FC<BrandTabProps> = ({
     setSelectedTemplate(template);
   };
 
-  // 브랜드 메시지 발송
+  // 브랜드 메시지 발송 (MessageSendTab에서 sendBrandMessage 호출로 대체됨)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSendBrandMessage = async () => {
     // 발송 확인
     const confirmed = window.confirm(
@@ -427,7 +427,7 @@ const BrandTab: React.FC<BrandTabProps> = ({
     );
     if (!confirmed) return;
 
-    setIsSending(true);
+    // setIsSending(true); // 미사용 함수이므로 주석 처리
     setErrorMessage("");
 
     try {
@@ -458,7 +458,7 @@ const BrandTab: React.FC<BrandTabProps> = ({
       alert(errorMessage);
       console.error("브랜드 메시지 발송 오류:", error);
     } finally {
-      setIsSending(false);
+      // setIsSending(false); // 미사용 함수이므로 주석 처리
     }
   };
 

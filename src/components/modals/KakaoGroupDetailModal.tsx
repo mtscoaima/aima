@@ -30,8 +30,6 @@ const KakaoGroupDetailModal: React.FC<KakaoGroupDetailModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  if (!isOpen) return null;
-
   // 그룹 프로필 목록 조회 (MTS API)
   const fetchProfiles = async () => {
     setLoading(true);
@@ -107,7 +105,11 @@ const KakaoGroupDetailModal: React.FC<KakaoGroupDetailModalProps> = ({
     if (isOpen) {
       fetchProfiles();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, groupId]);
+
+  // 모달이 닫혀 있으면 렌더링하지 않음 (모든 Hooks 호출 이후에 배치)
+  if (!isOpen) return null;
 
   return (
     <>

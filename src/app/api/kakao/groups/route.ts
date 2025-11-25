@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // groupKey 중복 확인
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing } = await supabase
       .from('kakao_profile_groups')
       .select('id')
       .eq('group_key', groupKey.trim())

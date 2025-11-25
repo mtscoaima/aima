@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { AlimtalkData } from "../messages/AlimtalkTab";
 import type { FriendtalkData } from "../messages/FriendtalkTab";
 import type { BrandData } from "../messages/BrandTab";
+import type { NaverData } from "../messages/NaverTalkContent";
 
 interface Recipient {
   phone_number: string;
@@ -31,7 +32,7 @@ interface SendConfirmModalProps {
   alimtalkData?: AlimtalkData | null;
   friendtalkData?: FriendtalkData | null;
   brandData?: BrandData | null;
-  naverData?: any; // TODO: NaverData 타입
+  naverData?: NaverData | null;
 }
 
 const SendConfirmModal: React.FC<SendConfirmModalProps> = ({
@@ -402,7 +403,7 @@ const SendConfirmModal: React.FC<SendConfirmModalProps> = ({
                         brandData.selectedTemplate.buttons.length > 0 && (
                           <div className="space-y-1">
                             <span className="text-xs font-medium">버튼:</span>
-                            {brandData.selectedTemplate.buttons.map((btn: any, idx: number) => (
+                            {brandData.selectedTemplate.buttons.map((btn: { name: string; type: string; url_mobile?: string }, idx: number) => (
                               <div
                                 key={idx}
                                 className="bg-gray-100 px-2 py-1 rounded text-xs flex items-center gap-2"

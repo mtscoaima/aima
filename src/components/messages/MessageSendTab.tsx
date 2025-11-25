@@ -424,8 +424,9 @@ const MessageSendTab = () => {
       } else if (activeMessageTab === "naver") {
         // 네이버 톡톡 전송
         if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
+        if (!userPhoneNumber) throw new Error("발신번호가 필요합니다");
 
-        const result = await sendNaverTalkMessage(naverData, recipients, undefined);
+        const result = await sendNaverTalkMessage(naverData, recipients, userPhoneNumber, undefined);
 
         alert(`네이버 톡톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
         setRecipients([]);
@@ -501,7 +502,7 @@ const MessageSendTab = () => {
         if (activeKakaoTab === "alimtalk") {
           if (!alimtalkData) throw new Error("알림톡 데이터가 없습니다");
 
-          const result = await sendAlimtalkMessage({
+          await sendAlimtalkMessage({
             recipients: recipients,
             callbackNumber: userPhoneNumber,
             data: alimtalkData,
@@ -514,7 +515,7 @@ const MessageSendTab = () => {
         } else if (activeKakaoTab === "friendtalk") {
           if (!friendtalkData) throw new Error("친구톡 데이터가 없습니다");
 
-          const result = await sendFriendtalkMessage({
+          await sendFriendtalkMessage({
             recipients: recipients,
             callbackNumber: userPhoneNumber,
             data: friendtalkData,
@@ -527,7 +528,7 @@ const MessageSendTab = () => {
         } else if (activeKakaoTab === "brand") {
           if (!brandData) throw new Error("브랜드 메시지 데이터가 없습니다");
 
-          const result = await sendBrandMessage_v2({
+          await sendBrandMessage_v2({
             recipients: recipients,
             callbackNumber: userPhoneNumber,
             data: brandData,
@@ -541,8 +542,9 @@ const MessageSendTab = () => {
       } else if (activeMessageTab === "naver") {
         // 네이버 톡톡 예약
         if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
+        if (!userPhoneNumber) throw new Error("발신번호가 필요합니다");
 
-        const result = await sendNaverTalkMessage(naverData, recipients, scheduledAt);
+        await sendNaverTalkMessage(naverData, recipients, userPhoneNumber, scheduledAt);
 
         alert(`네이버 톡톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
         setRecipients([]);
@@ -575,7 +577,6 @@ const MessageSendTab = () => {
             onAlimtalkDataChange={setAlimtalkData}
             onFriendtalkDataChange={setFriendtalkData}
             onBrandDataChange={setBrandData}
-            onNaverDataChange={setNaverData}
             onKakaoTabChange={setActiveKakaoTab}
           />
         );

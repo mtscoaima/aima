@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Info, HelpCircle, RefreshCw, Send, Plus } from "lucide-react";
+import { Info, HelpCircle, RefreshCw, Plus } from "lucide-react";
 import {
   fetchSenderProfiles,
   fetchAlimtalkTemplates,
@@ -27,7 +27,7 @@ export interface AlimtalkData {
   userInfo: {
     phone: string;
     name: string;
-    company: string;
+    companyName: string;
   };
 }
 
@@ -107,7 +107,7 @@ export async function sendAlimtalkMessage(params: {
     buttons: selectedTemplate.buttons,
     tranType: enableSmsBackup ? "SMS" : undefined,
     tranMessage: enableSmsBackup ? smsBackupMessage : undefined,
-    sendDate: scheduledAt, // 예약 발송 시간 추가
+    scheduledAt: scheduledAt, // 예약 발송 시간 추가
   });
 
   return result;
@@ -133,7 +133,6 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState<AlimtalkTemplate | null>(null);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [enableSmsBackup, setEnableSmsBackup] = useState(false);
   const [smsBackupMessage, setSmsBackupMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -273,7 +272,8 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
     setSelectedTemplate(template);
   };
 
-  // 알림톡 발송
+  // 알림톡 발송 (MessageSendTab에서 sendAlimtalkMessage 호출로 대체됨)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSendAlimtalk = async () => {
     // 유효성 검사
     if (!selectedProfile) {
@@ -302,7 +302,7 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
     );
     if (!confirmed) return;
 
-    setIsSending(true);
+    // setIsSending(true); // 미사용 함수이므로 주석 처리
     setErrorMessage("");
 
     try {
@@ -360,7 +360,7 @@ const AlimtalkTab: React.FC<AlimtalkTabProps> = ({
         error instanceof Error ? error.message : "알림톡 발송 중 오류가 발생했습니다."
       );
     } finally {
-      setIsSending(false);
+      // setIsSending(false); // 미사용 함수이므로 주석 처리
     }
   };
 

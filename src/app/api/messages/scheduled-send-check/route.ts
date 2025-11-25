@@ -266,7 +266,11 @@ export async function POST(request: NextRequest) {
             // 네이버 톡톡
             const navertalkId = metadata.navertalk_id || metadata.navertalkId;
             const templateCode = metadata.template_code || metadata.templateCode;
+            const callbackNumber = metadata.callback_number || metadata.callbackNumber || '';
             const productCode = metadata.product_code || 'INFORMATION';
+            const templateParams = metadata.template_params || {};
+            const tranType = metadata.tran_type || 'N';
+            const tranMessage = metadata.tran_message;
             const buttons = metadata.buttons;
             const imageHashId = metadata.image_hash_id;
 
@@ -274,14 +278,23 @@ export async function POST(request: NextRequest) {
               throw new Error('네이버 톡톡 발송에 필요한 정보가 부족합니다 (navertalkId, templateCode)');
             }
 
+            // attachments 구조 변환
+            const attachments = (buttons || imageHashId) ? {
+              buttons: buttons,
+              imageHashId: imageHashId
+            } : undefined;
+
             result = await sendNaverTalk(
               navertalkId,
               templateCode,
               msg.to_number,
-              msg.message_content,
-              productCode,
-              buttons,
-              imageHashId,
+              msg.message_content || '',
+              callbackNumber,
+              templateParams as Record<string, string>,
+              productCode as 'INFORMATION' | 'BENEFIT',
+              attachments,
+              tranType as 'S' | 'L' | 'N',
+              tranMessage,
               scheduledAt
             );
             break;

@@ -49,6 +49,9 @@ interface Template {
       buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>
     }>;
     moreLink?: string;
+    // Naver TalkTalk 템플릿 필드 (2025-11-25 추가)
+    partnerKey?: string;
+    code?: string;
   };
   created_at: string;
 }

@@ -20,6 +20,8 @@ export interface NaverData {
   templateContent: string;
   productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO';
   buttonUrls: Record<string, { mobileUrl: string; pcUrl?: string }>; // buttonCode를 key로 사용
+  templateVariables?: string[]; // 템플릿에서 추출된 변수 목록
+  smsBackup?: boolean; // SMS 백업 설정 여부 (미지원)
 }
 
 interface NaverTalkContentProps {
@@ -53,7 +55,7 @@ interface NaverAccount {
   created_at: string;
 }
 
-const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataChange }) => {
+const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, selectedSenderNumber, onDataChange }) => {
   // 계정 관련 상태
   const [accounts, setAccounts] = useState<NaverAccount[]>([]);
   const [navertalkId, setNavertalkId] = useState("");
@@ -181,7 +183,8 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
     }
   };
 
-  // 네이버 톡톡 발송
+  // 네이버 톡톡 발송 (sendNaverTalkMessage로 대체되어 현재 미사용, 향후 UI 발송 버튼 추가 시 사용)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSend = async () => {
     // 유효성 검사
     if (!navertalkId) {
@@ -234,20 +237,20 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
         body: JSON.stringify({
           navertalkId,
           templateCode: selectedTemplate.code,
+          message: selectedTemplate.text, // 템플릿 메시지 내용
+          callbackNumber: selectedSenderNumber || '', // 발신번호
           recipients: recipients.map(r => ({
             phone_number: r.phone_number,
             name: r.name,
             variables: r.variables, // 수신자별 변수 (있는 경우)
           })),
           templateParams: {}, // MTS API가 서버에서 #{변수} 치환 처리
-          productCode,
+          productCode: productCode === 'CARDINFO' ? 'INFORMATION' : productCode, // CARDINFO는 별도 API 필요, INFORMATION으로 변환
           attachments: selectedTemplate.buttons ? {
             buttons: selectedTemplate.buttons.map(btn => {
               const urls = buttonUrls[btn.buttonCode] || { mobileUrl: '', pcUrl: '' };
               return {
-                type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
                 buttonCode: btn.buttonCode,
-                buttonName: btn.buttonName,
                 mobileUrl: urls.mobileUrl,
                 pcUrl: urls.pcUrl || urls.mobileUrl,
               };
@@ -490,6 +493,7 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, onDataC
 export async function sendNaverTalkMessage(
   naverData: NaverData,
   recipients: Recipient[],
+  callbackNumber: string, // 발신번호 추가
   scheduledAt?: string // YYYYMMDDHHmmss 형식
 ): Promise<{ success: boolean; message: string; successCount?: number; failCount?: number }> {
   // 유효성 검사
@@ -539,26 +543,26 @@ export async function sendNaverTalkMessage(
     body: JSON.stringify({
       navertalkId: naverData.navertalkId,
       templateCode: naverData.selectedTemplate.code,
+      message: naverData.templateContent, // 템플릿 메시지 내용 추가
+      callbackNumber: callbackNumber, // 발신번호 추가
       recipients: recipients.map(r => ({
         phone_number: r.phone_number,
         name: r.name,
         variables: r.variables, // 수신자별 변수 (있는 경우)
       })),
       templateParams: {}, // MTS API가 서버에서 #{변수} 치환 처리
-      productCode: naverData.productCode,
+      productCode: naverData.productCode === 'CARDINFO' ? 'INFORMATION' : naverData.productCode, // CARDINFO → INFORMATION
       attachments: naverData.selectedTemplate.buttons ? {
         buttons: naverData.selectedTemplate.buttons.map(btn => {
           const urls = naverData.buttonUrls[btn.buttonCode] || { mobileUrl: '', pcUrl: '' };
           return {
-            type: btn.type === 'WEB_LINK' ? 'WEB_LINK' as const : 'APP_LINK' as const,
             buttonCode: btn.buttonCode,
-            buttonName: btn.buttonName,
             mobileUrl: urls.mobileUrl,
             pcUrl: urls.pcUrl || urls.mobileUrl, // PC URL이 없으면 모바일 URL 사용
           };
         }),
       } : undefined,
-      scheduledAt, // 예약 발송 시간 추가
+      sendDate: scheduledAt, // 예약 발송 시간 (sendDate로 변경)
     }),
   });
 
