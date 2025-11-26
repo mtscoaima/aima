@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
       categoryCode,
       buttons,
       sampleImageHashId,
+      // BENEFIT 전용 필드
+      templateType,
+      benefit,
     } = body;
 
     // 필수 파라미터 검증
@@ -55,11 +58,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!categoryCode) {
+    // BENEFIT이 아닌 경우 categoryCode 필수
+    if (productCode !== 'BENEFIT' && !categoryCode) {
       return NextResponse.json(
         { error: '카테고리 코드가 필요합니다.' },
         { status: 400 }
       );
+    }
+
+    // BENEFIT인 경우 benefit 객체 필수 검증
+    if (productCode === 'BENEFIT') {
+      if (!benefit) {
+        return NextResponse.json(
+          { error: 'BENEFIT 템플릿의 경우 혜택 정보(benefit)가 필요합니다.' },
+          { status: 400 }
+        );
+      }
+      if (!benefit.title) {
+        return NextResponse.json(
+          { error: '혜택 제목(benefit.title)이 필요합니다.' },
+          { status: 400 }
+        );
+      }
+      if (!benefit.benefitTypes || benefit.benefitTypes.length === 0) {
+        return NextResponse.json(
+          { error: '혜택 유형(benefit.benefitTypes)을 1개 이상 선택해주세요.' },
+          { status: 400 }
+        );
+      }
+      if (!benefit.feedDisplayEndedAt) {
+        return NextResponse.json(
+          { error: '피드 표시 종료일(benefit.feedDisplayEndedAt)이 필요합니다.' },
+          { status: 400 }
+        );
+      }
+      if (!benefit.feedDisplayImageHashId) {
+        return NextResponse.json(
+          { error: '피드 이미지(benefit.feedDisplayImageHashId)가 필요합니다.' },
+          { status: 400 }
+        );
+      }
+      if (!benefit.blockCallNumber && !benefit.blockMessageUrl) {
+        return NextResponse.json(
+          { error: '수신거부 전화번호 또는 URL 중 하나 이상 필요합니다.' },
+          { status: 400 }
+        );
+      }
     }
 
     // 버튼 검증 (선택 사항)
@@ -72,17 +116,18 @@ export async function POST(request: NextRequest) {
 
     // 네이버 톡톡 템플릿 생성 API 호출
     const result = await createNaverTalkTemplate(
-      authResult.userInfo.userId, // userId 추가
+      authResult.userInfo.userId,
       partnerKey,
       code,
       text,
       productCode,
-      categoryCode,
+      categoryCode || '', // BENEFIT의 경우 빈 문자열 전달
       buttons,
-      undefined, // templateType
+      templateType, // BENEFIT 전용 templateType
       undefined, // pushNotice
       undefined, // tableInfo
-      sampleImageHashId
+      sampleImageHashId,
+      benefit // BENEFIT 전용 benefit 객체
     );
 
     if (result.success) {

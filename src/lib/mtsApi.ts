@@ -2179,7 +2179,7 @@ export async function createNaverTalkTemplate(
     iOsAppScheme?: string; // ✅ 규격서: APP_LINK 필수
     aOsAppScheme?: string; // ✅ 규격서: APP_LINK 필수
   }>,
-  templateType?: 'CARD_PAYMENT' | 'TABLE',
+  templateType?: 'CARD_PAYMENT' | 'TABLE' | 'BENEFIT' | 'BENEFIT_LMS',
   pushNotice?: string,
   tableInfo?: {
     elementList: Array<{
