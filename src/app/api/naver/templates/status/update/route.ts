@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
-import { getNaverTalkTemplate } from '@/lib/mtsApi';
+import { getNaverTalkTemplate, requestNaverTemplateInspection } from '@/lib/mtsApi';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -81,9 +81,36 @@ export async function POST(request: NextRequest) {
     // 각 템플릿의 상태를 MTS API에서 조회하여 업데이트
     let updatedCount = 0;
     let errorCount = 0;
+    let inspectionRequestedCount = 0;
 
     for (const template of pendingTemplates) {
       try {
+        // REGISTERED 상태인 경우 먼저 검수 요청
+        if (template.status === 'REGISTERED') {
+          try {
+            const inspectionResult = await requestNaverTemplateInspection(
+              template.partner_key,
+              template.code
+            );
+            if (inspectionResult.success) {
+              console.log(
+                `[네이버 톡톡] 템플릿 검수 요청 성공: ${template.code}`
+              );
+              inspectionRequestedCount++;
+            } else {
+              console.warn(
+                `[네이버 톡톡] 템플릿 검수 요청 실패 (code: ${template.code}):`,
+                inspectionResult.error
+              );
+            }
+          } catch (inspectionErr) {
+            console.error(
+              `[네이버 톡톡] 템플릿 검수 요청 중 예외 (code: ${template.code}):`,
+              inspectionErr
+            );
+          }
+        }
+
         // MTS API에서 템플릿 상태 조회
         const result = await getNaverTalkTemplate(
           template.partner_key,
@@ -138,8 +165,9 @@ export async function POST(request: NextRequest) {
       success: true,
       updatedCount,
       errorCount,
+      inspectionRequestedCount,
       totalChecked: pendingTemplates.length,
-      message: `${updatedCount}개의 템플릿 상태가 업데이트되었습니다.${errorCount > 0 ? ` (실패: ${errorCount}개)` : ''}`,
+      message: `${updatedCount}개의 템플릿 상태가 업데이트되었습니다.${inspectionRequestedCount > 0 ? ` (검수 요청: ${inspectionRequestedCount}개)` : ''}${errorCount > 0 ? ` (실패: ${errorCount}개)` : ''}`,
     });
   } catch (error) {
     console.error('[네이버 톡톡] 템플릿 상태 업데이트 API 오류:', error);

@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     const {
       partnerKey, // 네이버 톡톡 파트너 키
       templateCode, // 템플릿 코드
+      comment, // 검수 요청 시 코멘트 (선택, 최대 200자)
     } = body;
 
     // 필수 파라미터 확인
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // MTS API 호출
-    const result = await requestNaverTemplateInspection(partnerKey, templateCode);
+    const result = await requestNaverTemplateInspection(partnerKey, templateCode, comment);
 
     if (result.success) {
       return NextResponse.json({

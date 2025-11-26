@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ChevronDown, FileText, ChevronLeft, ChevronRight, Trash2, RefreshCw } from "lucide-react";
+import { ChevronDown, FileText, ChevronLeft, ChevronRight, Trash2, RefreshCw, XCircle } from "lucide-react";
 import NaverTemplateCreateModal from "./NaverTemplateCreateModal";
 
 interface NaverTemplate {
@@ -35,6 +35,7 @@ const NaverTemplateTab = () => {
   const [templates, setTemplates] = useState<NaverTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingTemplateId, setDeletingTemplateId] = useState<number | null>(null);
+  const [cancelingInspectionId, setCancelingInspectionId] = useState<number | null>(null);
   const [accounts, setAccounts] = useState<NaverAccount[]>([]);
   const [selectedPartnerKey, setSelectedPartnerKey] = useState<string>("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -177,6 +178,47 @@ const NaverTemplateTab = () => {
       alert(error instanceof Error ? error.message : "템플릿 삭제 실패");
     } finally {
       setDeletingTemplateId(null);
+    }
+  };
+
+  // 검수 취소 핸들러
+  const handleCancelInspection = async (template: NaverTemplate) => {
+    const confirmed = window.confirm(
+      `"${template.code}" 템플릿의 검수 요청을 취소하시겠습니까?\n\n취소 후 템플릿은 '등록됨(REGISTERED)' 상태로 돌아가며, 삭제 또는 수정이 가능해집니다.`
+    );
+
+    if (!confirmed) return;
+
+    setCancelingInspectionId(template.id);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      const response = await fetch("/api/messages/naver/templates/inspection-cancel", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          partnerKey: template.partner_key,
+          templateCode: template.code,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "검수 취소 실패");
+      }
+
+      alert(result.message || "검수 요청이 취소되었습니다.");
+      // 목록 새로고침
+      await fetchTemplates();
+    } catch (error) {
+      console.error("네이버 템플릿 검수 취소 실패:", error);
+      alert(error instanceof Error ? error.message : "검수 취소 실패");
+    } finally {
+      setCancelingInspectionId(null);
     }
   };
 
@@ -387,7 +429,18 @@ const NaverTemplateTab = () => {
               <div className="text-sm text-gray-600">
                 {new Date(template.created_at).toLocaleDateString("ko-KR")}
               </div>
-              <div className="flex justify-center">
+              <div className="flex justify-center gap-1">
+                {/* PENDING 상태일 때만 검수 취소 버튼 표시 */}
+                {template.status === "PENDING" && (
+                  <button
+                    onClick={() => handleCancelInspection(template)}
+                    disabled={cancelingInspectionId === template.id}
+                    className="p-1 text-orange-500 hover:text-orange-700 hover:bg-orange-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="검수 취소"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => handleDeleteTemplate(template)}
                   disabled={deletingTemplateId === template.id}

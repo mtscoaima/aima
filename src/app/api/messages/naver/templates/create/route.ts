@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createNaverTalkTemplate } from '@/lib/mtsApi';
+import { createNaverTalkTemplate, requestNaverTemplateInspection } from '@/lib/mtsApi';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
 
 /**
@@ -86,10 +86,29 @@ export async function POST(request: NextRequest) {
     );
 
     if (result.success) {
+      // 템플릿 생성 성공 후 자동으로 검수 요청
+      let inspectionResult = null;
+      let inspectionError = null;
+
+      try {
+        inspectionResult = await requestNaverTemplateInspection(partnerKey, code);
+        if (!inspectionResult.success) {
+          inspectionError = inspectionResult.error || '검수 요청 실패';
+          console.warn('템플릿 검수 요청 실패:', inspectionError);
+        }
+      } catch (inspectionErr) {
+        inspectionError = inspectionErr instanceof Error ? inspectionErr.message : '검수 요청 중 오류';
+        console.error('템플릿 검수 요청 오류:', inspectionErr);
+      }
+
       return NextResponse.json({
         success: true,
         data: result.responseData,
-        message: '네이버 톡톡 템플릿이 성공적으로 생성되었습니다.',
+        message: inspectionResult?.success
+          ? '네이버 톡톡 템플릿이 생성되고 검수 요청되었습니다.'
+          : '네이버 톡톡 템플릿이 생성되었습니다. (검수 요청 실패: ' + inspectionError + ')',
+        inspectionRequested: inspectionResult?.success || false,
+        inspectionError: inspectionError,
       });
     } else {
       return NextResponse.json(

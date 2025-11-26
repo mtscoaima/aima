@@ -46,6 +46,9 @@ export async function POST(request: NextRequest) {
       tranType, // 전환전송 유형 ('S' | 'L' | 'N')
       tranMessage, // 전환전송 메시지
       sendDate,
+      addEtc2, // 추가 정보 2 (선택)
+      addEtc3, // 추가 정보 3 (선택)
+      addEtc4, // 추가 정보 4 (선택)
     } = body;
 
     // 필수 파라미터 확인
@@ -150,7 +153,10 @@ export async function POST(request: NextRequest) {
           attachments,
           tranType,
           tranMessage,
-          sendDate
+          sendDate,
+          addEtc2,
+          addEtc3,
+          addEtc4
         );
 
         if (result.success) {
@@ -176,6 +182,9 @@ export async function POST(request: NextRequest) {
               attachments: attachments || null,
               tran_type: tranType || null,
               mts_msg_id: result.msgId,
+              add_etc2: addEtc2 || null,
+              add_etc3: addEtc3 || null,
+              add_etc4: addEtc4 || null,
             },
           });
 

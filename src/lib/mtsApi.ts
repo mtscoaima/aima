@@ -1084,6 +1084,9 @@ export async function getNaverTalkTemplates(
  * @param tranType 전환전송 유형 (S: SMS, L: LMS, N: 없음)
  * @param tranMessage 전환전송 메시지
  * @param sendDate 예약 발송 시간 (yyyy-MM-dd HH:mm)
+ * @param addEtc2 추가 정보 2 (선택, 최대 160자)
+ * @param addEtc3 추가 정보 3 (선택, 최대 160자)
+ * @param addEtc4 추가 정보 4 (선택, 최대 160자)
  */
 export async function sendNaverTalk(
   partnerKey: string,
@@ -1105,7 +1108,10 @@ export async function sendNaverTalk(
   },
   tranType?: 'S' | 'L' | 'N',
   tranMessage?: string,
-  sendDate?: string
+  sendDate?: string,
+  addEtc2?: string,
+  addEtc3?: string,
+  addEtc4?: string
 ): Promise<MtsApiResult> {
   try {
     // 환경 변수 확인
@@ -1179,6 +1185,17 @@ export async function sendNaverTalk(
       requestBody.send_date = convertToMtsDateFormat(sendDate);
     }
 
+    // 추가 정보 (add_etc2~4)
+    if (addEtc2) {
+      requestBody.add_etc2 = addEtc2;
+    }
+    if (addEtc3) {
+      requestBody.add_etc3 = addEtc3;
+    }
+    if (addEtc4) {
+      requestBody.add_etc4 = addEtc4;
+    }
+
     // API URL (규격서 v1.2)
     const apiUrl = `${MTS_API_URL}/sndng/ntk/sendMessage`;
 
@@ -1241,6 +1258,137 @@ export async function sendNaverTalk(
     };
   } catch (error) {
     console.error('MTS API 호출 오류 (네이버 톡톡):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 네이버 톡톡 발송 결과 조회
+ * MTS API 문서 v1.2 - 26. 네이버 스마트알림 응답요청
+ *
+ * @param partnerKey 파트너 키
+ * @param sendDate 발송일 (YYYYMMDD 형식, 최소 8자)
+ * @param templateCode 템플릿 코드 (선택)
+ * @param addEtc1 메시지 고유키 (선택, 발송 시 add_etc1에 전달한 값)
+ * @param page 페이지 번호 (기본값: 1)
+ * @param count 조회 건수 (기본값: 100)
+ * @param addEtc2 추가 정보 2 필터 (선택)
+ * @param addEtc3 추가 정보 3 필터 (선택)
+ * @param addEtc4 추가 정보 4 필터 (선택)
+ */
+export async function getNaverTalkResult(
+  partnerKey: string,
+  sendDate: string,
+  templateCode?: string,
+  addEtc1?: string,
+  page: number = 1,
+  count: number = 100,
+  addEtc2?: string,
+  addEtc3?: string,
+  addEtc4?: string
+): Promise<MtsApiResult> {
+  try {
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    // 요청 본문 구성
+    const requestBody: Record<string, unknown> = {
+      auth_code: MTS_AUTH_CODE,
+      partner_key: partnerKey,
+      send_date: sendDate.replace(/-/g, ''), // YYYYMMDD 형식으로 변환
+      page,
+      count,
+    };
+
+    // 선택 파라미터
+    if (templateCode) {
+      requestBody.template_code = templateCode;
+    }
+    if (addEtc1) {
+      requestBody.add_etc1 = addEtc1;
+    }
+    if (addEtc2) {
+      requestBody.add_etc2 = addEtc2;
+    }
+    if (addEtc3) {
+      requestBody.add_etc3 = addEtc3;
+    }
+    if (addEtc4) {
+      requestBody.add_etc4 = addEtc4;
+    }
+
+    const apiUrl = `${MTS_API_URL}/rspns/ntk/rspnsMessages`;
+
+    console.log('[네이버 톡톡 결과조회] 요청:', {
+      apiUrl,
+      partnerKey,
+      sendDate: requestBody.send_date,
+      templateCode,
+      addEtc1,
+      page,
+      count,
+    });
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('[네이버 톡톡 결과조회] HTTP 응답 상태:', response.status, response.statusText);
+
+    const responseText = await response.text();
+    console.log('[네이버 톡톡 결과조회] 응답 원본:', responseText);
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[네이버 톡톡 결과조회] JSON 파싱 실패:', parseError);
+      return {
+        success: false,
+        error: `MTS API 응답 파싱 실패: ${responseText.substring(0, 200)}`,
+        errorCode: 'PARSE_ERROR',
+      };
+    }
+
+    console.log('[네이버 톡톡 결과조회] 응답:', result);
+
+    if (result.code === '0000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '결과 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (네이버 톡톡 결과조회):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -2129,7 +2277,7 @@ export async function createNaverTalkTemplate(
             product_code: productCode,
             category_code: categoryCode,
             buttons: buttons ? JSON.parse(JSON.stringify(buttons)) : null,
-            status: 'PENDING', // 기본값: 검수 대기
+            status: 'REGISTERED', // 기본값: 등록됨 (검수 요청 전 상태)
           });
 
         if (dbError) {
@@ -2912,7 +3060,7 @@ export async function updateNaverTalkTemplate(
     }
 
     const response = await fetch(
-      `${MTS_TEMPLATE_API_URL}/naver/v1/template/${partnerKey}/code/${templateCode}/update`,
+      `${MTS_API_URL}/naver/v1/template/${partnerKey}/code/${templateCode}/update`,
       {
         method: 'PUT',
         headers: {
@@ -2967,32 +3115,70 @@ export async function deleteNaverTalkTemplate(
   templateCode: string
 ): Promise<MtsApiResult> {
   try {
-    const response = await fetch(
-      `${MTS_TEMPLATE_API_URL}/naver/v1/template/${partnerKey}/code/${templateCode}/delete`,
-      {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const apiUrl = `${MTS_API_URL}/naver/v1/template/${partnerKey}/code/${templateCode}/delete`;
 
-    const result = await response.json();
+    console.log('[네이버 톡톡 템플릿 삭제] API URL:', apiUrl);
 
-    if (result.code === '0000') {
+    const response = await fetch(apiUrl, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('[네이버 톡톡 템플릿 삭제] HTTP 상태:', response.status, response.statusText);
+
+    // 응답 텍스트 먼저 확인
+    const responseText = await response.text();
+
+    // HTML 응답 체크 (에러 페이지인 경우)
+    if (responseText.startsWith('<') || responseText.startsWith('<!')) {
+      console.error('[네이버 톡톡 템플릿 삭제] HTML 응답 수신 (API 오류):', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `MTS API 서버 오류 (HTTP ${response.status}): 템플릿 삭제 API에 접근할 수 없습니다. 템플릿이 MTS에 존재하지 않거나 파트너키를 확인하세요.`,
+        errorCode: 'API_ERROR',
+      };
+    }
+
+    // JSON 파싱 시도
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[네이버 톡톡 템플릿 삭제] JSON 파싱 실패:', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `MTS API 응답 파싱 실패: ${responseText.substring(0, 100)}`,
+        errorCode: 'PARSE_ERROR',
+      };
+    }
+
+    console.log('[네이버 톡톡 템플릿 삭제] 응답:', JSON.stringify(result));
+
+    // MTS API 성공 조건: code === '0000' 또는 success === true
+    if (result.code === '0000' || result.success === true) {
       return {
         success: true,
       };
     }
 
+    // MTS 에러 메시지에 따른 친절한 안내
+    let friendlyError = result.errorMessage || result.message || '템플릿 삭제 실패';
+
+    // PENDING 상태 템플릿 삭제 불가 안내
+    if (friendlyError.includes('검수가 완료되고') || friendlyError.includes('발송되지 않은 템플릿만')) {
+      friendlyError = '검수중(PENDING) 상태의 템플릿은 삭제할 수 없습니다.\n\n먼저 "검수 취소" 버튼을 눌러 검수 요청을 취소한 후 삭제해주세요.';
+    }
+
     return {
       success: false,
-      error: getErrorMessage(result.code) || result.message || '템플릿 삭제 실패',
+      error: getErrorMessage(result.code) || friendlyError,
       errorCode: result.code,
       responseData: result,
     };
   } catch (error) {
-    console.error('MTS API 호출 오류 (네이버 템플릿 삭제):', error);
+    console.error('MTS API 호출 오류 (네이버 톡톡 템플릿 삭제):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -3016,23 +3202,53 @@ export async function deleteNaverTalkTemplate(
  *
  * @param partnerKey - 파트너 키
  * @param templateCode - 템플릿 코드
+ * @param comment - 검수 요청 시 코멘트 (선택, 최대 200자)
  */
 export async function requestNaverTemplateInspection(
   partnerKey: string,
-  templateCode: string
+  templateCode: string,
+  comment?: string
 ): Promise<MtsApiResult> {
   try {
-    const response = await fetch(
-      `${MTS_TEMPLATE_API_URL}/naver/v1/template/${partnerKey}/${templateCode}/inspection`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const apiUrl = `${MTS_API_URL}/naver/v1/template/${partnerKey}/${templateCode}/inspection`;
 
-    const result = await response.json();
+    console.log('[네이버 톡톡 검수 요청] API URL:', apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: comment ? JSON.stringify({ comment }) : undefined,
+    });
+
+    console.log('[네이버 톡톡 검수 요청] HTTP 상태:', response.status, response.statusText);
+
+    // 응답 텍스트 먼저 확인
+    const responseText = await response.text();
+
+    // HTML 응답 체크 (에러 페이지인 경우)
+    if (responseText.startsWith('<') || responseText.startsWith('<!')) {
+      console.error('[네이버 톡톡 검수 요청] HTML 응답 수신 (API 오류):', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `MTS API 서버 오류 (HTTP ${response.status}): 검수 요청 API에 접근할 수 없습니다. API URL 또는 파트너키를 확인하세요.`,
+        errorCode: 'API_ERROR',
+      };
+    }
+
+    // JSON 파싱 시도
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[네이버 톡톡 검수 요청] JSON 파싱 실패:', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `MTS API 응답 파싱 실패: ${responseText.substring(0, 100)}`,
+        errorCode: 'PARSE_ERROR',
+      };
+    }
 
     if (result.code === '0000') {
       return {
@@ -3048,6 +3264,98 @@ export async function requestNaverTemplateInspection(
     };
   } catch (error) {
     console.error('MTS API 호출 오류 (네이버 템플릿 검수 요청):', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 네이버 톡톡 템플릿 검수 취소
+ * PUT /naver/v1/template/${partnerKey}/${templateCode}/inspection_cancel
+ *
+ * 검수요청 상태(PENDING)의 템플릿을 검수 취소하여 REGISTERED 상태로 돌립니다.
+ * 검수 취소 후에는 템플릿을 삭제하거나 수정할 수 있습니다.
+ *
+ * @param partnerKey - 파트너 키
+ * @param templateCode - 템플릿 코드
+ * @param comment - 검수 취소 사유 (선택, 최대 200자)
+ */
+export async function cancelNaverTemplateInspection(
+  partnerKey: string,
+  templateCode: string,
+  comment?: string
+): Promise<MtsApiResult> {
+  try {
+    const apiUrl = `${MTS_API_URL}/naver/v1/template/${partnerKey}/${templateCode}/inspection_cancel`;
+
+    console.log('[네이버 톡톡 검수 취소] API URL:', apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ comment: comment || '검수 요청을 취소합니다.' }),
+    });
+
+    console.log('[네이버 톡톡 검수 취소] HTTP 상태:', response.status, response.statusText);
+
+    // 응답 텍스트 먼저 확인
+    const responseText = await response.text();
+
+    // HTML 응답 체크 (에러 페이지인 경우)
+    if (responseText.startsWith('<') || responseText.startsWith('<!')) {
+      console.error('[네이버 톡톡 검수 취소] HTML 응답 수신 (API 오류):', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `MTS API 서버 오류 (HTTP ${response.status}): 검수 취소 API에 접근할 수 없습니다. API URL 또는 파트너키를 확인하세요.`,
+        errorCode: 'API_ERROR',
+      };
+    }
+
+    // JSON 파싱 시도
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[네이버 톡톡 검수 취소] JSON 파싱 실패:', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `MTS API 응답 파싱 실패: ${responseText.substring(0, 100)}`,
+        errorCode: 'PARSE_ERROR',
+      };
+    }
+
+    console.log('[네이버 톡톡 검수 취소] 응답:', JSON.stringify(result));
+
+    // MTS API 성공 조건: code === '0000' 또는 success === true
+    if (result.code === '0000' || result.success === true) {
+      return {
+        success: true,
+        message: '검수 요청이 취소되었습니다.',
+      };
+    }
+
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.errorMessage || result.message || '검수 취소 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MTS API 호출 오류 (네이버 템플릿 검수 취소):', error);
 
     if (error instanceof TypeError) {
       return {
@@ -3091,7 +3399,7 @@ export async function uploadNaverImage(
     formData.append('image', imageFile);
 
     const response = await fetch(
-      `${MTS_TEMPLATE_API_URL}/naver/v1/${partnerKey}/image/upload`,
+      `${MTS_API_URL}/naver/v1/${partnerKey}/image/upload`,
       {
         method: 'POST',
         body: formData,
