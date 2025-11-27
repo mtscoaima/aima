@@ -256,24 +256,32 @@ export async function scheduleMessage(
   }
 
   try {
+    // 기본 insert 데이터
+    const insertData: Record<string, unknown> = {
+      user_id: userId,
+      to_number: cleanPhone,
+      to_name: toName || '',
+      message_content: message,
+      subject: subject || '',
+      scheduled_at: scheduledAt,
+      status: 'pending',
+      metadata: {
+        ...metadata,
+        message_type: messageType,
+        source: metadata?.source || 'sms_tab',
+        from_number: fromNumber,
+        image_urls: imageUrls && imageUrls.length > 0 ? JSON.stringify(imageUrls) : null
+      }
+    };
+
+    // reservation_scheduled_messages 테이블인 경우 reservation_id 추가
+    if (tableName === 'reservation_scheduled_messages' && metadata?.reservation_id) {
+      insertData.reservation_id = metadata.reservation_id;
+    }
+
     const { data, error } = await supabase
       .from(tableName)
-      .insert({
-        user_id: userId,
-        to_number: cleanPhone,
-        to_name: toName || '',
-        message_content: message,
-        subject: subject || '',
-        scheduled_at: scheduledAt,
-        status: 'pending',
-        metadata: {
-          ...metadata,
-          message_type: messageType,
-          source: 'sms_tab',
-          from_number: fromNumber,
-          image_urls: imageUrls && imageUrls.length > 0 ? JSON.stringify(imageUrls) : null
-        }
-      })
+      .insert(insertData)
       .select()
       .single();
 

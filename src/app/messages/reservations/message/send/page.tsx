@@ -184,6 +184,12 @@ export default function MessageSendPage() {
     return phone;
   };
 
+  // 전화번호 유효성 검사 함수 (숫자만 10-11자리)
+  const isValidPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    return cleaned.length >= 10 && cleaned.length <= 11;
+  };
+
   // 바이트 수 계산 함수 (한글 3바이트, 영문/숫자 1바이트)
   const calculateBytes = (text: string) => {
     let bytes = 0;
@@ -481,9 +487,14 @@ export default function MessageSendPage() {
 
   // 변수를 실제 값으로 치환하는 함수
   const replaceVariables = (text: string, reservation: Reservation) => {
+    // 전화번호 변수: 호스트 연락처가 유효한 전화번호가 아니면 로그인한 사용자 전화번호로 폴백
+    const phoneForVariable = isValidPhoneNumber(hostContactNumber)
+      ? hostContactNumber
+      : (userPhoneNumber || "[비공개]");
+
     return text
       .replace(/\{\{고객명\}\}/g, reservation.customer_name)
-      .replace(/\{\{전화번호\}\}/g, hostContactNumber)
+      .replace(/\{\{전화번호\}\}/g, phoneForVariable)
       .replace(/\{\{공간명\}\}/g, reservation.spaces?.name || "-")
       .replace(/\{\{예약날짜\}\}/g, formatDate(reservation.start_datetime))
       .replace(/\{\{체크인시간\}\}/g, formatTime(reservation.start_datetime))
