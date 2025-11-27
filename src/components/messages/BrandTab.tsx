@@ -117,12 +117,13 @@ export async function sendBrandMessage_v2(params: {
     }
   }
 
-  // attachment 구성 (버튼, 이미지, 비디오, 커머스, 캐러셀 등)
+  // attachment 구성 (버튼, 이미지, 비디오, 커머스, 캐러셀, 쿠폰 등)
   const attachment: {
     button?: Array<{ name: string; type: 'WL' | 'AL' | 'BK' | 'MD' | 'AC'; url_mobile?: string; url_pc?: string }>;
     image?: { img_url: string; img_link?: string };
     video?: { videoUrl: string; thumbnailUrl: string };
     commerce?: { title: string; regularPrice: number; discountPrice?: number; discountRate?: number; discountFixed?: number };
+    coupon?: { description?: string; mobileLink?: string; pcLink?: string };
     carousel?: Array<{
       img_url: string;
       url_mobile: string;
@@ -146,8 +147,8 @@ export async function sendBrandMessage_v2(params: {
     }));
   }
 
-  // 이미지 추가 (IMAGE, WIDE 타입일 때)
-  if ((selectedTemplate.message_type === 'IMAGE' || selectedTemplate.message_type === 'WIDE') && selectedTemplate.image_url) {
+  // 이미지 추가 (IMAGE, WIDE, COMMERCE 타입일 때)
+  if ((selectedTemplate.message_type === 'IMAGE' || selectedTemplate.message_type === 'WIDE' || selectedTemplate.message_type === 'COMMERCE') && selectedTemplate.image_url) {
     attachment.image = {
       img_url: selectedTemplate.image_url,
     };

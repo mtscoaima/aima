@@ -1508,6 +1508,32 @@ export async function sendKakaoBrand(
     const cleanToNumber = toNumber.replace(/-/g, '');
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
+    // ===== MTS 템플릿 정보 조회 (쿠폰 등 필수 정보 확인) =====
+    // COMMERCE 타입에서 쿠폰이 템플릿에 등록되어 있으면 coupon_variable 필수
+    let mtsTemplateInfo: {
+      coupon?: { description?: string; linkMobile?: string; linkPc?: string; title?: string };
+    } | null = null;
+
+    try {
+      const templateResponse = await fetch(`${MTS_TEMPLATE_API_URL}/mts/api/direct/state/template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ authCode: MTS_AUTH_CODE, code: templateCode }),
+      });
+      const templateData = await templateResponse.json();
+      if (templateData.code === '200' && templateData.data) {
+        mtsTemplateInfo = {
+          coupon: templateData.data.coupon || null,
+        };
+        console.log('[브랜드 메시지] MTS 템플릿 정보 조회 완료:', {
+          hasCoupon: !!mtsTemplateInfo.coupon,
+          coupon: mtsTemplateInfo.coupon,
+        });
+      }
+    } catch (templateError) {
+      console.warn('[브랜드 메시지] MTS 템플릿 정보 조회 실패 (계속 진행):', templateError);
+    }
+
     // IMAGE 타입 특별 검증
     if (messageType === 'IMAGE' || messageType === 'WIDE') {
       // 1. message 필드 검증 (IMAGE는 최대 400자)
@@ -1559,12 +1585,28 @@ export async function sendKakaoBrand(
     };
 
     // ===== 변수분리방식 파라미터 생성 =====
-    // message_variable (필수)
-    requestBody.message_variable = {
-      message: message
-    };
+    // 문서 기준: message_variable은 필수(Y), 나머지는 선택(N)
+    //
+    // COMMERCE 타입의 경우 MTS 템플릿에 다음 변수가 정의됨:
+    // - #{정상가격}, #{할인가격}, #{할인율}, #{정액할인가격}
+    // 이 변수들은 commerce_variable로 전달해야 함!
 
-    // button_variable (버튼이 있을 경우)
+    // message_variable (MTS 문서 기준: 필수! 변수 없어도 빈 객체라도 전송)
+    // COMMERCE 타입 등에서 1030 오류 발생 시 이 필드가 누락된 경우가 많음
+    const hasMessageVariable = message && message.includes('#{');
+    if (hasMessageVariable) {
+      requestBody.message_variable = {
+        message: message
+      };
+    } else {
+      // 변수가 없어도 최소한 빈 값으로 전송 (MTS API 요구사항)
+      requestBody.message_variable = {
+        "변수": "변수" // 문서 예제와 동일한 더미 값
+      };
+    }
+
+    // button_variable (버튼이 있는 경우)
+    // MTS 문서: 키는 url1, url2, url3... 형태 (link1이 아님!)
     if (attachment?.button && attachment.button.length > 0) {
       const buttonVar: Record<string, string> = {};
       attachment.button.forEach((btn: {
@@ -1578,7 +1620,8 @@ export async function sendKakaoBrand(
       }, index: number) => {
         const urlMobile = btn.linkMobile || btn.url_mobile || '';
         if (urlMobile) {
-          buttonVar[`link${index + 1}`] = urlMobile;
+          // MTS 문서 기준: url1, url2 형태 사용 (link1이 아님)
+          buttonVar[`url${index + 1}`] = urlMobile;
         }
       });
 
@@ -1588,45 +1631,96 @@ export async function sendKakaoBrand(
     }
 
     // image_variable (이미지가 있을 경우)
+    // COMMERCE 타입의 경우 img_link 필수!
     if (attachment?.image) {
+      const imgUrl = attachment.image.img_url || attachment.image.imgUrl || '';
+      const imgLink = attachment.image.img_link || attachment.image.imgLink || '';
+
       const imgVar: Record<string, string>[] = [{
-        img_url: attachment.image.img_url || attachment.image.imgUrl || '',
+        img_url: imgUrl,
       }];
 
-      // img_link는 선택 사항
-      const imgLink = attachment.image.img_link || attachment.image.imgLink;
+      // COMMERCE 타입에서는 img_link가 필수
+      // 값이 없으면 img_url을 기본값으로 사용
       if (imgLink) {
         imgVar[0].img_link = imgLink;
+      } else if (messageType === 'COMMERCE' || messageType === 'CAROUSEL_COMMERCE') {
+        // COMMERCE 타입인데 img_link가 없으면 기본값 설정
+        imgVar[0].img_link = imgUrl || 'https://www.naver.com';
       }
 
       requestBody.image_variable = imgVar;
     }
 
-    // coupon_variable (쿠폰이 있을 경우)
-    if (attachment?.coupon) {
-      const couponVar: Record<string, string | number> = {
-        description: attachment.coupon.description || '',
-        url_mobile: attachment.coupon.url_mobile || attachment.coupon.mobileLink || '',
-      };
+    // COMMERCE 타입: commerce_variable 필수!
+    // MTS 템플릿에 #{정상가격}, #{할인가격}, #{할인율}, #{정액할인가격} 변수가 정의됨
+    if (messageType === 'COMMERCE' && attachment?.commerce) {
+      const commerceVar: Record<string, string | number> = {};
 
-      // url_pc는 선택 사항
-      const urlPc = attachment.coupon.url_pc || attachment.coupon.pcLink;
-      if (urlPc) {
-        couponVar.url_pc = urlPc;
+      // 정상가격 (필수)
+      const regularPrice = attachment.commerce.regular_price || attachment.commerce.regularPrice;
+      if (regularPrice != null) {
+        commerceVar['정상가격'] = String(regularPrice);
       }
 
-      requestBody.coupon_variable = couponVar;
+      // 할인가격 (필수)
+      const discountPrice = attachment.commerce.discount_price || attachment.commerce.discountPrice;
+      if (discountPrice != null) {
+        commerceVar['할인가격'] = String(discountPrice);
+      }
+
+      // 할인율 (선택)
+      const discountRate = attachment.commerce.discount_rate || attachment.commerce.discountRate;
+      if (discountRate != null) {
+        commerceVar['할인율'] = String(discountRate);
+      }
+
+      // 정액할인가격 (선택)
+      const discountFixed = attachment.commerce.discount_fixed || attachment.commerce.discountFixed;
+      if (discountFixed != null) {
+        commerceVar['정액할인가격'] = String(discountFixed);
+      }
+
+      if (Object.keys(commerceVar).length > 0) {
+        requestBody.commerce_variable = commerceVar;
+      }
     }
 
-    // commerce_variable (커머스가 있을 경우)
-    if (attachment?.commerce) {
-      requestBody.commerce_variable = {
-        title: attachment.commerce.title || '',
-        regular_price: attachment.commerce.regular_price || attachment.commerce.regularPrice || 0,
-        discount_price: attachment.commerce.discount_price || attachment.commerce.discountPrice || 0,
-        discount_rate: attachment.commerce.discount_rate || attachment.commerce.discountRate || 0,
-        discount_fixed: attachment.commerce.discount_fixed || attachment.commerce.discountFixed || 0,
-      };
+    // coupon_variable (쿠폰이 있을 경우)
+    // MTS 문서 기준: 한국어 키 "상세내용", "mobileLink", "pcLink" 사용
+    // 1. UI에서 전달된 attachment.coupon 사용
+    // 2. UI에서 쿠폰 정보가 없고, MTS 템플릿에 쿠폰이 등록되어 있으면 기본값 사용
+    const couponSource = attachment?.coupon || mtsTemplateInfo?.coupon;
+    if (couponSource) {
+      const couponVar: Record<string, string> = {};
+
+      // description (MTS 템플릿에서는 description 필드)
+      const description = (couponSource as { description?: string }).description ||
+                          (couponSource as { '상세내용'?: string })['상세내용'] || '';
+      if (description) {
+        couponVar['상세내용'] = description;
+      }
+
+      // mobileLink
+      const mobileLink = (couponSource as { url_mobile?: string }).url_mobile ||
+                         (couponSource as { mobileLink?: string }).mobileLink ||
+                         (couponSource as { linkMobile?: string }).linkMobile || '';
+      if (mobileLink) {
+        couponVar['mobileLink'] = mobileLink;
+      }
+
+      // pcLink
+      const pcLink = (couponSource as { url_pc?: string }).url_pc ||
+                     (couponSource as { pcLink?: string }).pcLink ||
+                     (couponSource as { linkPc?: string }).linkPc || '';
+      if (pcLink) {
+        couponVar['pcLink'] = pcLink;
+      }
+
+      if (Object.keys(couponVar).length > 0) {
+        requestBody.coupon_variable = couponVar;
+        console.log('[브랜드 메시지] coupon_variable 추가:', couponVar);
+      }
     }
 
     // item (WIDE_ITEM_LIST의 경우 image_variable로 변환)
@@ -1742,8 +1836,13 @@ export async function sendKakaoBrand(
     }
 
     // API 호출
-
     const requestBodyString = JSON.stringify(requestBody);
+
+    // 디버깅: 요청 본문 로그
+    console.log('======= 브랜드 메시지 발송 요청 =======');
+    console.log('메시지 타입:', messageType);
+    console.log('요청 본문:', JSON.stringify(requestBody, null, 2));
+
     const response = await fetch(`${MTS_API_URL}/btalk/send/message/basic`, {
       method: 'POST',
       headers: {
@@ -1754,6 +1853,10 @@ export async function sendKakaoBrand(
 
     const responseText = await response.text();
     const result = JSON.parse(responseText);
+
+    // 디버깅: 응답 로그
+    console.log('======= 브랜드 메시지 발송 응답 =======');
+    console.log('응답:', JSON.stringify(result, null, 2));
 
 
     // 성공 확인

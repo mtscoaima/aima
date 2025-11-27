@@ -1162,6 +1162,64 @@ if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !==
 
 **Error Code**: ER99 (UnhandledDataProgressException) typically indicates wrong field structure or unnecessary fields.
 
+### 12. Brand Message COMMERCE Type Variable Structure (Critical!)
+**Problem**: COMMERCE type sends 1030 (InvalidParameterException) even with correct data.
+
+**Root Cause**: `*_variable` field naming must match MTS API documentation exactly.
+
+**Required Structure** (from MTS 변수분리방식 v1.1 docs):
+```typescript
+const requestBody = {
+  // 1. message_variable: REQUIRED even if template has no variables
+  message_variable: { "변수": "변수" }, // At least one key-value pair
+
+  // 2. button_variable: Keys must be url1, url2 (NOT link1, link2)
+  button_variable: {
+    "url1": "https://example.com/mobile",  // 버튼1 모바일링크
+    "url2": "https://example.com/pc"       // 버튼1 PC링크 (optional)
+  },
+
+  // 3. image_variable: Must include img_link
+  image_variable: [{
+    "img_url": "https://example.com/image.jpg",
+    "img_link": "https://example.com"  // REQUIRED for COMMERCE type
+  }],
+
+  // 4. commerce_variable: Korean field names
+  commerce_variable: {
+    "정상가격": "1500000",
+    "할인가격": "1200000",
+    "할인율": "20",         // Optional
+    "정액할인가격": "300000" // Optional - MUST OMIT if null/undefined
+  },
+
+  // 5. coupon_variable: Required if template has coupon registered
+  coupon_variable: {
+    "상세내용": "쿠폰 설명",
+    "mobileLink": "https://example.com/coupon",
+    "pcLink": "https://example.com/coupon"  // Optional
+  }
+};
+```
+
+**Common Mistakes**:
+1. ❌ `button_variable: { link1: "..." }` → ✅ `button_variable: { url1: "..." }`
+2. ❌ Missing `message_variable` → ✅ Always include even with dummy value
+3. ❌ `image_variable: [{ img_url: "..." }]` → ✅ Add `img_link` field
+4. ❌ `"정액할인가격": "null"` → ✅ Omit field entirely if no value
+
+**How to Debug 1030 Error**:
+1. Query MTS template to see registered structure:
+   ```bash
+   POST https://talks.mtsco.co.kr/mts/api/direct/state/template
+   { "authCode": "...", "code": "TEMPLATE_CODE" }
+   ```
+2. Check if template has: buttons, commerce, coupon, image
+3. Ensure all registered components have corresponding `*_variable` fields
+4. Verify Korean field names match exactly
+
+**Reference**: MTS_카카오브랜드메시지_기본형_변수분리방식_Restful_Interface_Guide_v1.1.pdf
+
 ---
 
 ## Variable Insertion UI Pattern

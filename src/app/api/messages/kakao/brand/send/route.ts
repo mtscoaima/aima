@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
           recipient.phone_number,
           messageToSend,
           callbackNumber,
-          messageType as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO',
+          messageType as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE',
           targeting as 'M' | 'N' | 'I', // 타겟팅 타입 (M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구)
           attachment,
           tranType as 'N' | 'S' | 'L' | 'M',

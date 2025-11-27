@@ -870,6 +870,13 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
         }
       }
 
+      // COMMERCE 타입 버튼 필수 검증 (MTS 문서: 최소 1개, 최대 2개)
+      if (chatBubbleType === "COMMERCE" && buttons.length === 0) {
+        setError("커머스형 템플릿은 최소 1개의 버튼이 필수입니다.");
+        setIsSubmitting(false);
+        return;
+      }
+
       // 버튼 검증
       for (let i = 0; i < buttons.length; i++) {
         const button = buttons[i];
@@ -2173,12 +2180,28 @@ const BrandTemplateModal: React.FC<BrandTemplateModalProps> = ({
             </>
           )}
 
-          {/* 버튼 추가 (선택) */}
+          {/* 버튼 추가 (COMMERCE는 필수, 나머지는 선택) */}
           {maxButtons[chatBubbleType] > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                버튼 추가 (선택, 최대 {maxButtons[chatBubbleType]}개)
+                버튼 추가 {chatBubbleType === 'COMMERCE' ? (
+                  <span>
+                    <span className="text-red-500">*</span>
+                    <span className="text-xs text-gray-500 ml-1">(필수, 최소 1개 ~ 최대 {maxButtons[chatBubbleType]}개)</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-500">(선택, 최대 {maxButtons[chatBubbleType]}개)</span>
+                )}
               </label>
+
+              {/* COMMERCE 타입 버튼 필수 안내 */}
+              {chatBubbleType === 'COMMERCE' && buttons.length === 0 && (
+                <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-700">
+                    ⚠️ 커머스형 템플릿은 <strong>최소 1개의 버튼</strong>이 필수입니다. 버튼을 추가해주세요.
+                  </p>
+                </div>
+              )}
 
               {/* 버튼 목록 */}
               {buttons.map((button, index) => (
