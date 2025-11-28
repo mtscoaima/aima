@@ -4,7 +4,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { sendNaverSMS, sendNaverMMS } from "@/lib/naverSensApi";
+import { sendMtsSMS } from "@/lib/mtsApi";
 import { determineMessageType } from "@/utils/messageTemplateParser";
 
 const supabase = createClient(
@@ -24,7 +24,8 @@ export interface SendMessageParams {
   message: string;
   subject?: string;
   messageType?: 'SMS' | 'LMS' | 'MMS';
-  imageFileIds?: string[]; // MMS용 이미지 파일 ID
+  imageUrls?: string[]; // MMS용 이미지 파일 ID
+  skipCreditDeduction?: boolean; // 크레딧 차감 스킵 (시스템 메시지용)
   metadata?: Record<string, string | number | boolean>;
 }
 
@@ -45,7 +46,7 @@ export interface ScheduleMessageParams {
   message: string;
   subject?: string;
   scheduledAt: string;
-  imageFileIds?: string[]; // MMS용 이미지 파일 ID
+  imageUrls?: string[]; // MMS용 이미지 파일 ID
   metadata?: Record<string, string | number | boolean>;
 }
 
@@ -69,7 +70,7 @@ export interface ScheduleMessageResult {
 export async function sendMessage(
   params: SendMessageParams
 ): Promise<SendMessageResult> {
-  const { userId, fromNumber, toNumber, toName, message, subject, imageFileIds, metadata } = params;
+  const { userId, fromNumber, toNumber, toName, message, subject, imageUrls, skipCreditDeduction, metadata } = params;
 
   // 전화번호 정리 (하이픈 제거)
   const cleanPhone = toNumber.replace(/[^0-9]/g, '');
@@ -86,7 +87,7 @@ export async function sendMessage(
 
   // 메시지 타입 결정
   let messageType: 'SMS' | 'LMS' | 'MMS';
-  if (imageFileIds && imageFileIds.length > 0) {
+  if (imageUrls && imageUrls.length > 0) {
     messageType = 'MMS';
   } else if (params.messageType) {
     messageType = params.messageType;
@@ -94,38 +95,76 @@ export async function sendMessage(
     messageType = determineMessageType(message);
   }
 
-  // 단가 계산
-  const creditRequired = getMessageCredit(messageType);
+  // 단가 계산 (예약관리는 80원 고정, 일반 메시지는 타입별 단가)
+  const creditRequired = skipCreditDeduction ? 0 : getMessageCredit(messageType, metadata);
 
-  // 1. 잔액 확인
-  const balance = await checkBalance(userId);
-  if (balance < creditRequired) {
+  // 1. 잔액 확인 (시스템 메시지는 스킵)
+  if (!skipCreditDeduction) {
+    const balance = await checkBalance(userId);
+    if (balance < creditRequired) {
+      return {
+        success: false,
+        messageType,
+        creditUsed: 0,
+        error: `광고머니가 부족합니다 (필요: ${creditRequired}원, 현재: ${balance}원)`
+      };
+    }
+  }
+
+  // 2. 발신번호 조회 (fromNumber가 없으면 users.phone_number 사용)
+  let callbackNumber = fromNumber;
+  if (!callbackNumber) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('phone_number')
+      .eq('id', userId)
+      .single();
+
+    callbackNumber = userData?.phone_number || process.env.TEST_CALLING_NUMBER || '';
+  }
+
+  if (!callbackNumber) {
     return {
       success: false,
       messageType,
       creditUsed: 0,
-      error: `광고머니가 부족합니다 (필요: ${creditRequired}원, 현재: ${balance}원)`
+      error: '발신번호가 없습니다. 사용자 프로필에서 전화번호를 등록해주세요.'
     };
   }
 
-  // 2. 메시지 발송
+  // 3. 메시지 발송 (단건도 배열로 처리 - 복수 API 사용)
   let sendResult;
 
-  if (messageType === 'MMS' && imageFileIds && imageFileIds.length > 0) {
-    // MMS 발송
-    sendResult = await sendNaverMMS(
-      cleanPhone,
-      message,
-      subject || '',
-      imageFileIds,
-      fromNumber
+  // 단건 수신자 배열 생성
+  const recipients = [{ phone_number: cleanPhone, message }];
+
+  if (messageType === 'MMS' && imageUrls && imageUrls.length > 0) {
+    // MMS 발송 (첫 번째 이미지만 사용 - MTS API는 최대 3개 지원하지만 현재는 1개만)
+    sendResult = await sendMtsSMS(
+      recipients,
+      callbackNumber,
+      subject || 'MMS',
+      undefined, // sendDate
+      imageUrls[0] // 첫 번째 이미지 URL
     );
   } else {
-    // SMS/LMS 발송
-    sendResult = await sendNaverSMS(cleanPhone, message, subject, fromNumber);
+    // SMS/LMS 발송 (MTS API가 자동으로 90바이트 기준 판단)
+    sendResult = await sendMtsSMS(
+      recipients,
+      callbackNumber,
+      subject
+    );
   }
 
   if (!sendResult.success) {
+    // 즉시 실패: 아직 차감하지 않았으므로 환불 불필요
+    // 에러 코드 로깅 (ER15: 메시지 크기 초과, ER17: 미등록 발신번호 등)
+
+    // TODO: 전송 결과 API 연동 시, 비동기 전달 실패 케이스 처리
+    // 1. 발송 성공 후 차감 완료
+    // 2. 전송 결과 API에서 실패 확인 (3016, 3019 등)
+    // 3. refundBalance() 호출하여 환불 처리
+
     return {
       success: false,
       messageType,
@@ -134,15 +173,17 @@ export async function sendMessage(
     };
   }
 
-  // 3. 잔액 차감
-  await deductBalance(userId, creditRequired, messageType, {
-    ...metadata,
-    recipient: cleanPhone,
-    recipient_name: toName || '',
-    from_number: fromNumber || ''
-  });
+  // 4. 잔액 차감 (시스템 메시지는 스킵)
+  if (!skipCreditDeduction) {
+    await deductBalance(userId, creditRequired, messageType, {
+      ...metadata,
+      recipient: cleanPhone,
+      recipient_name: toName || '',
+      from_number: callbackNumber
+    });
+  }
 
-  // 4. 발송 로그 저장 (optional)
+  // 5. 발송 로그 저장 (optional)
   const logId = await saveMessageLog({
     userId,
     toNumber: cleanPhone,
@@ -154,14 +195,14 @@ export async function sendMessage(
     creditUsed: creditRequired,
     metadata: {
       ...metadata,
-      naver_request_id: sendResult.requestId || '',
-      from_number: fromNumber || ''
+      mts_msg_id: sendResult.messageId || '',
+      from_number: callbackNumber
     }
   });
 
   return {
     success: true,
-    messageId: sendResult.requestId,
+    messageId: sendResult.messageId,
     logId,
     messageType,
     creditUsed: creditRequired
@@ -183,7 +224,7 @@ export async function scheduleMessage(
   params: ScheduleMessageParams,
   tableName: string = 'scheduled_messages'
 ): Promise<ScheduleMessageResult> {
-  const { userId, fromNumber, toNumber, toName, message, subject, scheduledAt, imageFileIds, metadata } = params;
+  const { userId, fromNumber, toNumber, toName, message, subject, scheduledAt, imageUrls, metadata } = params;
 
   // 과거 시간 체크
   const scheduledTime = new Date(scheduledAt);
@@ -209,31 +250,39 @@ export async function scheduleMessage(
 
   // 메시지 타입 결정
   let messageType: 'SMS' | 'LMS' | 'MMS';
-  if (imageFileIds && imageFileIds.length > 0) {
+  if (imageUrls && imageUrls.length > 0) {
     messageType = 'MMS';
   } else {
     messageType = determineMessageType(message);
   }
 
   try {
+    // 기본 insert 데이터
+    const insertData: Record<string, unknown> = {
+      user_id: userId,
+      to_number: cleanPhone,
+      to_name: toName || '',
+      message_content: message,
+      subject: subject || '',
+      scheduled_at: scheduledAt,
+      status: 'pending',
+      metadata: {
+        ...metadata,
+        message_type: messageType,
+        source: metadata?.source || 'sms_tab',
+        from_number: fromNumber,
+        image_urls: imageUrls && imageUrls.length > 0 ? JSON.stringify(imageUrls) : null
+      }
+    };
+
+    // reservation_scheduled_messages 테이블인 경우 reservation_id 추가
+    if (tableName === 'reservation_scheduled_messages' && metadata?.reservation_id) {
+      insertData.reservation_id = metadata.reservation_id;
+    }
+
     const { data, error } = await supabase
       .from(tableName)
-      .insert({
-        user_id: userId,
-        to_number: cleanPhone,
-        to_name: toName || '',
-        message_content: message,
-        subject: subject || '',
-        scheduled_at: scheduledAt,
-        status: 'pending',
-        metadata: {
-          ...metadata,
-          message_type: messageType,
-          source: 'sms_tab',
-          from_number: fromNumber,
-          image_file_ids: imageFileIds && imageFileIds.length > 0 ? JSON.stringify(imageFileIds) : null
-        }
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -354,6 +403,49 @@ async function deductBalance(
   }
 }
 
+/**
+ * 잔액 환불
+ * transactions 테이블에 refund 기록 추가
+ *
+ * @param userId - 사용자 ID
+ * @param amount - 환불 금액
+ * @param reason - 환불 사유
+ * @param metadata - 추가 메타데이터
+ * @returns 환불 성공 여부
+ */
+export async function refundBalance(
+  userId: number,
+  amount: number,
+  reason: string,
+  metadata?: Record<string, string | number | boolean>
+): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('transactions').insert({
+      user_id: userId,
+      amount: amount,
+      type: 'refund',
+      status: 'completed',
+      description: reason,
+      metadata: {
+        transactionType: 'advertising',
+        refund_reason: reason,
+        ...metadata
+      },
+      created_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('잔액 환불 오류:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('잔액 환불 예외:', error);
+    return false;
+  }
+}
+
 // ============================================================================
 // 유틸리티 함수
 // ============================================================================
@@ -361,16 +453,25 @@ async function deductBalance(
 /**
  * 메시지 타입별 단가 반환
  */
-function getMessageCredit(messageType: 'SMS' | 'LMS' | 'MMS'): number {
+function getMessageCredit(
+  messageType: 'SMS' | 'LMS' | 'MMS',
+  metadata?: Record<string, unknown>
+): number {
+  // 예약관리 출처인 경우 80원 고정 (정책표 기준)
+  if (metadata?.source === 'reservation') {
+    return 80;
+  }
+
+  // 일반 메시지
   switch (messageType) {
     case 'SMS':
-      return 20;
+      return 25;
     case 'LMS':
       return 50;
     case 'MMS':
-      return 200;
+      return 100;
     default:
-      return 20;
+      return 25;
   }
 }
 
@@ -395,9 +496,9 @@ async function saveMessageLog(params: {
       .insert({
         user_id: params.userId,
         to_number: params.toNumber,
-        to_name: params.toName || '',
+        to_name: params.toName || null,
         message_content: params.messageContent,
-        subject: params.subject || '',
+        subject: params.subject || null,
         message_type: params.messageType,
         sent_at: new Date().toISOString(),
         status: params.status,

@@ -91,7 +91,6 @@ export async function GET(request: NextRequest) {
     // 사업자 검증과 동일한 방식으로 API 키 인코딩
     const apiUrl = `http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getHoliDeInfo?serviceKey=${encodeURIComponent(SERVICE_KEY)}&solYear=${year}&numOfRows=100&_type=json`;
 
-
     const response = await fetch(apiUrl, {
       headers: {
         'Accept': 'application/json'
@@ -132,7 +131,6 @@ export async function GET(request: NextRequest) {
       throw new Error('Invalid JSON response from API');
     }
 
-
     // API 응답 검증
     if (!data.response) {
       throw new Error('Invalid API response structure');
@@ -146,22 +144,21 @@ export async function GET(request: NextRequest) {
     const holidays: string[] = [];
     const items = data.response?.body?.items?.item;
 
-
-    if (!items || items === '') {
-    } else if (Array.isArray(items)) {
-      items.forEach((item: HolidayItem) => {
+    if (items && items !== '') {
+      if (Array.isArray(items)) {
+        items.forEach((item: HolidayItem) => {
+          const dateStr = item.locdate.toString();
+          const formatted = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
+          holidays.push(formatted);
+        });
+      } else if (typeof items === 'object') {
+        // 단일 항목인 경우
+        const item = items as HolidayItem;
         const dateStr = item.locdate.toString();
         const formatted = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
         holidays.push(formatted);
-      });
-    } else if (typeof items === 'object') {
-      // 단일 항목인 경우
-      const item = items as HolidayItem;
-      const dateStr = item.locdate.toString();
-      const formatted = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
-      holidays.push(formatted);
+      }
     }
-
 
     // 캐시 저장
     cache[year] = {

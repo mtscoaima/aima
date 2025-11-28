@@ -1,29 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Phone,
   Users,
   HelpCircle,
-  ChevronDown,
   FileText,
   Upload,
-  Plus,
-  Download,
   X
 } from "lucide-react";
 import SmsMessageContent from "./SmsMessageContent";
 import KakaoMessageContent from "./KakaoMessageContent";
-import RcsMessageContent from "./RcsMessageContent";
 import NaverTalkContent from "./NaverTalkContent";
-import SenderNumberSelectModal from "../modals/SenderNumberSelectModal";
-import SenderNumberManageModal from "../modals/SenderNumberManageModal";
-import SaveContentModal from "../modals/SaveContentModal";
-import LoadContentModal from "../modals/LoadContentModal";
 import AddressBookModal from "../modals/AddressBookModal";
 import ExcelUploadModal from "../modals/ExcelUploadModal";
 import TextUploadModal from "../modals/TextUploadModal";
 import SendConfirmModal from "../modals/SendConfirmModal";
+import { sendAlimtalkMessage, type AlimtalkData } from "./AlimtalkTab";
+import { sendFriendtalkMessage, type FriendtalkData } from "./FriendtalkTab";
+import { sendBrandMessage_v2, type BrandData } from "./BrandTab";
+import { sendNaverTalkMessage, type NaverData } from "./NaverTalkContent";
 
 interface Recipient {
   phone_number: string;
@@ -41,23 +37,19 @@ interface MessageData {
 
 const MessageSendTab = () => {
   const [activeMessageTab, setActiveMessageTab] = useState("sms");
-  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [activeKakaoTab, setActiveKakaoTab] = useState("alimtalk"); // 카카오 하위 탭 추적
   const [isAddressBookModalOpen, setIsAddressBookModalOpen] = useState(false);
   const [isExcelUploadModalOpen, setIsExcelUploadModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isTextUploadModalOpen, setIsTextUploadModalOpen] = useState(false);
-  const [isSaveDropdownOpen, setIsSaveDropdownOpen] = useState(false);
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
 
-  // 발신번호 및 수신번호 상태
-  const [selectedSenderNumber, setSelectedSenderNumber] = useState<string>("");
+  // 사용자 발신번호 및 수신번호 상태
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string>("");
   const [recipientInput, setRecipientInput] = useState("");
   const [recipientNameInput, setRecipientNameInput] = useState(""); // 이름 입력
   const [recipients, setRecipients] = useState<Recipient[]>([]);
 
-  // 메시지 데이터 상태
+  // 메시지 데이터 상태 (SMS 전용)
   const [messageData, setMessageData] = useState<MessageData>({
     subject: "",
     content: "",
@@ -65,32 +57,62 @@ const MessageSendTab = () => {
     imageFileIds: []
   });
 
+  // 카카오/네이버 탭 데이터 상태
+  const [alimtalkData, setAlimtalkData] = useState<AlimtalkData | null>(null);
+  const [friendtalkData, setFriendtalkData] = useState<FriendtalkData | null>(null);
+  const [brandData, setBrandData] = useState<BrandData | null>(null);
+  const [naverData, setNaverData] = useState<NaverData | null>(null);
+
   // 로딩 및 에러 상태
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isImageUploading, setIsImageUploading] = useState(false);
+
+  // 컴포넌트 마운트 시 사용자 전화번호 조회
+  useEffect(() => {
+    const fetchUserPhone = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        const response = await fetch("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.phoneNumber) {
+          setUserPhoneNumber(data.phoneNumber);
+        }
+      } catch (error) {
+        console.error("전화번호 조회 오류:", error);
+      }
+    };
+
+    fetchUserPhone();
+  }, []);
+
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      return cleaned.slice(0, 3) + '-' + cleaned.slice(3, 7) + '-' + cleaned.slice(7);
+    }
+    return phone;
+  };
 
   // 탭별 테마색 정의
   const getThemeColor = (tab: string) => {
     switch (tab) {
       case "sms": return "#6a1b9a";
       case "kakao": return "#795548";
-      case "rcs": return "#2c398a";
       case "naver": return "#00a732";
       default: return "#6a1b9a";
     }
   };
-
-  // 모달 핸들러
-  const handleSelectModalOpen = () => {
-    alert("발신번호 선택 기능은 개발 중입니다.\n현재는 테스트 발신번호로 전송됩니다.");
-  };
-  const handleSelectModalClose = () => setIsSelectModalOpen(false);
-  const handleManageModalOpen = () => {
-    setIsSelectModalOpen(false);
-    setIsManageModalOpen(true);
-  };
-  const handleManageModalClose = () => setIsManageModalOpen(false);
 
   // 주소록에서 전화번호로 그룹명 조회
   const fetchGroupNameByPhone = async (phoneNumber: string): Promise<string | undefined> => {
@@ -248,17 +270,72 @@ const MessageSendTab = () => {
 
   // 전송/예약 준비 버튼 클릭
   const handleSendPrepare = async () => {
+    // 1. 수신자 체크 (공통)
     if (recipients.length === 0) {
       alert("수신번호를 추가해주세요");
       return;
     }
 
-    if (!messageData.content.trim()) {
-      alert("메시지 내용을 입력해주세요");
-      return;
+    // 2. 탭별 validation
+    if (activeMessageTab === "sms") {
+      // SMS/LMS/MMS
+      if (!messageData.content.trim()) {
+        alert("메시지 내용을 입력해주세요");
+        return;
+      }
+    } else if (activeMessageTab === "kakao") {
+      // 카카오 하위 탭 체크
+      if (activeKakaoTab === "alimtalk") {
+        if (!alimtalkData) {
+          alert("알림톡 데이터를 로드하는 중입니다");
+          return;
+        }
+        if (!alimtalkData.selectedProfile) {
+          alert("발신 프로필을 선택해주세요");
+          return;
+        }
+        if (!alimtalkData.selectedTemplate) {
+          alert("템플릿을 선택해주세요");
+          return;
+        }
+      } else if (activeKakaoTab === "friendtalk") {
+        if (!friendtalkData) {
+          alert("친구톡 데이터를 로드하는 중입니다");
+          return;
+        }
+        if (!friendtalkData.selectedProfile) {
+          alert("발신 프로필을 선택해주세요");
+          return;
+        }
+        // FL/FC 타입은 message가 비어있어도 됨 (headerText, listItems, carousels로 대체)
+        const isFLorFC = friendtalkData.messageType === "FL" || friendtalkData.messageType === "FC";
+        if (!isFLorFC && !friendtalkData.message.trim()) {
+          alert("메시지 내용을 입력해주세요");
+          return;
+        }
+      } else if (activeKakaoTab === "brand") {
+        if (!brandData) {
+          alert("브랜드 메시지 데이터를 로드하는 중입니다");
+          return;
+        }
+        if (!brandData.selectedProfile) {
+          alert("발신 프로필을 선택해주세요");
+          return;
+        }
+        if (!brandData.selectedTemplate) {
+          alert("템플릿을 선택해주세요");
+          return;
+        }
+      }
+    } else if (activeMessageTab === "naver") {
+      // NaverData validation
+      if (!naverData || !naverData.navertalkId || !naverData.selectedTemplate) {
+        alert("네이버 톡톡 계정과 템플릿을 선택해주세요");
+        return;
+      }
     }
 
-    // 모달 열기
+    // 3. 모달 열기
     setIsConfirmModalOpen(true);
   };
 
@@ -268,41 +345,92 @@ const MessageSendTab = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("로그인이 필요합니다");
+      if (activeMessageTab === "sms") {
+        // SMS/LMS/MMS 전송
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          throw new Error("로그인이 필요합니다");
+        }
+
+        const response = await fetch("/api/messages/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            recipients: recipients,
+            message: messageData.content,
+            subject: messageData.subject || undefined,
+            sendType: "immediate",
+            isAd: messageData.isAd,
+            imageFileIds: messageData.imageFileIds || []
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "메시지 전송에 실패했습니다");
+        }
+
+        const successCount = data.results.filter((r: { success: boolean }) => r.success).length;
+        const failCount = data.results.filter((r: { success: boolean }) => !r.success).length;
+        alert(`메시지 전송 완료\n성공: ${successCount}건\n실패: ${failCount}건`);
+        setRecipients([]);
+
+      } else if (activeMessageTab === "kakao") {
+        // 카카오 메시지 전송
+        if (activeKakaoTab === "alimtalk") {
+          if (!alimtalkData) throw new Error("알림톡 데이터가 없습니다");
+
+          const result = await sendAlimtalkMessage({
+            recipients: recipients,
+            callbackNumber: userPhoneNumber,
+            data: alimtalkData,
+            scheduledAt: undefined, // 즉시 발송
+          });
+
+          alert(`알림톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
+          setRecipients([]);
+
+        } else if (activeKakaoTab === "friendtalk") {
+          if (!friendtalkData) throw new Error("친구톡 데이터가 없습니다");
+
+          const result = await sendFriendtalkMessage({
+            recipients: recipients,
+            callbackNumber: userPhoneNumber,
+            data: friendtalkData,
+            scheduledAt: undefined, // 즉시 발송
+          });
+
+          alert(`친구톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
+          setRecipients([]);
+
+        } else if (activeKakaoTab === "brand") {
+          if (!brandData) throw new Error("브랜드 메시지 데이터가 없습니다");
+
+          const result = await sendBrandMessage_v2({
+            recipients: recipients,
+            callbackNumber: userPhoneNumber,
+            data: brandData,
+            scheduledAt: undefined, // 즉시 발송
+          });
+
+          alert(`브랜드 메시지 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
+          setRecipients([]);
+        }
+
+      } else if (activeMessageTab === "naver") {
+        // 네이버 톡톡 전송
+        if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
+        if (!userPhoneNumber) throw new Error("발신번호가 필요합니다");
+
+        const result = await sendNaverTalkMessage(naverData, recipients, userPhoneNumber, undefined);
+
+        alert(`네이버 톡톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
+        setRecipients([]);
       }
-
-      const response = await fetch("/api/messages/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          from_number: selectedSenderNumber,
-          recipients: recipients,
-          message: messageData.content,
-          subject: messageData.subject || undefined,
-          sendType: "immediate",
-          isAd: messageData.isAd,
-          imageFileIds: messageData.imageFileIds || []
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "메시지 전송에 실패했습니다");
-      }
-
-      const successCount = data.results.filter((r: { success: boolean }) => r.success).length;
-      const failCount = data.results.filter((r: { success: boolean }) => !r.success).length;
-      alert(`메시지 전송 완료
-성공: ${successCount}건
-실패: ${failCount}건`);
-      // 전송 후 수신번호 목록 비우기 (선택사항)
-      setRecipients([]);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
@@ -327,37 +455,100 @@ const MessageSendTab = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("로그인이 필요합니다");
+      // MTS API sendDate 형식: YYYYMMDDHHmmss
+      const year = scheduledDateTime.getFullYear();
+      const month = String(scheduledDateTime.getMonth() + 1).padStart(2, '0');
+      const day = String(scheduledDateTime.getDate()).padStart(2, '0');
+      const hours = String(scheduledDateTime.getHours()).padStart(2, '0');
+      const minutes = String(scheduledDateTime.getMinutes()).padStart(2, '0');
+      const seconds = '00';
+      const scheduledAt = `${year}${month}${day}${hours}${minutes}${seconds}`;
+
+      if (activeMessageTab === "sms") {
+        // SMS/LMS/MMS 예약
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          throw new Error("로그인이 필요합니다");
+        }
+
+        const response = await fetch("/api/messages/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            recipients: recipients,
+            message: messageData.content,
+            subject: messageData.subject || undefined,
+            sendType: "scheduled",
+            scheduledAt: scheduledDateTime.toISOString(),
+            isAd: messageData.isAd,
+            imageFileIds: messageData.imageFileIds || []
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "메시지 예약에 실패했습니다");
+        }
+
+        alert(`메시지 예약이 완료되었습니다.\n예약된 수신자: ${recipients.length}명`);
+        setRecipients([]);
+
+      } else if (activeMessageTab === "kakao") {
+        // 카카오 메시지 예약
+        if (activeKakaoTab === "alimtalk") {
+          if (!alimtalkData) throw new Error("알림톡 데이터가 없습니다");
+
+          await sendAlimtalkMessage({
+            recipients: recipients,
+            callbackNumber: userPhoneNumber,
+            data: alimtalkData,
+            scheduledAt: scheduledAt, // YYYYMMDDHHmmss
+          });
+
+          alert(`알림톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
+          setRecipients([]);
+
+        } else if (activeKakaoTab === "friendtalk") {
+          if (!friendtalkData) throw new Error("친구톡 데이터가 없습니다");
+
+          await sendFriendtalkMessage({
+            recipients: recipients,
+            callbackNumber: userPhoneNumber,
+            data: friendtalkData,
+            scheduledAt: scheduledAt, // YYYYMMDDHHmmss
+          });
+
+          alert(`친구톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
+          setRecipients([]);
+
+        } else if (activeKakaoTab === "brand") {
+          if (!brandData) throw new Error("브랜드 메시지 데이터가 없습니다");
+
+          await sendBrandMessage_v2({
+            recipients: recipients,
+            callbackNumber: userPhoneNumber,
+            data: brandData,
+            scheduledAt: scheduledAt, // YYYYMMDDHHmmss
+          });
+
+          alert(`브랜드 메시지 예약 완료\n예약된 수신자: ${recipients.length}명`);
+          setRecipients([]);
+        }
+
+      } else if (activeMessageTab === "naver") {
+        // 네이버 톡톡 예약
+        if (!naverData) throw new Error("네이버 톡톡 데이터가 없습니다");
+        if (!userPhoneNumber) throw new Error("발신번호가 필요합니다");
+
+        await sendNaverTalkMessage(naverData, recipients, userPhoneNumber, scheduledAt);
+
+        alert(`네이버 톡톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
+        setRecipients([]);
       }
-
-      const response = await fetch("/api/messages/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          from_number: selectedSenderNumber,
-          recipients: recipients,
-          message: messageData.content,
-          subject: messageData.subject || undefined,
-          sendType: "scheduled",
-          scheduledAt: scheduledDateTime.toISOString(),
-          isAd: messageData.isAd,
-          imageFileIds: messageData.imageFileIds || []
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "메시지 예약에 실패했습니다");
-      }
-
-      alert(`메시지 예약이 완료되었습니다.\n예약된 수신자: ${recipients.length}명`);
-      setRecipients([]);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
@@ -379,11 +570,24 @@ const MessageSendTab = () => {
           />
         );
       case "kakao":
-        return <KakaoMessageContent />;
-      case "rcs":
-        return <RcsMessageContent />;
+        return (
+          <KakaoMessageContent
+            recipients={recipients}
+            selectedSenderNumber={userPhoneNumber}
+            onAlimtalkDataChange={setAlimtalkData}
+            onFriendtalkDataChange={setFriendtalkData}
+            onBrandDataChange={setBrandData}
+            onKakaoTabChange={setActiveKakaoTab}
+          />
+        );
       case "naver":
-        return <NaverTalkContent />;
+        return (
+          <NaverTalkContent
+            recipients={recipients}
+            selectedSenderNumber={userPhoneNumber}
+            onDataChange={setNaverData}
+          />
+        );
       default:
         return (
           <SmsMessageContent
@@ -405,17 +609,29 @@ const MessageSendTab = () => {
             <Phone className="w-4 h-4 text-gray-600" />
             <span className="font-medium text-gray-700">메시지 발신번호</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500 text-sm">
-              {selectedSenderNumber || "선택된 발신번호 없음"}
-            </span>
-            <button
-              className="text-white px-4 py-2 rounded text-sm hover:opacity-90"
-              style={{ backgroundColor: getThemeColor(activeMessageTab) }}
-              onClick={handleSelectModalOpen}
-            >
-              선택
-            </button>
+          <div className="flex items-center gap-2">
+            {userPhoneNumber ? (
+              <>
+                <span className="text-gray-900 text-sm font-medium">
+                  {formatPhoneNumber(userPhoneNumber)}
+                </span>
+                <span className="text-xs text-gray-500">
+                  (프로필에서 변경 가능)
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-500 text-sm">
+                  전화번호 미등록
+                </span>
+                <a
+                  href="/my-site/advertiser/profile"
+                  className="text-xs text-blue-500 hover:underline"
+                >
+                  프로필에서 등록하기 →
+                </a>
+              </>
+            )}
           </div>
         </div>
 
@@ -536,41 +752,6 @@ const MessageSendTab = () => {
           )}
         </div>
 
-        {/* 저장 섹션 */}
-        <div className="bg-white border border-gray-200 rounded-lg">
-          <button
-            className="w-full p-4 flex items-center justify-between hover:bg-gray-50"
-            onClick={() => setIsSaveDropdownOpen(!isSaveDropdownOpen)}
-          >
-            <span className="text-red-500 font-medium">저장</span>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform ${
-                isSaveDropdownOpen ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-
-          {isSaveDropdownOpen && (
-            <div className="p-3">
-              <div className="flex gap-2">
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
-                  onClick={() => setIsSaveModalOpen(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                  새로 저장
-                </button>
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-blue-500 text-blue-500 rounded text-sm hover:bg-blue-50"
-                  onClick={() => setIsLoadModalOpen(true)}
-                >
-                  <Download className="w-4 h-4" />
-                  불러오기
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* 우측 섹션 */}
@@ -598,17 +779,6 @@ const MessageSendTab = () => {
             onClick={() => setActiveMessageTab("kakao")}
           >
             💬 카카오톡
-          </button>
-          <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
-              activeMessageTab === "rcs"
-                ? "border border-[#2c398a]"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-            style={activeMessageTab === "rcs" ? { backgroundColor: "#2c398a20", color: "#2c398a" } : {}}
-            onClick={() => setActiveMessageTab("rcs")}
-          >
-            🔵 RCS 문자
           </button>
           <button
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
@@ -648,40 +818,7 @@ const MessageSendTab = () => {
       </div>
 
       {/* 모달들 */}
-      <SenderNumberSelectModal
-        isOpen={isSelectModalOpen}
-        onClose={handleSelectModalClose}
-        onManageClick={handleManageModalOpen}
-        onSelect={(phoneNumber) => setSelectedSenderNumber(phoneNumber)}
-      />
-      <SenderNumberManageModal
-        isOpen={isManageModalOpen}
-        onClose={handleManageModalClose}
-      />
-      <SaveContentModal
-        isOpen={isSaveModalOpen}
-        onClose={() => setIsSaveModalOpen(false)}
-        currentContent={{
-          subject: messageData.subject,
-          content: messageData.content,
-          isAd: messageData.isAd,
-        }}
-        onSaveSuccess={() => {
-          // 저장 성공 시 필요한 작업
-        }}
-      />
-      <LoadContentModal
-        isOpen={isLoadModalOpen}
-        onClose={() => setIsLoadModalOpen(false)}
-        onSelect={(content) => {
-          setMessageData({
-            subject: content.subject || "",
-            content: content.content,
-            isAd: content.isAd || false,
-          });
-        }}
-      />
-       <AddressBookModal
+      <AddressBookModal
         isOpen={isAddressBookModalOpen}
         onClose={() => setIsAddressBookModalOpen(false)}
         onSelect={handleAddressBookSelect}
@@ -707,6 +844,19 @@ const MessageSendTab = () => {
         onImmediateSend={handleImmediateSend}
         onScheduledSend={handleScheduledSend}
         isLoading={isLoading}
+        messageType={
+          activeMessageTab === "sms" ? "sms" :
+          activeMessageTab === "kakao" && activeKakaoTab === "alimtalk" ? "alimtalk" :
+          activeMessageTab === "kakao" && activeKakaoTab === "friendtalk" ? "friendtalk" :
+          activeMessageTab === "kakao" && activeKakaoTab === "brand" ? "brand" :
+          activeMessageTab === "kakao" && activeKakaoTab === "naver" ? "naver" :
+          activeMessageTab === "naver" ? "naver" :
+          "sms"
+        }
+        alimtalkData={alimtalkData}
+        friendtalkData={friendtalkData}
+        brandData={brandData}
+        naverData={naverData}
       />
     </div>
   );

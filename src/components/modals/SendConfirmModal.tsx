@@ -2,6 +2,10 @@
 
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import type { AlimtalkData } from "../messages/AlimtalkTab";
+import type { FriendtalkData } from "../messages/FriendtalkTab";
+import type { BrandData } from "../messages/BrandTab";
+import type { NaverData } from "../messages/NaverTalkContent";
 
 interface Recipient {
   phone_number: string;
@@ -23,6 +27,12 @@ interface SendConfirmModalProps {
   onImmediateSend: () => Promise<void>;
   onScheduledSend: (scheduledDateTime: Date) => Promise<void>;
   isLoading: boolean;
+  // 추가: 메시지 타입 및 타입별 데이터
+  messageType?: "sms" | "alimtalk" | "friendtalk" | "brand" | "naver";
+  alimtalkData?: AlimtalkData | null;
+  friendtalkData?: FriendtalkData | null;
+  brandData?: BrandData | null;
+  naverData?: NaverData | null;
 }
 
 const SendConfirmModal: React.FC<SendConfirmModalProps> = ({
@@ -33,6 +43,11 @@ const SendConfirmModal: React.FC<SendConfirmModalProps> = ({
   onImmediateSend,
   onScheduledSend,
   isLoading,
+  messageType = "sms",
+  alimtalkData,
+  friendtalkData,
+  brandData,
+  naverData,
 }) => {
   const [sendType, setSendType] = useState<"immediate" | "scheduled">("immediate");
 
@@ -151,11 +166,313 @@ const SendConfirmModal: React.FC<SendConfirmModalProps> = ({
               <span className="text-sm text-gray-600">수신자 수</span>
               <span className="text-sm font-medium text-gray-900">{recipients.length}명</span>
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">메시지 내용</span>
-              <p className="text-sm text-gray-900 bg-white p-2 rounded border border-gray-200 max-h-20 overflow-y-auto">
-                {messageData.content}
-              </p>
+
+            {/* 메시지 내용 - 타입별 표시 */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-gray-600 font-medium">메시지 내용</span>
+
+              {/* SMS/LMS/MMS */}
+              {messageType === "sms" && (
+                <div className="bg-white p-3 rounded border border-gray-200 max-h-32 overflow-y-auto">
+                  {messageData.subject && (
+                    <p className="text-xs font-semibold text-gray-700 mb-1">[제목] {messageData.subject}</p>
+                  )}
+                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{messageData.content}</p>
+                </div>
+              )}
+
+              {/* 카카오 알림톡 */}
+              {messageType === "alimtalk" && alimtalkData && (
+                <div className="bg-white p-3 rounded border border-gray-200 space-y-2">
+                  <div className="text-xs text-gray-500">
+                    <span className="font-medium">발신 프로필:</span> {alimtalkData.selectedProfile || '(선택 안됨)'}
+                  </div>
+                  {alimtalkData.selectedTemplate && (
+                    <>
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">템플릿:</span> {alimtalkData.selectedTemplate.template_name}
+                      </div>
+                      <div className="bg-yellow-50 p-2 rounded border border-yellow-200 max-h-24 overflow-y-auto">
+                        <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                          {alimtalkData.selectedTemplate.template_content}
+                        </p>
+                      </div>
+                      {alimtalkData.selectedTemplate.buttons && alimtalkData.selectedTemplate.buttons.length > 0 && (
+                        <div className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded">
+                          버튼 {alimtalkData.selectedTemplate.buttons.length}개 포함
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {alimtalkData.enableSmsBackup && (
+                    <div className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                      SMS 전환 발송 설정됨
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 카카오 친구톡 */}
+              {messageType === "friendtalk" && friendtalkData && (
+                <div className="bg-white p-3 rounded border border-gray-200 space-y-2 max-h-64 overflow-y-auto">
+                  <div className="text-xs text-gray-500">
+                    <span className="font-medium">발신 프로필:</span> {friendtalkData.selectedProfile || '(선택 안됨)'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <span className="font-medium">메시지 타입:</span>{" "}
+                    {friendtalkData.messageType === "FT" && "기본형 (FT)"}
+                    {friendtalkData.messageType === "FI" && "이미지형 (FI)"}
+                    {friendtalkData.messageType === "FW" && "와이드형 (FW)"}
+                    {friendtalkData.messageType === "FL" && "와이드 아이템 리스트형 (FL)"}
+                    {friendtalkData.messageType === "FC" && "캐러셀형 (FC)"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <span className="font-medium">광고:</span> {friendtalkData.adFlag === "Y" ? "광고" : "일반"}
+                  </div>
+
+                  {/* FT/FI/FW 타입: 메시지 내용 표시 */}
+                  {(!friendtalkData.messageType ||
+                    friendtalkData.messageType === "FT" ||
+                    friendtalkData.messageType === "FI" ||
+                    friendtalkData.messageType === "FW") && friendtalkData.message && (
+                    <div className="bg-yellow-50 p-2 rounded border border-yellow-200 max-h-24 overflow-y-auto">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{friendtalkData.message}</p>
+                    </div>
+                  )}
+
+                  {/* FL 타입: 헤더 + 아이템 목록 */}
+                  {friendtalkData.messageType === "FL" && (
+                    <div className="space-y-2">
+                      <div className="bg-purple-50 px-2 py-1 rounded border border-purple-200">
+                        <span className="text-xs font-medium text-purple-700">📝 헤더:</span>
+                        <span className="text-xs text-gray-900 ml-1">{friendtalkData.headerText || '(없음)'}</span>
+                      </div>
+                      <div className="bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                        <div className="text-xs font-medium text-blue-700 mb-1">아이템 목록 ({friendtalkData.listItems?.length || 0}개):</div>
+                        {friendtalkData.listItems && friendtalkData.listItems.length > 0 ? (
+                          <ul className="space-y-1">
+                            {friendtalkData.listItems.map((item, idx) => (
+                              <li key={idx} className="flex items-center gap-2 text-xs">
+                                <span className="font-medium">#{idx + 1}</span>
+                                <span className="text-gray-900">{item.title}</span>
+                                {item.image && <span className="text-purple-600">📷</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-gray-500">(아이템 없음)</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FC 타입: 캐러셀 목록 */}
+                  {friendtalkData.messageType === "FC" && (
+                    <div className="space-y-2">
+                      <div className="bg-purple-50 px-2 py-1 rounded border border-purple-200">
+                        <div className="text-xs font-medium text-purple-700 mb-1">캐러셀 카드 ({friendtalkData.carousels?.length || 0}개):</div>
+                        {friendtalkData.carousels && friendtalkData.carousels.length > 0 ? (
+                          <ul className="space-y-2">
+                            {friendtalkData.carousels.map((carousel, idx) => (
+                              <li key={idx} className="border-l-2 border-purple-400 pl-2">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-medium">카드 {idx + 1}</span>
+                                  {carousel.image && <span className="text-purple-600">📷</span>}
+                                </div>
+                                {carousel.header && <p className="text-xs text-gray-700 font-medium">{carousel.header}</p>}
+                                {carousel.content && <p className="text-xs text-gray-700">{carousel.content}</p>}
+                                {carousel.buttons && carousel.buttons.length > 0 && (
+                                  <p className="text-xs text-gray-500 mt-1">버튼 {carousel.buttons.length}개</p>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-gray-500">(캐러셀 없음)</p>
+                        )}
+                      </div>
+                      {friendtalkData.moreLink && (
+                        <div className="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs truncate">
+                          <span className="font-medium text-blue-700">➕ 더보기:</span>
+                          <span className="text-gray-900 ml-1">{friendtalkData.moreLink}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 이미지 정보 (FT/FI/FW 공통) */}
+                  {friendtalkData.uploadedImages && friendtalkData.uploadedImages.length > 0 && (
+                    <div className="bg-purple-50 px-2 py-1 rounded border border-purple-200 text-xs">
+                      <span className="text-purple-600">📷</span>
+                      <span className="text-gray-700 ml-1">이미지 {friendtalkData.uploadedImages.length}개 포함</span>
+                    </div>
+                  )}
+
+                  {/* 이미지 링크 (FW 전용) */}
+                  {friendtalkData.messageType === "FW" && friendtalkData.imageLink && (
+                    <div className="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs truncate">
+                      <span className="font-medium text-blue-700">🔗 클릭 시 이동:</span>
+                      <span className="text-gray-900 ml-1">{friendtalkData.imageLink}</span>
+                    </div>
+                  )}
+
+                  {/* 버튼 목록 (모든 타입 공통) */}
+                  {friendtalkData.buttons && friendtalkData.buttons.length > 0 && (
+                    <div className="bg-green-50 px-2 py-1 rounded border border-green-200">
+                      <div className="text-xs font-medium text-green-700 mb-1">버튼 ({friendtalkData.buttons.length}개)</div>
+                      <ul className="space-y-1">
+                        {friendtalkData.buttons.map((btn, idx) => {
+                          const typeLabel = btn.type === 'WL' ? '웹링크' :
+                                           btn.type === 'AL' ? '앱링크' :
+                                           btn.type === 'BK' ? '봇키워드' :
+                                           btn.type === 'MD' ? '메시지전달' : btn.type;
+                          return (
+                            <li key={idx} className="flex items-center gap-2 text-xs">
+                              <span className="font-medium">[{typeLabel}]</span>
+                              <span className="text-gray-900">{btn.name}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* SMS 전환 발송 */}
+                  {friendtalkData.enableSmsBackup && (
+                    <div className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                      SMS 전환 발송 설정됨
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 카카오 브랜드 */}
+              {messageType === "brand" && brandData && (
+                <div className="bg-white p-3 rounded border border-gray-200 space-y-2 max-h-64 overflow-y-auto">
+                  {/* 발신 프로필 */}
+                  <div className="text-xs text-gray-500">
+                    <span className="font-medium">발신 프로필:</span> {brandData.selectedProfile}
+                  </div>
+
+                  {/* 템플릿 정보 */}
+                  {brandData.selectedTemplate && (
+                    <>
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">템플릿:</span> {brandData.selectedTemplate.template_name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">메시지 타입:</span> {brandData.selectedTemplate.message_type}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">수신 대상:</span>{" "}
+                        {brandData.targetingType === "M"
+                          ? "회원"
+                          : brandData.targetingType === "N"
+                          ? "비회원"
+                          : "개별"}
+                      </div>
+
+                      {/* 메시지 내용 */}
+                      {brandData.selectedTemplate.content && (
+                        <div className="bg-yellow-50 p-2 rounded border border-yellow-200">
+                          <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                            {brandData.selectedTemplate.content}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* 이미지 (IMAGE, WIDE 타입) */}
+                      {(brandData.selectedTemplate.message_type === "IMAGE" ||
+                        brandData.selectedTemplate.message_type === "WIDE") &&
+                        brandData.selectedTemplate.image_url && (
+                          <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                            <span className="text-xs font-medium">🖼️ 이미지:</span>{" "}
+                            <span className="text-xs text-gray-600">
+                              {brandData.selectedTemplate.image_url}
+                            </span>
+                            {brandData.selectedTemplate.image_link && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                링크: {brandData.selectedTemplate.image_link}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                      {/* 버튼 */}
+                      {brandData.selectedTemplate.buttons &&
+                        brandData.selectedTemplate.buttons.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-xs font-medium">버튼:</span>
+                            {brandData.selectedTemplate.buttons.map((btn: { name: string; type: string; url_mobile?: string }, idx: number) => (
+                              <div
+                                key={idx}
+                                className="bg-gray-100 px-2 py-1 rounded text-xs flex items-center gap-2"
+                              >
+                                <span className="font-medium">{btn.name}</span>
+                                <span className="text-gray-500">
+                                  [{btn.type}]
+                                  {btn.url_mobile && ` → ${btn.url_mobile}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                      {/* SMS 백업 정보 */}
+                      {brandData.enableSmsBackup && brandData.smsBackupMessage && (
+                        <div className="bg-red-50 p-2 rounded border border-red-200">
+                          <span className="text-xs font-medium">📱 문자대체발송:</span>
+                          <p className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">
+                            {brandData.smsBackupMessage}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* 네이버 톡톡 */}
+              {messageType === "naver" && naverData && (
+                <div className="bg-white p-3 rounded border border-gray-200 space-y-2">
+                  <div className="text-xs text-gray-500">
+                    <span className="font-medium">네이버톡 ID:</span> {naverData.navertalkId || '(입력 안됨)'}
+                  </div>
+                  {naverData.selectedTemplate && (
+                    <>
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">템플릿:</span> {naverData.selectedTemplate.name} ({naverData.selectedTemplate.code})
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">상품 코드:</span>{" "}
+                        {naverData.productCode === 'INFORMATION' && "정보성 - 알림 (INFORMATION)"}
+                        {naverData.productCode === 'BENEFIT' && "마케팅/광고 - 혜택 (BENEFIT)"}
+                        {naverData.productCode === 'CARDINFO' && "정보성 - 카드알림 (CARDINFO)"}
+                      </div>
+                      <div className="bg-green-50 p-2 rounded border border-green-200 max-h-24 overflow-y-auto">
+                        <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                          {naverData.templateContent}
+                        </p>
+                      </div>
+                      {naverData.selectedTemplate.buttons && naverData.selectedTemplate.buttons.length > 0 && (
+                        <div className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                          버튼 {naverData.selectedTemplate.buttons.length}개 포함
+                        </div>
+                      )}
+                      {naverData.templateVariables && naverData.templateVariables.length > 0 && (
+                        <div className="text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded">
+                          템플릿 변수 {naverData.templateVariables.length}개 사용 중
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {naverData.smsBackup && (
+                    <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                      SMS 백업 설정됨 (현재 미지원)
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

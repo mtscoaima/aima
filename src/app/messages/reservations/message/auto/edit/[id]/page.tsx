@@ -48,14 +48,48 @@ export default function EditAutoRulePage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [hostContactNumber, setHostContactNumber] = useState<string>("[비공개]");
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string>("");
 
   // 공간 목록 조회 및 기존 규칙 데이터 로드
   useEffect(() => {
     fetchSpaces();
     fetchTemplates();
     fetchRuleData();
+    fetchUserPhone();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 사용자 전화번호 조회
+  const fetchUserPhone = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      const response = await fetch("/api/users/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.phoneNumber) {
+        setUserPhoneNumber(data.phoneNumber);
+      }
+    } catch (error) {
+      console.error("전화번호 조회 오류:", error);
+    }
+  };
+
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      return cleaned.slice(0, 3) + '-' + cleaned.slice(3, 7) + '-' + cleaned.slice(7);
+    }
+    return phone;
+  };
 
   const fetchSpaces = async () => {
     try {
@@ -468,9 +502,11 @@ export default function EditAutoRulePage() {
                     {/* 보내는 번호 */}
                     <div className="py-3">
                       <div className="text-gray-900 font-medium mb-1">보내는 번호</div>
-                      <div className="text-gray-700 text-sm font-mono">[비공개]</div>
+                      <div className="text-gray-700 text-sm font-mono">
+                        {userPhoneNumber ? formatPhoneNumber(userPhoneNumber) : "전화번호 미등록"}
+                      </div>
                       <p className="text-xs text-gray-400 mt-2">
-                        ※ SMS 발신은 통신사 및 정부 정책에 따라 발신전용 번호로 발송됩니다.
+                        ※ 프로필에서 등록한 전화번호로 발송됩니다.
                       </p>
                     </div>
 

@@ -10,6 +10,7 @@ import {
   Upload,
   X
 } from "lucide-react";
+import { countReplaceableVariables } from '@/utils/messageVariables';
 import SimpleContentSaveModal from "../modals/SimpleContentSaveModal";
 import LoadContentModal from "../modals/LoadContentModal";
 import ScheduledMessagesModal from "../modals/ScheduledMessagesModal";
@@ -77,10 +78,10 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // 파일 크기 검증 (클라이언트측 300KB)
-    const maxSize = 300 * 1024; // 300KB
+    // 파일 크기 검증 (클라이언트측 5MB, 백엔드에서 자동 최적화)
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      alert(`이미지 크기는 300KB 이하여야 합니다.\n현재 크기: ${(file.size / 1024).toFixed(1)}KB`);
+      alert(`이미지 크기는 5MB 이하여야 합니다.\n현재 크기: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
       event.target.value = "";
       return;
     }
@@ -130,6 +131,10 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
 
       const data = await response.json();
 
+      if (!data.success || !data.imageUrl) {
+        throw new Error('이미지 URL을 받지 못했습니다');
+      }
+
       // 미리보기 URL 생성
       const previewUrl = URL.createObjectURL(file);
 
@@ -137,8 +142,8 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
       const newImages = [
         ...uploadedImages,
         {
-          fileId: data.fileId,
-          fileName: data.fileName,
+          fileId: data.imageUrl, // MTS API에서 받은 이미지 URL
+          fileName: file.name,
           fileSize: data.fileSize,
           preview: previewUrl,
         },
@@ -174,7 +179,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
   };
 
   const placeholderText = `이곳에 문자 내용을 입력합니다.
-치환문구 예시) #[이름]님 #[시간]시 방문 예약입니다.`;
+치환문구 예시) #{이름}님 #{시간}시 방문 예약입니다.`;
 
   const handleVariableSelect = (variable: string) => {
     const textarea = textareaRef.current;
@@ -206,12 +211,8 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
     setIsLoadModalOpen(true);
   };
 
-  const getVariableCount = () => {
-    const matches = messageContent.match(/#\[.*?\]/g);
-    return matches ? matches.length : 0;
-  };
-
-  const variableCount = getVariableCount();
+  // 치환 가능한 변수 개수 계산
+  const replaceableVariableCount = countReplaceableVariables(messageContent);
 
   return (
     <>
@@ -315,7 +316,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
               이미지 첨부 (MMS)
             </label>
             <span className="text-xs text-gray-500">
-              최대 300KB, 3개까지
+              최대 5MB, 3개까지 (자동 최적화)
             </span>
           </div>
 
@@ -393,7 +394,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
             </div>
             <div className="flex items-center gap-2">
               <span className="text-gray-400">▸</span>
-              <span>각 파일당 최대 300KB</span>
+              <span>각 파일당 최대 5MB (자동 최적화: 640×480px, 300KB 이하)</span>
             </div>
           </div>
         </div>
@@ -408,9 +409,9 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-blue-500" />
           <span className="text-sm text-gray-600">
-            {variableCount === 0
-              ? "내용에 변수가 없습니다."
-              : `${variableCount}개의 변수가 존재합니다. 수신번호를 추가해주세요`
+            {replaceableVariableCount === 0
+              ? "내용에 치환 가능한 변수가 없습니다."
+              : `${replaceableVariableCount}개의 변수가 자동으로 치환됩니다.`
             }
           </span>
         </div>

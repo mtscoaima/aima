@@ -1,11 +1,12 @@
 /**
  * SMS 알림 시스템 - 통합 알림 서비스
  *
- * 실제 SMS 전송 없이 로그만 저장하고 Console에 출력
+ * MTS API를 통한 실제 SMS 발송 및 로그 저장
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { NotificationEventData, NotificationTemplate } from '@/types/notificationEvents';
+import { sendMessage } from '@/lib/messageSender';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,27 +75,24 @@ async function getUserPhoneNumber(userId: number): Promise<{ phone: string; name
 }
 
 /**
- * Console 출력 포맷
+ * 첫 번째 관리자 ID 조회 (시스템 메시지 발신자용)
  */
-function logNotificationToConsole(
-  eventType: string,
-  recipientName: string,
-  recipientPhone: string,
-  messageType: string,
-  subject: string | null,
-  content: string,
-  logId: number
-) {
-  // 사용하지 않는 파라미터 void 처리
-  void eventType;
-  void recipientName;
-  void recipientPhone;
-  void messageType;
-  void content;
-  void logId;
+async function getFirstAdminUserId(): Promise<number> {
+  const { data: admin, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('role', 'ADMIN')
+    .eq('is_active', true)
+    .order('id', { ascending: true })
+    .limit(1)
+    .single();
 
-  if (subject) {
+  if (error || !admin) {
+    console.error('❌ 관리자 조회 실패, 기본 ID 1 사용:', error);
+    return 1; // Fallback
   }
+
+  return admin.id;
 }
 
 /**
@@ -108,6 +106,7 @@ async function saveNotificationLog(
   messageType: string,
   subject: string | null,
   content: string,
+  status: 'LOGGED' | 'SENT' | 'FAILED',
   metadata: Record<string, unknown> = {}
 ): Promise<number | null> {
   const { data, error } = await supabase
@@ -120,7 +119,7 @@ async function saveNotificationLog(
       message_type: messageType,
       subject: subject,
       content: content,
-      status: 'LOGGED',
+      status: status,
       metadata: metadata,
     })
     .select('id')
@@ -152,7 +151,6 @@ export async function triggerNotification(
   eventData: NotificationEventData
 ): Promise<void> {
   try {
-
     // 1. 템플릿 조회
     const { data: template, error: templateError } = await supabase
       .from('sms_notification_templates')
@@ -204,7 +202,7 @@ export async function triggerNotification(
       return;
     }
 
-    // 4. 각 수신자에게 알림 로그 생성
+    // 4. 각 수신자에게 실제 메시지 발송
     for (const recipient of recipients) {
       // 템플릿 변수 치환
       const subject = typedTemplate.subject
@@ -216,36 +214,92 @@ export async function triggerNotification(
         eventData.data
       );
 
-      // 로그 저장
-      const logId = await saveNotificationLog(
-        typedTemplate.id,
-        eventData.eventType,
-        recipient.id,
-        recipient.phone,
-        typedTemplate.message_type,
-        subject,
-        content,
-        {
-          event_data: eventData.data,
-          template_name: typedTemplate.name,
-        }
-      );
+      // 발신자 ID 결정
+      // 모든 시스템 메시지는 첫 번째 관리자의 번호로 발송
+      const senderUserId = await getFirstAdminUserId();
 
-      if (logId) {
-        // Console 출력
-        logNotificationToConsole(
+      try {
+        // 실제 SMS 발송 (시스템 메시지는 크레딧 차감 안 함)
+        const result = await sendMessage({
+          userId: senderUserId,
+          toNumber: recipient.phone,
+          toName: recipient.name,
+          message: content,
+          subject: subject || undefined,
+          skipCreditDeduction: true, // ✅ 시스템 메시지는 크레딧 차감 안 함
+          metadata: {
+            source: 'system_notification',
+            event_type: eventData.eventType,
+            template_id: typedTemplate.id,
+            template_name: typedTemplate.name,
+          }
+        });
+
+        if (result.success) {
+          // 발송 성공 시 SENT 상태로 로그 저장
+          await saveNotificationLog(
+            typedTemplate.id,
+            eventData.eventType,
+            recipient.id,
+            recipient.phone,
+            typedTemplate.message_type,
+            subject,
+            content,
+            'SENT',
+            {
+              event_data: eventData.data,
+              template_name: typedTemplate.name,
+              message_id: result.messageId,
+              message_type: result.messageType,
+              credit_used: result.creditUsed,
+            }
+          );
+
+        } else {
+          // 발송 실패 시 FAILED 상태로 로그 저장
+          await saveNotificationLog(
+            typedTemplate.id,
+            eventData.eventType,
+            recipient.id,
+            recipient.phone,
+            typedTemplate.message_type,
+            subject,
+            content,
+            'FAILED',
+            {
+              event_data: eventData.data,
+              template_name: typedTemplate.name,
+              error: result.error || 'Unknown error',
+            }
+          );
+
+          console.error(`❌ 시스템 알림 발송 실패 (${eventData.eventType}) → ${recipient.phone}: ${result.error}`);
+        }
+      } catch (error) {
+        // 예외 발생 시 FAILED 상태로 로그 저장
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        await saveNotificationLog(
+          typedTemplate.id,
           eventData.eventType,
-          recipient.name,
+          recipient.id,
           recipient.phone,
           typedTemplate.message_type,
           subject,
           content,
-          logId
+          'FAILED',
+          {
+            event_data: eventData.data,
+            template_name: typedTemplate.name,
+            error: errorMessage,
+          }
         );
+
+        console.error(`❌ 시스템 알림 발송 중 예외 (${eventData.eventType}) → ${recipient.phone}:`, error);
       }
     }
 
-
-  } catch {
+  } catch (error) {
+    console.error('❌ 알림 처리 중 오류:', error);
   }
 }

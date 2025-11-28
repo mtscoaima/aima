@@ -97,6 +97,9 @@ export default function MessageSendPage() {
   // 현재 선택된 예약의 호스트 연락처
   const [hostContactNumber, setHostContactNumber] = useState<string>("[비공개]");
 
+  // 로그인한 사용자의 전화번호
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string>("");
+
   // 템플릿 선택 모달 상태
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
@@ -113,6 +116,33 @@ export default function MessageSendPage() {
   const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateCategory, setNewTemplateCategory] = useState("예약 확정 안내");
+
+  // 컴포넌트 마운트 시 사용자 전화번호 조회
+  useEffect(() => {
+    const fetchUserPhone = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        const response = await fetch("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.phoneNumber) {
+          setUserPhoneNumber(data.phoneNumber);
+        }
+      } catch (error) {
+        console.error("전화번호 조회 오류:", error);
+      }
+    };
+
+    fetchUserPhone();
+  }, []);
 
   // URL 파라미터로 예약 자동 선택
   useEffect(() => {
@@ -143,6 +173,21 @@ export default function MessageSendPage() {
     } catch (error) {
       console.error("Error fetching reservation:", error);
     }
+  };
+
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      return cleaned.slice(0, 3) + '-' + cleaned.slice(3, 7) + '-' + cleaned.slice(7);
+    }
+    return phone;
+  };
+
+  // 전화번호 유효성 검사 함수 (숫자만 10-11자리)
+  const isValidPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    return cleaned.length >= 10 && cleaned.length <= 11;
   };
 
   // 바이트 수 계산 함수 (한글 3바이트, 영문/숫자 1바이트)
@@ -442,9 +487,14 @@ export default function MessageSendPage() {
 
   // 변수를 실제 값으로 치환하는 함수
   const replaceVariables = (text: string, reservation: Reservation) => {
+    // 전화번호 변수: 호스트 연락처가 유효한 전화번호가 아니면 로그인한 사용자 전화번호로 폴백
+    const phoneForVariable = isValidPhoneNumber(hostContactNumber)
+      ? hostContactNumber
+      : (userPhoneNumber || "[비공개]");
+
     return text
       .replace(/\{\{고객명\}\}/g, reservation.customer_name)
-      .replace(/\{\{전화번호\}\}/g, hostContactNumber)
+      .replace(/\{\{전화번호\}\}/g, phoneForVariable)
       .replace(/\{\{공간명\}\}/g, reservation.spaces?.name || "-")
       .replace(/\{\{예약날짜\}\}/g, formatDate(reservation.start_datetime))
       .replace(/\{\{체크인시간\}\}/g, formatTime(reservation.start_datetime))
@@ -749,7 +799,7 @@ export default function MessageSendPage() {
                     공간: {selectedReservation.spaces?.name || "-"}
                   </p>
                   <p className="text-xs text-gray-500">
-                    • 발신번호: 시스템 기본 발송번호 [비공개]
+                    • 발신번호: {userPhoneNumber ? formatPhoneNumber(userPhoneNumber) : "전화번호 미등록"} (프로필에서 변경 가능)
                   </p>
                   <p className="text-xs text-gray-500">
                     • 회신 연락처: 공간별로 설정된 호스트 연락처
@@ -1158,7 +1208,7 @@ export default function MessageSendPage() {
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  📌 발신번호는 시스템 기본 발송번호로 고정되며, 회신 연락처는 공간별로 설정할 수 있습니다.
+                  📌 발신번호는 로그인한 사용자의 전화번호로 발송되며, 회신 연락처는 공간별로 설정할 수 있습니다.
                 </p>
               </div>
 
@@ -1173,8 +1223,8 @@ export default function MessageSendPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">보내는 번호 (발신번호)</label>
                   <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-gray-900 font-medium">{senderInfo.sending_number}</p>
-                    <p className="text-sm text-gray-500 mt-1">시스템 기본 발송번호 (고정)</p>
+                    <p className="text-gray-900 font-medium">{userPhoneNumber ? formatPhoneNumber(userPhoneNumber) : "전화번호 미등록"}</p>
+                    <p className="text-sm text-gray-500 mt-1">프로필에서 변경 가능</p>
                   </div>
                 </div>
 
@@ -1475,10 +1525,10 @@ export default function MessageSendPage() {
                 <h4 className="text-sm font-medium text-gray-700 mb-2">발신자 정보</h4>
                 <div className="space-y-1 text-sm">
                   <p className="text-gray-900">
-                    <span className="font-medium">발신번호:</span> [비공개]
+                    <span className="font-medium">발신번호:</span> {userPhoneNumber ? formatPhoneNumber(userPhoneNumber) : "전화번호 미등록"}
                   </p>
                   <p className="text-gray-600 text-xs mt-1">
-                    시스템 기본 발송번호
+                    로그인한 사용자 전화번호
                   </p>
                 </div>
               </div>

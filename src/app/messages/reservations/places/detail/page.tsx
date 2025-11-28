@@ -26,8 +26,36 @@ export default function SpaceDetailPage() {
   const [showHostContactModal, setShowHostContactModal] = useState(false);
   const [showHostContactInfo, setShowHostContactInfo] = useState(false);
   const [hostContact, setHostContact] = useState("");
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string>("");
 
   const spaceId = searchParams.get('id');
+
+  // 컴포넌트 마운트 시 사용자 전화번호 조회
+  useEffect(() => {
+    const fetchUserPhone = async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+
+        const response = await fetch("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.phoneNumber) {
+          setUserPhoneNumber(data.phoneNumber);
+        }
+      } catch (error) {
+        console.error("전화번호 조회 오류:", error);
+      }
+    };
+
+    fetchUserPhone();
+  }, [getAccessToken]);
 
   useEffect(() => {
     const fetchSpace = async () => {
@@ -69,6 +97,15 @@ export default function SpaceDetailPage() {
 
     fetchSpace();
   }, [spaceId, getAccessToken]);
+
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      return cleaned.slice(0, 3) + '-' + cleaned.slice(3, 7) + '-' + cleaned.slice(7);
+    }
+    return phone;
+  };
 
   const handleEditName = () => {
     router.push(`/reservations/places/edit?id=${spaceId}`);
@@ -180,7 +217,7 @@ export default function SpaceDetailPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <span className="text-gray-700 font-medium">보내는 번호</span>
-                    <span className="ml-2 text-gray-600">발신전용 번호 (02-2138-8050)</span>
+                    <span className="ml-2 text-gray-600">{userPhoneNumber ? formatPhoneNumber(userPhoneNumber) : "전화번호 미등록"}</span>
                   </div>
                   <button
                     onClick={handleSenderNumberInfo}
@@ -221,24 +258,24 @@ export default function SpaceDetailPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 max-w-md w-full">
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">발신 전용 번호란?</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">발신 번호 정보</h3>
                 <div className="text-left space-y-3 mb-6">
                   <div className="flex items-start">
                     <span className="text-gray-900 mr-2">•</span>
                     <p className="text-gray-700 text-sm">
-                      메시지 발송은 에이마 발신전용 대표 번호(070-8824-1139)로 발송됩니다. 이 번호로는 연락 수신을 할 수 없습니다.
+                      메시지는 로그인한 사용자의 전화번호({userPhoneNumber ? formatPhoneNumber(userPhoneNumber) : "미등록"})로 발송됩니다.
                     </p>
                   </div>
                   <div className="flex items-start">
                     <span className="text-gray-900 mr-2">•</span>
                     <p className="text-gray-700 text-sm">
-                      고객님으로부터 연락 수신은 메시지 하단에 자동으로 입력되는 &apos;호스트 연락처&apos;를 통해 가능합니다
+                      발신번호를 변경하려면 프로필 페이지에서 전화번호를 수정하세요.
                     </p>
                   </div>
                   <div className="flex items-start">
                     <span className="text-gray-900 mr-2">•</span>
                     <p className="text-gray-700 text-sm">
-                      호스트님의 전화번호를 발신번호로 직접 등록하는 기능은 추후 제공될 예정입니다.
+                      고객님으로부터 연락 수신은 메시지 하단에 자동으로 입력되는 &apos;호스트 연락처&apos;를 통해 가능합니다.
                     </p>
                   </div>
                 </div>

@@ -54,26 +54,6 @@ export async function GET(
       return NextResponse.json({ error: "Space not found" }, { status: 404 });
     }
 
-    // host_contact_number_id가 있는 경우 sender_numbers 조회
-    if (space.host_contact_number_id) {
-      const { data: contactData, error: contactError } = await supabase
-        .from("sender_numbers")
-        .select("id, phone_number, display_name, status")
-        .eq("id", space.host_contact_number_id)
-        .eq("user_id", userId)
-        .single();
-
-      if (!contactError && contactData) {
-        // 프론트엔드에서 기대하는 형식으로 변환
-        space.host_contact_number = {
-          id: contactData.id,
-          number: contactData.phone_number,
-          name: contactData.display_name,
-          status: contactData.status,
-        };
-      }
-    }
-
     return NextResponse.json({ space });
   } catch (error) {
     console.error("Error in GET /api/reservations/spaces/[id]:", error);

@@ -1,6 +1,9 @@
 /**
  * 메시지 변수 치환 유틸리티
  * 메시지 내용의 변수를 실제 값으로 치환합니다.
+ *
+ * 표준 변수 형식: #{변수명}
+ * 예시: #{이름}, #{전화번호}, #{오늘날짜}
  */
 
 interface RecipientData {
@@ -13,6 +16,105 @@ interface UserData {
   phone: string;
   name: string;
   companyName: string;
+}
+
+/**
+ * 표준 변수 패턴 (#{변수명} 형식)
+ */
+export const VARIABLE_PATTERN = /#{[^}]+}/g;
+
+/**
+ * 지원하는 변수명 alias 매핑
+ * 여러 이름으로 같은 변수를 참조할 수 있도록 함
+ */
+export const VARIABLE_ALIASES: Record<string, string[]> = {
+  '이름': ['이름', '고객명', '성함', '받는사람', '수신자명'],
+  '전화번호': ['전화번호', '휴대폰', '연락처', '핸드폰'],
+  '그룹명': ['그룹명', '그룹', '단체명'],
+  '오늘날짜': ['오늘날짜', '날짜', '오늘', 'today', '발송일'],
+  '현재시간': ['현재시간', '시간', '지금', '발송시간'],
+  '요일': ['요일', '오늘요일'],
+  '발신번호': ['발신번호', '발신전화번호', '보내는번호'],
+  '회사명': ['회사명', '업체명', '상호', '기업명'],
+  '담당자명': ['담당자명', '담당자', '상담원', '직원명'],
+};
+
+/**
+ * 지원 가능한 모든 표준 변수명 (기본 키)
+ */
+export const STANDARD_VARIABLES = Object.keys(VARIABLE_ALIASES);
+
+/**
+ * 변수명이 표준 변수인지 확인 (alias 포함)
+ * @param variableName 변수명 (#{} 없이)
+ * @returns 표준 변수 여부
+ */
+export function isStandardVariable(variableName: string): boolean {
+  return STANDARD_VARIABLES.some(standardVar =>
+    VARIABLE_ALIASES[standardVar].includes(variableName)
+  );
+}
+
+/**
+ * 메시지 내 변수 개수 계산 (모든 #{} 패턴)
+ * @param text 메시지 내용
+ * @returns 변수 개수
+ */
+export function countVariables(text: string): number {
+  const matches = text.match(VARIABLE_PATTERN);
+  return matches ? matches.length : 0;
+}
+
+/**
+ * 실제 치환 가능한 표준 변수 개수 계산
+ * @param text 메시지 내용
+ * @param customVariables 커스텀 변수 목록 (선택)
+ * @returns 치환 가능한 변수 개수
+ */
+export function countReplaceableVariables(text: string, customVariables?: string[]): number {
+  const variables = extractVariables(text);
+  const customVarSet = new Set(customVariables || []);
+
+  return variables.filter(varName =>
+    isStandardVariable(varName) || customVarSet.has(varName)
+  ).length;
+}
+
+/**
+ * 메시지에서 변수 목록 추출
+ * @param text 메시지 내용
+ * @returns 변수명 배열 (중복 제거)
+ */
+export function extractVariables(text: string): string[] {
+  // null/undefined 체크 추가
+  if (!text || typeof text !== 'string') {
+    return [];
+  }
+
+  const matches = text.match(VARIABLE_PATTERN);
+  if (!matches) return [];
+
+  // #{변수명}에서 변수명만 추출하고 중복 제거
+  const variables = matches.map(match => match.slice(2, -1));
+  return [...new Set(variables)];
+}
+
+/**
+ * 변수 사용 여부 확인
+ * @param text 메시지 내용
+ * @returns 변수 포함 여부
+ */
+export function hasVariables(text: string): boolean {
+  return VARIABLE_PATTERN.test(text);
+}
+
+/**
+ * 구 형식(#[변수명])을 신 형식(#{변수명})으로 변환
+ * @param text 메시지 내용
+ * @returns 변환된 메시지 내용
+ */
+export function migrateVariableFormat(text: string): string {
+  return text.replace(/#\[([^\]]+)\]/g, '#{$1}');
 }
 
 /**
@@ -43,7 +145,8 @@ export function getDayOfWeek(date: Date): string {
 }
 
 /**
- * 메시지 내용의 모든 변수를 치환
+ * 메시지 내용의 모든 변수를 치환 (신 형식 #{변수명})
+ * alias를 포함한 모든 표준 변수를 지원
  * @param content 원본 메시지 내용
  * @param recipient 수신자 정보
  * @param userData 발신자(사용자) 정보
@@ -56,33 +159,76 @@ export function replaceVariables(
 ): string {
   let replaced = content;
 
-  // 수신자 정보 치환
-  replaced = replaced.replace(/#\[이름\]/g, recipient.name || '고객님');
-  replaced = replaced.replace(/#\[전화번호\]/g, recipient.phone);
-  replaced = replaced.replace(/#\[그룹명\]/g, recipient.groupName || '');
-
-  // 날짜/시간 치환 (발송 시점 기준)
+  // 날짜/시간 값 미리 계산
   const now = new Date();
-  replaced = replaced.replace(/#\[오늘날짜\]/g, formatDate(now));
-  replaced = replaced.replace(/#\[현재시간\]/g, formatTime(now));
-  replaced = replaced.replace(/#\[요일\]/g, getDayOfWeek(now));
+  const dateValue = formatDate(now);
+  const timeValue = formatTime(now);
+  const dayValue = getDayOfWeek(now);
 
-  // 발신자 정보 치환 (사용자의 실제 정보)
-  replaced = replaced.replace(/#\[발신번호\]/g, userData.phone);
-  replaced = replaced.replace(/#\[회사명\]/g, userData.companyName);
-  replaced = replaced.replace(/#\[담당자명\]/g, userData.name);
+  // 수신자 이름 치환 (다양한 alias 지원)
+  VARIABLE_ALIASES['이름'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, recipient.name || '고객님');
+  });
+
+  // 전화번호 치환
+  VARIABLE_ALIASES['전화번호'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, recipient.phone);
+  });
+
+  // 그룹명 치환
+  VARIABLE_ALIASES['그룹명'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, recipient.groupName || '');
+  });
+
+  // 오늘날짜 치환
+  VARIABLE_ALIASES['오늘날짜'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, dateValue);
+  });
+
+  // 현재시간 치환
+  VARIABLE_ALIASES['현재시간'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, timeValue);
+  });
+
+  // 요일 치환
+  VARIABLE_ALIASES['요일'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, dayValue);
+  });
+
+  // 발신번호 치환
+  VARIABLE_ALIASES['발신번호'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, userData.phone);
+  });
+
+  // 회사명 치환
+  VARIABLE_ALIASES['회사명'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, userData.companyName);
+  });
+
+  // 담당자명 치환
+  VARIABLE_ALIASES['담당자명'].forEach(alias => {
+    const pattern = new RegExp(`#{${alias}}`, 'g');
+    replaced = replaced.replace(pattern, userData.name);
+  });
 
   return replaced;
 }
 
 /**
- * 메시지에 치환되지 않은 변수가 있는지 확인
+ * 메시지에 치환되지 않은 변수가 있는지 확인 (신 형식)
  * @param content 메시지 내용
  * @returns 치환되지 않은 변수 목록
  */
 export function getUnreplacedVariables(content: string): string[] {
-  const variablePattern = /#\[([^\]]+)\]/g;
-  const matches = content.matchAll(variablePattern);
+  const matches = content.matchAll(VARIABLE_PATTERN);
   const unreplaced: string[] = [];
 
   for (const match of matches) {
@@ -105,13 +251,4 @@ export function generatePreview(
   userData: UserData
 ): string {
   return replaceVariables(content, sampleRecipient, userData);
-}
-
-/**
- * 변수 사용 여부 확인
- * @param content 메시지 내용
- * @returns 변수 포함 여부
- */
-export function hasVariables(content: string): boolean {
-  return /#\[[^\]]+\]/g.test(content);
 }

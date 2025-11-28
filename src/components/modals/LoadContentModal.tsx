@@ -8,7 +8,26 @@ interface LoadContentModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialActiveTab?: string;
-  onSelect?: (content: { subject?: string; content: string; isAd?: boolean }) => void;
+  messageTypeFilter?: string; // 추가: 'SMS' | 'FRIENDTALK'
+  friendtalkMessageTypeFilter?: string; // 추가: 'FT' | 'FI' | 'FW' | 'FL' | 'FC'
+  onSelect?: (content: {
+    subject?: string;
+    content: string;
+    isAd?: boolean;
+    buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>; // 추가
+    imageUrl?: string; // 추가
+    imageLink?: string; // 추가
+    // FW/FL/FC 타입 전용 필드 (2025-11-13 추가)
+    friendtalkMessageType?: string; // 'FT' | 'FI' | 'FW' | 'FL' | 'FC'
+    headerText?: string; // FL 헤더
+    listItems?: Array<{ title: string; image?: { fileId: string; fileName: string; fileSize: number; preview: string } }>; // FL 아이템
+    carousels?: Array<{
+      content: string;
+      image?: { fileId: string; fileName: string; fileSize: number; preview: string };
+      buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>
+    }>; // FC 캐러셀
+    moreLink?: string; // FC 더보기 링크
+  }) => void;
 }
 
 interface Template {
@@ -16,6 +35,24 @@ interface Template {
   name: string;
   content: string;
   subject?: string;
+  message_type?: string; // 추가
+  buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>; // 추가
+  image_url?: string; // 추가
+  image_link?: string; // 추가
+  metadata?: { // FW/FL/FC 필드 저장 (2025-11-13 추가)
+    friendtalkMessageType?: string;
+    headerText?: string;
+    listItems?: Array<{ title: string; image?: { fileId: string; fileName: string; fileSize: number; preview: string } }>;
+    carousels?: Array<{
+      content: string;
+      image?: { fileId: string; fileName: string; fileSize: number; preview: string };
+      buttons: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>
+    }>;
+    moreLink?: string;
+    // Naver TalkTalk 템플릿 필드 (2025-11-25 추가)
+    partnerKey?: string;
+    code?: string;
+  };
   created_at: string;
 }
 
@@ -27,12 +64,19 @@ interface MessageLog {
   to_name?: string;
   message_type: string;
   sent_at: string;
+  metadata?: { // 추가
+    buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>;
+    image_urls?: string[];
+    image_link?: string;
+  };
 }
 
 const LoadContentModal: React.FC<LoadContentModalProps> = ({
   isOpen,
   onClose,
   initialActiveTab = "saved",
+  messageTypeFilter, // 추가
+  friendtalkMessageTypeFilter, // 추가
   onSelect,
 }) => {
   const router = useRouter();
@@ -52,7 +96,9 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         throw new Error("로그인이 필요합니다");
       }
 
-      const response = await fetch("/api/sms-templates", {
+      // messageType 파라미터 추가
+      const messageType = messageTypeFilter || 'SMS';
+      const response = await fetch(`/api/sms-templates?messageType=${messageType}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -64,14 +110,16 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         throw new Error(data.error || "템플릿 조회에 실패했습니다");
       }
 
-      setTemplates(data.templates || []);
+      // API 응답 구조: { success: true, data: { count, templates } }
+      const templates = data.data?.templates || data.templates || [];
+      setTemplates(templates);
     } catch (err) {
       console.error("템플릿 조회 오류:", err);
       alert(err instanceof Error ? err.message : "템플릿 조회 중 오류가 발생했습니다");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [messageTypeFilter]);
 
   const fetchMessageLogs = useCallback(async () => {
     setIsLoading(true);
@@ -104,6 +152,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setSearchTerm(""); // 모달 열 때마다 검색어 초기화
       setActiveTab(initialActiveTab);
       if (initialActiveTab === "saved") {
         fetchTemplates();
@@ -136,6 +185,15 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         subject: template.subject,
         content: template.content,
         isAd: false,
+        buttons: template.buttons, // 추가
+        imageUrl: template.image_url, // 추가
+        imageLink: template.image_link, // 추가
+        // FW/FL/FC 필드 (metadata에서 추출, 2025-11-13 추가)
+        friendtalkMessageType: template.metadata?.friendtalkMessageType,
+        headerText: template.metadata?.headerText,
+        listItems: template.metadata?.listItems,
+        carousels: template.metadata?.carousels,
+        moreLink: template.metadata?.moreLink,
       });
     }
     onClose();
@@ -147,6 +205,9 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         subject: log.subject,
         content: log.message_content,
         isAd: false,
+        buttons: log.metadata?.buttons, // 추가
+        imageUrl: log.metadata?.image_urls?.[0], // 추가 (첫 번째 이미지만)
+        imageLink: log.metadata?.image_link, // 추가
       });
     }
     onClose();
@@ -175,7 +236,7 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
     return `${year}-${month}-${day} ${hours}:${minutes}`;
   };
 
-  const handleDeleteTemplate = async (templateId: number) => {
+  const handleDeleteTemplate = async (templateId: number | string) => {
     if (!confirm("이 템플릿을 삭제하시겠습니까?")) {
       return;
     }
@@ -186,12 +247,51 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
         throw new Error("로그인이 필요합니다");
       }
 
-      const response = await fetch(`/api/sms-templates?id=${templateId}`, {
+      // 메시지 타입별 API 엔드포인트 매핑
+      const messageType = messageTypeFilter || 'SMS';
+      let endpoint = '';
+
+      switch (messageType) {
+        case 'ALIMTALK':
+          endpoint = `/api/messages/kakao/alimtalk/templates?id=${templateId}`;
+          break;
+        case 'BRAND':
+          endpoint = `/api/messages/kakao/brand/templates?id=${templateId}`;
+          break;
+        case 'NAVER':
+          // 네이버는 body로 전달 (DELETE with body)
+          endpoint = `/api/messages/naver/templates/delete`;
+          break;
+        case 'SMS':
+        case 'FRIENDTALK':
+        default:
+          endpoint = `/api/sms-templates?id=${templateId}`;
+          break;
+      }
+
+      const requestOptions: RequestInit = {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      });
+      };
+
+      // 네이버 톡톡은 body에 데이터 전달
+      if (messageType === 'NAVER') {
+        // 템플릿에서 partnerKey와 code 추출 필요
+        const template = templates.find(t => t.id === templateId);
+        if (!template || !template.metadata) {
+          throw new Error("템플릿 정보를 찾을 수 없습니다");
+        }
+
+        requestOptions.body = JSON.stringify({
+          partnerKey: template.metadata.partnerKey,
+          templateCode: template.metadata.code || template.name,
+        });
+      }
+
+      const response = await fetch(endpoint, requestOptions);
 
       if (!response.ok) {
         const data = await response.json();
@@ -210,11 +310,20 @@ const LoadContentModal: React.FC<LoadContentModalProps> = ({
 
   // 필터링 및 정렬
   const filteredTemplates = templates
-    .filter(
-      (template) =>
+    .filter((template) => {
+      // 검색어 필터
+      const matchesSearch =
         template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        template.content.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+        template.content.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // FriendTalk 타입 필터 (FT/FI/FW/FL/FC)
+      const matchesFriendtalkType =
+        !friendtalkMessageTypeFilter || // 필터 없으면 모두 표시
+        !template.metadata?.friendtalkMessageType || // 구형 템플릿 (metadata 없음) - 모든 타입에서 표시
+        template.metadata.friendtalkMessageType === friendtalkMessageTypeFilter;
+
+      return matchesSearch && matchesFriendtalkType;
+    })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
       const dateB = new Date(b.created_at).getTime();

@@ -12,7 +12,6 @@ import { useSearchParams } from "next/navigation";
 import MemberInfoTab from "@/components/profile/MemberInfoTab";
 import PasswordTab from "@/components/profile/PasswordTab";
 import BusinessInfoTab from "@/components/profile/BusinessInfoTab";
-import SendingNumberTab from "@/components/profile/SendingNumberTab";
 import TaxInvoiceTab from "@/components/profile/TaxInvoiceTab";
 
 // 회원정보 데이터 타입
@@ -83,9 +82,7 @@ export default function ProfilePage() {
     | "memberInfo"
     | "businessInfo"
     | "password"
-    | "sendingNumber"
     | "taxInvoice"
-    | "발신번호관리"
   >("memberInfo");
 
   // 모달 상태 관리
@@ -202,7 +199,6 @@ export default function ProfilePage() {
       (tab === "memberInfo" ||
         tab === "businessInfo" ||
         tab === "password" ||
-        tab === "sendingNumber" ||
         tab === "taxInvoice")
     ) {
       setActiveTab(tab);
@@ -405,10 +401,6 @@ export default function ProfilePage() {
             setIsSaving={setIsSaving}
           />
         );
-      case "sendingNumber":
-        return (
-          <SendingNumberTab />
-        );
       case "taxInvoice":
         return (
           <TaxInvoiceTab
@@ -545,19 +537,6 @@ export default function ProfilePage() {
           >
             비밀번호변경
             {activeTab === "password" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
-            )}
-          </button>
-          <button
-            className={`pb-3 px-1 font-medium text-sm transition-colors duration-200 relative ${
-              activeTab === "sendingNumber"
-                ? "text-blue-500"
-                : "text-gray-500 hover:text-blue-500"
-            }`}
-            onClick={() => setActiveTab("sendingNumber")}
-          >
-            발신번호관리
-            {activeTab === "sendingNumber" && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
             )}
           </button>

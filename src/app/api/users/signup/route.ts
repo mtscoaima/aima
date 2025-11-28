@@ -322,47 +322,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 500 });
     }
 
-    // 사용자 생성 성공 후 발신번호 자동 추가
-    try {
-      // 전화번호 정규화 (하이픈 형식으로)
-      let normalizedPhoneNumber = phoneNumber;
-      const digitsOnly = phoneNumber.replace(/[^0-9]/g, "");
-      const phoneRegexWithHyphen = /^010-[0-9]{4}-[0-9]{4}$/;
-      const phoneRegexWithoutHyphen = /^010[0-9]{8}$/;
-
-      if (phoneRegexWithHyphen.test(phoneNumber)) {
-        normalizedPhoneNumber = phoneNumber;
-      } else if (phoneRegexWithoutHyphen.test(digitsOnly)) {
-        normalizedPhoneNumber = digitsOnly.replace(
-          /(\d{3})(\d{4})(\d{4})/,
-          "$1-$2-$3"
-        );
-      }
-
-      // 발신번호 자동 추가
-      const { error: senderNumberError } = await supabase
-        .from("sender_numbers")
-        .insert({
-          user_id: newUser.id,
-          phone_number: normalizedPhoneNumber,
-          display_name: name,
-          is_default: false, // 시스템 기본번호만 true
-          is_user_phone: true, // 본인 전화번호 표시
-          is_verified: false,
-          status: "ACTIVE",
-          created_at: now,
-          updated_at: now,
-        });
-
-      if (senderNumberError) {
-        console.error("발신번호 자동 추가 실패:", senderNumberError);
-        // 발신번호 추가 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
-      }
-    } catch (senderError) {
-      console.error("발신번호 자동 추가 중 오류:", senderError);
-      // 발신번호 추가 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
-    }
-
     // 성공 응답
     const successResponse: SuccessResponse = {
       id: newUser.id,

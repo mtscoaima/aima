@@ -4,15 +4,12 @@ import React, { useState } from "react";
 import KakaoChannelTab from "./kakao/KakaoChannelTab";
 import KakaoAlimtalkTab from "./kakao/KakaoAlimtalkTab";
 import KakaoBrandTab from "./kakao/KakaoBrandTab";
-import RcsBrandTab from "./rcs/RcsBrandTab";
-import RcsTemplateTab from "./rcs/RcsTemplateTab";
 import NaverTalkIdTab from "./naver/NaverTalkIdTab";
 import NaverTemplateTab from "./naver/NaverTemplateTab";
 
 const KakaoNaverRcsTab = () => {
   const [activeMainTab, setActiveMainTab] = useState("kakao");
   const [activeKakaoSubTab, setActiveKakaoSubTab] = useState("alimtalk");
-  const [activeRcsSubTab, setActiveRcsSubTab] = useState("template");
   const [activeNaverSubTab, setActiveNaverSubTab] = useState("template");
 
   // const getTabThemeColor = (tab: string) => {
@@ -61,37 +58,6 @@ const KakaoNaverRcsTab = () => {
                 브랜드 템플릿
               </button>
             </div>
-            <button className="flex items-center gap-2 text-gray-600 border border-gray-300 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              카카오톡 발송이 처음이신가요?
-            </button>
-          </div>
-        );
-      case "rcs":
-        return (
-          <div className="flex gap-2 mb-6">
-            <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeRcsSubTab === "brand"
-                  ? "bg-[#2c398a20] text-[#2c398a] border border-[#2c398a]"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              onClick={() => setActiveRcsSubTab("brand")}
-            >
-              RCS 브랜드
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeRcsSubTab === "template"
-                  ? "bg-[#2c398a20] text-[#2c398a] border border-[#2c398a]"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              onClick={() => setActiveRcsSubTab("template")}
-            >
-              RCS 템플릿
-            </button>
           </div>
         );
       case "naver":
@@ -137,15 +103,6 @@ const KakaoNaverRcsTab = () => {
           default:
             return <KakaoAlimtalkTab />;
         }
-      case "rcs":
-        switch (activeRcsSubTab) {
-          case "brand":
-            return <RcsBrandTab />;
-          case "template":
-            return <RcsTemplateTab />;
-          default:
-            return <RcsTemplateTab />;
-        }
       case "naver":
         switch (activeNaverSubTab) {
           case "talkid":
@@ -173,16 +130,6 @@ const KakaoNaverRcsTab = () => {
           onClick={() => setActiveMainTab("kakao")}
         >
           카카오
-        </button>
-        <button
-          className={`bg-transparent border-none pb-3 px-1 text-base font-semibold cursor-pointer relative transition-colors duration-200 ${
-            activeMainTab === "rcs"
-              ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
-              : "text-gray-500 hover:text-blue-600"
-          }`}
-          onClick={() => setActiveMainTab("rcs")}
-        >
-          RCS
         </button>
         <button
           className={`bg-transparent border-none pb-3 px-1 text-base font-semibold cursor-pointer relative transition-colors duration-200 ${

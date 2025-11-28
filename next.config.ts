@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
       "images.unsplash.com",
       "via.placeholder.com",
       "picsum.photos",
+      "mud-kage.kakao.com",
+      "k.kakaocdn.net",
     ],
     remotePatterns: [
       {
