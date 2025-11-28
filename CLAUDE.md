@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Version**: 2.3 (Updated 2025-11-25)
+**Version**: 2.4 (Updated 2025-11-28)
 **Related Docs**: [MTS_API_통합_테스트_가이드.md](MTS_API_통합_테스트_가이드.md) | [README.md](README.md)
 
 ## Project Overview
@@ -137,12 +137,12 @@ npx tsc --noEmit     # Check all TypeScript errors across project
 - **Authentication**: JWT-based with custom implementation
 - **Styling**: CSS Modules, Tailwind CSS 4
 - **AI Integration**: OpenAI API (GPT-4, DALL-E 3)
-- **Messaging API**: MTS API (완전 전환 완료)
-  - SMS/LMS/MMS (automatic type detection, image optimization)
-  - Kakao AlimTalk (template-based)
-  - Kakao FriendTalk (FT/FI/FW/FL/FC types, imageLink support)
-  - Kakao Brand Messages (template-based, 8 types)
-  - Naver TalkTalk Smart Notifications (template-based)
+- **Messaging API**: MTS API (완전 전환 완료, **복수 API 전환 완료 2025-11-28**)
+  - SMS/LMS/MMS (automatic type detection, image optimization, **batch API**)
+  - Kakao AlimTalk (template-based, **batch API**)
+  - Kakao FriendTalk (FT/FI/FW/FL/FC types, imageLink support, **batch API**)
+  - Kakao Brand Messages (template-based, 8 types, **batch API**)
+  - Naver TalkTalk Smart Notifications (template-based, **batch API**)
 - **Payment Gateway**: NicePay (KG이니시스)
 - **Image Processing**: Sharp (optimization, PNG→JPEG conversion, resizing)
 - **File Handling**: xlsx (Excel), html2canvas
@@ -721,6 +721,22 @@ await sendNaverTalk({ recipients, templateCode, templateParams });
 - **Structure Verified, Real Send Pending**: Brand Messages (CAROUSEL_FEED, COMMERCE, CAROUSEL_COMMERCE, PREMIUM_VIDEO, WIDE_ITEM_LIST)
 - **Reference**: `MTS_API_통합_테스트_가이드.md` for detailed testing status
 - **Core Module**: `src/lib/mtsApi.ts` (2,907 lines, 19 functions)
+- **⭐ 복수 API 전환 완료 (2025-11-28)**:
+  - 단건 API (for 루프) → 복수 API (배열 1회 호출) 전환
+  - 변경된 MTS API 엔드포인트:
+    - SMS: `/sms/send/message` → `/sms/send/messages`
+    - MMS: `/mms/send/message` → `/mms/send/messages`
+    - AlimTalk: `/kakao/send/alimtalk` → `/kakao/send/alimtalks`
+    - FriendTalk: `/kakao/send/friendtalk/v2` → `/kakao/send/friendtalks/v2`
+    - NaverTalk: `/naver/talk/send/message` → `/naver/talk/send/messages`
+    - Brand: `/btalk/send/message/basic` → `/btalk/send/messages/basic`
+  - 변경된 파일:
+    - `src/lib/mtsApi.ts` - 6개 함수 복수 API로 전환
+    - `src/app/api/message/send/route.ts` - for 루프 제거
+    - `src/app/api/messages/kakao/*/send/route.ts` - for 루프 제거
+    - `src/app/api/messages/naver/talk/send/route.ts` - for 루프 제거
+  - 브랜드 메시지 send_mode 버그 수정: 즉시발송='3', 예약발송='2'
+  - 테스트 결과: 13/13 PASS (전체 성공률 93.3%)
 - **FriendTalk Features** (2025-11-14):
   - ✅ Button types: WL (웹링크), AL (앱링크), BK (봇키워드), MD (메시지전달)
   - ✅ FL item-level image upload with hidden file inputs and refs
@@ -1427,6 +1443,19 @@ For **server-side variable substitution** (AlimTalk, Naver TalkTalk):
 
 ## CLAUDE.md Version History
 
+### Version 2.4 (2025-11-28)
+**Major Update - Batch API Migration**:
+- ✅ MTS API 복수 API 전환 완료 (단건 for 루프 → 배열 1회 호출)
+- ✅ 6개 MTS API 함수 복수 API로 전환: sendSMS, sendMMS, sendAlimtalk, sendFriendtalk, sendBrand, sendNaverTalk
+- ✅ 5개 API Route for 루프 제거
+- ✅ 브랜드 메시지 send_mode 버그 수정 (즉시발송='3', 예약발송='2')
+- ✅ 테스트 완료: 13/13 복수 API 테스트 PASS
+- ✅ 전체 테스트 성공률: 93.3% (56/60 PASS)
+
+**Content Stats**:
+- ~1,550 lines (up from ~1,450)
+- Added batch API migration details
+
 ### Version 2.3 (2025-11-25)
 **Enhancements**:
 - ✅ Added Next.js 15 Dynamic Route Params pattern to TypeScript Build Considerations
@@ -1506,6 +1535,6 @@ For **server-side variable substitution** (AlimTalk, Naver TalkTalk):
 
 ---
 
-**Last Updated**: 2025-11-25
+**Last Updated**: 2025-11-28
 **Maintained By**: Development Team
 **Review Frequency**: Update after major features or breaking changes

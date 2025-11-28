@@ -44,6 +44,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!productCode || !['INFORMATION', 'BENEFIT', 'CARDINFO'].includes(productCode)) {
+      return NextResponse.json(
+        { error: '상품 코드가 올바르지 않습니다. (INFORMATION, BENEFIT, CARDINFO 중 하나)' },
+        { status: 400 }
+      );
+    }
+
+    // 모든 상품코드에 text 필드 필수 (MTS API 실제 요구사항)
+    // 규격서 예제에는 CARDINFO에 text가 없지만, API가 실제로 요구함
     if (!text) {
       return NextResponse.json(
         { error: '템플릿 내용이 필요합니다.' },
@@ -51,12 +60,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!productCode || !['INFORMATION', 'BENEFIT', 'CARDINFO'].includes(productCode)) {
-      return NextResponse.json(
-        { error: '상품 코드가 올바르지 않습니다. (INFORMATION, BENEFIT, CARDINFO 중 하나)' },
-        { status: 400 }
-      );
-    }
+    // CARDINFO는 templateType이 'CARD'로 고정 (규격서 기준)
+    const finalTemplateType = productCode === 'CARDINFO' ? 'CARD' : templateType;
 
     // BENEFIT이 아닌 경우 categoryCode 필수
     if (productCode !== 'BENEFIT' && !categoryCode) {
@@ -115,15 +120,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 네이버 톡톡 템플릿 생성 API 호출
+    // 모든 상품코드에 text 전달 (MTS API 실제 요구사항)
     const result = await createNaverTalkTemplate(
       authResult.userInfo.userId,
       partnerKey,
       code,
-      text,
+      text, // 모든 상품코드에 text 필수
       productCode,
       categoryCode || '', // BENEFIT의 경우 빈 문자열 전달
       buttons,
-      templateType, // BENEFIT 전용 templateType
+      finalTemplateType, // CARDINFO는 'CARD', BENEFIT은 'BENEFIT'/'BENEFIT_LMS'
       undefined, // pushNotice
       undefined, // tableInfo
       sampleImageHashId,

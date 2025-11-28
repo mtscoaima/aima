@@ -101,6 +101,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
   const [isUploadingFeedImage, setIsUploadingFeedImage] = useState(false);
   const [blockCallNumber, setBlockCallNumber] = useState("");
   const [blockMessageUrl, setBlockMessageUrl] = useState("");
+  const [blockType, setBlockType] = useState<"phone" | "url">("phone"); // 수신거부 방식 선택
   // 할인/적립 정보
   const [discountInfo, setDiscountInfo] = useState<DiscountInfo>({
     discountType: "AMOUNT",
@@ -121,6 +122,17 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       fetchAccounts();
     }
   }, [isOpen]);
+
+  // productCode 변경 시 categoryCode 자동 설정
+  useEffect(() => {
+    if (productCode === "BENEFIT") {
+      // BENEFIT은 B001~B004 카테고리 사용
+      setCategoryCode("B001");
+    } else {
+      // INFORMATION, CARDINFO는 S001/T001 등 사용
+      setCategoryCode("S001");
+    }
+  }, [productCode]);
 
   const fetchAccounts = async () => {
     try {
@@ -200,7 +212,8 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       formData.append('image', file);
 
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/naver/image/upload?navertalkId=${partnerKey}`, {
+      // imageType=sample로 300KB 이하 자동 최적화 요청
+      const response = await fetch(`/api/naver/image/upload?navertalkId=${partnerKey}&imageType=sample`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -215,7 +228,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       }
 
       setUploadedImageHashId(result.imageHashId);
-      setSuccess('이미지 업로드 성공');
+      setSuccess('이미지 업로드 성공 (자동 최적화됨)');
 
       // 3초 후 성공 메시지 제거
       setTimeout(() => {
@@ -273,7 +286,8 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       formData.append('image', file);
 
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/naver/image/upload?navertalkId=${partnerKey}`, {
+      // imageType=feed로 598x300 자동 리사이징 요청
+      const response = await fetch(`/api/naver/image/upload?navertalkId=${partnerKey}&imageType=feed`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -288,7 +302,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       }
 
       setFeedImageHashId(result.imageHashId);
-      setSuccess('피드 이미지 업로드 성공');
+      setSuccess('피드 이미지 업로드 성공 (598x300으로 자동 조정됨)');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('피드 이미지 업로드 오류:', err);
@@ -341,6 +355,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       return;
     }
 
+    // 모든 상품 타입에 text 필드 필수 (MTS API 실제 요구사항)
     if (!text.trim()) {
       setError("템플릿 내용을 입력해주세요.");
       return;
@@ -371,10 +386,28 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
         setError("피드 이미지를 업로드해주세요. (598x300 해상도 권장)");
         return;
       }
-      if (!blockCallNumber && !blockMessageUrl) {
-        setError("수신거부 전화번호 또는 수신거부 URL 중 하나 이상 입력해주세요.");
+      // 선택된 수신거부 방식에 따른 검증
+      if (blockType === "phone" && !blockCallNumber) {
+        setError("수신거부 전화번호를 입력해주세요.");
         return;
       }
+      if (blockType === "url" && !blockMessageUrl) {
+        setError("수신거부 URL을 입력해주세요.");
+        return;
+      }
+      // 유효기간 필수 체크 (모든 BENEFIT 필수)
+      if (validityInfo.validType === "PERIOD") {
+        if (!validityInfo.validStartedAt || !validityInfo.validEndedAt) {
+          setError("유효기간 시작일과 종료일을 모두 입력해주세요.");
+          return;
+        }
+      } else if (validityInfo.validType === "EXPIRATION") {
+        if (!validityInfo.validExpiration) {
+          setError("발급 후 만료일을 입력해주세요.");
+          return;
+        }
+      }
+
       // 할인/적립 정보 필수 체크
       if (requiresDiscountInfo) {
         if (discountInfo.discountType === "AMOUNT" && !discountInfo.discountAmount) {
@@ -407,7 +440,6 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       const requestData: Record<string, unknown> = {
         partnerKey,
         code: code.trim(),
-        text: text.trim(),
         productCode,
         buttons: buttons.length > 0
           ? buttons.filter(btn => btn.buttonName.trim() !== '')
@@ -415,40 +447,65 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
         sampleImageHashId: uploadedImageHashId || undefined,
       };
 
+      // templateType 설정
+      if (productCode === "CARDINFO") {
+        requestData.templateType = "CARD";
+      }
+
+      // 모든 상품 타입에 text 필드 필수 (MTS API 실제 요구사항)
+      // CARDINFO도 text 필드 필요 (규격서 예제에는 없지만 API가 요구함)
+      requestData.text = text.trim();
+
       // BENEFIT 전용 데이터
       if (productCode === "BENEFIT") {
         requestData.templateType = benefitTemplateType;
-        requestData.benefit = {
-          categoryType: benefitCategoryType,
+        // BENEFIT도 최상위 categoryCode 필수 - 혜택 카테고리 코드 (B001~B004) 사용
+        requestData.categoryCode = categoryCode; // 혜택 템플릿 카테고리 코드 (B001 등)
+
+        // benefit 객체 구성 - 수신거부는 둘 중 하나만 전달 (MTS API 규격)
+        const benefitData: Record<string, unknown> = {
+          categoryType: benefitCategoryType, // 혜택 카테고리 (FASHION, BEAUTY 등)
           benefitTypes: benefitTypes,
           feedDisplayEndedAt: feedDisplayEndedAt,
           feedDisplayImageHashId: feedImageHashId,
           title: benefitTitle.trim(),
-          blockCallNumber: blockCallNumber || undefined,
-          blockMessageUrl: blockMessageUrl || undefined,
         };
 
-        // 할인/적립 정보 추가
-        if (requiresDiscountInfo) {
-          const benefitObj = requestData.benefit as Record<string, unknown>;
-          benefitObj.discountType = discountInfo.discountType;
-          if (discountInfo.discountType === "AMOUNT") {
-            benefitObj.discountAmount = discountInfo.discountAmount;
-          } else if (discountInfo.discountType === "RATE") {
-            benefitObj.discountRate = discountInfo.discountRate;
-          } else if (discountInfo.discountType === "POINT") {
-            benefitObj.pointAmount = discountInfo.pointAmount;
-          }
-
-          // 유효기간 정보
-          benefitObj.validType = validityInfo.validType;
-          if (validityInfo.validType === "PERIOD") {
-            benefitObj.validStartedAt = validityInfo.validStartedAt || undefined;
-            benefitObj.validEndedAt = validityInfo.validEndedAt || undefined;
-          } else {
-            benefitObj.validExpiration = validityInfo.validExpiration || undefined;
-          }
+        // 수신거부: 선택된 방식에 따라 하나만 전달
+        if (blockType === "phone" && blockCallNumber) {
+          benefitData.blockCallNumber = blockCallNumber;
+        } else if (blockType === "url" && blockMessageUrl) {
+          benefitData.blockMessageUrl = blockMessageUrl;
         }
+
+        // 유효기간 정보 (모든 BENEFIT 필수) - validityInfo 객체로 중첩
+        const validityInfoData: Record<string, unknown> = {
+          validType: validityInfo.validType,
+        };
+        if (validityInfo.validType === "PERIOD") {
+          validityInfoData.validStartedAt = validityInfo.validStartedAt;
+          validityInfoData.validEndedAt = validityInfo.validEndedAt;
+        } else {
+          validityInfoData.validDays = validityInfo.validExpiration;
+        }
+        benefitData.validityInfo = validityInfoData;
+
+        // 할인/적립 정보 추가 (해당 혜택 유형 선택 시에만)
+        if (requiresDiscountInfo) {
+          const discountInfoData: Record<string, unknown> = {
+            discountType: discountInfo.discountType,
+          };
+          if (discountInfo.discountType === "AMOUNT") {
+            discountInfoData.discountAmount = discountInfo.discountAmount;
+          } else if (discountInfo.discountType === "RATE") {
+            discountInfoData.discountRate = discountInfo.discountRate;
+          } else if (discountInfo.discountType === "POINT") {
+            discountInfoData.pointAmount = discountInfo.pointAmount;
+          }
+          benefitData.discountInfo = discountInfoData;
+        }
+
+        requestData.benefit = benefitData;
       } else {
         // INFORMATION, CARDINFO
         requestData.categoryCode = categoryCode;
@@ -605,7 +662,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
               />
             </div>
 
-            {/* 템플릿 내용 */}
+            {/* 템플릿 내용 - 모든 상품 타입에 필수 */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700">
@@ -625,7 +682,10 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
                 ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="예: #{이름}님, 예약이 완료되었습니다.&#10;예약일시: #{오늘날짜}&#10;감사합니다."
+                placeholder={productCode === "CARDINFO"
+                  ? "예: #{카드명} #{승인금액}원 결제 완료&#10;승인일시: #{승인일시}&#10;가맹점: #{가맹점명}"
+                  : "예: #{이름}님, 예약이 완료되었습니다.&#10;예약일시: #{오늘날짜}&#10;감사합니다."
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 min-h-[100px]"
                 disabled={isLoading}
                 required
@@ -634,6 +694,19 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
                 치환문구 버튼을 클릭하여 변수를 삽입할 수 있습니다.
               </p>
             </div>
+
+            {/* CARDINFO 타입 설명 */}
+            {productCode === "CARDINFO" && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <Info className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">카드알림(CARDINFO) 템플릿</span>
+                </div>
+                <p className="text-xs text-blue-700">
+                  ???? ???? ??? ??/?? ?? ?????. templateType? ???? CARD? ?????.
+                </p>
+              </div>
+            )}
 
             {/* 상품 코드 */}
             <div>
@@ -652,33 +725,47 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
               </select>
             </div>
 
-            {/* 카테고리 코드 - INFORMATION, CARDINFO만 */}
-            {productCode !== "BENEFIT" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  카테고리 코드 <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={categoryCode}
-                  onChange={(e) => setCategoryCode(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  disabled={isLoading}
-                >
-                  <optgroup label="숙박(S)">
-                    <option value="S001">S001 - 예약완료</option>
-                    <option value="S002">S002 - 예약취소</option>
-                    <option value="S003">S003 - 바우처발송</option>
-                    <option value="S004">S004 - 결제요청</option>
+            {/* 카테고리 코드 - 상품 타입별로 다른 옵션 제공 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                카테고리 코드 <span className="text-red-500">*</span>
+                {productCode === "BENEFIT" && (
+                  <span className="text-xs text-gray-500 ml-2">(혜택 카테고리)</span>
+                )}
+              </label>
+              <select
+                value={categoryCode}
+                onChange={(e) => setCategoryCode(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                disabled={isLoading}
+              >
+                {/* BENEFIT 타입용 카테고리 (B001~B003) */}
+                {productCode === "BENEFIT" ? (
+                  <optgroup label="혜택(B)">
+                    <option value="B001">B001 - 쿠폰</option>
+                    <option value="B002">B002 - 적립금</option>
+                    <option value="B003">B003 - 추가 증정</option>
+                    <option value="B004">B004 - 기타 이벤트</option>
                   </optgroup>
-                  <optgroup label="예약(T)">
-                    <option value="T001">T001 - 예약완료</option>
-                    <option value="T002">T002 - 예약취소</option>
-                    <option value="T003">T003 - 바우처발송</option>
-                    <option value="T004">T004 - 결제요청</option>
-                  </optgroup>
-                </select>
-              </div>
-            )}
+                ) : (
+                  /* INFORMATION, CARDINFO 타입용 카테고리 (S/T/D) */
+                  <>
+                    <optgroup label="숙박(S)">
+                      <option value="S001">S001 - 예약완료</option>
+                      <option value="S002">S002 - 예약취소</option>
+                      <option value="S003">S003 - 바우처발송</option>
+                      <option value="S004">S004 - 결제요청</option>
+                    </optgroup>
+                    <optgroup label="예약(T)">
+                      <option value="T001">T001 - 예약완료</option>
+                      <option value="T002">T002 - 예약취소</option>
+                      <option value="T003">T003 - 바우처발송</option>
+                      <option value="T004">T004 - 결제요청</option>
+                    </optgroup>
+                  </>
+                )}
+              </select>
+            </div>
 
             {/* ========== BENEFIT 전용 섹션 ========== */}
             {productCode === "BENEFIT" && (
@@ -850,38 +937,158 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
                   )}
                 </div>
 
-                {/* 수신거부 정보 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      수신거부 전화번호
-                    </label>
-                    <input
-                      type="tel"
-                      value={blockCallNumber}
-                      onChange={(e) => setBlockCallNumber(e.target.value)}
-                      placeholder="예: 0801234567"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                      disabled={isLoading}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      수신거부 URL
-                    </label>
-                    <input
-                      type="url"
-                      value={blockMessageUrl}
-                      onChange={(e) => setBlockMessageUrl(e.target.value)}
-                      placeholder="https://example.com/unsubscribe"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500">둘 중 하나 이상 필수 입력</p>
+                {/* 수신거부 정보 - 둘 중 하나만 선택 */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    수신거부 방식 <span className="text-red-500">*</span>
+                  </label>
 
-                {/* 할인/적립 정보 (조건부 표시) */}
+                  {/* 라디오 버튼 선택 */}
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="blockType"
+                        value="phone"
+                        checked={blockType === "phone"}
+                        onChange={() => {
+                          setBlockType("phone");
+                          setBlockMessageUrl(""); // URL 초기화
+                        }}
+                        className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                        disabled={isLoading}
+                      />
+                      <span className="text-sm text-gray-700">전화번호</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="blockType"
+                        value="url"
+                        checked={blockType === "url"}
+                        onChange={() => {
+                          setBlockType("url");
+                          setBlockCallNumber(""); // 전화번호 초기화
+                        }}
+                        className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                        disabled={isLoading}
+                      />
+                      <span className="text-sm text-gray-700">URL</span>
+                    </label>
+                  </div>
+
+                  {/* 선택된 방식에 따른 입력 필드 */}
+                  {blockType === "phone" ? (
+                    <div>
+                      <input
+                        type="tel"
+                        value={blockCallNumber}
+                        onChange={(e) => setBlockCallNumber(e.target.value)}
+                        placeholder="예: 0801234567"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        disabled={isLoading}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">080으로 시작하는 무료 수신거부 번호</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="url"
+                        value={blockMessageUrl}
+                        onChange={(e) => setBlockMessageUrl(e.target.value)}
+                        placeholder="https://example.com/unsubscribe"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        disabled={isLoading}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">수신거부 처리가 가능한 웹페이지 URL</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 혜택 유효기간 (모든 BENEFIT 필수) */}
+                <div className="space-y-3 p-3 border border-orange-200 bg-orange-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-orange-600" />
+                    <span className="text-sm font-semibold text-orange-800">혜택 유효기간 <span className="text-red-500">*</span></span>
+                  </div>
+                  <p className="text-xs text-gray-600">모든 BENEFIT 템플릿에 유효기간 입력이 필수입니다.</p>
+
+                  {/* 유효기간 유형 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      유효기간 유형
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setValidityInfo({ ...validityInfo, validType: "PERIOD" })}
+                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                          validityInfo.validType === "PERIOD"
+                            ? "bg-orange-600 text-white border-orange-600"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-orange-400"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        기간 지정
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setValidityInfo({ ...validityInfo, validType: "EXPIRATION" })}
+                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                          validityInfo.validType === "EXPIRATION"
+                            ? "bg-orange-600 text-white border-orange-600"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-orange-400"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        발급 후 만료일
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 유효기간 입력 */}
+                  {validityInfo.validType === "PERIOD" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">시작일 <span className="text-red-500">*</span></label>
+                        <input
+                          type="date"
+                          value={validityInfo.validStartedAt}
+                          onChange={(e) => setValidityInfo({ ...validityInfo, validStartedAt: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">종료일 <span className="text-red-500">*</span></label>
+                        <input
+                          type="date"
+                          value={validityInfo.validEndedAt}
+                          onChange={(e) => setValidityInfo({ ...validityInfo, validEndedAt: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        발급 후 만료일 (일) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={validityInfo.validExpiration || ""}
+                        onChange={(e) => setValidityInfo({ ...validityInfo, validExpiration: parseInt(e.target.value) || undefined })}
+                        placeholder="예: 30"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        disabled={isLoading}
+                        min={1}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 할인/적립 정보 (조건부 표시 - POINT, PRODUCT, DELIVERY, ORDER 선택 시) */}
                 {requiresDiscountInfo && (
                   <div className="space-y-4 p-3 border border-yellow-200 bg-yellow-50 rounded-lg">
                     <div className="flex items-center gap-2">
@@ -986,80 +1193,6 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
                         </div>
                       )}
                     </div>
-
-                    {/* 유효기간 유형 */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        유효기간 유형
-                      </label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setValidityInfo({ ...validityInfo, validType: "PERIOD" })}
-                          className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                            validityInfo.validType === "PERIOD"
-                              ? "bg-yellow-600 text-white border-yellow-600"
-                              : "bg-white text-gray-700 border-gray-300 hover:border-yellow-400"
-                          }`}
-                          disabled={isLoading}
-                        >
-                          기간 지정
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setValidityInfo({ ...validityInfo, validType: "EXPIRATION" })}
-                          className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                            validityInfo.validType === "EXPIRATION"
-                              ? "bg-yellow-600 text-white border-yellow-600"
-                              : "bg-white text-gray-700 border-gray-300 hover:border-yellow-400"
-                          }`}
-                          disabled={isLoading}
-                        >
-                          발급 후 만료일
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* 유효기간 입력 */}
-                    {validityInfo.validType === "PERIOD" ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">시작일</label>
-                          <input
-                            type="date"
-                            value={validityInfo.validStartedAt}
-                            onChange={(e) => setValidityInfo({ ...validityInfo, validStartedAt: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                            disabled={isLoading}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">종료일</label>
-                          <input
-                            type="date"
-                            value={validityInfo.validEndedAt}
-                            onChange={(e) => setValidityInfo({ ...validityInfo, validEndedAt: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          발급 후 만료일 (일)
-                        </label>
-                        <input
-                          type="number"
-                          value={validityInfo.validExpiration || ""}
-                          onChange={(e) => setValidityInfo({ ...validityInfo, validExpiration: parseInt(e.target.value) || undefined })}
-                          placeholder="예: 30"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                          disabled={isLoading}
-                          min={1}
-                        />
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

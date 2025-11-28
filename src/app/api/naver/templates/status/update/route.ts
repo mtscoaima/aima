@@ -93,9 +93,6 @@ export async function POST(request: NextRequest) {
               template.code
             );
             if (inspectionResult.success) {
-              console.log(
-                `[네이버 톡톡] 템플릿 검수 요청 성공: ${template.code}`
-              );
               inspectionRequestedCount++;
             } else {
               console.warn(
@@ -146,9 +143,6 @@ export async function POST(request: NextRequest) {
             );
             errorCount++;
           } else {
-            console.log(
-              `[네이버 톡톡] 템플릿 상태 업데이트: ${template.code} (${template.status} → ${newStatus})`
-            );
             updatedCount++;
           }
         }

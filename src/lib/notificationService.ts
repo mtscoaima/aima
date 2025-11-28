@@ -262,7 +262,6 @@ export async function triggerNotification(
             }
           );
 
-          console.log(`✅ 시스템 알림 발송 성공 (${eventData.eventType}) → ${recipient.phone}`);
         } else {
           // 발송 실패 시 FAILED 상태로 로그 저장
           await saveNotificationLog(
