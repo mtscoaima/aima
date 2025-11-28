@@ -68,8 +68,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (!SERVICE_KEY) {
-      console.error('ODCLOUD_SERVICE_KEY not found in environment');
-      console.warn('Using fallback holiday data');
 
       const fallbackData = getFallbackHolidays(year);
 
@@ -100,15 +98,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error('API response not OK:', response.status, response.statusText);
-      const errorText = await response.text();
-      console.error('Error response:', errorText);
-      console.error('API URL:', apiUrl.replace(encodeURIComponent(SERVICE_KEY), '***'));
-
       // 401 오류 시 fallback 데이터 사용
       if (response.status === 401) {
-        console.warn('401 Unauthorized - API 활용신청이 필요하거나 승인 대기 중일 수 있습니다.');
-        console.warn('Fallback 데이터를 사용합니다.');
 
         // Fallback: 연도별 공휴일 데이터
         const fallbackData = getFallbackHolidays(year);
@@ -136,19 +127,16 @@ export async function GET(request: NextRequest) {
     let data: any;
     try {
       data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse JSON:', parseError);
+    } catch {
       throw new Error('Invalid JSON response from API');
     }
 
     // API 응답 검증
     if (!data.response) {
-      console.error('No response object in API data');
       throw new Error('Invalid API response structure');
     }
 
     if (data.response.header?.resultCode !== '00') {
-      console.error('API returned error:', data.response.header);
       throw new Error(`API Error: ${data.response.header?.resultMsg || 'Unknown error'}`);
     }
 
@@ -189,8 +177,7 @@ export async function GET(request: NextRequest) {
           : (data.response?.body?.items?.item ? 1 : 0)
       }
     });
-  } catch (error) {
-    console.error('Error fetching holidays:', error);
+  } catch {
     return NextResponse.json(
       {
         success: false,

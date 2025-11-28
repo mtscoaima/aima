@@ -42,7 +42,6 @@ async function getAdminPhoneNumbers(): Promise<Array<{ id: number; phone: string
     .eq('is_active', true);
 
   if (error) {
-    console.error('❌ 관리자 조회 실패:', error);
     return [];
   }
 
@@ -66,7 +65,6 @@ async function getUserPhoneNumber(userId: number): Promise<{ phone: string; name
     .single();
 
   if (error || !user || !user.phone_number) {
-    console.error('❌ 사용자 전화번호 조회 실패:', error);
     return null;
   }
 
@@ -128,7 +126,6 @@ async function saveNotificationLog(
     .single();
 
   if (error) {
-    console.error('❌ 알림 로그 저장 실패:', error);
     return null;
   }
 
@@ -162,7 +159,6 @@ export async function triggerNotification(
       .single();
 
     if (templateError || !template) {
-      console.error(`❌ 템플릿 조회 실패 (${eventData.eventType}):`, templateError);
       return;
     }
 
@@ -187,13 +183,11 @@ export async function triggerNotification(
     } else if (typedTemplate.recipient_type === 'USER') {
       // 특정 사용자
       if (!eventData.userId) {
-        console.error('❌ USER 타입인데 userId가 없습니다');
         return;
       }
 
       const userInfo = await getUserPhoneNumber(eventData.userId);
       if (!userInfo) {
-        console.error(`❌ 사용자 전화번호 없음 (userId: ${eventData.userId})`);
         return;
       }
 
@@ -205,7 +199,6 @@ export async function triggerNotification(
     }
 
     if (recipients.length === 0) {
-      console.warn(`⚠️  수신자 없음 (${eventData.eventType})`);
       return;
     }
 

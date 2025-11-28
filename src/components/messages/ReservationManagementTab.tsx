@@ -7,7 +7,9 @@ export default function ReservationManagementTab() {
   const router = useRouter();
 
   const handleMenuClick = (path: string) => {
-    router.push(path);
+    // 예약관리 탭에서 왔다는 정보를 쿼리 파라미터로 추가
+    const fromUrl = '/messages/send?tab=reservations';
+    router.push(`${path}?from=${encodeURIComponent(fromUrl)}`);
   };
 
   return (
