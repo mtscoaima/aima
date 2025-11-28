@@ -122,96 +122,79 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 발송 결과 저장
-    const results: Array<{
-      phoneNumber: string;
-      name?: string;
-      success: boolean;
-      messageId?: string;
-      error?: string;
-    }> = [];
+    // 수신자 배열 생성 (MTS API 복수 발송 형식)
+    // 수신자별 변수가 있으면 병합, 없으면 공통 변수만 사용
+    const recipientsArray = recipients.map((r: { phone_number: string; name?: string; variables?: Record<string, string> }) => ({
+      phone_number: r.phone_number,
+      templateParams: r.variables ? { ...templateParams, ...r.variables } : undefined,
+      name: r.name,
+    }));
 
-    let successCount = 0;
-    let failCount = 0;
+    // 복수 발송 API 호출
+    const result = await sendNaverTalk(
+      navertalkId,
+      templateCode,
+      recipientsArray,
+      message,
+      callbackNumber,
+      templateParams,
+      productCode,
+      attachments,
+      tranType,
+      tranMessage,
+      sendDate,
+      addEtc2,
+      addEtc3,
+      addEtc4
+    );
 
-    // 각 수신자에게 발송
-    for (const recipient of recipients) {
-      try {
-        // 수신자별 변수가 있으면 병합, 없으면 공통 변수 사용
-        const recipientParams = recipient.variables
-          ? { ...templateParams, ...recipient.variables }
-          : templateParams;
+    // 결과 처리 (복수 API는 전체 성공/실패 반환)
+    const successCount = result.success ? recipients.length : 0;
+    const failCount = result.success ? 0 : recipients.length;
 
-        const result = await sendNaverTalk(
-          navertalkId,
-          templateCode,
-          recipient.phone_number,
-          message,
-          callbackNumber,
-          recipientParams,
-          productCode,
-          attachments,
-          tranType,
-          tranMessage,
-          sendDate,
-          addEtc2,
-          addEtc3,
-          addEtc4
-        );
+    // 개별 결과 생성
+    const results = recipients.map((recipient: { phone_number: string; name?: string }) => ({
+      phoneNumber: recipient.phone_number,
+      name: recipient.name,
+      success: result.success,
+      messageId: result.msgId,
+      error: result.success ? undefined : (result.error || '발송 실패'),
+    }));
 
-        if (result.success) {
-          successCount++;
+    // DB에 발송 이력 일괄 저장
+    const logEntries = recipients.map((recipient: { phone_number: string; name?: string; variables?: Record<string, string> }) => {
+      const recipientParams = recipient.variables
+        ? { ...templateParams, ...recipient.variables }
+        : templateParams;
+      return {
+        user_id: userId,
+        to_number: recipient.phone_number,
+        to_name: recipient.name || null,
+        message_content: JSON.stringify(recipientParams),
+        subject: null,
+        message_type: 'NAVERTALK',
+        sent_at: result.success ? new Date().toISOString() : null,
+        status: result.success ? 'sent' : 'failed',
+        error_message: result.error || null,
+        credit_used: result.success ? NAVER_TALK_COST : 0,
+        metadata: {
+          navertalk_id: navertalkId,
+          template_code: templateCode,
+          product_code: productCode,
+          template_params: recipientParams,
+          attachments: attachments || null,
+          tran_type: tranType || null,
+          mts_msg_id: result.msgId,
+          add_etc2: addEtc2 || null,
+          add_etc3: addEtc3 || null,
+          add_etc4: addEtc4 || null,
+        },
+      };
+    });
 
-          // message_logs 테이블에 저장
-          await supabase.from('message_logs').insert({
-            user_id: userId,
-            to_number: recipient.phone_number,
-            to_name: recipient.name || null,
-            message_content: JSON.stringify(recipientParams), // 변수 객체 저장
-            subject: null,
-            message_type: 'NAVERTALK',
-            sent_at: new Date().toISOString(),
-            status: 'sent',
-            error_message: null,
-            credit_used: NAVER_TALK_COST, // 네이버 스마트알림 13원, 광고 20원
-            metadata: {
-              navertalk_id: navertalkId,
-              template_code: templateCode,
-              product_code: productCode,
-              template_params: recipientParams,
-              attachments: attachments || null,
-              tran_type: tranType || null,
-              mts_msg_id: result.msgId,
-              add_etc2: addEtc2 || null,
-              add_etc3: addEtc3 || null,
-              add_etc4: addEtc4 || null,
-            },
-          });
-
-          results.push({
-            phoneNumber: recipient.phone_number,
-            name: recipient.name,
-            success: true,
-            messageId: result.msgId,
-          });
-        } else {
-          failCount++;
-          results.push({
-            phoneNumber: recipient.phone_number,
-            name: recipient.name,
-            success: false,
-            error: result.error || '발송 실패',
-          });
-        }
-      } catch (error) {
-        failCount++;
-        results.push({
-          phoneNumber: recipient.phone_number,
-          name: recipient.name,
-          success: false,
-          error: error instanceof Error ? error.message : '알 수 없는 오류',
-        });
-      }
+    const { error: logError } = await supabase.from('message_logs').insert(logEntries);
+    if (logError) {
+      console.error('네이버 톡톡 발송 이력 저장 실패:', logError);
     }
 
     // 성공한 건수만큼 잔액 차감 (transactions 테이블에 기록)

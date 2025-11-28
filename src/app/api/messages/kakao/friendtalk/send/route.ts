@@ -174,115 +174,80 @@ export async function POST(request: NextRequest) {
       ? convertToMtsDateFormat(scheduledAt)
       : undefined;
 
-    // 발송 결과 저장
-    const results = [];
-    let successCount = 0;
-    let failCount = 0;
+    // 수신자 배열 생성 (MTS API 복수 발송 형식)
+    const recipientsArray = recipients.map((r: { phone_number: string; name?: string }) => ({
+      phone_number: r.phone_number,
+      name: r.name,
+    }));
 
-    // 각 수신자에게 발송
-    for (const recipient of recipients) {
-      try {
-        const phoneNumber = recipient.phone_number;
-        const name = recipient.name || null;
+    // 복수 발송 API 호출
+    const result = await sendMtsFriendtalk(
+      senderKey,
+      recipientsArray,
+      message,
+      callbackNumber,
+      messageType,
+      adFlag,
+      imageUrls,
+      imageLink,
+      buttons,
+      tranType,
+      tranMessage,
+      sendDate,
+      // FW/FL/FC 타입 전용 필드
+      headerText,
+      listItems,
+      carousels,
+      moreLink,
+    );
 
-        // MTS API 호출 직전 로그
+    // 결과 처리 (복수 API는 전체 성공/실패 반환)
+    const successCount = result.success ? recipients.length : 0;
+    const failCount = result.success ? 0 : recipients.length;
 
+    // 개별 결과 생성
+    const results = recipients.map((recipient: { phone_number: string; name?: string }) => ({
+      recipient: recipient.phone_number,
+      success: result.success,
+      msgId: result.msgId,
+      error: result.error,
+      errorCode: result.errorCode,
+    }));
 
+    // DB에 발송 이력 일괄 저장
+    const logEntries = recipients.map((recipient: { phone_number: string; name?: string }) => ({
+      user_id: userId,
+      to_number: recipient.phone_number,
+      to_name: recipient.name || null,
+      message_content: message,
+      subject: null,
+      message_type: "KAKAO_FRIENDTALK",
+      sent_at: result.success ? new Date().toISOString() : null,
+      status: result.success ? "sent" : "failed",
+      error_message: result.error || null,
+      credit_used: result.success ? 20 : 0,
+      metadata: {
+        sender_key: senderKey,
+        callback_number: callbackNumber,
+        message_type: messageType,
+        ad_flag: adFlag,
+        image_urls: imageUrls,
+        image_link: imageLink,
+        buttons: buttons,
+        tran_type: tranType,
+        tran_message: tranMessage,
+        scheduled_at: scheduledAt,
+        mts_msg_id: result.msgId,
+        header_text: headerText,
+        list_items: listItems,
+        carousels: carousels,
+        more_link: moreLink,
+      },
+    }));
 
-
-
-
-
-
-
-
-
-
-
-
-        const result = await sendMtsFriendtalk(
-          senderKey,
-          phoneNumber,
-          message,
-          callbackNumber,
-          messageType,
-          adFlag,
-          imageUrls,
-          imageLink,
-          buttons,
-          tranType,
-          tranMessage,
-          sendDate,
-          // FW/FL/FC 타입 전용 필드
-          headerText,
-          listItems,
-          carousels,
-          moreLink,
-        );
-
-        // MTS API 응답 로그
-
-
-
-        if (result.success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-
-        results.push({
-          recipient: phoneNumber,
-          success: result.success,
-          msgId: result.msgId,
-          error: result.error,
-          errorCode: result.errorCode,
-        });
-
-        // DB에 발송 이력 저장
-        const { error: dbError } = await supabase.from("message_logs").insert({
-          user_id: userId,
-          to_number: phoneNumber,
-          to_name: name,
-          message_content: message,
-          subject: null,
-          message_type: "KAKAO_FRIENDTALK",
-          sent_at: result.success ? new Date().toISOString() : null,
-          status: result.success ? "sent" : "failed",
-          error_message: result.error || null,
-          credit_used: result.success ? 20 : 0, // 친구톡 기본 단가 20원
-          metadata: {
-            sender_key: senderKey,
-            callback_number: callbackNumber,
-            message_type: messageType,
-            ad_flag: adFlag,
-            image_urls: imageUrls,
-            image_link: imageLink,
-            buttons: buttons,
-            tran_type: tranType,
-            tran_message: tranMessage,
-            scheduled_at: scheduledAt,
-            mts_msg_id: result.msgId,
-            // FW/FL/FC 타입 전용 필드
-            header_text: headerText,
-            list_items: listItems,
-            carousels: carousels,
-            more_link: moreLink,
-          },
-        });
-
-        if (dbError) {
-
-        }
-      } catch (error) {
-        const phoneNumber = recipient.phone_number;
-        failCount++;
-
-        results.push({
-          recipient: phoneNumber,
-          success: false,
-          error: error instanceof Error ? error.message : "알 수 없는 오류",
-        });
-      }
+    const { error: dbError } = await supabase.from("message_logs").insert(logEntries);
+    if (dbError) {
+      console.error("친구톡 발송 이력 저장 실패:", dbError);
     }
 
     // 사용자 잔액 차감 (성공한 건수만)

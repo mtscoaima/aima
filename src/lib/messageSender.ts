@@ -132,14 +132,16 @@ export async function sendMessage(
     };
   }
 
-  // 3. 메시지 발송
+  // 3. 메시지 발송 (단건도 배열로 처리 - 복수 API 사용)
   let sendResult;
+
+  // 단건 수신자 배열 생성
+  const recipients = [{ phone_number: cleanPhone, message }];
 
   if (messageType === 'MMS' && imageUrls && imageUrls.length > 0) {
     // MMS 발송 (첫 번째 이미지만 사용 - MTS API는 최대 3개 지원하지만 현재는 1개만)
     sendResult = await sendMtsSMS(
-      cleanPhone,
-      message,
+      recipients,
       callbackNumber,
       subject || 'MMS',
       undefined, // sendDate
@@ -148,8 +150,7 @@ export async function sendMessage(
   } else {
     // SMS/LMS 발송 (MTS API가 자동으로 90바이트 기준 판단)
     sendResult = await sendMtsSMS(
-      cleanPhone,
-      message,
+      recipients,
       callbackNumber,
       subject
     );

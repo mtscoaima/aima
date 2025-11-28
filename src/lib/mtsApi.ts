@@ -107,17 +107,17 @@ function getErrorMessage(code: string): string {
 }
 
 /**
- * SMS/LMS/MMS 발송 (자동으로 SMS/LMS/MMS 판단)
- * @param toNumber 수신번호 (하이픈 없이)
- * @param message 메시지 내용
+ * SMS/LMS/MMS 복수 발송 (자동으로 SMS/LMS/MMS 판단)
+ * MTS 복수 발송 API 사용 (/sndng/sms/sendMessages, /sndng/mms/sendMessages)
+ *
+ * @param recipients 수신자 배열 (phone_number, message 필수)
  * @param callbackNumber 발신번호 (하이픈 없이)
  * @param subject 제목 (LMS/MMS용, 선택)
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
  * @param imageUrl 이미지 URL (MMS용, 선택) - /img/upload_image API로 업로드한 URL
  */
 export async function sendMtsSMS(
-  toNumber: string,
-  message: string,
+  recipients: Array<{ phone_number: string; message: string; name?: string }>,
   callbackNumber: string,
   subject?: string,
   sendDate?: string,
@@ -133,12 +133,19 @@ export async function sendMtsSMS(
       };
     }
 
-    // 전화번호에서 하이픈 제거
-    const cleanToNumber = toNumber.replace(/-/g, '');
+    if (!recipients || recipients.length === 0) {
+      return {
+        success: false,
+        error: '수신자가 없습니다.',
+        errorCode: 'NO_RECIPIENTS',
+      };
+    }
+
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
-    // 메시지 바이트 계산 (한글 = 3바이트, 영문/숫자 = 1바이트)
-    const messageBytes = Buffer.byteLength(message, 'utf-8');
+    // 첫 번째 메시지로 타입 결정 (모든 수신자에게 동일 타입 적용)
+    const firstMessage = recipients[0].message;
+    const messageBytes = Buffer.byteLength(firstMessage, 'utf-8');
 
     // 메시지 타입 결정
     let messageType = 'SMS';
@@ -148,42 +155,47 @@ export async function sendMtsSMS(
       messageType = 'LMS'; // 90바이트 초과면 LMS
     }
 
-    // 요청 본문
-    const requestBody: Record<string, string | { image: { img_url: string }[] }> = {
+    // data 배열 생성
+    const dataArray = recipients.map((recipient) => {
+      const cleanToNumber = recipient.phone_number.replace(/-/g, '');
+      const itemData: Record<string, unknown> = {
+        phone_number: cleanToNumber,
+        callback_number: cleanCallbackNumber,
+        message: recipient.message,
+      };
+
+      // LMS/MMS인 경우 subject 추가
+      if (messageType === 'LMS' || messageType === 'MMS') {
+        itemData.subject = subject || (messageType === 'MMS' ? 'MMS' : 'LMS');
+      }
+
+      // MMS인 경우 attachment 추가
+      if (imageUrl) {
+        itemData.attachment = {
+          image: [{ img_url: imageUrl }]
+        };
+      }
+
+      // 예약 발송 시간
+      if (sendDate) {
+        itemData.send_date = sendDate;
+      }
+
+      return itemData;
+    });
+
+    // 요청 본문 (복수 발송 형식)
+    const requestBody = {
       auth_code: MTS_AUTH_CODE,
-      callback_number: cleanCallbackNumber,
-      phone_number: cleanToNumber,
-      message: message,
+      data: dataArray,
     };
 
-    // LMS/MMS인 경우 subject 추가
-    if (messageType === 'LMS' || messageType === 'MMS') {
-      requestBody.subject = subject || (messageType === 'MMS' ? 'MMS' : 'LMS');
-    }
-
-    // MMS인 경우 attachment 추가
-    if (imageUrl) {
-      requestBody.attachment = {
-        image: [{
-          img_url: imageUrl
-        }]
-      };
-    }
-
-    // 예약 발송 시간이 있으면 추가
-    if (sendDate) {
-      requestBody.send_date = sendDate;
-    }
-
-    // API 엔드포인트 결정
-    // SMS (90바이트 이하, 이미지 없음) -> /sndng/sms/sendMessage
-    // LMS/MMS (90바이트 초과 또는 이미지 포함) -> /sndng/mms/sendMessage
+    // API 엔드포인트 결정 (복수 발송 API 사용)
     const endpoint = messageType === 'SMS'
-      ? `${MTS_API_URL}/sndng/sms/sendMessage`
-      : `${MTS_API_URL}/sndng/mms/sendMessage`;
+      ? `${MTS_API_URL}/sndng/sms/sendMessages`
+      : `${MTS_API_URL}/sndng/mms/sendMessages`;
 
     // API 호출
-
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -193,7 +205,6 @@ export async function sendMtsSMS(
     });
 
     const result = await response.json();
-
 
     // 성공 확인 (0000: SMS/LMS 성공)
     if (result.code === '0000') {
@@ -213,7 +224,6 @@ export async function sendMtsSMS(
       responseData: result,
     };
   } catch (error) {
-
     if (error instanceof TypeError) {
       return {
         success: false,
@@ -231,17 +241,17 @@ export async function sendMtsSMS(
 }
 
 /**
- * MMS 발송 (이미지 포함)
- * @param toNumber 수신번호 (하이픈 없이)
- * @param message 메시지 내용
+ * MMS 복수 발송 (이미지 포함)
+ * MTS 복수 발송 API 사용 (/sndng/mms/sendMessages)
+ *
+ * @param recipients 수신자 배열 (phone_number, message 필수)
  * @param subject 제목
  * @param imageUrls 이미지 URL 배열 (MTS 업로드 후 받은 경로)
  * @param callbackNumber 발신번호 (하이픈 없이)
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
  */
 export async function sendMtsMMS(
-  toNumber: string,
-  message: string,
+  recipients: Array<{ phone_number: string; message: string; name?: string }>,
   subject: string,
   imageUrls: string[],
   callbackNumber: string,
@@ -257,29 +267,45 @@ export async function sendMtsMMS(
       };
     }
 
-    // 전화번호에서 하이픈 제거
-    const cleanToNumber = toNumber.replace(/-/g, '');
-    const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
-
-    // 요청 본문
-    const requestBody: Record<string, unknown> = {
-      auth_code: MTS_AUTH_CODE,
-      callback_number: cleanCallbackNumber,
-      phone_number: cleanToNumber,
-      subject: subject,
-      message: message,
-      attachment: {
-        image: imageUrls.map(url => ({ img_url: url })),
-      },
-    };
-
-    // 예약 발송 시간이 있으면 추가
-    if (sendDate) {
-      requestBody.send_date = sendDate;
+    if (!recipients || recipients.length === 0) {
+      return {
+        success: false,
+        error: '수신자가 없습니다.',
+        errorCode: 'NO_RECIPIENTS',
+      };
     }
 
-    // API 호출
-    const response = await fetch(`${MTS_API_URL}/sndng/mms/sendMessage`, {
+    const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
+
+    // data 배열 생성
+    const dataArray = recipients.map((recipient) => {
+      const cleanToNumber = recipient.phone_number.replace(/-/g, '');
+      const itemData: Record<string, unknown> = {
+        phone_number: cleanToNumber,
+        callback_number: cleanCallbackNumber,
+        subject: subject,
+        message: recipient.message,
+        attachment: {
+          image: imageUrls.map(url => ({ img_url: url })),
+        },
+      };
+
+      // 예약 발송 시간
+      if (sendDate) {
+        itemData.send_date = sendDate;
+      }
+
+      return itemData;
+    });
+
+    // 요청 본문 (복수 발송 형식)
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      data: dataArray,
+    };
+
+    // API 호출 (복수 발송 API 사용)
+    const response = await fetch(`${MTS_API_URL}/sndng/mms/sendMessages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -288,7 +314,6 @@ export async function sendMtsMMS(
     });
 
     const result = await response.json();
-
 
     // 성공 확인
     if (result.code === '0000') {
@@ -308,7 +333,6 @@ export async function sendMtsMMS(
       responseData: result,
     };
   } catch (error) {
-
     if (error instanceof TypeError) {
       return {
         success: false,
@@ -397,11 +421,12 @@ export async function uploadMtsImage(
 }
 
 /**
- * 카카오 알림톡 발송
+ * 카카오 알림톡 복수 발송
+ * MTS 복수 발송 API 사용 (/sndng/atk/sendMessages)
+ *
  * @param senderKey 발신 프로필 키
  * @param templateCode 템플릿 코드
- * @param toNumber 수신번호 (하이픈 없이)
- * @param message 템플릿 내용
+ * @param recipients 수신자 배열 (phone_number, message 필수)
  * @param callbackNumber 발신번호 (하이픈 없이)
  * @param buttons 버튼 정보 (선택)
  * @param tranType 전환 전송 타입 (SMS/LMS/MMS, 선택)
@@ -411,8 +436,7 @@ export async function uploadMtsImage(
 export async function sendMtsAlimtalk(
   senderKey: string,
   templateCode: string,
-  toNumber: string,
-  message: string,
+  recipients: Array<{ phone_number: string; message: string; name?: string }>,
   callbackNumber: string,
   buttons?: Array<{ name: string; type: string; url_mobile?: string; url_pc?: string }>,
   tranType?: 'SMS' | 'LMS' | 'MMS',
@@ -429,42 +453,57 @@ export async function sendMtsAlimtalk(
       };
     }
 
-    // 전화번호에서 하이픈 제거
-    const cleanToNumber = toNumber.replace(/-/g, '');
-    const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
-
-    // 요청 본문
-    const requestBody: Record<string, unknown> = {
-      auth_code: MTS_AUTH_CODE,
-      sender_key: senderKey,
-      template_code: templateCode,
-      phone_number: cleanToNumber,
-      message: message,
-      callback_number: cleanCallbackNumber,
-    };
-
-    // 버튼 추가
-    if (buttons && buttons.length > 0) {
-      requestBody.attachment = {
-        button: buttons,
+    if (!recipients || recipients.length === 0) {
+      return {
+        success: false,
+        error: '수신자가 없습니다.',
+        errorCode: 'NO_RECIPIENTS',
       };
     }
 
-    // 전환 전송 설정 추가
-    if (tranType && tranMessage) {
-      requestBody.tran_type = tranType;
-      requestBody.tran_callback = cleanCallbackNumber;
-      requestBody.tran_message = tranMessage;
-    }
+    const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
-    // 예약 발송 시간이 있으면 추가
-    if (sendDate) {
-      requestBody.send_date = sendDate;
-    }
+    // data 배열 생성
+    const dataArray = recipients.map((recipient) => {
+      const cleanToNumber = recipient.phone_number.replace(/-/g, '');
+      const itemData: Record<string, unknown> = {
+        sender_key: senderKey,
+        template_code: templateCode,
+        phone_number: cleanToNumber,
+        message: recipient.message,
+        callback_number: cleanCallbackNumber,
+      };
 
-    // API 호출
+      // 버튼 추가
+      if (buttons && buttons.length > 0) {
+        itemData.attachment = {
+          button: buttons,
+        };
+      }
 
-    const response = await fetch(`${MTS_API_URL}/sndng/atk/sendMessage`, {
+      // 전환 전송 설정 추가
+      if (tranType && tranMessage) {
+        itemData.tran_type = tranType;
+        itemData.tran_callback = cleanCallbackNumber;
+        itemData.tran_message = tranMessage;
+      }
+
+      // 예약 발송 시간
+      if (sendDate) {
+        itemData.send_date = sendDate;
+      }
+
+      return itemData;
+    });
+
+    // 요청 본문 (복수 발송 형식)
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      data: dataArray,
+    };
+
+    // API 호출 (복수 발송 API 사용)
+    const response = await fetch(`${MTS_API_URL}/sndng/atk/sendMessages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -473,7 +512,6 @@ export async function sendMtsAlimtalk(
     });
 
     const result = await response.json();
-
 
     // 성공 확인 (0000 또는 1000: 알림톡 성공)
     if (result.code === '0000' || result.code === '1000' || result.code === '200') {
@@ -510,22 +548,29 @@ export async function sendMtsAlimtalk(
 }
 
 /**
- * 카카오 친구톡 V2 발송
+ * 카카오 친구톡 V2 복수 발송
+ * MTS 복수 발송 API 사용 (/v2/sndng/ftk/sendMessages)
+ *
  * @param senderKey 발신 프로필 키
- * @param toNumber 수신번호 (하이픈 없이)
+ * @param recipients 수신자 배열 (phone_number 필수)
  * @param message 친구톡 메시지 내용
  * @param callbackNumber 발신번호 (하이픈 없이)
  * @param messageType 메시지 타입 (FT: 텍스트형, FI: 이미지형, FW: 와이드 이미지형, FL: 와이드 리스트형, FC: 캐러셀형)
  * @param adFlag 광고 여부 (Y: 광고성, N: 일반)
  * @param imageUrls 이미지 URL 배열 (선택)
+ * @param imageLink 이미지 클릭 링크 (선택)
  * @param buttons 버튼 정보 (선택)
  * @param tranType 전환 전송 타입 (SMS/LMS/MMS, 선택)
  * @param tranMessage 전환 발송 시 메시지 (선택)
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
+ * @param headerText FL용 헤더 (선택)
+ * @param listItems FL용 아이템 리스트 (선택)
+ * @param carousels FC용 캐러셀 (선택)
+ * @param moreLink FC용 더보기 링크 (선택)
  */
 export async function sendMtsFriendtalk(
   senderKey: string,
-  toNumber: string,
+  recipients: Array<{ phone_number: string; name?: string }>,
   message: string,
   callbackNumber: string,
   messageType?: 'FT' | 'FI' | 'FW' | 'FL' | 'FC',
@@ -576,8 +621,14 @@ export async function sendMtsFriendtalk(
       };
     }
 
-    // 전화번호에서 하이픈 제거
-    const cleanToNumber = toNumber.replace(/-/g, '');
+    if (!recipients || recipients.length === 0) {
+      return {
+        success: false,
+        error: '수신자가 없습니다.',
+        errorCode: 'NO_RECIPIENTS',
+      };
+    }
+
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
     // 메시지 타입 자동 감지
@@ -588,26 +639,6 @@ export async function sendMtsFriendtalk(
       } else {
         finalMessageType = 'FT';
       }
-    } else {
-    }
-
-    // 요청 본문
-    const requestBody: Record<string, unknown> = {
-      auth_code: MTS_AUTH_CODE,
-      sender_key: senderKey,
-      phone_number: cleanToNumber,
-      messageType: finalMessageType,
-      ad_flag: adFlag,
-      callback_number: cleanCallbackNumber,
-    };
-
-    // FL/FC 타입은 광고 발송만 가능 (MTS API 규격)
-    if (finalMessageType === 'FL' || finalMessageType === 'FC') {
-      requestBody.ad_flag = 'Y';
-      // FL/FC는 message 필드 불필요 (와이드 아이템/캐러셀 내용만 사용)
-    } else {
-      // FT/FI/FW 타입만 message 필드 추가
-      requestBody.message = message;
     }
 
     // FW/FI 타입 이미지 필수 검증
@@ -619,107 +650,130 @@ export async function sendMtsFriendtalk(
       };
     }
 
-    // 첨부 파일 (이미지, 버튼) 추가
-    if (imageUrls || buttons || headerText || listItems || carousels) {
-      const attachment: Record<string, unknown> = {};
+    // data 배열 생성 (각 수신자별 데이터)
+    const dataArray = recipients.map((recipient) => {
+      const cleanToNumber = recipient.phone_number.replace(/-/g, '');
 
-      // 기본 이미지 처리 (FT/FI/FW 타입)
-      if (imageUrls && imageUrls.length > 0) {
-        // FI/FW 타입은 단일 이미지 객체 사용 (배열 아님)
-        // MTS API 규격: attachment.image = { img_url: "...", img_link: "..." }
-        const imageObj: Record<string, string> = {
-          img_url: imageUrls[0], // 첫 번째 이미지만 사용
-        };
+      const itemData: Record<string, unknown> = {
+        sender_key: senderKey,
+        phone_number: cleanToNumber,
+        messageType: finalMessageType,
+        ad_flag: adFlag,
+        callback_number: cleanCallbackNumber,
+      };
 
-        // imageLink는 FW/FI 타입에서만 지원
-        if ((finalMessageType === 'FW' || finalMessageType === 'FI') && imageLink) {
-          imageObj.img_link = imageLink;
-        }
-
-        attachment.image = imageObj;
+      // FL/FC 타입은 광고 발송만 가능 (MTS API 규격)
+      if (finalMessageType === 'FL' || finalMessageType === 'FC') {
+        itemData.ad_flag = 'Y';
+        // FL/FC는 message 필드 불필요 (와이드 아이템/캐러셀 내용만 사용)
+      } else {
+        // FT/FI/FW 타입만 message 필드 추가
+        itemData.message = message;
       }
 
-      // FL (와이드 아이템 리스트형) 타입 처리
-      if (finalMessageType === 'FL') {
-        // header는 최상위 필드 (MTS API 규격)
-        if (headerText) {
-          requestBody.header = headerText;
+      // 첨부 파일 (이미지, 버튼) 추가
+      if (imageUrls || buttons || headerText || listItems || carousels) {
+        const attachment: Record<string, unknown> = {};
+
+        // 기본 이미지 처리 (FT/FI/FW 타입)
+        if (imageUrls && imageUrls.length > 0) {
+          const imageObj: Record<string, string> = {
+            img_url: imageUrls[0],
+          };
+
+          if ((finalMessageType === 'FW' || finalMessageType === 'FI') && imageLink) {
+            imageObj.img_link = imageLink;
+          }
+
+          attachment.image = imageObj;
         }
 
-        // attachment.item.list 구조 (MTS API 규격)
-        if (listItems && listItems.length > 0) {
-          attachment.item = {
-            list: listItems.map((item) => ({
-              title: item.title,
-              img_url: item.image?.fileId || '',
-              url_mobile: item.url_mobile || '',
-              ...(item.url_pc ? { url_pc: item.url_pc } : {})
+        // FL (와이드 아이템 리스트형) 타입 처리
+        if (finalMessageType === 'FL') {
+          if (headerText) {
+            itemData.header = headerText;
+          }
+
+          if (listItems && listItems.length > 0) {
+            attachment.item = {
+              list: listItems.map((item) => ({
+                title: item.title,
+                img_url: item.image?.fileId || '',
+                url_mobile: item.url_mobile || '',
+                ...(item.url_pc ? { url_pc: item.url_pc } : {})
+              }))
+            };
+          }
+        }
+
+        // FC (캐러셀형) 타입 처리
+        if (finalMessageType === 'FC' && carousels && carousels.length > 0) {
+          const carouselData: Record<string, unknown> = {
+            list: carousels.map((carousel) => ({
+              header: carousel.header || '',
+              message: carousel.content || '',
+              attachment: {
+                ...(carousel.image ? {
+                  image: {
+                    img_url: carousel.image.fileId,
+                    ...(imageLink ? { img_link: imageLink } : {})
+                  }
+                } : {}),
+                ...(carousel.buttons && carousel.buttons.length > 0 ? {
+                  button: carousel.buttons.map((btn) => ({
+                    name: btn.name,
+                    type: btn.type,
+                    ...(btn.url_mobile ? { url_mobile: btn.url_mobile } : {}),
+                    ...(btn.url_pc ? { url_pc: btn.url_pc } : {})
+                  }))
+                } : {})
+              }
             }))
           };
+
+          if (moreLink) {
+            carouselData.tail = {
+              url_mobile: moreLink,
+              url_pc: moreLink
+            };
+          }
+
+          itemData.carousel = carouselData;
+        }
+
+        // 일반 버튼 (FT/FI/FW/FL만, FC는 캐러셀별 버튼 사용)
+        if (buttons && buttons.length > 0 && finalMessageType !== 'FC') {
+          attachment.button = buttons;
+        }
+
+        if (Object.keys(attachment).length > 0) {
+          itemData.attachment = attachment;
         }
       }
 
-      // FC (캐러셀형) 타입 처리
-      if (finalMessageType === 'FC' && carousels && carousels.length > 0) {
-        // carousel은 최상위 필드 (MTS API 규격)
-        const carouselData: Record<string, unknown> = {
-          list: carousels.map((carousel) => ({
-            header: carousel.header || '',
-            message: carousel.content || '',
-            attachment: {
-              ...(carousel.image ? {
-                image: {
-                  img_url: carousel.image.fileId,
-                  ...(imageLink ? { img_link: imageLink } : {})
-                }
-              } : {}),
-              ...(carousel.buttons && carousel.buttons.length > 0 ? {
-                button: carousel.buttons.map((btn) => ({
-                  name: btn.name,
-                  type: btn.type,
-                  ...(btn.url_mobile ? { url_mobile: btn.url_mobile } : {}),
-                  ...(btn.url_pc ? { url_pc: btn.url_pc } : {})
-                }))
-              } : {})
-            }
-          }))
-        };
-
-        // tail (더보기 링크)
-        if (moreLink) {
-          carouselData.tail = {
-            url_mobile: moreLink,
-            url_pc: moreLink
-          };
-        }
-
-        requestBody.carousel = carouselData;
+      // 전환 전송 설정 추가 (FL/FC는 광고 전용이므로 전환 불가)
+      if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !== 'FC') {
+        itemData.tran_type = tranType;
+        itemData.tran_callback = cleanCallbackNumber;
+        itemData.tran_message = tranMessage;
       }
 
-      // 일반 버튼 (FT/FI/FW/FL만, FC는 캐러셀별 버튼 사용)
-      if (buttons && buttons.length > 0 && finalMessageType !== 'FC') {
-        attachment.button = buttons;
+      // 예약 발송 시간
+      if (sendDate) {
+        itemData.send_date = sendDate;
       }
 
-      requestBody.attachment = attachment;
-    }
+      return itemData;
+    });
 
-    // 전환 전송 설정 추가 (FL/FC는 광고 전용이므로 전환 불가)
-    if (tranType && tranMessage && finalMessageType !== 'FL' && finalMessageType !== 'FC') {
-      requestBody.tran_type = tranType;
-      requestBody.tran_callback = cleanCallbackNumber;
-      requestBody.tran_message = tranMessage;
-    }
+    // 요청 본문 (복수 발송 형식)
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      data: dataArray,
+    };
 
-    // 예약 발송 시간이 있으면 추가
-    if (sendDate) {
-      requestBody.send_date = sendDate;
-    }
-
-    // API 호출 (V2 엔드포인트 사용)
-    const apiUrl = `${MTS_API_URL}/v2/sndng/ftk/sendMessage`;
-
-    // 요청 body 전체 로그
+    // API 호출 (V2 복수 발송 엔드포인트 사용)
+    const apiUrl = `${MTS_API_URL}/v2/sndng/ftk/sendMessages`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -731,11 +785,7 @@ export async function sendMtsFriendtalk(
 
     const result = await response.json();
 
-    // MTS 서버 응답 로그
-
-
     // 성공 확인 (0000 또는 1000: 친구톡 성공)
-    // MTS API는 친구톡에 대해 0000 또는 1000을 반환할 수 있음
     if (result.code === '0000' || result.code === '1000') {
       return {
         success: true,
@@ -755,7 +805,6 @@ export async function sendMtsFriendtalk(
       responseData: result,
     };
   } catch (error) {
-
     if (error instanceof TypeError) {
       return {
         success: false,
@@ -1078,7 +1127,9 @@ export async function getNaverTalkTemplates(
  * @param phoneNumber 수신자 전화번호
  * @param message 메시지 내용 (변수 포함 가능)
  * @param callbackNumber 발신전화번호
- * @param templateParams 템플릿 변수 객체 (예: { name: '홍길동', amount: '10,000원' })
+ * @param recipients 수신자 배열 (phone_number, templateParams 필수)
+ * @param message 메시지 내용
+ * @param commonTemplateParams 공통 템플릿 변수 객체 (예: { name: '홍길동', amount: '10,000원' })
  * @param productCode 상품 코드 (INFORMATION/BENEFIT)
  * @param attachments 첨부 정보 (버튼, 이미지 등)
  * @param tranType 전환전송 유형 (S: SMS, L: LMS, N: 없음)
@@ -1091,10 +1142,10 @@ export async function getNaverTalkTemplates(
 export async function sendNaverTalk(
   partnerKey: string,
   templateCode: string,
-  phoneNumber: string,
+  recipients: Array<{ phone_number: string; templateParams?: Record<string, string>; name?: string }>,
   message: string,
   callbackNumber: string,
-  templateParams: Record<string, string>,
+  commonTemplateParams: Record<string, string>,
   productCode: 'INFORMATION' | 'BENEFIT',
   attachments?: {
     buttons?: Array<{
@@ -1123,89 +1174,108 @@ export async function sendNaverTalk(
       };
     }
 
-    // 전화번호 정규화 (하이픈 제거)
-    const cleanPhoneNumber = phoneNumber.replace(/-/g, '');
+    if (!recipients || recipients.length === 0) {
+      return {
+        success: false,
+        error: '수신자가 없습니다.',
+        errorCode: 'NO_RECIPIENTS',
+      };
+    }
+
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
     // messageKey 생성 (YYYYMMDD-일련번호)
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomSeq = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    const messageKey = `${dateStr}-${randomSeq}`;
 
-    // 요청 본문 (규격서 v1.2 준수 - snake_case)
-    const requestBody: Record<string, unknown> = {
+    // data 배열 생성 (각 수신자별 데이터)
+    const dataArray = recipients.map((recipient, index) => {
+      const cleanPhoneNumber = recipient.phone_number.replace(/-/g, '');
+      const randomSeq = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      const messageKey = `${dateStr}-${randomSeq}-${index}`;
+
+      // 공통 템플릿 파라미터와 수신자별 파라미터 병합
+      const mergedTemplateParams = {
+        ...commonTemplateParams,
+        ...(recipient.templateParams || {})
+      };
+
+      const itemData: Record<string, unknown> = {
+        partner_key: partnerKey,
+        callback_number: cleanCallbackNumber,
+        phone_number: cleanPhoneNumber,
+        template_code: templateCode,
+        message: message,
+        add_etc1: messageKey, // 메시지 고유키
+      };
+
+      // 템플릿 파라미터
+      if (Object.keys(mergedTemplateParams).length > 0) {
+        itemData.template_params = mergedTemplateParams;
+      }
+
+      // 상품 코드
+      if (productCode) {
+        itemData.product_code = productCode;
+      }
+
+      // 첨부 파일
+      if (attachments) {
+        const attachmentObj: Record<string, unknown> = {};
+
+        if (attachments.buttons && attachments.buttons.length > 0) {
+          attachmentObj.button = attachments.buttons;
+        }
+
+        if (attachments.imageHashId) {
+          attachmentObj.imageHashId = attachments.imageHashId;
+        }
+
+        if (Object.keys(attachmentObj).length > 0) {
+          itemData.attachment = attachmentObj;
+        }
+      }
+
+      // 전환전송 설정
+      if (tranType && tranType !== 'N') {
+        itemData.tran_type = tranType;
+        if (tranMessage) {
+          itemData.tran_message = tranMessage;
+        }
+      }
+
+      // 예약 발송 시간
+      if (sendDate) {
+        itemData.send_date = convertToMtsDateFormat(sendDate);
+      }
+
+      // 추가 정보 (add_etc2~4)
+      if (addEtc2) {
+        itemData.add_etc2 = addEtc2;
+      }
+      if (addEtc3) {
+        itemData.add_etc3 = addEtc3;
+      }
+      if (addEtc4) {
+        itemData.add_etc4 = addEtc4;
+      }
+
+      return itemData;
+    });
+
+    // 요청 본문 (복수 발송 형식)
+    const requestBody = {
       auth_code: MTS_AUTH_CODE,
-      partner_key: partnerKey,
-      callback_number: cleanCallbackNumber,
-      phone_number: cleanPhoneNumber,
-      template_code: templateCode,
-      message: message,
-      add_etc1: messageKey, // 메시지 고유키
+      data: dataArray,
     };
 
-    // 선택 파라미터: template_params
-    if (templateParams && Object.keys(templateParams).length > 0) {
-      requestBody.template_params = templateParams;
-    }
+    // API URL (복수 발송 엔드포인트)
+    const apiUrl = `${MTS_API_URL}/sndng/ntk/sendMessages`;
 
-    // 선택 파라미터: product_code
-    if (productCode) {
-      requestBody.product_code = productCode;
-    }
-
-    // 선택 파라미터: attachment (단수형)
-    if (attachments) {
-      const attachmentObj: Record<string, unknown> = {};
-
-      if (attachments.buttons && attachments.buttons.length > 0) {
-        // buttons → button (복수 → 단수)
-        attachmentObj.button = attachments.buttons;
-      }
-
-      if (attachments.imageHashId) {
-        attachmentObj.imageHashId = attachments.imageHashId;
-      }
-
-      if (Object.keys(attachmentObj).length > 0) {
-        requestBody.attachment = attachmentObj; // attachments → attachment
-      }
-    }
-
-    // 전환전송 설정
-    if (tranType && tranType !== 'N') {
-      requestBody.tran_type = tranType;
-      if (tranMessage) {
-        requestBody.tran_message = tranMessage;
-      }
-    }
-
-    // 예약 발송 시간
-    if (sendDate) {
-      requestBody.send_date = convertToMtsDateFormat(sendDate);
-    }
-
-    // 추가 정보 (add_etc2~4)
-    if (addEtc2) {
-      requestBody.add_etc2 = addEtc2;
-    }
-    if (addEtc3) {
-      requestBody.add_etc3 = addEtc3;
-    }
-    if (addEtc4) {
-      requestBody.add_etc4 = addEtc4;
-    }
-
-    // API URL (규격서 v1.2)
-    const apiUrl = `${MTS_API_URL}/sndng/ntk/sendMessage`;
-
-    console.log('[네이버 톡톡] 발송 요청:', {
+    console.log('[네이버 톡톡] 복수 발송 요청:', {
       apiUrl,
-      messageKey,
       templateCode,
-      phoneNumber: cleanPhoneNumber,
-      templateParams,
-      hasAttachments: !!attachments,
+      recipientCount: recipients.length,
       requestBody: JSON.stringify(requestBody, null, 2),
     });
 
@@ -1407,12 +1477,14 @@ export async function getNaverTalkResult(
 }
 
 /**
- * 카카오 브랜드 메시지 발송 (기본형: 전문방식)
+ * 카카오 브랜드 메시지 복수 발송 (기본형: 전문방식)
+ * - 1건이든 다건이든 항상 복수 API 사용
+ * - 최대 1,000건까지 한 번에 발송 가능
  *
  * @param senderKey 발신 프로필 키
  * @param templateCode 템플릿 코드
- * @param toNumber 수신자 전화번호
- * @param message 메시지 내용
+ * @param recipients 수신자 배열 (phone_number, message 포함)
+ * @param message 기본 메시지 내용 (recipients에 message가 없을 때 사용)
  * @param callbackNumber 발신 전화번호
  * @param messageType 브랜드 메시지 타입 (TEXT, IMAGE, WIDE, WIDE_ITEM_LIST, CAROUSEL_FEED, PREMIUM_VIDEO)
  * @param targeting 타겟팅 타입 (M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구) - **필수 파라미터**
@@ -1426,7 +1498,7 @@ export async function getNaverTalkResult(
 export async function sendKakaoBrand(
   senderKey: string,
   templateCode: string,
-  toNumber: string,
+  recipients: Array<{ phone_number: string; message?: string; name?: string }>,
   message: string,
   callbackNumber: string,
   messageType: 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE' = 'TEXT',
@@ -1504,8 +1576,16 @@ export async function sendKakaoBrand(
       };
     }
 
+    // 수신자 배열 검증
+    if (!recipients || recipients.length === 0) {
+      return {
+        success: false,
+        error: '수신자가 없습니다.',
+        errorCode: 'NO_RECIPIENTS',
+      };
+    }
+
     // 전화번호에서 하이픈 제거
-    const cleanToNumber = toNumber.replace(/-/g, '');
     const cleanCallbackNumber = callbackNumber.replace(/-/g, '');
 
     // ===== MTS 템플릿 정보 조회 (쿠폰 등 필수 정보 확인) =====
@@ -1570,45 +1650,12 @@ export async function sendKakaoBrand(
       }
     }
 
-    // 요청 본문 (변수분리방식 v1.1)
-    const requestBody: Record<string, unknown> = {
-      auth_code: MTS_AUTH_CODE,
-      sender_key: senderKey,
-      send_mode: '3', // 3: 즉시발송
-      template_code: templateCode,
-      phone_number: cleanToNumber,
-      callback_number: cleanCallbackNumber,
-      message_type: messageType,
-      targeting: targeting, // 필수 파라미터 (M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구)
-      tran_type: tranType,
-      country_code: '82',
-    };
-
-    // ===== 변수분리방식 파라미터 생성 =====
-    // 문서 기준: message_variable은 필수(Y), 나머지는 선택(N)
-    //
-    // COMMERCE 타입의 경우 MTS 템플릿에 다음 변수가 정의됨:
-    // - #{정상가격}, #{할인가격}, #{할인율}, #{정액할인가격}
-    // 이 변수들은 commerce_variable로 전달해야 함!
-
-    // message_variable (MTS 문서 기준: 필수! 변수 없어도 빈 객체라도 전송)
-    // COMMERCE 타입 등에서 1030 오류 발생 시 이 필드가 누락된 경우가 많음
-    const hasMessageVariable = message && message.includes('#{');
-    if (hasMessageVariable) {
-      requestBody.message_variable = {
-        message: message
-      };
-    } else {
-      // 변수가 없어도 최소한 빈 값으로 전송 (MTS API 요구사항)
-      requestBody.message_variable = {
-        "변수": "변수" // 문서 예제와 동일한 더미 값
-      };
-    }
-
+    // ===== 변수분리방식 파라미터 생성 (공통) =====
     // button_variable (버튼이 있는 경우)
     // MTS 문서: 키는 url1, url2, url3... 형태 (link1이 아님!)
+    let buttonVar: Record<string, string> | undefined;
     if (attachment?.button && attachment.button.length > 0) {
-      const buttonVar: Record<string, string> = {};
+      buttonVar = {};
       attachment.button.forEach((btn: {
         name: string;
         type?: string;
@@ -1619,201 +1666,140 @@ export async function sendKakaoBrand(
         linkPc?: string;
       }, index: number) => {
         const urlMobile = btn.linkMobile || btn.url_mobile || '';
-        if (urlMobile) {
-          // MTS 문서 기준: url1, url2 형태 사용 (link1이 아님)
+        if (urlMobile && buttonVar) {
           buttonVar[`url${index + 1}`] = urlMobile;
         }
       });
-
-      if (Object.keys(buttonVar).length > 0) {
-        requestBody.button_variable = buttonVar;
+      if (Object.keys(buttonVar).length === 0) {
+        buttonVar = undefined;
       }
     }
 
     // image_variable (이미지가 있을 경우)
     // COMMERCE 타입의 경우 img_link 필수!
+    let imgVar: Record<string, string>[] | undefined;
     if (attachment?.image) {
       const imgUrl = attachment.image.img_url || attachment.image.imgUrl || '';
       const imgLink = attachment.image.img_link || attachment.image.imgLink || '';
 
-      const imgVar: Record<string, string>[] = [{
+      imgVar = [{
         img_url: imgUrl,
       }];
 
       // COMMERCE 타입에서는 img_link가 필수
-      // 값이 없으면 img_url을 기본값으로 사용
       if (imgLink) {
         imgVar[0].img_link = imgLink;
       } else if (messageType === 'COMMERCE' || messageType === 'CAROUSEL_COMMERCE') {
-        // COMMERCE 타입인데 img_link가 없으면 기본값 설정
         imgVar[0].img_link = imgUrl || 'https://www.naver.com';
       }
-
-      requestBody.image_variable = imgVar;
     }
 
     // COMMERCE 타입: commerce_variable 필수!
-    // MTS 템플릿에 #{정상가격}, #{할인가격}, #{할인율}, #{정액할인가격} 변수가 정의됨
+    let commerceVar: Record<string, string | number> | undefined;
     if (messageType === 'COMMERCE' && attachment?.commerce) {
-      const commerceVar: Record<string, string | number> = {};
-
-      // 정상가격 (필수)
+      commerceVar = {};
       const regularPrice = attachment.commerce.regular_price || attachment.commerce.regularPrice;
       if (regularPrice != null) {
         commerceVar['정상가격'] = String(regularPrice);
       }
-
-      // 할인가격 (필수)
       const discountPrice = attachment.commerce.discount_price || attachment.commerce.discountPrice;
       if (discountPrice != null) {
         commerceVar['할인가격'] = String(discountPrice);
       }
-
-      // 할인율 (선택)
       const discountRate = attachment.commerce.discount_rate || attachment.commerce.discountRate;
       if (discountRate != null) {
         commerceVar['할인율'] = String(discountRate);
       }
-
-      // 정액할인가격 (선택)
       const discountFixed = attachment.commerce.discount_fixed || attachment.commerce.discountFixed;
       if (discountFixed != null) {
         commerceVar['정액할인가격'] = String(discountFixed);
       }
-
-      if (Object.keys(commerceVar).length > 0) {
-        requestBody.commerce_variable = commerceVar;
+      if (Object.keys(commerceVar).length === 0) {
+        commerceVar = undefined;
       }
     }
 
     // coupon_variable (쿠폰이 있을 경우)
-    // MTS 문서 기준: 한국어 키 "상세내용", "mobileLink", "pcLink" 사용
-    // 1. UI에서 전달된 attachment.coupon 사용
-    // 2. UI에서 쿠폰 정보가 없고, MTS 템플릿에 쿠폰이 등록되어 있으면 기본값 사용
+    let couponVar: Record<string, string> | undefined;
     const couponSource = attachment?.coupon || mtsTemplateInfo?.coupon;
     if (couponSource) {
-      const couponVar: Record<string, string> = {};
-
-      // description (MTS 템플릿에서는 description 필드)
+      couponVar = {};
       const description = (couponSource as { description?: string }).description ||
                           (couponSource as { '상세내용'?: string })['상세내용'] || '';
       if (description) {
         couponVar['상세내용'] = description;
       }
-
-      // mobileLink
       const mobileLink = (couponSource as { url_mobile?: string }).url_mobile ||
                          (couponSource as { mobileLink?: string }).mobileLink ||
                          (couponSource as { linkMobile?: string }).linkMobile || '';
       if (mobileLink) {
         couponVar['mobileLink'] = mobileLink;
       }
-
-      // pcLink
       const pcLink = (couponSource as { url_pc?: string }).url_pc ||
                      (couponSource as { pcLink?: string }).pcLink ||
                      (couponSource as { linkPc?: string }).linkPc || '';
       if (pcLink) {
         couponVar['pcLink'] = pcLink;
       }
-
-      if (Object.keys(couponVar).length > 0) {
-        requestBody.coupon_variable = couponVar;
+      if (Object.keys(couponVar).length === 0) {
+        couponVar = undefined;
+      } else {
         console.log('[브랜드 메시지] coupon_variable 추가:', couponVar);
       }
     }
 
     // item (WIDE_ITEM_LIST의 경우 image_variable로 변환)
+    let itemImages: Record<string, string>[] | undefined;
     if (attachment?.item?.list && Array.isArray(attachment.item.list)) {
-      const itemImages = attachment.item.list.map((item: {
+      itemImages = attachment.item.list.map((item: {
         img_url?: string;
         imgUrl?: string;
         url_mobile?: string;
         urlMobile?: string;
         title?: string;
       }) => {
-        const imgVar: Record<string, string> = {
+        const itemVar: Record<string, string> = {
           img_url: item.img_url || item.imgUrl || '',
         };
-
         const urlMobile = item.url_mobile || item.urlMobile;
         if (urlMobile) {
-          imgVar.url_mobile = urlMobile;
+          itemVar.url_mobile = urlMobile;
         }
-
-        return imgVar;
+        return itemVar;
       });
-
-      requestBody.image_variable = itemImages;
     }
 
     // video_variable (비디오가 있을 경우)
+    let videoVar: Record<string, string> | undefined;
     if (attachment?.video) {
-      requestBody.video_variable = {
+      videoVar = {
         video_url: attachment.video.video_url || attachment.video.videoUrl || '',
         thumbnail_url: attachment.video.thumbnail_url || attachment.video.thumbnailUrl || '',
       };
     }
 
-    // carousel_variable (캐러셀이 있을 경우 - CAROUSEL_COMMERCE, CAROUSEL_FEED)
+    // carousel_variable (캐러셀이 있을 경우)
+    let carouselVar: Record<string, string | number>[] | undefined;
     if (attachment?.carousel && Array.isArray(attachment.carousel) && attachment.carousel.length > 0) {
-      const carouselVar = attachment.carousel.map((card) => {
+      carouselVar = attachment.carousel.map((card) => {
         const cardVar: Record<string, string | number> = {};
-
-        // 이미지 URL
-        if (card.img_url) {
-          cardVar.img_url = card.img_url;
-        }
-
-        // 클릭 URL
-        if (card.url_mobile) {
-          cardVar.url_mobile = card.url_mobile;
-        }
-
-        // CAROUSEL_COMMERCE 필드
-        if (card.commerce_title) {
-          cardVar.title = card.commerce_title;  // commerce_title → title
-        }
-        if (card.description) {
-          cardVar.description = card.description;
-        }
-        if (card.regular_price !== undefined) {
-          cardVar.regular_price = card.regular_price;
-        }
-        if (card.discount_price !== undefined) {
-          cardVar.discount_price = card.discount_price;
-        }
-        if (card.discount_rate !== undefined) {
-          cardVar.discount_rate = card.discount_rate;
-        }
-        if (card.discount_fixed !== undefined) {
-          cardVar.discount_fixed = card.discount_fixed;
-        }
-
-        // CAROUSEL_FEED 필드
-        if (card.title) {
-          cardVar.title = card.title;
-        }
-
+        if (card.img_url) cardVar.img_url = card.img_url;
+        if (card.url_mobile) cardVar.url_mobile = card.url_mobile;
+        if (card.commerce_title) cardVar.title = card.commerce_title;
+        if (card.description) cardVar.description = card.description;
+        if (card.regular_price !== undefined) cardVar.regular_price = card.regular_price;
+        if (card.discount_price !== undefined) cardVar.discount_price = card.discount_price;
+        if (card.discount_rate !== undefined) cardVar.discount_rate = card.discount_rate;
+        if (card.discount_fixed !== undefined) cardVar.discount_fixed = card.discount_fixed;
+        if (card.title) cardVar.title = card.title;
         return cardVar;
       });
-
-      requestBody.carousel_variable = carouselVar;
     }
 
-    // 전환 전송 메시지 추가
-    if (tranMessage && tranType !== 'N') {
-      requestBody.tran_message = tranMessage;
-    }
-
-    // LMS 제목 추가
-    if (subject && (tranType === 'L' || tranType === 'M')) {
-      requestBody.subject = subject;
-    }
-
-    // send_date는 전문방식에서 필수 필드
+    // send_date 생성 (공통)
+    let finalSendDate: string;
     if (sendDate) {
-      requestBody.send_date = sendDate;
+      finalSendDate = sendDate;
     } else {
       const now = new Date();
       const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000) + (1 * 60 * 1000));
@@ -1823,7 +1809,7 @@ export async function sendKakaoBrand(
       const hh = String(kstNow.getUTCHours()).padStart(2, '0');
       const min = String(kstNow.getUTCMinutes()).padStart(2, '0');
       const ss = String(kstNow.getUTCSeconds()).padStart(2, '0');
-      requestBody.send_date = `${yyyy}${mm}${dd}${hh}${min}${ss}`;
+      finalSendDate = `${yyyy}${mm}${dd}${hh}${min}${ss}`;
     }
 
     // 시간 확인 (브랜드 메시지는 08:00-20:00만 발송 가능)
@@ -1831,19 +1817,80 @@ export async function sendKakaoBrand(
     const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     const kstHour = kstTime.getUTCHours();
     const isWithinTimeWindow = kstHour >= 8 && kstHour < 20;
-
     if (!isWithinTimeWindow) {
+      console.warn('[브랜드 메시지] 발송 시간대 주의: 브랜드 메시지는 08:00-20:00만 발송 가능합니다.');
     }
 
-    // API 호출
+    // ===== 수신자별 data 배열 생성 =====
+    const dataArray = recipients.map((recipient) => {
+      const cleanToNumber = recipient.phone_number.replace(/-/g, '');
+      const recipientMessage = recipient.message || message;
+
+      // 수신자별 data 객체 생성
+      const recipientData: Record<string, unknown> = {
+        sender_key: senderKey,
+        template_code: templateCode,
+        phone_number: cleanToNumber,
+        callback_number: cleanCallbackNumber,
+        message_type: messageType,
+        targeting: targeting,
+        tran_type: tranType,
+        country_code: '82',
+      };
+
+      // 예약 발송인 경우에만 send_date 추가
+      if (sendDate) {
+        recipientData.send_date = finalSendDate;
+      }
+
+      // message_variable (필수)
+      const hasMessageVariable = recipientMessage && recipientMessage.includes('#{');
+      if (hasMessageVariable) {
+        recipientData.message_variable = { message: recipientMessage };
+      } else {
+        recipientData.message_variable = { "변수": "변수" };
+      }
+
+      // 공통 변수들 추가
+      if (buttonVar) recipientData.button_variable = buttonVar;
+      if (imgVar) recipientData.image_variable = imgVar;
+      if (itemImages) recipientData.image_variable = itemImages;
+      if (commerceVar) recipientData.commerce_variable = commerceVar;
+      if (couponVar) recipientData.coupon_variable = couponVar;
+      if (videoVar) recipientData.video_variable = videoVar;
+      if (carouselVar) recipientData.carousel_variable = carouselVar;
+
+      // 전환 전송 메시지
+      if (tranMessage && tranType !== 'N') {
+        recipientData.tran_message = tranMessage;
+      }
+
+      // LMS 제목
+      if (subject && (tranType === 'L' || tranType === 'M')) {
+        recipientData.subject = subject;
+      }
+
+      return recipientData;
+    });
+
+    // 복수 발송 요청 본문
+    // 브랜드 메시지 send_mode: '3' = 즉시발송, '2' = 예약발송 (단건 API와 동일)
+    const requestBody: Record<string, unknown> = {
+      auth_code: MTS_AUTH_CODE,
+      send_mode: sendDate ? '2' : '3', // 예약 발송이면 '2', 즉시 발송이면 '3'
+      data: dataArray,
+    };
+
+    // API 호출 (복수 발송 엔드포인트)
     const requestBodyString = JSON.stringify(requestBody);
 
     // 디버깅: 요청 본문 로그
-    console.log('======= 브랜드 메시지 발송 요청 =======');
+    console.log('======= 브랜드 메시지 복수 발송 요청 =======');
     console.log('메시지 타입:', messageType);
+    console.log('수신자 수:', recipients.length);
     console.log('요청 본문:', JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(`${MTS_API_URL}/btalk/send/message/basic`, {
+    const response = await fetch(`${MTS_API_URL}/btalk/send/messages/basic`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -1855,9 +1902,8 @@ export async function sendKakaoBrand(
     const result = JSON.parse(responseText);
 
     // 디버깅: 응답 로그
-    console.log('======= 브랜드 메시지 발송 응답 =======');
+    console.log('======= 브랜드 메시지 복수 발송 응답 =======');
     console.log('응답:', JSON.stringify(result, null, 2));
-
 
     // 성공 확인
     if (result.code === '0000' || result.code === '1000') {
@@ -1870,7 +1916,7 @@ export async function sendKakaoBrand(
     }
 
     // 실패 시 에러 메시지 반환
-    console.error('브랜드 메시지 발송 실패:', {
+    console.error('브랜드 메시지 복수 발송 실패:', {
       code: result.code,
       error: getErrorMessage(result.code) || result.message
     });
@@ -1881,6 +1927,7 @@ export async function sendKakaoBrand(
       responseData: result,
     };
   } catch (error) {
+    console.error('브랜드 메시지 복수 발송 예외:', error);
 
     if (error instanceof TypeError) {
       return {
@@ -3248,7 +3295,7 @@ export async function deleteNaverTalkTemplate(
     let result;
     try {
       result = JSON.parse(responseText);
-    } catch (parseError) {
+    } catch {
       console.error('[네이버 톡톡 템플릿 삭제] JSON 파싱 실패:', responseText.substring(0, 200));
       return {
         success: false,
@@ -3344,7 +3391,7 @@ export async function requestNaverTemplateInspection(
     let result;
     try {
       result = JSON.parse(responseText);
-    } catch (parseError) {
+    } catch {
       console.error('[네이버 톡톡 검수 요청] JSON 파싱 실패:', responseText.substring(0, 200));
       return {
         success: false,
@@ -3432,7 +3479,7 @@ export async function cancelNaverTemplateInspection(
     let result;
     try {
       result = JSON.parse(responseText);
-    } catch (parseError) {
+    } catch {
       console.error('[네이버 톡톡 검수 취소] JSON 파싱 실패:', responseText.substring(0, 200));
       return {
         success: false,
@@ -3447,7 +3494,7 @@ export async function cancelNaverTemplateInspection(
     if (result.code === '0000' || result.success === true) {
       return {
         success: true,
-        message: '검수 요청이 취소되었습니다.',
+        responseData: { message: '검수 요청이 취소되었습니다.' },
       };
     }
 

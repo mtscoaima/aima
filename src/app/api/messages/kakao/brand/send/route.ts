@@ -141,111 +141,70 @@ export async function POST(request: NextRequest) {
 
     // 비용 계산 (브랜드 메시지: 20원)
     const costPerMessage = 20;
-    // totalCost는 향후 결제 시스템 연동 시 사용 예정
-    // const totalCost = recipients.length * costPerMessage;
 
-    // 발송 결과 저장
-    const results = [];
-    let successCount = 0;
-    let failCount = 0;
+    // 수신자 배열 생성 (MTS API 복수 발송 형식)
+    const recipientsArray = recipients.map((r: { phone_number: string; name?: string; replacedMessage?: string }) => ({
+      phone_number: r.phone_number,
+      message: r.replacedMessage || message,
+      name: r.name,
+    }));
 
-    // 각 수신자에게 발송
-    for (const recipient of recipients) {
-      try {
-        // 수신자별로 치환된 메시지가 있으면 사용, 없으면 원본 message 사용
-        const messageToSend = recipient.replacedMessage || message;
+    // 복수 발송 API 호출
+    const result = await sendKakaoBrand(
+      senderKey,
+      templateCode,
+      recipientsArray,
+      message,
+      callbackNumber,
+      messageType as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE',
+      targeting as 'M' | 'N' | 'I',
+      attachment,
+      tranType as 'N' | 'S' | 'L' | 'M',
+      tranMessage,
+      subject,
+      sendDate
+    );
 
-        const result = await sendKakaoBrand(
-          senderKey,
-          templateCode,
-          recipient.phone_number,
-          messageToSend,
-          callbackNumber,
-          messageType as 'TEXT' | 'IMAGE' | 'WIDE' | 'WIDE_ITEM_LIST' | 'CAROUSEL_FEED' | 'PREMIUM_VIDEO' | 'COMMERCE' | 'CAROUSEL_COMMERCE',
-          targeting as 'M' | 'N' | 'I', // 타겟팅 타입 (M: 수신동의, N: 수신동의+채널친구, I: 전체+채널친구)
-          attachment,
-          tranType as 'N' | 'S' | 'L' | 'M',
-          tranMessage,
-          subject,
-          sendDate
-        );
+    // 결과 처리 (복수 API는 전체 성공/실패 반환)
+    const successCount = result.success ? recipients.length : 0;
+    const failCount = result.success ? 0 : recipients.length;
 
-        if (result.success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
+    // 개별 결과 생성
+    const results = recipients.map((recipient: { phone_number: string; name?: string; replacedMessage?: string }) => ({
+      recipient,
+      success: result.success,
+      msgId: result.msgId,
+      error: result.error,
+      errorCode: result.errorCode,
+    }));
 
-        results.push({
-          recipient,
-          success: result.success,
-          msgId: result.msgId,
-          error: result.error,
-          errorCode: result.errorCode,
-        });
+    // DB에 발송 이력 일괄 저장
+    const logEntries = recipients.map((recipient: { phone_number: string; name?: string; replacedMessage?: string }) => ({
+      user_id: userId,
+      message_type: 'KAKAO_BRAND',
+      to_number: recipient.phone_number,
+      to_name: recipient.name || null,
+      message_content: recipient.replacedMessage || message,
+      subject: null,
+      sent_at: result.success ? new Date().toISOString() : null,
+      status: result.success ? 'sent' : 'failed',
+      credit_used: result.success ? costPerMessage : 0,
+      error_message: result.error || null,
+      metadata: {
+        sender_number: callbackNumber,
+        sender_key: senderKey,
+        template_code: templateCode,
+        message_type: messageType,
+        tran_type: tranType,
+        mts_msg_id: result.msgId || null,
+        error_code: result.errorCode,
+        recipient_name: recipient.name,
+      },
+    }));
 
-        // DB에 발송 이력 저장
-        const { error: logError } = await supabase.from('message_logs').insert({
-          user_id: userId,
-          message_type: 'KAKAO_BRAND',
-          to_number: recipient.phone_number,
-          to_name: recipient.name || null,
-          message_content: messageToSend, // 치환된 메시지 저장
-          subject: null,
-          sent_at: result.success ? new Date().toISOString() : null,
-          status: result.success ? 'sent' : 'failed',
-          credit_used: result.success ? costPerMessage : 0,
-          error_message: result.error || null,
-          metadata: {
-            sender_number: callbackNumber,
-            sender_key: senderKey,
-            template_code: templateCode,
-            message_type: messageType,
-            tran_type: tranType,
-            mts_msg_id: result.msgId || null,
-            error_code: result.errorCode,
-            recipient_name: recipient.name,
-          },
-        });
-
-        if (logError) {
-          console.error('[브랜드 메시지 API] message_logs 저장 실패:', logError);
-        }
-
-        // 성공 시 transactions 테이블에 사용 내역 기록 (성공 건수는 나중에 집계)
-        if (result.success) {
-          // 비용 기록 (transactions 테이블에 자동 저장됨)
-
-          // 비용 기록 (transactions 테이블에 자동 저장됨)
-        }
-      } catch (error) {
-        failCount++;
-        results.push({
-          recipient,
-          success: false,
-          error: error instanceof Error ? error.message : '알 수 없는 오류',
-        });
-
-        // 실패 로그 저장
-        await supabase.from('message_logs').insert({
-          user_id: userId,
-          message_type: 'KAKAO_BRAND',
-          to_number: typeof recipient === 'string' ? recipient : recipient.phone_number,
-          to_name: typeof recipient === 'object' ? recipient.name || null : null,
-          message_content: message,
-          subject: null,
-          sent_at: null,
-          status: 'failed',
-          credit_used: 0,
-          error_message: error instanceof Error ? error.message : '알 수 없는 오류',
-          metadata: {
-            sender_number: callbackNumber,
-            sender_key: senderKey,
-            template_code: templateCode,
-            message_type: messageType,
-          },
-        });
-      }
+    const { error: logError } = await supabase.from('message_logs').insert(logEntries);
+    if (logError) {
+      console.error('[브랜드 메시지 API] message_logs 저장 실패:', logError);
     }
 
     // 성공한 건수가 있으면 transactions에 한번에 기록

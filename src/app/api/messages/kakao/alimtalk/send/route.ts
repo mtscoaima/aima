@@ -95,79 +95,66 @@ export async function POST(request: NextRequest) {
     // 예약 발송 시간 변환 (있는 경우)
     const sendDate = scheduledAt ? convertToMtsDateFormat(scheduledAt) : undefined;
 
-    // 발송 결과 저장
-    const results = [];
-    let successCount = 0;
-    let failCount = 0;
+    // 수신자 배열 생성 (MTS API 복수 발송 형식)
+    const recipientsWithMessage = recipients.map((r: { phone_number: string; name?: string; replacedMessage?: string }) => ({
+      phone_number: r.phone_number,
+      message: r.replacedMessage || message,
+      name: r.name,
+    }));
 
-    // 각 수신자에게 발송
-    for (const recipient of recipients) {
-      try {
-        const phoneNumber = recipient.phone_number;
-        const name = recipient.name || null;
-        // 수신자별로 치환된 메시지가 있으면 사용, 없으면 원본 message 사용
-        const messageToSend = recipient.replacedMessage || message;
+    // 복수 발송 API 호출
+    const result = await sendMtsAlimtalk(
+      senderKey,
+      templateCode,
+      recipientsWithMessage,
+      callbackNumber,
+      buttons,
+      tranType,
+      tranMessage,
+      sendDate
+    );
 
-        const result = await sendMtsAlimtalk(
-          senderKey,
-          templateCode,
-          phoneNumber,
-          messageToSend,
-          callbackNumber,
-          buttons,
-          tranType,
-          tranMessage,
-          sendDate
-        );
+    // 결과 처리 (복수 API는 전체 성공/실패 반환)
+    const successCount = result.success ? recipients.length : 0;
+    const failCount = result.success ? 0 : recipients.length;
 
-        if (result.success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
+    // 개별 결과 생성
+    const results = recipients.map((recipient: { phone_number: string; name?: string; replacedMessage?: string }) => ({
+      recipient: recipient.phone_number,
+      success: result.success,
+      msgId: result.msgId,
+      error: result.error,
+      errorCode: result.errorCode,
+    }));
 
-        results.push({
-          recipient: phoneNumber,
-          success: result.success,
-          msgId: result.msgId,
-          error: result.error,
-          errorCode: result.errorCode,
-        });
+    // DB에 발송 이력 일괄 저장
+    const logEntries = recipients.map((recipient: { phone_number: string; name?: string; replacedMessage?: string }) => ({
+      user_id: userId,
+      to_number: recipient.phone_number,
+      to_name: recipient.name || null,
+      message_content: recipient.replacedMessage || message,
+      subject: null,
+      message_type: 'KAKAO_ALIMTALK',
+      sent_at: result.success ? new Date().toISOString() : null,
+      status: result.success ? 'sent' : 'failed',
+      error_message: result.error || null,
+      credit_used: result.success ? 13 : 0,
+      metadata: {
+        sender_key: senderKey,
+        template_code: templateCode,
+        callback_number: callbackNumber,
+        buttons: buttons,
+        tran_type: tranType,
+        tran_message: tranMessage,
+        scheduled_at: scheduledAt,
+        mts_msg_id: result.msgId,
+        error_code: result.errorCode || null,
+      },
+    }));
 
-        // DB에 발송 이력 저장
-        await supabase.from('message_logs').insert({
-          user_id: userId,
-          to_number: phoneNumber,
-          to_name: name,
-          message_content: messageToSend, // 치환된 메시지 저장
-          subject: null,
-          message_type: 'KAKAO_ALIMTALK',
-          sent_at: result.success ? new Date().toISOString() : null,
-          status: result.success ? 'sent' : 'failed',
-          error_message: result.error || null,
-          credit_used: result.success ? 13 : 0, // 알림톡 기본 단가 13원 (실패 시 차감 안함)
-          metadata: {
-            sender_key: senderKey,
-            template_code: templateCode,
-            callback_number: callbackNumber,
-            buttons: buttons,
-            tran_type: tranType,
-            tran_message: tranMessage,
-            scheduled_at: scheduledAt,
-            mts_msg_id: result.msgId,
-            error_code: result.errorCode || null, // 에러 코드 저장 (ER15, ER17, 3016 등)
-          },
-        });
-      } catch (error) {
-        const phoneNumber = recipient.phone_number;
-        failCount++;
-        console.error(`알림톡 발송 실패 (수신자: ${phoneNumber}):`, error);
-        results.push({
-          recipient: phoneNumber,
-          success: false,
-          error: error instanceof Error ? error.message : '알 수 없는 오류',
-        });
-      }
+    const { error: logError } = await supabase.from('message_logs').insert(logEntries);
+    if (logError) {
+      console.error('알림톡 발송 이력 저장 실패:', logError);
     }
 
     // 사용자 잔액 차감 (성공한 건수만)

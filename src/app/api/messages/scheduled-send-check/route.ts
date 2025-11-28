@@ -218,11 +218,12 @@ export async function POST(request: NextRequest) {
               throw new Error('알림톡 발송에 필요한 정보가 부족합니다 (senderKey, templateCode)');
             }
 
+            // 단건 배열로 변환 (복수 API 사용)
+            const alimtalkRecipients = [{ phone_number: msg.to_number, message: msg.message_content }];
             result = await sendMtsAlimtalk(
               senderKey,
               templateCode,
-              msg.to_number,
-              msg.message_content,
+              alimtalkRecipients,
               callbackNumber,
               buttons,
               tranType,
@@ -246,14 +247,17 @@ export async function POST(request: NextRequest) {
               throw new Error('친구톡 발송에 필요한 정보가 부족합니다 (senderKey)');
             }
 
+            // 단건 배열로 변환 (복수 API 사용)
+            const friendtalkRecipients = [{ phone_number: msg.to_number }];
             result = await sendMtsFriendtalk(
               senderKey,
-              msg.to_number,
+              friendtalkRecipients,
               msg.message_content,
               callbackNumber,
               messageTypeKakao,
               adFlag,
               imageUrls,
+              undefined, // imageLink
               buttons,
               tranType,
               tranMessage,
@@ -284,10 +288,12 @@ export async function POST(request: NextRequest) {
               imageHashId: imageHashId
             } : undefined;
 
+            // 단건 배열로 변환 (복수 API 사용)
+            const navertalkRecipients = [{ phone_number: msg.to_number }];
             result = await sendNaverTalk(
               navertalkId,
               templateCode,
-              msg.to_number,
+              navertalkRecipients,
               msg.message_content || '',
               callbackNumber,
               templateParams as Record<string, string>,
@@ -315,10 +321,12 @@ export async function POST(request: NextRequest) {
               throw new Error('브랜드 메시지 발송에 필요한 정보가 부족합니다 (senderKey, templateCode)');
             }
 
+            // 단건 배열로 변환 (복수 API 사용)
+            const brandRecipients = [{ phone_number: msg.to_number, message: msg.message_content }];
             result = await sendKakaoBrand(
               senderKey,
               templateCode,
-              msg.to_number,
+              brandRecipients,
               msg.message_content,
               callbackNumber,
               messageTypeBrand,
@@ -347,9 +355,10 @@ export async function POST(request: NextRequest) {
               }
             }
 
+            // 단건 배열로 변환 (복수 API 사용)
+            const mmsRecipients = [{ phone_number: msg.to_number, message: msg.message_content }];
             result = await sendMtsMMS(
-              msg.to_number,
-              msg.message_content,
+              mmsRecipients,
               msg.subject || '',
               imageUrls,
               callbackNumber,
@@ -361,10 +370,10 @@ export async function POST(request: NextRequest) {
           case 'SMS':
           case 'LMS':
           default: {
-            // SMS/LMS 발송 (자동 판단)
+            // SMS/LMS 발송 (자동 판단) - 단건 배열로 변환 (복수 API 사용)
+            const smsRecipients = [{ phone_number: msg.to_number, message: msg.message_content }];
             result = await sendMtsSMS(
-              msg.to_number,
-              msg.message_content,
+              smsRecipients,
               callbackNumber,
               msg.subject,
               scheduledAt

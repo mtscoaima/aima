@@ -34,52 +34,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const results = [];
+    // 수신자 배열 생성 (빈 번호 제외)
+    const recipientsArray = recipients
+      .filter((r: string) => r.trim())
+      .map((phone_number: string) => ({
+        phone_number,
+        message,
+      }));
 
-    // 각 수신자에게 메시지 전송
-    for (const recipient of recipients) {
-      if (!recipient.trim()) continue;
-
-      try {
-        let result;
-        if (imageUrls && imageUrls.length > 0) {
-          // MMS 발송 (이미지 첨부)
-          result = await sendMtsMMS(
-            recipient,
-            message,
-            subject || "",
-            imageUrls,
-            callbackNumber
-          );
-        } else {
-          // SMS/LMS 발송 (MTS API가 자동으로 90바이트 기준 판단)
-          result = await sendMtsSMS(
-            recipient,
-            message,
-            callbackNumber,
-            subject
-          );
-        }
-
-        results.push({
-          toNumber: recipient,
-          success: result.success,
-          data: result.success ? { messageId: result.messageId } : undefined,
-          error: result.success ? undefined : result.error,
-        });
-      } catch (error) {
-        console.error(`메시지 전송 실패 (${recipient}):`, error);
-        results.push({
-          toNumber: recipient,
-          success: false,
-          error: error instanceof Error ? error.message : "알 수 없는 오류",
-        });
-      }
+    if (recipientsArray.length === 0) {
+      return NextResponse.json(
+        { error: "유효한 수신번호가 없습니다." },
+        { status: 400 }
+      );
     }
 
-    // 결과 집계
-    const successCount = results.filter((r) => r.success).length;
-    const failCount = results.length - successCount;
+    // 복수 발송 API 호출 (이미지 유무에 따라 MMS/SMS)
+    let result;
+    try {
+      if (imageUrls && imageUrls.length > 0) {
+        // MMS 복수 발송
+        result = await sendMtsMMS(
+          recipientsArray,
+          subject || "",
+          imageUrls,
+          callbackNumber
+        );
+      } else {
+        // SMS/LMS 복수 발송
+        result = await sendMtsSMS(
+          recipientsArray,
+          callbackNumber,
+          subject
+        );
+      }
+    } catch (error) {
+      console.error("메시지 전송 실패:", error);
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "알 수 없는 오류" },
+        { status: 500 }
+      );
+    }
+
+    // 결과 처리 (복수 API는 전체 성공/실패 반환)
+    const successCount = result.success ? recipientsArray.length : 0;
+    const failCount = result.success ? 0 : recipientsArray.length;
+
+    // 개별 결과 생성 (복수 API는 개별 결과를 반환하지 않으므로 동일하게 처리)
+    const results = recipientsArray.map((r: { phone_number: string; message: string }) => ({
+      toNumber: r.phone_number,
+      success: result.success,
+      data: result.success ? { messageId: result.messageId } : undefined,
+      error: result.success ? undefined : result.error,
+    }));
 
     return NextResponse.json({
       success: failCount === 0,

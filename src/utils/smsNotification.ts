@@ -72,6 +72,9 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
 
     let result;
 
+    // 단건 수신자 배열 생성 (복수 API 사용)
+    const recipients = [{ phone_number: formattedPhoneNumber, message: message.message }];
+
     // MMS 발송 (이미지가 있는 경우)
     if (
       message.type === "MMS" &&
@@ -79,8 +82,7 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
       message.imageUrls.length > 0
     ) {
       result = await sendMtsMMS(
-        formattedPhoneNumber,
-        message.message,
+        recipients,
         message.subject || "",
         message.imageUrls,
         callbackNumber
@@ -88,8 +90,7 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
     } else {
       // SMS/LMS 발송 (MTS API에서 자동 판단)
       result = await sendMtsSMS(
-        formattedPhoneNumber,
-        message.message,
+        recipients,
         callbackNumber
       );
     }
