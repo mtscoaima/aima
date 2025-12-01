@@ -18,7 +18,7 @@ export interface NaverData {
   navertalkId: string;
   selectedTemplate: NaverTalkTemplate | null;
   templateContent: string;
-  productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO';
+  productCode: 'INFORMATION' | 'BENEFIT';
   buttonUrls: Record<string, { mobileUrl: string; pcUrl?: string }>; // buttonCode를 key로 사용
   templateVariables?: string[]; // 템플릿에서 추출된 변수 목록
   commonVariables?: Record<string, string>; // 공통 변수값 (모든 수신자에게 동일하게 적용)
@@ -68,7 +68,7 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, selecte
   const [templates, setTemplates] = useState<NaverTalkTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<NaverTalkTemplate | null>(null);
   const [templateContent, setTemplateContent] = useState("");
-  const [productCode, setProductCode] = useState<'INFORMATION' | 'BENEFIT' | 'CARDINFO'>('INFORMATION');
+  const [productCode, setProductCode] = useState<'INFORMATION' | 'BENEFIT'>('INFORMATION');
   const [buttonUrls, setButtonUrls] = useState<Record<string, { mobileUrl: string; pcUrl?: string }>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,10 +197,9 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, selecte
 
       // 템플릿의 상품 코드 자동 설정 (카카오 브랜드톡과 동일한 패턴)
       if (template.product_code) {
-        const productCodeMap: Record<string, 'INFORMATION' | 'BENEFIT' | 'CARDINFO'> = {
+        const productCodeMap: Record<string, 'INFORMATION' | 'BENEFIT'> = {
           'INFORMATION': 'INFORMATION',
           'BENEFIT': 'BENEFIT',
-          'CARDINFO': 'CARDINFO',
         };
         const mappedCode = productCodeMap[template.product_code.toUpperCase()];
         if (mappedCode) {
@@ -302,7 +301,7 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, selecte
             variables: r.variables, // 수신자별 변수 (있는 경우)
           })),
           templateParams: {}, // MTS API가 서버에서 #{변수} 치환 처리
-          productCode: productCode === 'CARDINFO' ? 'INFORMATION' : productCode, // CARDINFO는 별도 API 필요, INFORMATION으로 변환
+          productCode: productCode,
           attachments: selectedTemplate.buttons ? {
             buttons: selectedTemplate.buttons.map(btn => {
               const urls = buttonUrls[btn.buttonCode] || { mobileUrl: '', pcUrl: '' };
@@ -444,7 +443,6 @@ const NaverTalkContent: React.FC<NaverTalkContentProps> = ({ recipients, selecte
               <div className={`w-full px-3 py-2 border rounded text-sm ${selectedTemplate ? 'bg-gray-100 border-gray-300 text-gray-700' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
                 {productCode === 'INFORMATION' && '정보성 - 알림 (INFORMATION)'}
                 {productCode === 'BENEFIT' && '마케팅/광고 - 혜택 (BENEFIT)'}
-                {productCode === 'CARDINFO' && '정보성 - 카드알림 (CARDINFO)'}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">
@@ -864,7 +862,7 @@ export async function sendNaverTalkMessage(
       callbackNumber: callbackNumber, // 발신번호 추가
       recipients: recipientsWithVariables, // 수신자별 변수 포함
       templateParams: baseTemplateParams, // 공통 변수 (날짜/시간 등)
-      productCode: naverData.productCode === 'CARDINFO' ? 'INFORMATION' : naverData.productCode, // CARDINFO → INFORMATION
+      productCode: naverData.productCode,
       attachments: naverData.selectedTemplate.buttons ? {
         buttons: naverData.selectedTemplate.buttons.map(btn => {
           const urls = naverData.buttonUrls[btn.buttonCode] || { mobileUrl: '', pcUrl: '' };

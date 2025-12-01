@@ -80,7 +80,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
   const [partnerKey, setPartnerKey] = useState("");
   const [code, setCode] = useState("");
   const [text, setText] = useState("");
-  const [productCode, setProductCode] = useState<"INFORMATION" | "BENEFIT" | "CARDINFO">("INFORMATION");
+  const [productCode, setProductCode] = useState<"INFORMATION" | "BENEFIT">("INFORMATION");
   const [categoryCode, setCategoryCode] = useState("S001");
   const [buttons, setButtons] = useState<Button[]>([]);
   const [uploadedImageHashId, setUploadedImageHashId] = useState<string>("");
@@ -129,7 +129,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
       // BENEFIT은 B001~B004 카테고리 사용
       setCategoryCode("B001");
     } else {
-      // INFORMATION, CARDINFO는 S001/T001 등 사용
+      // INFORMATION은 S001/T001 등 사용
       setCategoryCode("S001");
     }
   }, [productCode]);
@@ -424,7 +424,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
         }
       }
     } else {
-      // INFORMATION, CARDINFO는 categoryCode 필수
+      // INFORMATION은 categoryCode 필수
       if (!categoryCode) {
         setError("카테고리 코드를 선택해주세요.");
         return;
@@ -447,13 +447,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
         sampleImageHashId: uploadedImageHashId || undefined,
       };
 
-      // templateType 설정
-      if (productCode === "CARDINFO") {
-        requestData.templateType = "CARD";
-      }
-
       // 모든 상품 타입에 text 필드 필수 (MTS API 실제 요구사항)
-      // CARDINFO도 text 필드 필요 (규격서 예제에는 없지만 API가 요구함)
       requestData.text = text.trim();
 
       // BENEFIT 전용 데이터
@@ -507,7 +501,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
 
         requestData.benefit = benefitData;
       } else {
-        // INFORMATION, CARDINFO
+        // INFORMATION
         requestData.categoryCode = categoryCode;
       }
 
@@ -682,10 +676,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
                 ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder={productCode === "CARDINFO"
-                  ? "예: #{카드명} #{승인금액}원 결제 완료&#10;승인일시: #{승인일시}&#10;가맹점: #{가맹점명}"
-                  : "예: #{이름}님, 예약이 완료되었습니다.&#10;예약일시: #{오늘날짜}&#10;감사합니다."
-                }
+                placeholder="예: #{이름}님, 예약이 완료되었습니다.&#10;예약일시: #{오늘날짜}&#10;감사합니다."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 min-h-[100px]"
                 disabled={isLoading}
                 required
@@ -695,19 +686,6 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
               </p>
             </div>
 
-            {/* CARDINFO 타입 설명 */}
-            {productCode === "CARDINFO" && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <Info className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">카드알림(CARDINFO) 템플릿</span>
-                </div>
-                <p className="text-xs text-blue-700">
-                  ???? ???? ??? ??/?? ?? ?????. templateType? ???? CARD? ?????.
-                </p>
-              </div>
-            )}
-
             {/* 상품 코드 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -715,13 +693,12 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
               </label>
               <select
                 value={productCode}
-                onChange={(e) => setProductCode(e.target.value as "INFORMATION" | "BENEFIT" | "CARDINFO")}
+                onChange={(e) => setProductCode(e.target.value as "INFORMATION" | "BENEFIT")}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                 disabled={isLoading}
               >
                 <option value="INFORMATION">정보성 - 알림 (INFORMATION) - 13원</option>
                 <option value="BENEFIT">마케팅/광고 - 혜택 (BENEFIT) - 20원</option>
-                <option value="CARDINFO">정보성 - 카드알림 (CARDINFO) - 13원</option>
               </select>
             </div>
 
@@ -748,7 +725,7 @@ const NaverTemplateCreateModal: React.FC<NaverTemplateCreateModalProps> = ({
                     <option value="B004">B004 - 기타 이벤트</option>
                   </optgroup>
                 ) : (
-                  /* INFORMATION, CARDINFO 타입용 카테고리 (S/T/D) */
+                  /* INFORMATION 타입용 카테고리 (S/T/D) */
                   <>
                     <optgroup label="숙박(S)">
                       <option value="S001">S001 - 예약완료</option>

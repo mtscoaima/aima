@@ -1114,7 +1114,7 @@ export async function getNaverTalkTemplates(
  * @param templateCode 템플릿 코드
  * @param toNumber 수신번호 (하이픈 없이)
  * @param text 템플릿 내용 (변수 치환 완료된 텍스트)
- * @param productCode 상품 코드 (INFORMATION: 정보성-알림, BENEFIT: 마케팅/광고-혜택, CARDINFO: 정보성-카드알림)
+ * @param productCode 상품 코드 (INFORMATION: 정보성-알림, BENEFIT: 마케팅/광고-혜택)
  * @param buttons 버튼 정보 (선택, 최대 5개)
  * @param imageHashId 이미지 해시 ID (선택)
  * @param sendDate 예약 발송 시간 (YYYYMMDDHHmmss 형식, 선택)
@@ -2266,10 +2266,10 @@ export async function deleteMtsAlimtalkTemplate(
  * @param partnerKey 파트너 키
  * @param code 템플릿 코드 (영문/숫자, 64자 이내)
  * @param text 템플릿 내용 (#{변수명} 포함 가능)
- * @param productCode 상품 코드 (INFORMATION: 정보성, BENEFIT: 혜택형, CARDINFO: 카드알림)
+ * @param productCode 상품 코드 (INFORMATION: 정보성, BENEFIT: 혜택형)
  * @param categoryCode 카테고리 코드 (S001, D001 등)
  * @param buttons 버튼 정보 (선택, 최대 5개)
- * @param templateType 템플릿 타입 (CARD_PAYMENT, TABLE - 카드알림 전용)
+ * @param templateType 템플릿 타입 (BENEFIT, BENEFIT_LMS - 혜택형 전용)
  * @param pushNotice 푸시 알림 내용 (테이블형 필수)
  * @param tableInfo 테이블 정보 (테이블형 필수)
  * @param sampleImageHashId 이미지 해시 ID (선택)
@@ -2280,7 +2280,7 @@ export async function createNaverTalkTemplate(
   partnerKey: string,
   code: string,
   text: string,
-  productCode: 'INFORMATION' | 'BENEFIT' | 'CARDINFO',
+  productCode: 'INFORMATION' | 'BENEFIT',
   categoryCode: string,
   buttons?: Array<{
     type: 'WEB_LINK' | 'APP_LINK';
@@ -2291,7 +2291,7 @@ export async function createNaverTalkTemplate(
     iOsAppScheme?: string; // ✅ 규격서: APP_LINK 필수
     aOsAppScheme?: string; // ✅ 규격서: APP_LINK 필수
   }>,
-  templateType?: 'CARD' | 'CARD_PAYMENT' | 'TABLE' | 'BENEFIT' | 'BENEFIT_LMS',
+  templateType?: 'BENEFIT' | 'BENEFIT_LMS',
   pushNotice?: string,
   tableInfo?: {
     elementList: Array<{
@@ -2332,7 +2332,7 @@ export async function createNaverTalkTemplate(
     };
 
     // categoryCode 처리
-    // - INFORMATION/CARDINFO: 카테고리 코드 필수
+    // - INFORMATION: 카테고리 코드 필수
     // - BENEFIT: MTS API가 categoryCode 필드를 요구하는 것으로 보임 (빈 문자열도 불가)
     //   → BENEFIT은 benefit.categoryType으로 카테고리를 지정하지만,
     //     최상위 categoryCode도 기본값으로 전달 필요할 수 있음
@@ -2345,19 +2345,13 @@ export async function createNaverTalkTemplate(
     }
 
     // 모든 상품코드에 text 필드 필수 (MTS API 실제 요구사항)
-    // 규격서 예제에는 CARDINFO에 text가 없지만, API가 실제로 요구함
     if (text) {
       requestBody.text = text;
     }
 
-    // CARDINFO는 templateType이 'CARD'로 필수 (규격서 기준)
-    if (productCode === 'CARDINFO') {
-      requestBody.templateType = 'CARD';
-    } else {
-      // 선택 파라미터: templateType (BENEFIT은 BENEFIT/BENEFIT_LMS)
-      if (templateType) {
-        requestBody.templateType = templateType;
-      }
+    // 선택 파라미터: templateType (BENEFIT은 BENEFIT/BENEFIT_LMS)
+    if (templateType) {
+      requestBody.templateType = templateType;
     }
 
     if (pushNotice) {

@@ -447,7 +447,6 @@ const SendConfirmModal: React.FC<SendConfirmModalProps> = ({
                         <span className="font-medium">상품 코드:</span>{" "}
                         {naverData.productCode === 'INFORMATION' && "정보성 - 알림 (INFORMATION)"}
                         {naverData.productCode === 'BENEFIT' && "마케팅/광고 - 혜택 (BENEFIT)"}
-                        {naverData.productCode === 'CARDINFO' && "정보성 - 카드알림 (CARDINFO)"}
                       </div>
                       <div className="bg-green-50 p-2 rounded border border-green-200 max-h-24 overflow-y-auto">
                         <p className="text-sm text-gray-900 whitespace-pre-wrap">

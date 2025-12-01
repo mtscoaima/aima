@@ -44,15 +44,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!productCode || !['INFORMATION', 'BENEFIT', 'CARDINFO'].includes(productCode)) {
+    if (!productCode || !['INFORMATION', 'BENEFIT'].includes(productCode)) {
       return NextResponse.json(
-        { error: '상품 코드가 올바르지 않습니다. (INFORMATION, BENEFIT, CARDINFO 중 하나)' },
+        { error: '상품 코드가 올바르지 않습니다. (INFORMATION, BENEFIT 중 하나)' },
         { status: 400 }
       );
     }
 
     // 모든 상품코드에 text 필드 필수 (MTS API 실제 요구사항)
-    // 규격서 예제에는 CARDINFO에 text가 없지만, API가 실제로 요구함
     if (!text) {
       return NextResponse.json(
         { error: '템플릿 내용이 필요합니다.' },
@@ -60,8 +59,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // CARDINFO는 templateType이 'CARD'로 고정 (규격서 기준)
-    const finalTemplateType = productCode === 'CARDINFO' ? 'CARD' : templateType;
+    const finalTemplateType = templateType;
 
     // BENEFIT이 아닌 경우 categoryCode 필수
     if (productCode !== 'BENEFIT' && !categoryCode) {
@@ -129,7 +127,7 @@ export async function POST(request: NextRequest) {
       productCode,
       categoryCode || '', // BENEFIT의 경우 빈 문자열 전달
       buttons,
-      finalTemplateType, // CARDINFO는 'CARD', BENEFIT은 'BENEFIT'/'BENEFIT_LMS'
+      finalTemplateType, // BENEFIT은 'BENEFIT'/'BENEFIT_LMS'
       undefined, // pushNotice
       undefined, // tableInfo
       sampleImageHashId,

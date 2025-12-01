@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     const currentBalance = await checkBalance(userId);
 
     // 네이버 톡톡 단가 계산
-    // INFORMATION/CARDINFO: 스마트알림 13원
+    // INFORMATION: 스마트알림 13원
     // BENEFIT: 광고 20원
     const NAVER_TALK_COST = productCode === 'BENEFIT' ? 20 : 13;
     const totalCost = recipients.length * NAVER_TALK_COST;
