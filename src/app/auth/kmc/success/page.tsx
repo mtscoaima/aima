@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
-function InicisAuthSuccessContent() {
+function KmcAuthSuccessContent() {
   const searchParams = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,29 +17,28 @@ function InicisAuthSuccessContent() {
       try {
         processedRef.current = true; // 처리 시작 표시
 
-        // URL 파라미터에서 인증 결과 추출
-        const params = {
-          resultCode: searchParams.get("resultCode") || "",
-          resultMsg: searchParams.get("resultMsg") || "",
-          authRequestUrl: searchParams.get("authRequestUrl") || "",
-          txId: searchParams.get("txId") || "",
-          token: searchParams.get("token") || "",
-        };
+        // URL 파라미터에서 토큰과 요청번호 추출
+        const apiToken = searchParams.get("apiToken") || "";
+        const certNum = searchParams.get("certNum") || "";
+
+        if (!apiToken || !certNum) {
+          throw new Error("인증 정보가 누락되었습니다.");
+        }
 
         // 서버로 인증 결과 전송하여 사용자 정보 복호화
-        const response = await fetch("/api/auth/inicis-auth/result", {
+        const response = await fetch("/api/auth/kmc-auth/result", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(params),
+          body: JSON.stringify({ apiToken, certNum }),
         });
 
-        if (!response.ok) {
-          throw new Error("인증 결과 처리 중 오류가 발생했습니다.");
-        }
-
         const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || data.message || "인증 결과 처리 중 오류가 발생했습니다.");
+        }
 
         if (data.success && data.userInfo) {
           // 부모 창에 사용자 정보 전달
@@ -49,7 +48,7 @@ function InicisAuthSuccessContent() {
               `${window.location.protocol}//${window.location.host}`;
             window.opener.postMessage(
               {
-                type: "inicis-auth-success",
+                type: "kmc-auth-success",
                 userInfo: data.userInfo,
                 verificationId: data.verificationId,
               },
@@ -61,7 +60,7 @@ function InicisAuthSuccessContent() {
               window.close();
             }, 500);
           } else {
-            // 팝업이 아닌 경우 회원가입 페이지로 리디렉션 (쿼리 파라미터로 정보 전달)
+            // 팝업이 아닌 경우 회원가입 페이지로 리디렉션
             const signupParams = new URLSearchParams({
               verified: "true",
               verificationId: data.verificationId,
@@ -72,11 +71,25 @@ function InicisAuthSuccessContent() {
           throw new Error(data.message || "인증 정보를 가져올 수 없습니다.");
         }
       } catch (err) {
-        console.error("인증 처리 오류:", err);
+        console.error("KMC 인증 처리 오류:", err);
         setError(
           err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다."
         );
         setIsProcessing(false);
+
+        // 부모 창에 실패 메시지 전달
+        if (window.opener) {
+          const origin =
+            window.location.origin ||
+            `${window.location.protocol}//${window.location.host}`;
+          window.opener.postMessage(
+            {
+              type: "kmc-auth-failed",
+              error: err instanceof Error ? err.message : "알 수 없는 오류",
+            },
+            origin
+          );
+        }
       }
     };
 
@@ -141,7 +154,7 @@ function InicisAuthSuccessContent() {
   );
 }
 
-export default function InicisAuthSuccessPage() {
+export default function KmcAuthSuccessPage() {
   return (
     <Suspense
       fallback={
@@ -158,7 +171,7 @@ export default function InicisAuthSuccessPage() {
         </div>
       }
     >
-      <InicisAuthSuccessContent />
+      <KmcAuthSuccessContent />
     </Suspense>
   );
 }
