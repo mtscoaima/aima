@@ -16,6 +16,12 @@ import LoadContentModal from "../modals/LoadContentModal";
 import ScheduledMessagesModal from "../modals/ScheduledMessagesModal";
 import VariableSelectModal from "../modals/VariableSelectModal";
 
+// 바이트 계산 함수 (UTF-8 기준: 한글 3바이트, 영문/숫자 1바이트)
+const getByteLength = (str: string): number => {
+  const encoder = new TextEncoder();
+  return encoder.encode(str).length;
+};
+
 interface MessageData {
   subject: string;
   content: string;
@@ -57,7 +63,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
       setSubject(messageData.subject);
       setSubjectLength(messageData.subject.length);
       setMessageContent(messageData.content);
-      setMessageLength(messageData.content.length);
+      setMessageLength(getByteLength(messageData.content));
       setIsAd(messageData.isAd);
     }
   }, [messageData]);
@@ -190,7 +196,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
     const newText = messageContent.slice(0, start) + variable + messageContent.slice(end);
 
     setMessageContent(newText);
-    setMessageLength(newText.length);
+    setMessageLength(getByteLength(newText));
     const imageFileIds = uploadedImages.map(img => img.fileId);
     notifyParent(subject, newText, isAd, imageFileIds);
 
@@ -248,7 +254,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
             maxLength={2000}
             onChange={(e) => {
               setMessageContent(e.target.value);
-              setMessageLength(e.target.value.length);
+              setMessageLength(getByteLength(e.target.value));
               const imageFileIds = uploadedImages.map(img => img.fileId);
               notifyParent(subject, e.target.value, isAd, imageFileIds);
             }}
@@ -457,7 +463,7 @@ const SmsMessageContent = ({ messageData, onMessageDataChange, onUploadingChange
           setSubject(content.subject || "");
           setSubjectLength((content.subject || "").length);
           setMessageContent(content.content);
-          setMessageLength(content.content.length);
+          setMessageLength(getByteLength(content.content));
           setIsAd(content.isAd || false);
           const imageFileIds = uploadedImages.map(img => img.fileId);
           notifyParent(content.subject || "", content.content, content.isAd || false, imageFileIds);

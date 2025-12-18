@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import AlimtalkTab, { type AlimtalkData } from "./AlimtalkTab";
-import FriendtalkTab, { type FriendtalkData } from "./FriendtalkTab";
 import BrandTab, { type BrandData } from "./BrandTab";
 
 interface Recipient {
@@ -14,7 +13,6 @@ interface KakaoMessageContentProps {
   recipients?: Recipient[];
   selectedSenderNumber?: string;
   onAlimtalkDataChange?: (data: AlimtalkData) => void;
-  onFriendtalkDataChange?: (data: FriendtalkData) => void;
   onBrandDataChange?: (data: BrandData) => void;
   onKakaoTabChange?: (tab: string) => void;
 }
@@ -23,7 +21,6 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
   recipients = [],
   selectedSenderNumber = "",
   onAlimtalkDataChange,
-  onFriendtalkDataChange,
   onBrandDataChange,
   onKakaoTabChange,
 }) => {
@@ -53,17 +50,6 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
         </button>
         <button
           className={`px-4 py-2 rounded-lg text-sm font-medium ${
-            activeKakaoTab === "friendtalk"
-              ? "border border-[#795548]"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-          style={activeKakaoTab === "friendtalk" ? { backgroundColor: "#79554820", color: "#795548" } : {}}
-          onClick={() => setActiveKakaoTab("friendtalk")}
-        >
-          친구톡
-        </button>
-        <button
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${
             activeKakaoTab === "brand"
               ? "border border-[#795548]"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -81,15 +67,6 @@ const KakaoMessageContent: React.FC<KakaoMessageContentProps> = ({
           recipients={recipients}
           callbackNumber={selectedSenderNumber}
           onDataChange={onAlimtalkDataChange}
-        />
-      )}
-
-      {/* 친구톡 탭 내용 */}
-      {activeKakaoTab === "friendtalk" && (
-        <FriendtalkTab
-          recipients={recipients}
-          callbackNumber={selectedSenderNumber}
-          onDataChange={onFriendtalkDataChange}
         />
       )}
 

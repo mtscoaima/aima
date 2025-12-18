@@ -4,7 +4,7 @@
  * Cron Job으로 주기적으로 호출되어 예약 시간이 도래한 메시지를 발송합니다.
  *
  * scheduled_messages 테이블 구조:
- * - message_type: SMS, LMS, MMS, KAKAO_ALIMTALK, KAKAO_FRIENDTALK, NAVER_TALK, KAKAO_BRAND
+ * - message_type: SMS, LMS, MMS, KAKAO_ALIMTALK, NAVER_TALK, KAKAO_BRAND
  * - to_number: 수신번호
  * - message_content: 메시지 내용
  * - metadata: 타입별 추가 정보 (senderKey, templateCode, buttons 등)
@@ -16,7 +16,6 @@ import {
   sendMtsSMS,
   sendMtsMMS,
   sendMtsAlimtalk,
-  sendMtsFriendtalk,
   sendNaverTalk,
   sendKakaoBrand,
   MtsApiResult
@@ -32,7 +31,6 @@ const MESSAGE_COSTS: Record<string, number> = {
   LMS: 50,
   MMS: 100,
   KAKAO_ALIMTALK: 13,
-  KAKAO_FRIENDTALK: 20,
   NAVER_TALK: 13, // 스마트알림 기본, 광고는 20원
   KAKAO_BRAND: 20,
 };
@@ -225,39 +223,6 @@ export async function POST(request: NextRequest) {
               templateCode,
               alimtalkRecipients,
               callbackNumber,
-              buttons,
-              tranType,
-              tranMessage,
-              scheduledAt
-            );
-            break;
-          }
-
-          case 'KAKAO_FRIENDTALK': {
-            // 카카오 친구톡
-            const senderKey = metadata.sender_key || metadata.senderKey;
-            const messageTypeKakao = metadata.messageType || 'FT';
-            const adFlag = metadata.ad_flag || 'N';
-            const imageUrls = metadata.image_urls || [];
-            const buttons = metadata.buttons || [];
-            const tranType = metadata.tran_type;
-            const tranMessage = metadata.tran_message;
-
-            if (!senderKey) {
-              throw new Error('친구톡 발송에 필요한 정보가 부족합니다 (senderKey)');
-            }
-
-            // 단건 배열로 변환 (복수 API 사용)
-            const friendtalkRecipients = [{ phone_number: msg.to_number }];
-            result = await sendMtsFriendtalk(
-              senderKey,
-              friendtalkRecipients,
-              msg.message_content,
-              callbackNumber,
-              messageTypeKakao,
-              adFlag,
-              imageUrls,
-              undefined, // imageLink
               buttons,
               tranType,
               tranMessage,

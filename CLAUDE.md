@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Version**: 2.4 (Updated 2025-11-28)
+**Version**: 2.5 (Updated 2025-12-18)
 **Related Docs**: [MTS_API_통합_테스트_가이드.md](MTS_API_통합_테스트_가이드.md) | [README.md](README.md)
 
 ## Project Overview
