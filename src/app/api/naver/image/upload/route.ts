@@ -134,7 +134,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 처리된 이미지로 File 객체 생성
-    const processedBlob = new Blob([imageBuffer], { type: 'image/jpeg' });
+    const uint8Array = new Uint8Array(imageBuffer);
+    const processedBlob = new Blob([uint8Array], { type: 'image/jpeg' });
     const processedFile = new File([processedBlob], 'image.jpg', { type: 'image/jpeg' });
 
     // MTS API로 전달할 FormData 생성

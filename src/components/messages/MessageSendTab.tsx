@@ -17,7 +17,6 @@ import ExcelUploadModal from "../modals/ExcelUploadModal";
 import TextUploadModal from "../modals/TextUploadModal";
 import SendConfirmModal from "../modals/SendConfirmModal";
 import { sendAlimtalkMessage, type AlimtalkData } from "./AlimtalkTab";
-import { sendFriendtalkMessage, type FriendtalkData } from "./FriendtalkTab";
 import { sendBrandMessage_v2, type BrandData } from "./BrandTab";
 import { sendNaverTalkMessage, type NaverData } from "./NaverTalkContent";
 
@@ -59,7 +58,6 @@ const MessageSendTab = () => {
 
   // 카카오/네이버 탭 데이터 상태
   const [alimtalkData, setAlimtalkData] = useState<AlimtalkData | null>(null);
-  const [friendtalkData, setFriendtalkData] = useState<FriendtalkData | null>(null);
   const [brandData, setBrandData] = useState<BrandData | null>(null);
   const [naverData, setNaverData] = useState<NaverData | null>(null);
 
@@ -298,21 +296,6 @@ const MessageSendTab = () => {
           alert("템플릿을 선택해주세요");
           return;
         }
-      } else if (activeKakaoTab === "friendtalk") {
-        if (!friendtalkData) {
-          alert("친구톡 데이터를 로드하는 중입니다");
-          return;
-        }
-        if (!friendtalkData.selectedProfile) {
-          alert("발신 프로필을 선택해주세요");
-          return;
-        }
-        // FL/FC 타입은 message가 비어있어도 됨 (headerText, listItems, carousels로 대체)
-        const isFLorFC = friendtalkData.messageType === "FL" || friendtalkData.messageType === "FC";
-        if (!isFLorFC && !friendtalkData.message.trim()) {
-          alert("메시지 내용을 입력해주세요");
-          return;
-        }
       } else if (activeKakaoTab === "brand") {
         if (!brandData) {
           alert("브랜드 메시지 데이터를 로드하는 중입니다");
@@ -392,19 +375,6 @@ const MessageSendTab = () => {
           });
 
           alert(`알림톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
-          setRecipients([]);
-
-        } else if (activeKakaoTab === "friendtalk") {
-          if (!friendtalkData) throw new Error("친구톡 데이터가 없습니다");
-
-          const result = await sendFriendtalkMessage({
-            recipients: recipients,
-            callbackNumber: userPhoneNumber,
-            data: friendtalkData,
-            scheduledAt: undefined, // 즉시 발송
-          });
-
-          alert(`친구톡 발송 완료\n성공: ${result.successCount}건\n실패: ${result.failCount}건`);
           setRecipients([]);
 
         } else if (activeKakaoTab === "brand") {
@@ -512,19 +482,6 @@ const MessageSendTab = () => {
           alert(`알림톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
           setRecipients([]);
 
-        } else if (activeKakaoTab === "friendtalk") {
-          if (!friendtalkData) throw new Error("친구톡 데이터가 없습니다");
-
-          await sendFriendtalkMessage({
-            recipients: recipients,
-            callbackNumber: userPhoneNumber,
-            data: friendtalkData,
-            scheduledAt: scheduledAt, // YYYYMMDDHHmmss
-          });
-
-          alert(`친구톡 예약 완료\n예약된 수신자: ${recipients.length}명`);
-          setRecipients([]);
-
         } else if (activeKakaoTab === "brand") {
           if (!brandData) throw new Error("브랜드 메시지 데이터가 없습니다");
 
@@ -575,7 +532,6 @@ const MessageSendTab = () => {
             recipients={recipients}
             selectedSenderNumber={userPhoneNumber}
             onAlimtalkDataChange={setAlimtalkData}
-            onFriendtalkDataChange={setFriendtalkData}
             onBrandDataChange={setBrandData}
             onKakaoTabChange={setActiveKakaoTab}
           />
@@ -847,14 +803,12 @@ const MessageSendTab = () => {
         messageType={
           activeMessageTab === "sms" ? "sms" :
           activeMessageTab === "kakao" && activeKakaoTab === "alimtalk" ? "alimtalk" :
-          activeMessageTab === "kakao" && activeKakaoTab === "friendtalk" ? "friendtalk" :
           activeMessageTab === "kakao" && activeKakaoTab === "brand" ? "brand" :
           activeMessageTab === "kakao" && activeKakaoTab === "naver" ? "naver" :
           activeMessageTab === "naver" ? "naver" :
           "sms"
         }
         alimtalkData={alimtalkData}
-        friendtalkData={friendtalkData}
         brandData={brandData}
         naverData={naverData}
       />

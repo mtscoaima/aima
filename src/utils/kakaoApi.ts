@@ -1,5 +1,5 @@
 /**
- * 카카오 알림톡/친구톡 API 유틸리티
+ * 카카오 알림톡/브랜드 메시지 API 유틸리티
  */
 
 // 알림톡 발신 프로필 타입
@@ -31,7 +31,7 @@ export interface Recipient {
   name?: string;
   group_name?: string;
   variables?: Record<string, string>;
-  replacedMessage?: string; // 변수가 치환된 메시지 (알림톡/친구톡용)
+  replacedMessage?: string; // 변수가 치환된 메시지 (알림톡용)
 }
 
 // 알림톡 발송 요청 타입
@@ -50,54 +50,6 @@ export interface AlimtalkSendRequest {
   tranType?: 'SMS' | 'LMS' | 'MMS';
   tranMessage?: string;
   scheduledAt?: string;
-}
-
-// 친구톡 발송 요청 타입
-export interface FriendtalkSendRequest {
-  senderKey: string;
-  recipients: Recipient[];
-  message: string;
-  callbackNumber: string;
-  messageType: 'FT' | 'FI' | 'FW' | 'FL' | 'FC';
-  adFlag: 'Y' | 'N';
-  imageUrls?: string[];
-  imageLink?: string;  // 이미지 클릭 시 이동할 URL
-  buttons?: Array<{
-    name: string;
-    type: string;
-    url_mobile?: string;
-    url_pc?: string;
-  }>;
-  tranType?: 'SMS' | 'LMS' | 'MMS';
-  tranMessage?: string;
-  scheduledAt?: string;
-  // FW/FL/FC 타입 전용 필드
-  headerText?: string;  // FL용 헤더
-  listItems?: Array<{   // FL용 아이템 리스트
-    title: string;
-    image?: {
-      fileId: string;
-      fileName: string;
-      fileSize: number;
-      preview: string;
-    };
-  }>;
-  carousels?: Array<{   // FC용 캐러셀
-    content: string;
-    image?: {
-      fileId: string;
-      fileName: string;
-      fileSize: number;
-      preview: string;
-    };
-    buttons: Array<{
-      name: string;
-      type: string;
-      url_mobile?: string;
-      url_pc?: string;
-    }>;
-  }>;
-  moreLink?: string;    // FC용 더보기 링크
 }
 
 // 브랜드 템플릿 타입
@@ -301,41 +253,6 @@ export async function sendAlimtalk(request: AlimtalkSendRequest) {
   }
 }
 
-/**
- * 친구톡 V2 발송
- */
-export async function sendFriendtalk(request: FriendtalkSendRequest) {
-  try {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      throw new Error('로그인이 필요합니다.');
-    }
-
-    const response = await fetch('/api/messages/kakao/friendtalk/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || '친구톡 발송 실패');
-    }
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error('친구톡 발송 오류:', error);
-    throw error;
-  }
-}
-
-/**
- * 브랜드 메시지 발송
- */
 /**
  * 브랜드 템플릿 목록 조회
  * @param senderKey 발신 프로필 키

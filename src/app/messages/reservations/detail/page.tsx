@@ -205,22 +205,22 @@ export default function ReservationDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    // ISO 문자열에서 날짜 부분 추출 (UTC 파싱 문제 방지)
-    const datePart = dateString.split('T')[0]; // "2025-10-27"
-    const [year, month, day] = datePart.split('-').map(Number);
-
-    // 요일 계산을 위해 Date 객체 생성 (로컬 시간대 기준)
-    const dateObj = new Date(year, month - 1, day);
+    // Date 객체로 변환하여 로컬 타임존(KST) 적용
+    const date = new Date(dateString);
     const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const dayOfWeek = days[dateObj.getDay()];
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = days[date.getDay()];
 
     return `${year}.${month.toString().padStart(2, '0')}.${day.toString().padStart(2, '0')} (${dayOfWeek})`;
   };
 
   const formatTime = (dateTimeString: string) => {
-    // ISO 문자열에서 시간 부분 추출 (UTC 파싱 문제 방지)
-    const timePart = dateTimeString.split('T')[1] || '00:00:00';
-    const [hours, minutes] = timePart.split(':').map(Number);
+    // Date 객체로 변환하여 로컬 타임존(KST) 적용
+    const date = new Date(dateTimeString);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
 
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
