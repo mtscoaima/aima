@@ -109,15 +109,9 @@ export default function MessageReservedListPage() {
     }
   };
 
-  // DB의 timestamp는 UTC 기준이므로 명시적으로 한국 시간(KST)으로 변환
   const formatDateTime = (dateString: string) => {
-    // 타임존 정보가 없으면 'Z'를 붙여서 UTC로 강제 파싱
-    const utcString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
-    const utcDate = new Date(utcString);
-
-    // 한국 시간으로 표시 (Asia/Seoul timezone 사용)
-    return utcDate.toLocaleString("ko-KR", {
-      timeZone: "Asia/Seoul",
+    const date = new Date(dateString);
+    return date.toLocaleString("ko-KR", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -138,9 +132,7 @@ export default function MessageReservedListPage() {
 
   const getTimeRemaining = (scheduledAt: string) => {
     const now = new Date();
-    // 타임존 정보가 없으면 'Z'를 붙여서 UTC로 강제 파싱
-    const utcString = scheduledAt.endsWith('Z') ? scheduledAt : scheduledAt + 'Z';
-    const scheduled = new Date(utcString);
+    const scheduled = new Date(scheduledAt);
     const diff = scheduled.getTime() - now.getTime();
 
     if (diff < 0) return "발송 대기 중";

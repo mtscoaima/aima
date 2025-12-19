@@ -178,13 +178,9 @@ export default function ReservationCalendarPage() {
 
   // 예약의 날짜 위치 정보 계산 (시작/중간/끝)
   const getReservationDatePosition = (reservation: Reservation, currentDate: Date) => {
-    // Date 객체로 변환하여 로컬 타임존(KST) 적용
-    const startDate = new Date(reservation.start_datetime);
-    const endDate = new Date(reservation.end_datetime);
-
-    // 로컬 타임존 기준으로 날짜 문자열 생성
-    const startDateStr = `${startDate.getFullYear()}-${(startDate.getMonth() + 1).toString().padStart(2, '0')}-${startDate.getDate().toString().padStart(2, '0')}`;
-    const endDateStr = `${endDate.getFullYear()}-${(endDate.getMonth() + 1).toString().padStart(2, '0')}-${endDate.getDate().toString().padStart(2, '0')}`;
+    // ISO 문자열에서 날짜 부분만 추출 (UTC 파싱 문제 방지)
+    const startDateStr = reservation.start_datetime.split('T')[0]; // YYYY-MM-DD
+    const endDateStr = reservation.end_datetime.split('T')[0];
 
     // 현재 날짜를 YYYY-MM-DD 형식으로 변환
     const year = currentDate.getFullYear();
@@ -213,13 +209,14 @@ export default function ReservationCalendarPage() {
     const dateStr = `${year}-${month}-${day}`;
 
     const filteredReservations = reservations.filter(reservation => {
-      // Date 객체로 변환하여 로컬 타임존(KST) 적용
-      const startDate = new Date(reservation.start_datetime);
-      const endDate = new Date(reservation.end_datetime);
+      // ISO 문자열을 로컬 시간대로 파싱 (UTC 문제 방지)
+      // "2025-10-27T18:00:00" 형식을 로컬 시간대 기준으로 해석
+      const startDateTimeStr = reservation.start_datetime.replace('Z', ''); // Z 제거 (있다면)
+      const endDateTimeStr = reservation.end_datetime.replace('Z', '');
 
-      // 로컬 타임존 기준으로 날짜 문자열 생성
-      const startDateStr = `${startDate.getFullYear()}-${(startDate.getMonth() + 1).toString().padStart(2, '0')}-${startDate.getDate().toString().padStart(2, '0')}`;
-      const endDateStr = `${endDate.getFullYear()}-${(endDate.getMonth() + 1).toString().padStart(2, '0')}-${endDate.getDate().toString().padStart(2, '0')}`;
+      // 날짜 부분만 추출 (시간 부분 무시)
+      const startDateStr = startDateTimeStr.split('T')[0]; // YYYY-MM-DD
+      const endDateStr = endDateTimeStr.split('T')[0]; // YYYY-MM-DD
 
       // 입실 날짜만 표시하기 옵션이 켜져 있으면 시작 날짜만 확인
       if (viewSettings.options.입실날짜만예약표시하기) {
@@ -250,14 +247,13 @@ export default function ReservationCalendarPage() {
 
   // 예약 시간 포맷팅
   const formatReservationTime = (reservation: Reservation) => {
-    // Date 객체로 변환하여 로컬 타임존(KST) 적용
-    const startDate = new Date(reservation.start_datetime);
-    const endDate = new Date(reservation.end_datetime);
+    // ISO 문자열에서 시간 추출 (UTC 파싱 문제 방지)
+    // "2025-10-27T18:00:00" -> ["18", "00"]
+    const startTimePart = reservation.start_datetime.split('T')[1] || '00:00:00';
+    const endTimePart = reservation.end_datetime.split('T')[1] || '00:00:00';
 
-    const startHour = startDate.getHours();
-    const startMin = startDate.getMinutes();
-    const endHour = endDate.getHours();
-    const endMin = endDate.getMinutes();
+    const [startHour, startMin] = startTimePart.split(':').map(Number);
+    const [endHour, endMin] = endTimePart.split(':').map(Number);
 
     const formatTime = (hour: number, min: number) => {
       if (min === 0) return `${hour}`;
@@ -551,14 +547,14 @@ export default function ReservationCalendarPage() {
                             if (position.isSingleDay) {
                               displayParts.push(timeStr); // 하루 예약은 전체 시간
                             } else if (position.isStart) {
-                              // Date 객체로 변환하여 로컬 타임존(KST) 적용
-                              const startDate = new Date(reservation.start_datetime);
-                              const startHour = startDate.getHours();
+                              // ISO 문자열에서 시간 추출 (UTC 파싱 문제 방지)
+                              const startTimePart = reservation.start_datetime.split('T')[1] || '00:00:00';
+                              const startHour = parseInt(startTimePart.split(':')[0]);
                               displayParts.push(`${startHour}시~`); // 시작일은 시작 시간만
                             } else if (position.isEnd) {
-                              // Date 객체로 변환하여 로컬 타임존(KST) 적용
-                              const endDate = new Date(reservation.end_datetime);
-                              const endHour = endDate.getHours();
+                              // ISO 문자열에서 시간 추출 (UTC 파싱 문제 방지)
+                              const endTimePart = reservation.end_datetime.split('T')[1] || '00:00:00';
+                              const endHour = parseInt(endTimePart.split(':')[0]);
                               displayParts.push(`~${endHour}시`); // 끝일은 끝 시간만
                             }
                             // 중간일은 시간 표시 안함
