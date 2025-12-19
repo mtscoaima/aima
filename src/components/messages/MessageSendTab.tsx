@@ -359,8 +359,23 @@ const MessageSendTab = () => {
 
         const successCount = data.results.filter((r: { success: boolean }) => r.success).length;
         const failCount = data.results.filter((r: { success: boolean }) => !r.success).length;
-        alert(`메시지 전송 완료\n성공: ${successCount}건\n실패: ${failCount}건`);
-        setRecipients([]);
+
+        // 실패한 결과에서 에러 메시지 추출
+        const failedResults = data.results.filter((r: { success: boolean; error?: string }) => !r.success);
+        let alertMessage = `메시지 전송 완료\n성공: ${successCount}건\n실패: ${failCount}건`;
+
+        if (failedResults.length > 0) {
+          // 고유한 에러 메시지만 추출
+          const uniqueErrors = [...new Set(failedResults.map((r: { error?: string }) => r.error).filter(Boolean))];
+          if (uniqueErrors.length > 0) {
+            alertMessage += `\n\n[실패 원인]\n${uniqueErrors.join('\n')}`;
+          }
+        }
+
+        alert(alertMessage);
+        if (successCount > 0) {
+          setRecipients([]);
+        }
 
       } else if (activeMessageTab === "kakao") {
         // 카카오 메시지 전송
@@ -464,8 +479,26 @@ const MessageSendTab = () => {
           throw new Error(data.error || "메시지 예약에 실패했습니다");
         }
 
-        alert(`메시지 예약이 완료되었습니다.\n예약된 수신자: ${recipients.length}명`);
-        setRecipients([]);
+        // 예약 결과에서 실패 건수 확인
+        const scheduledCount = data.scheduledCount || 0;
+        const failCount = data.failCount || 0;
+        let alertMessage = `메시지 예약 완료\n성공: ${scheduledCount}건\n실패: ${failCount}건`;
+
+        // 실패한 결과에서 에러 메시지 추출
+        if (data.results) {
+          const failedResults = data.results.filter((r: { success: boolean; error?: string }) => !r.success);
+          if (failedResults.length > 0) {
+            const uniqueErrors = [...new Set(failedResults.map((r: { error?: string }) => r.error).filter(Boolean))];
+            if (uniqueErrors.length > 0) {
+              alertMessage += `\n\n[실패 원인]\n${uniqueErrors.join('\n')}`;
+            }
+          }
+        }
+
+        alert(alertMessage);
+        if (scheduledCount > 0) {
+          setRecipients([]);
+        }
 
       } else if (activeMessageTab === "kakao") {
         // 카카오 메시지 예약

@@ -312,11 +312,12 @@ export async function scheduleMessage(
 // ============================================================================
 
 /**
- * 사용자 잔액 확인
+ * 사용자 잔액 확인 (광고머니 + 포인트 합산)
  * transactions 테이블에서 계산
+ * 포인트가 있으면 광고머니보다 포인트를 먼저 사용하는 정책 반영
  *
  * @param userId - 사용자 ID
- * @returns 잔액 (원)
+ * @returns 총 사용 가능 잔액 (광고머니 + 포인트)
  */
 export async function checkBalance(userId: number): Promise<number> {
   try {
@@ -332,31 +333,40 @@ export async function checkBalance(userId: number): Promise<number> {
       return 0;
     }
 
-    let balance = 0;
+    let creditBalance = 0; // 광고머니
+    let pointBalance = 0;  // 포인트
 
     for (const transaction of transactions || []) {
       const metadata = transaction.metadata as Record<string, string | number | boolean> | null;
 
       if (transaction.type === "charge") {
-        // 충전 (리워드 제외)
-        if (!metadata?.isReward) {
-          balance += transaction.amount;
+        if (metadata?.isReward) {
+          // 포인트 충전
+          pointBalance += transaction.amount;
+        } else {
+          // 광고머니 충전
+          creditBalance += transaction.amount;
         }
       } else if (transaction.type === "usage") {
-        // 사용 (포인트 제외)
-        if (metadata?.transactionType !== "point") {
-          balance -= transaction.amount;
+        if (metadata?.transactionType === "point") {
+          // 포인트 사용
+          pointBalance -= transaction.amount;
+        } else {
+          // 광고머니 사용
+          creditBalance -= transaction.amount;
         }
       } else if (transaction.type === "refund") {
-        // 환불
-        balance += transaction.amount;
+        // 환불 (광고머니로 처리)
+        creditBalance += transaction.amount;
       } else if (transaction.type === "penalty") {
-        // 페널티
-        balance -= transaction.amount;
+        // 페널티 (광고머니에서 차감)
+        creditBalance -= transaction.amount;
       }
     }
 
-    return Math.max(balance, 0);
+    // 총 사용 가능 잔액 = 광고머니 + 포인트
+    const totalBalance = Math.max(creditBalance, 0) + Math.max(pointBalance, 0);
+    return totalBalance;
   } catch (error) {
     console.error('잔액 조회 예외:', error);
     return 0;
@@ -364,8 +374,8 @@ export async function checkBalance(userId: number): Promise<number> {
 }
 
 /**
- * 잔액 차감
- * transactions 테이블에 usage 기록 추가
+ * 잔액 차감 (포인트 우선 사용)
+ * 포인트가 있으면 포인트를 먼저 사용하고, 부족하면 광고머니에서 차감
  *
  * @param userId - 사용자 ID
  * @param amount - 차감 금액
@@ -379,24 +389,86 @@ async function deductBalance(
   metadata?: Record<string, string | number | boolean>
 ): Promise<void> {
   try {
-    const { error } = await supabase.from('transactions').insert({
-      user_id: userId,
-      amount: amount,
-      type: 'usage',
-      status: 'completed',
-      description: `메시지 발송 (${messageType})`,
-      metadata: {
-        transactionType: 'advertising',
-        usage_type: 'message_send',
-        message_type: messageType,
-        source: 'sms_tab',
-        ...metadata
-      },
-      created_at: new Date().toISOString()
-    });
+    // 현재 포인트 잔액 계산
+    const { data: transactions, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'completed');
 
-    if (error) {
-      console.error('잔액 차감 오류:', error);
+    if (fetchError) {
+      console.error('트랜잭션 조회 오류:', fetchError);
+      return;
+    }
+
+    let pointBalance = 0;
+    for (const transaction of transactions || []) {
+      const txMetadata = transaction.metadata as Record<string, string | number | boolean> | null;
+      if (transaction.type === "charge" && txMetadata?.isReward) {
+        pointBalance += transaction.amount;
+      } else if (transaction.type === "usage" && txMetadata?.transactionType === "point") {
+        pointBalance -= transaction.amount;
+      }
+    }
+    pointBalance = Math.max(pointBalance, 0);
+
+    // 포인트 우선 사용, 부족분은 광고머니에서 차감
+    let pointUsage = 0;
+    let creditUsage = 0;
+
+    if (pointBalance >= amount) {
+      // 포인트만으로 충분한 경우
+      pointUsage = amount;
+    } else {
+      // 포인트 부족 - 포인트 전액 사용 + 나머지는 광고머니
+      pointUsage = pointBalance;
+      creditUsage = amount - pointBalance;
+    }
+
+    // 포인트 차감 기록
+    if (pointUsage > 0) {
+      const { error: pointError } = await supabase.from('transactions').insert({
+        user_id: userId,
+        amount: pointUsage,
+        type: 'usage',
+        status: 'completed',
+        description: `메시지 발송 - 포인트 (${messageType})`,
+        metadata: {
+          transactionType: 'point',
+          usage_type: 'message_send',
+          message_type: messageType,
+          source: 'sms_tab',
+          ...metadata
+        },
+        created_at: new Date().toISOString()
+      });
+
+      if (pointError) {
+        console.error('포인트 차감 오류:', pointError);
+      }
+    }
+
+    // 광고머니 차감 기록
+    if (creditUsage > 0) {
+      const { error: creditError } = await supabase.from('transactions').insert({
+        user_id: userId,
+        amount: creditUsage,
+        type: 'usage',
+        status: 'completed',
+        description: `메시지 발송 - 광고머니 (${messageType})`,
+        metadata: {
+          transactionType: 'advertising',
+          usage_type: 'message_send',
+          message_type: messageType,
+          source: 'sms_tab',
+          ...metadata
+        },
+        created_at: new Date().toISOString()
+      });
+
+      if (creditError) {
+        console.error('광고머니 차감 오류:', creditError);
+      }
     }
   } catch (error) {
     console.error('잔액 차감 예외:', error);
