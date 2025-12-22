@@ -29,13 +29,13 @@ export default function FindPasswordPage() {
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
 
-      if (event.data.type === "inicis-auth-success") {
+      if (event.data.type === "kmc-auth-success") {
         // 본인인증 성공
         const { verificationId: vId } = event.data;
 
         // 본인인증 정보로 비밀번호 찾기 API 호출
         findPasswordByVerification(vId);
-      } else if (event.data.type === "inicis-auth-failed") {
+      } else if (event.data.type === "kmc-auth-failed") {
         // 본인인증 실패
         alert(`본인인증에 실패했습니다: ${event.data.resultMsg}`);
         setIsVerificationLoading(false);
@@ -69,8 +69,8 @@ export default function FindPasswordPage() {
     setIsVerificationLoading(true);
 
     try {
-      // 본인인증 요청 API 호출
-      const response = await fetch("/api/auth/inicis-auth/request", {
+      // KMC 본인확인 요청 API 호출
+      const response = await fetch("/api/auth/kmc-auth/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,7 +92,7 @@ export default function FindPasswordPage() {
 
       const popup = window.open(
         "",
-        "inicis_identity_auth",
+        "kmc_identity_auth",
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
       );
 
@@ -124,7 +124,7 @@ export default function FindPasswordPage() {
       const form = document.createElement("form");
       form.method = "POST";
       form.action = data.authUrl;
-      form.target = "inicis_identity_auth";
+      form.target = "kmc_identity_auth";
 
       // 파라미터 추가
       Object.entries(data.params).forEach(([key, value]) => {

@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const { name, phoneNumber, birthDate } = await request.json();
 
-    // 환경변수 확인
+    // 환경변수 확인 (빈 문자열도 체크)
     const requiredEnvVars = [
       "KMC_CP_ID",
       "KMC_URL_CODE",
@@ -21,9 +21,13 @@ export async function POST(request: NextRequest) {
     ];
 
     for (const envVar of requiredEnvVars) {
-      if (!process.env[envVar]) {
+      if (!process.env[envVar]?.trim()) {
+        console.error(`환경변수 ${envVar}가 설정되지 않았거나 빈 값입니다.`);
         return NextResponse.json(
-          { error: `환경변수 ${envVar}가 설정되지 않았습니다.` },
+          {
+            success: false,
+            message: "본인인증 서비스 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.",
+          },
           { status: 500 }
         );
       }
