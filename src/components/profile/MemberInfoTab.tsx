@@ -410,8 +410,8 @@ export default function MemberInfoTab({
     setIsPhoneChangeVerificationLoading(true);
 
     try {
-      // KG이니시스 본인인증 요청 API 호출
-      const response = await fetch("/api/auth/inicis-auth/request", {
+      // KMC 본인확인 요청 API 호출
+      const response = await fetch("/api/auth/kmc-auth/request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -436,7 +436,7 @@ export default function MemberInfoTab({
 
       const popup = window.open(
         "",
-        "inicis_phone_change_auth",
+        "kmc_phone_change_auth",
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
       );
 
@@ -450,7 +450,7 @@ export default function MemberInfoTab({
       const form = document.createElement("form");
       form.method = "POST";
       form.action = data.authUrl;
-      form.target = "inicis_phone_change_auth";
+      form.target = "kmc_phone_change_auth";
 
       // 파라미터 추가
       Object.entries(data.params).forEach(([key, value]) => {
@@ -513,13 +513,13 @@ export default function MemberInfoTab({
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
 
-      if (event.data.type === "inicis-auth-success") {
+      if (event.data.type === "kmc-auth-success") {
         // 본인인증 성공
         const { userInfo } = event.data;
 
         // 휴대폰 번호 업데이트
         handlePhoneUpdate(userInfo.phoneNumber);
-      } else if (event.data.type === "inicis-auth-failed") {
+      } else if (event.data.type === "kmc-auth-failed") {
         // 본인인증 실패
         alert(`본인인증에 실패했습니다: ${event.data.resultMsg}`);
       }

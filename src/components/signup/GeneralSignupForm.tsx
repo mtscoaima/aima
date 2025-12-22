@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { passwordValidation } from "@/lib/utils";
 import TermsModal, { TermsType } from "@/components/TermsModal";
@@ -24,13 +24,54 @@ export default function GeneralSignupForm() {
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [verificationId, setVerificationId] = useState<string | null>(null);
 
   // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTermsType, setCurrentTermsType] = useState<TermsType>("service");
 
   const router = useRouter();
+
+  // KMC 인증 메시지 수신 핸들러
+  const handleAuthMessage = useCallback((event: MessageEvent) => {
+    // 동일 origin 확인
+    if (event.origin !== window.location.origin) {
+      return;
+    }
+
+    const { type, userInfo, verificationId: vId, error } = event.data;
+
+    if (type === "kmc-auth-success" && userInfo) {
+      // 인증 성공 - 폼 데이터 업데이트
+      setFormData((prev) => ({
+        ...prev,
+        name: userInfo.name || "",
+        phone: userInfo.phoneNumber || "",
+        birthDate: userInfo.birthDate || "",
+      }));
+      setIsVerified(true);
+      setVerificationId(vId);
+
+      // 에러 초기화
+      setErrors((prev) => ({
+        ...prev,
+        name: "",
+        phone: "",
+        birthDate: "",
+      }));
+    } else if (type === "kmc-auth-failed") {
+      alert(error || "본인인증에 실패했습니다.");
+    }
+  }, []);
+
+  // 메시지 이벤트 리스너 등록/해제
+  useEffect(() => {
+    window.addEventListener("message", handleAuthMessage);
+    return () => {
+      window.removeEventListener("message", handleAuthMessage);
+    };
+  }, [handleAuthMessage]);
 
 
 
@@ -47,12 +88,74 @@ export default function GeneralSignupForm() {
     }
   };
 
-  const handleIdentityVerification = () => {
-    setShowWarningModal(true);
-  };
+  const handleIdentityVerification = async () => {
+    setIsLoading(true);
+    try {
+      // KMC 인증 요청 API 호출
+      const response = await fetch("/api/auth/kmc-auth/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phoneNumber: formData.phone,
+          birthDate: formData.birthDate,
+        }),
+      });
 
-  const closeWarningModal = () => {
-    setShowWarningModal(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "인증 요청에 실패했습니다.");
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.authUrl && data.params) {
+        // KMC 인증 팝업 열기
+        const width = 425;
+        const height = 550;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+
+        const popup = window.open(
+          "",
+          "KMCAuthWindow",
+          `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no,status=no,titlebar=no,toolbar=no`
+        );
+
+        if (!popup) {
+          alert("팝업이 차단되었습니다. 팝업 차단을 해제해주세요.");
+          return;
+        }
+
+        // 폼 생성 및 제출
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = data.authUrl;
+        form.target = "KMCAuthWindow";
+
+        // 파라미터 추가
+        Object.entries(data.params).forEach(([key, value]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = value as string;
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+      } else {
+        throw new Error("인증 정보를 받지 못했습니다.");
+      }
+    } catch (error) {
+      console.error("KMC 인증 요청 오류:", error);
+      alert(error instanceof Error ? error.message : "인증 요청 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const validateForm = () => {
@@ -145,6 +248,11 @@ export default function GeneralSignupForm() {
       formDataToSend.append("agreeTerms", formData.agreeTerms.toString());
       formDataToSend.append("agreePrivacy", formData.agreePrivacy.toString());
       formDataToSend.append("agreeMarketing", formData.agreeMarketing.toString());
+
+      // 본인인증 ID (있는 경우)
+      if (verificationId) {
+        formDataToSend.append("verificationId", verificationId);
+      }
 
       const response = await fetch("/api/users/signup-with-files", {
         method: "POST",
@@ -320,6 +428,9 @@ export default function GeneralSignupForm() {
               <div className="flex flex-col gap-2 mb-4">
                 <label className="text-sm font-semibold text-[#374151]">
                   이름 <span className="text-[#dc2626]">*</span>
+                  {isVerified && (
+                    <span className="ml-2 text-xs text-[#16a34a] font-normal">✓ 본인인증 완료</span>
+                  )}
                 </label>
                 <div className="flex gap-2 items-center max-[480px]:flex-col max-[480px]:items-stretch max-[480px]:gap-2">
                   <input
@@ -327,16 +438,17 @@ export default function GeneralSignupForm() {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className={`w-full py-3 px-4 border-2 ${errors.name ? 'border-[#dc2626]' : 'border-[#e5e7eb]'} rounded-lg text-base text-[#1f2937] transition-colors duration-200 focus:outline-none focus:border-[#4285f4] box-border max-[480px]:text-sm max-[480px]:py-2.5 max-[480px]:px-3 read-only:bg-[#f9fafb] read-only:text-[#6b7280] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed`}
+                    readOnly={isVerified}
+                    className={`w-full py-3 px-4 border-2 ${errors.name ? 'border-[#dc2626]' : isVerified ? 'border-[#16a34a]' : 'border-[#e5e7eb]'} rounded-lg text-base text-[#1f2937] transition-colors duration-200 focus:outline-none focus:border-[#4285f4] box-border max-[480px]:text-sm max-[480px]:py-2.5 max-[480px]:px-3 read-only:bg-[#f0fdf4] read-only:text-[#1f2937] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed`}
                     placeholder="이름을 입력해 주세요"
                   />
                   <button
                     type="button"
                     onClick={handleIdentityVerification}
-                    className="bg-[#4285f4] text-white border-none rounded-lg py-3 px-5 text-sm font-semibold cursor-pointer transition-colors duration-200 whitespace-nowrap flex-shrink-0 hover:bg-[#3367d6] disabled:bg-[#9ca3af] disabled:cursor-not-allowed max-[480px]:w-full"
-                    disabled={isLoading}
+                    className={`${isVerified ? 'bg-[#16a34a]' : 'bg-[#4285f4]'} text-white border-none rounded-lg py-3 px-5 text-sm font-semibold cursor-pointer transition-colors duration-200 whitespace-nowrap flex-shrink-0 hover:${isVerified ? 'bg-[#15803d]' : 'bg-[#3367d6]'} disabled:bg-[#9ca3af] disabled:cursor-not-allowed max-[480px]:w-full`}
+                    disabled={isLoading || isVerified}
                   >
-                    본인인증
+                    {isVerified ? "인증완료" : "본인인증"}
                   </button>
                 </div>
                 {errors.name && (
@@ -351,7 +463,8 @@ export default function GeneralSignupForm() {
                   name="birthDate"
                   value={formData.birthDate}
                   onChange={handleInputChange}
-                  className={`w-full py-3 px-4 border-2 ${errors.birthDate ? 'border-[#dc2626]' : 'border-[#e5e7eb]'} rounded-lg text-base text-[#1f2937] transition-colors duration-200 focus:outline-none focus:border-[#4285f4] box-border max-[480px]:text-sm max-[480px]:py-2.5 max-[480px]:px-3 read-only:bg-[#f9fafb] read-only:text-[#6b7280] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed`}
+                  readOnly={isVerified}
+                  className={`w-full py-3 px-4 border-2 ${errors.birthDate ? 'border-[#dc2626]' : isVerified ? 'border-[#16a34a]' : 'border-[#e5e7eb]'} rounded-lg text-base text-[#1f2937] transition-colors duration-200 focus:outline-none focus:border-[#4285f4] box-border max-[480px]:text-sm max-[480px]:py-2.5 max-[480px]:px-3 read-only:bg-[#f0fdf4] read-only:text-[#1f2937] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed`}
                   placeholder="생년월일을 입력해 주세요"
                 />
                 {errors.birthDate && (
@@ -366,7 +479,8 @@ export default function GeneralSignupForm() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className={`w-full py-3 px-4 border-2 ${errors.phone ? 'border-[#dc2626]' : 'border-[#e5e7eb]'} rounded-lg text-base text-[#1f2937] transition-colors duration-200 focus:outline-none focus:border-[#4285f4] box-border max-[480px]:text-sm max-[480px]:py-2.5 max-[480px]:px-3 read-only:bg-[#f9fafb] read-only:text-[#6b7280] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed`}
+                  readOnly={isVerified}
+                  className={`w-full py-3 px-4 border-2 ${errors.phone ? 'border-[#dc2626]' : isVerified ? 'border-[#16a34a]' : 'border-[#e5e7eb]'} rounded-lg text-base text-[#1f2937] transition-colors duration-200 focus:outline-none focus:border-[#4285f4] box-border max-[480px]:text-sm max-[480px]:py-2.5 max-[480px]:px-3 read-only:bg-[#f0fdf4] read-only:text-[#1f2937] disabled:bg-[#f3f4f6] disabled:text-[#9ca3af] disabled:cursor-not-allowed`}
                   placeholder="휴대폰 번호를 입력해 주세요"
                 />
                 {errors.phone && (
@@ -476,28 +590,6 @@ export default function GeneralSignupForm() {
         onClose={closeTermsModal}
         type={currentTermsType}
       />
-
-      {/* 경고 모달 */}
-      {showWarningModal && (
-        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black/50 flex items-center justify-center z-[1000]" onClick={closeWarningModal}>
-          <div className="bg-white rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.2)] max-w-[400px] w-[90%] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-5 border-b border-[#e2e8f0]">
-              <h3 className="m-0 text-lg font-semibold text-[#1f2937]">알림</h3>
-              <button className="bg-none border-none text-2xl text-[#6b7280] cursor-pointer p-0 w-[30px] h-[30px] flex items-center justify-center rounded-full transition-colors duration-200 hover:bg-[#f3f4f6]" onClick={closeWarningModal}>
-                ×
-              </button>
-            </div>
-            <div className="p-5">
-              <p className="m-0 text-[#374151] leading-relaxed text-sm">본인인증 키 준비 중입니다. 이름, 생년월일, 휴대폰 번호를 직접 입력해 주세요.</p>
-            </div>
-            <div className="p-5 border-t border-[#e2e8f0] flex justify-end">
-              <button className="bg-[#4285f4] text-white border-none rounded-lg py-2.5 px-5 text-sm font-semibold cursor-pointer transition-colors duration-200 hover:bg-[#3367d6]" onClick={closeWarningModal}>
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

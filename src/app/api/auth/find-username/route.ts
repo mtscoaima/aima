@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     if (verificationId) {
       // 휴대폰 본인인증으로 아이디 찾기
       const cookieStore = await cookies();
-      const verificationCookie = cookieStore.get("inicis_verification");
+      const verificationCookie = cookieStore.get("kmc_verification");
 
       if (!verificationCookie) {
         return NextResponse.json(
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
           users?.map((user: { username: string }) => user.username) || [];
 
         // 인증 쿠키 삭제 (한 번 사용 후 삭제)
-        cookieStore.delete("inicis_verification");
+        cookieStore.delete("kmc_verification");
       } catch (parseError) {
         console.error("본인인증 정보 파싱 오류:", parseError);
         return NextResponse.json(

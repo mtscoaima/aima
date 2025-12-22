@@ -18,7 +18,7 @@ export default function robots(): MetadataRoute.Robots {
           "/target-marketing",
           "/salesperson/*",
           "/payment/*",
-          "/auth/inicis/*",
+          "/auth/kmc/*",
         ],
       },
     ],
