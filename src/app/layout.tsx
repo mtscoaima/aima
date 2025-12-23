@@ -65,11 +65,7 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
 
-        {/* Nice Payments SDK 로드 */}
-        <Script
-          src="https://pay.nicepay.co.kr/v1/js/"
-          strategy="beforeInteractive"
-        />
+        {/* LG CNS CNSPay SDK - PaymentModal에서 동적으로 로드함 */}
 
         <AuthProvider>
           <BalanceProvider>

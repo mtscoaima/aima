@@ -13,6 +13,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   sendMessage,
   scheduleMessage,
+  createSendRequest,
+  updateSendRequest,
   SendMessageParams,
 } from "@/lib/messageSender";
 import { replaceVariables } from "@/utils/messageVariables";
@@ -163,6 +165,23 @@ export async function POST(request: NextRequest) {
 
     // 6. 즉시 발송 처리
     if (sendType === "immediate") {
+      // 발송 의뢰 생성 (메시지 타입은 첫 번째 메시지 기준으로 결정)
+      const channelType = finalImageUrls && finalImageUrls.length > 0 ? 'MMS' : 
+        Buffer.byteLength(finalMessage, 'utf-8') > 90 ? 'LMS' : 'SMS';
+      
+      const sendRequestId = await createSendRequest({
+        userId,
+        channelType,
+        messagePreview: finalMessage,
+        totalCount: recipients.length,
+        metadata: {
+          source: "messages_send",
+          send_type: "immediate",
+          is_ad: isAd,
+          subject: subject || null,
+        }
+      });
+
       const results = [];
       let successCount = 0;
       let failCount = 0;
@@ -199,6 +218,7 @@ export async function POST(request: NextRequest) {
           message: personalizedMessage,
           subject,
           imageUrls: finalImageUrls && finalImageUrls.length > 0 ? finalImageUrls : undefined,
+          sendRequestId: sendRequestId || undefined,
           metadata: {
             source: "messages_send",
             send_type: "immediate",
@@ -225,8 +245,14 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // 발송 의뢰 결과 업데이트
+      if (sendRequestId) {
+        await updateSendRequest(sendRequestId, successCount, failCount);
+      }
+
       return NextResponse.json({
         success: true,
+        sendRequestId,
         totalCount: recipients.length,
         successCount,
         failCount,
@@ -236,6 +262,24 @@ export async function POST(request: NextRequest) {
 
     // 7. 예약 발송 처리
     else if (sendType === "scheduled") {
+      // 예약 발송 의뢰 생성
+      const channelType = finalImageUrls && finalImageUrls.length > 0 ? 'MMS' : 
+        Buffer.byteLength(finalMessage, 'utf-8') > 90 ? 'LMS' : 'SMS';
+      
+      const sendRequestId = await createSendRequest({
+        userId,
+        channelType,
+        messagePreview: finalMessage,
+        totalCount: recipients.length,
+        scheduledAt,
+        metadata: {
+          source: "messages_send",
+          send_type: "scheduled",
+          is_ad: isAd,
+          subject: subject || null,
+        }
+      });
+
       const results = [];
       let scheduledCount = 0;
       let failCount = 0;
@@ -263,6 +307,15 @@ export async function POST(request: NextRequest) {
         }
 
         // 예약 메시지 저장
+        const scheduleMetadata: Record<string, string | number | boolean> = {
+          source: "messages_send",
+          send_type: "scheduled",
+          is_ad: isAd,
+        };
+        if (sendRequestId) {
+          scheduleMetadata.send_request_id = sendRequestId;
+        }
+
         const result = await scheduleMessage({
           userId,
           toNumber: recipient.phone_number,
@@ -271,11 +324,7 @@ export async function POST(request: NextRequest) {
           subject,
           scheduledAt: scheduledAt!,
           imageUrls: finalImageUrls && finalImageUrls.length > 0 ? finalImageUrls : undefined,
-          metadata: {
-            source: "messages_send",
-            send_type: "scheduled",
-            is_ad: isAd,
-          },
+          metadata: scheduleMetadata,
         });
 
         results.push({
@@ -293,8 +342,14 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // 예약 발송은 pending 상태로 유지 (실제 발송 후 업데이트)
+      if (sendRequestId) {
+        await updateSendRequest(sendRequestId, scheduledCount, failCount);
+      }
+
       return NextResponse.json({
         success: true,
+        sendRequestId,
         scheduledCount,
         failCount,
         scheduledAt,

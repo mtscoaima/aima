@@ -26,6 +26,7 @@ export interface SendMessageParams {
   messageType?: 'SMS' | 'LMS' | 'MMS';
   imageUrls?: string[]; // MMS용 이미지 파일 ID
   skipCreditDeduction?: boolean; // 크레딧 차감 스킵 (시스템 메시지용)
+  sendRequestId?: string; // 발송 의뢰 ID (그룹화용)
   metadata?: Record<string, string | number | boolean>;
 }
 
@@ -70,7 +71,7 @@ export interface ScheduleMessageResult {
 export async function sendMessage(
   params: SendMessageParams
 ): Promise<SendMessageResult> {
-  const { userId, fromNumber, toNumber, toName, message, subject, imageUrls, skipCreditDeduction, metadata } = params;
+  const { userId, fromNumber, toNumber, toName, message, subject, imageUrls, skipCreditDeduction, sendRequestId, metadata } = params;
 
   // 전화번호 정리 (하이픈 제거)
   const cleanPhone = toNumber.replace(/[^0-9]/g, '');
@@ -193,6 +194,7 @@ export async function sendMessage(
     messageType,
     status: 'sent',
     creditUsed: creditRequired,
+    sendRequestId,
     metadata: {
       ...metadata,
       mts_msg_id: sendResult.messageId || '',
@@ -207,6 +209,80 @@ export async function sendMessage(
     messageType,
     creditUsed: creditRequired
   };
+}
+
+// ============================================================================
+// 발송 의뢰 관리 함수
+// ============================================================================
+
+/**
+ * 발송 의뢰 생성
+ * 한 번의 발송 요청을 하나의 의뢰로 그룹화
+ */
+export async function createSendRequest(params: {
+  userId: number;
+  channelType: string;
+  messagePreview: string;
+  totalCount: number;
+  scheduledAt?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('send_requests')
+      .insert({
+        user_id: params.userId,
+        channel_type: params.channelType,
+        message_preview: params.messagePreview.substring(0, 100),
+        total_count: params.totalCount,
+        success_count: 0,
+        fail_count: 0,
+        status: 'processing',
+        scheduled_at: params.scheduledAt || null,
+        metadata: params.metadata || {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('발송 의뢰 생성 오류:', error);
+      return null;
+    }
+
+    return data?.id;
+  } catch (error) {
+    console.error('발송 의뢰 생성 예외:', error);
+    return null;
+  }
+}
+
+/**
+ * 발송 의뢰 결과 업데이트
+ */
+export async function updateSendRequest(
+  sendRequestId: string,
+  successCount: number,
+  failCount: number
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('send_requests')
+      .update({
+        success_count: successCount,
+        fail_count: failCount,
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sendRequestId);
+
+    if (error) {
+      console.error('발송 의뢰 업데이트 오류:', error);
+    }
+  } catch (error) {
+    console.error('발송 의뢰 업데이트 예외:', error);
+  }
 }
 
 // ============================================================================
@@ -560,24 +636,32 @@ async function saveMessageLog(params: {
   messageType: string;
   status: string;
   creditUsed: number;
+  sendRequestId?: string;
   metadata?: Record<string, string | number | boolean>;
 }): Promise<number | undefined> {
   try {
+    const insertData: Record<string, unknown> = {
+      user_id: params.userId,
+      to_number: params.toNumber,
+      to_name: params.toName || null,
+      message_content: params.messageContent,
+      subject: params.subject || null,
+      message_type: params.messageType,
+      sent_at: new Date().toISOString(),
+      status: params.status,
+      credit_used: params.creditUsed,
+      metadata: params.metadata || {},
+      created_at: new Date().toISOString()
+    };
+
+    // send_request_id가 있으면 추가
+    if (params.sendRequestId) {
+      insertData.send_request_id = params.sendRequestId;
+    }
+
     const { data, error } = await supabase
       .from('message_logs')
-      .insert({
-        user_id: params.userId,
-        to_number: params.toNumber,
-        to_name: params.toName || null,
-        message_content: params.messageContent,
-        subject: params.subject || null,
-        message_type: params.messageType,
-        sent_at: new Date().toISOString(),
-        status: params.status,
-        credit_used: params.creditUsed,
-        metadata: params.metadata || {},
-        created_at: new Date().toISOString()
-      })
+      .insert(insertData)
       .select('id')
       .single();
 

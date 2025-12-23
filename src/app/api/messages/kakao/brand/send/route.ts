@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
 import { sendKakaoBrand, convertToMtsDateFormat } from '@/lib/mtsApi';
+import { createSendRequest, updateSendRequest } from '@/lib/messageSender';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -142,6 +143,23 @@ export async function POST(request: NextRequest) {
     // 비용 계산 (브랜드 메시지: 20원)
     const costPerMessage = 20;
 
+    // 발송 의뢰 생성
+    const sendRequestId = await createSendRequest({
+      userId,
+      channelType: 'KAKAO_BRAND',
+      messagePreview: message,
+      totalCount: recipients.length,
+      scheduledAt: scheduledAt || undefined,
+      metadata: {
+        sender_key: senderKey,
+        template_code: templateCode,
+        callback_number: callbackNumber,
+        message_type: messageType,
+        targeting,
+        tran_type: tranType,
+      }
+    });
+
     // 수신자 배열 생성 (MTS API 복수 발송 형식)
     const recipientsArray = recipients.map((r: { phone_number: string; name?: string; replacedMessage?: string }) => ({
       phone_number: r.phone_number,
@@ -190,6 +208,7 @@ export async function POST(request: NextRequest) {
       status: result.success ? 'sent' : 'failed',
       credit_used: result.success ? costPerMessage : 0,
       error_message: result.error || null,
+      send_request_id: sendRequestId,
       metadata: {
         sender_number: callbackNumber,
         sender_key: senderKey,
@@ -205,6 +224,11 @@ export async function POST(request: NextRequest) {
     const { error: logError } = await supabase.from('message_logs').insert(logEntries);
     if (logError) {
       console.error('[브랜드 메시지 API] message_logs 저장 실패:', logError);
+    }
+
+    // 발송 의뢰 결과 업데이트
+    if (sendRequestId) {
+      await updateSendRequest(sendRequestId, successCount, failCount);
     }
 
     // 성공한 건수가 있으면 transactions에 한번에 기록
@@ -230,7 +254,11 @@ export async function POST(request: NextRequest) {
     // 응답 반환
     return NextResponse.json({
       success: true,
+      sendRequestId,
       message: `브랜드 메시지 발송 완료 (성공: ${successCount}, 실패: ${failCount})`,
+      totalCount: recipients.length,
+      successCount,
+      failCount,
       results,
       totalCost: successCount * costPerMessage,
     });

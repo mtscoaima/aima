@@ -114,18 +114,39 @@ export async function POST(request: NextRequest) {
         customerEmail = paymentData.custEmail;
       }
 
+      // CNSPay 등에서 직접 userId를 전달하는 경우
+      const userIdFromPaymentData = paymentData?.userId || null;
+
       let userIdFromOrderId = null;
-      if (!customerEmail && orderId) {
+      if (!customerEmail && !userIdFromPaymentData && orderId) {
         const orderIdParts = orderId.split("_");
         if (orderIdParts.length >= 3 && orderIdParts[0] === "credit") {
           userIdFromOrderId = orderIdParts[2];
+        }
+        // CNSPay orderId 형식: C{timestamp}_{userId}_{random}
+        else if (orderIdParts.length >= 2 && orderId.startsWith("C")) {
+          userIdFromOrderId = orderIdParts[1];
         }
       }
 
       let userData = null;
       let userError = null;
 
+      // 1. paymentData.userId로 먼저 조회
+      if (userIdFromPaymentData) {
+        const result = await supabase
+          .from("users")
+          .select("id, email, name")
+          .eq("id", userIdFromPaymentData)
+          .single();
+
+        userData = result.data;
+        userError = result.error;
+      }
+
+      // 2. 이메일로 조회
       if (
+        !userData &&
         customerEmail &&
         customerEmail !== "unknown@example.com" &&
         customerEmail !== "customer@example.com"
@@ -140,6 +161,7 @@ export async function POST(request: NextRequest) {
         userError = result.error;
       }
 
+      // 3. orderId에서 추출한 userId로 조회
       if (!userData && userIdFromOrderId && userIdFromOrderId !== "unknown") {
         const result = await supabase
           .from("users")

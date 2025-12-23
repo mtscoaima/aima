@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import MessageSendTab from "@/components/messages/MessageSendTab";
 import KakaoNaverRcsTab from "@/components/messages/KakaoNaverRcsTab";
 import ReservationManagementTab from "@/components/messages/ReservationManagementTab";
+import SendHistoryTab from "@/components/messages/SendHistoryTab";
 
 const MessageSendPage = () => {
   const searchParams = useSearchParams();
@@ -16,7 +17,7 @@ const MessageSendPage = () => {
   // Initialize activeTab from URL parameters
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["message-send", "kakao-naver", "reservations"].includes(tab)) {
+    if (tab && ["message-send", "kakao-naver", "reservations", "history"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -35,6 +36,8 @@ const MessageSendPage = () => {
         return <KakaoNaverRcsTab />;
       case "reservations":
         return <ReservationManagementTab />;
+      case "history":
+        return <SendHistoryTab />;
       default:
         return null;
     }
@@ -64,7 +67,7 @@ const MessageSendPage = () => {
                 ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
                 : "text-gray-500 hover:text-blue-600"
             }`}
-            onClick={() => setActiveTab("kakao-naver")}
+            onClick={() => handleTabChange("kakao-naver")}
           >
             카카오/네이버 톡톡
           </button>
@@ -77,6 +80,16 @@ const MessageSendPage = () => {
             onClick={() => handleTabChange("reservations")}
           >
             예약관리(공간관리용)
+          </button>
+          <button
+            className={`bg-transparent border-none pb-3 px-1 text-base font-semibold cursor-pointer relative transition-colors duration-200 ${
+              activeTab === "history"
+                ? "text-blue-600 after:content-[''] after:absolute after:-bottom-px after:left-0 after:right-0 after:h-0.5 after:bg-blue-600"
+                : "text-gray-500 hover:text-blue-600"
+            }`}
+            onClick={() => handleTabChange("history")}
+          >
+            발송내역
           </button>
         </div>
 

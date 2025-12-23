@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
 import { sendMtsAlimtalk, convertToMtsDateFormat } from '@/lib/mtsApi';
+import { createSendRequest, updateSendRequest } from '@/lib/messageSender';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -95,6 +96,22 @@ export async function POST(request: NextRequest) {
     // 예약 발송 시간 변환 (있는 경우)
     const sendDate = scheduledAt ? convertToMtsDateFormat(scheduledAt) : undefined;
 
+    // 발송 의뢰 생성
+    const sendRequestId = await createSendRequest({
+      userId,
+      channelType: 'KAKAO_ALIMTALK',
+      messagePreview: message,
+      totalCount: recipients.length,
+      scheduledAt: scheduledAt || undefined,
+      metadata: {
+        sender_key: senderKey,
+        template_code: templateCode,
+        callback_number: callbackNumber,
+        has_buttons: !!buttons,
+        tran_type: tranType || null,
+      }
+    });
+
     // 수신자 배열 생성 (MTS API 복수 발송 형식)
     const recipientsWithMessage = recipients.map((r: { phone_number: string; name?: string; replacedMessage?: string }) => ({
       phone_number: r.phone_number,
@@ -139,6 +156,7 @@ export async function POST(request: NextRequest) {
       status: result.success ? 'sent' : 'failed',
       error_message: result.error || null,
       credit_used: result.success ? 13 : 0,
+      send_request_id: sendRequestId,
       metadata: {
         sender_key: senderKey,
         template_code: templateCode,
@@ -155,6 +173,11 @@ export async function POST(request: NextRequest) {
     const { error: logError } = await supabase.from('message_logs').insert(logEntries);
     if (logError) {
       console.error('알림톡 발송 이력 저장 실패:', logError);
+    }
+
+    // 발송 의뢰 결과 업데이트
+    if (sendRequestId) {
+      await updateSendRequest(sendRequestId, successCount, failCount);
     }
 
     // 사용자 잔액 차감 (성공한 건수만)
@@ -187,6 +210,7 @@ export async function POST(request: NextRequest) {
     // 응답 반환
     return NextResponse.json({
       success: true,
+      sendRequestId,
       totalCount: recipients.length,
       successCount,
       failCount,

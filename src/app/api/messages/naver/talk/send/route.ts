@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendNaverTalk } from '@/lib/mtsApi';
 import { validateAuthWithSuccess } from '@/utils/authUtils';
-import { checkBalance } from '@/lib/messageSender';
+import { checkBalance, createSendRequest, updateSendRequest } from '@/lib/messageSender';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -122,6 +122,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 발송 의뢰 생성
+    const sendRequestId = await createSendRequest({
+      userId,
+      channelType: 'NAVER_TALK',
+      messagePreview: message,
+      totalCount: recipients.length,
+      scheduledAt: sendDate || undefined,
+      metadata: {
+        navertalk_id: navertalkId,
+        template_code: templateCode,
+        product_code: productCode,
+        callback_number: callbackNumber,
+        tran_type: tranType || null,
+      }
+    });
+
     // 수신자 배열 생성 (MTS API 복수 발송 형식)
     // 수신자별 변수가 있으면 병합, 없으면 공통 변수만 사용
     const recipientsArray = recipients.map((r: { phone_number: string; name?: string; variables?: Record<string, string> }) => ({
@@ -177,6 +193,7 @@ export async function POST(request: NextRequest) {
         status: result.success ? 'sent' : 'failed',
         error_message: result.error || null,
         credit_used: result.success ? NAVER_TALK_COST : 0,
+        send_request_id: sendRequestId,
         metadata: {
           navertalk_id: navertalkId,
           template_code: templateCode,
@@ -195,6 +212,11 @@ export async function POST(request: NextRequest) {
     const { error: logError } = await supabase.from('message_logs').insert(logEntries);
     if (logError) {
       console.error('네이버 톡톡 발송 이력 저장 실패:', logError);
+    }
+
+    // 발송 의뢰 결과 업데이트
+    if (sendRequestId) {
+      await updateSendRequest(sendRequestId, successCount, failCount);
     }
 
     // 성공한 건수만큼 잔액 차감 (transactions 테이블에 기록)
@@ -224,7 +246,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      sendRequestId,
       message: `네이버 톡톡 발송 완료 (성공: ${successCount}건, 실패: ${failCount}건)`,
+      totalCount: recipients.length,
       successCount,
       failCount,
       totalCost: actualCost,

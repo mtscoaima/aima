@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Script from "next/script";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getCNSPayHtml, CARD_CODES } from "@/utils/cnspay";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -10,28 +10,19 @@ interface PaymentModalProps {
   chargeAmount: number;
 }
 
-interface NicePaymentResult {
-  errorMsg?: string;
-}
-
-// Nice Payments 전역 객체 타입 정의 (v1)
-declare global {
-  interface Window {
-    AUTHNICE?: {
-      requestPay: (params: {
-        clientId: string;
-        method: string;
-        orderId: string;
-        amount: number;
-        goodsName: string;
-        returnUrl: string;
-        buyerName: string;
-        buyerEmail: string;
-        buyerTel: string;
-        fnError: (result: NicePaymentResult) => void;
-      }) => void;
-    };
-  }
+interface CNSPayMessage {
+  type: "CNSPAY_READY" | "CNSPAY_SUCCESS" | "CNSPAY_CLOSE";
+  trKey?: string;
+  resultCd?: string;
+  resultMsg?: string;
+  error?: string;
+  paymentData?: {
+    txnId: string;
+    mid: string;
+    moid: string;
+    ediDate: string;
+    encryptData: string;
+  };
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -42,66 +33,113 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [selectedCard, setSelectedCard] = useState("06"); // 기본값: 신한카드
+  const paymentWindowRef = useRef<Window | null>(null);
+  const paymentDataRef = useRef<{
+    txnId: string;
+    mid: string;
+    moid: string;
+    ediDate: string;
+    encryptData: string;
+    goodsName: string;
+    amount: number;
+    buyerName: string;
+    buyerTel: string;
+    buyerEmail: string;
+  } | null>(null);
 
-  // SDK 로드 체크 (모달이 열릴 때)
-  useEffect(() => {
-    if (isOpen) {
-      setError(null);
+  // 결제 승인 처리
+  const processApproval = useCallback(
+    async (trKey: string, paymentData: CNSPayMessage["paymentData"]) => {
+      if (!paymentData || !user) return;
 
-      // SDK가 이미 로드되어 있는지 확인
-      if (window.AUTHNICE?.requestPay) {
-        setSdkLoaded(true);
-        return;
-      }
+      setIsLoading(true);
 
-      // SDK 로드 대기 (최대 5초)
-      let attempts = 0;
-      const maxAttempts = 50; // 5초 (100ms * 50)
+      try {
+        const response = await fetch("/api/payment/cnspay/approve", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            txnId: paymentData.txnId,
+            trKey,
+            moid: paymentData.moid,
+            amount: chargeAmount,
+            goodsName: `광고머니 ${chargeAmount.toLocaleString()}개 충전`,
+            buyerName: user.name || "사용자",
+            buyerEmail: user.email || "",
+            buyerTel: user.phoneNumber || "",
+            userId: user.id,
+          }),
+        });
 
-      const checkSDK = setInterval(() => {
-        attempts++;
+        const result = await response.json();
 
-        if (window.AUTHNICE?.requestPay) {
-          setSdkLoaded(true);
-          clearInterval(checkSDK);
-        } else if (attempts >= maxAttempts) {
-          console.error("❌ SDK 로드 타임아웃");
-          setError("결제 시스템 로드에 실패했습니다. 페이지를 새로고침해주세요.");
-          clearInterval(checkSDK);
+        if (!result.success) {
+          throw new Error(result.error || "결제 승인에 실패했습니다.");
         }
-      }, 100);
 
-      return () => clearInterval(checkSDK);
-    }
-  }, [isOpen]);
+        // 결제 성공 - 페이지 새로고침
+        window.location.href = `/credit-management?payment=success&amount=${chargeAmount}`;
+      } catch (err) {
+        console.error("❌ 결제 승인 오류:", err);
+        setError(
+          err instanceof Error ? err.message : "결제 승인 중 오류가 발생했습니다."
+        );
+        setIsLoading(false);
+      }
+    },
+    [chargeAmount, user]
+  );
 
-  // Nice Payments JS SDK 로드 확인
-  const handleScriptLoad = () => {
-    setSdkLoaded(true);
-  };
+  // 결제 창에서 오는 메시지 처리
+  const handleMessage = useCallback(
+    (event: MessageEvent) => {
+      const data = event.data as CNSPayMessage;
 
-  const handleScriptError = () => {
-    console.error("❌ Nice Payments JS SDK 로드 실패");
-    setError("결제 시스템 로드에 실패했습니다. 페이지를 새로고침해주세요.");
-  };
+      if (!data || !data.type) return;
+
+      console.log("📥 결제 창 메시지:", data);
+
+      switch (data.type) {
+        case "CNSPAY_SUCCESS":
+          // 인증 성공 - 승인 요청
+          console.log("✅ 인증 성공, 승인 요청 시작");
+          if (data.trKey) {
+            const pd = data.paymentData || paymentDataRef.current;
+            if (pd) {
+              processApproval(data.trKey, pd);
+            }
+          }
+          break;
+
+        case "CNSPAY_CLOSE":
+          // 결제 취소/실패
+          setIsLoading(false);
+          if (data.error) {
+            setError(data.error);
+          }
+          paymentWindowRef.current = null;
+          break;
+      }
+    },
+    [processApproval]
+  );
+
+  // 메시지 리스너 설정
+  useEffect(() => {
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [handleMessage]);
 
   // 결제 처리 함수
   const handlePayment = async () => {
-    if (!sdkLoaded) {
-      setError("결제 시스템이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
-
     // 사용자 정보 확인
     if (!user) {
       setError("로그인이 필요합니다.");
-      return;
-    }
-
-    // AUTHNICE SDK 확인
-    if (!window.AUTHNICE || !window.AUTHNICE.requestPay) {
-      setError("Nice Payments SDK가 로드되지 않았습니다.");
       return;
     }
 
@@ -109,8 +147,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setError(null);
 
     try {
-      // 1. 서버에서 결제 정보 요청
-      const response = await fetch("/api/payment/nicepay/request", {
+      // 1. 서버에서 거래초기화 요청
+      const response = await fetch("/api/payment/cnspay/init", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -128,37 +166,77 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error || "결제 요청에 실패했습니다.");
+        throw new Error(result.error || "거래초기화에 실패했습니다.");
       }
 
-      const paymentData = result.data;
+      const data = result.data;
 
-      // 2. Nice Payments 결제창 호출 (AUTHNICE.requestPay 방식)
-      window.AUTHNICE.requestPay({
-        clientId: paymentData.clientId,
-        method: 'card',
-        orderId: paymentData.orderId,
-        amount: paymentData.amount,
-        goodsName: paymentData.goodsName,
-        returnUrl: paymentData.returnUrl,
-        buyerName: paymentData.buyerName,
-        buyerEmail: paymentData.buyerEmail,
-        buyerTel: paymentData.buyerTel,
-        fnError: function(result: NicePaymentResult) {
-          console.error("❌ 결제 오류:", result);
-          setError(result.errorMsg || "결제 중 오류가 발생했습니다.");
+      // 결제 데이터 저장
+      paymentDataRef.current = {
+        txnId: data.txnId,
+        mid: data.mid,
+        moid: data.moid,
+        ediDate: data.ediDate,
+        encryptData: data.encryptData,
+        goodsName: data.goodsName,
+        amount: data.amount,
+        buyerName: data.buyerName || "",
+        buyerTel: data.buyerTel || "",
+        buyerEmail: data.buyerEmail || "",
+      };
+
+      // 2. 결제 팝업 창 열기 (URL 파라미터로 데이터 전달)
+      const width = 500;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
+      // about:blank 창을 먼저 열고 내용을 직접 씁니다. (document.write 문제 해결)
+      const paymentWindow = window.open(
+        "",
+        "CNSPayPayment",
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      );
+
+      if (!paymentWindow) {
+        throw new Error("팝업 차단으로 결제창을 열 수 없습니다. 팝업 차단을 해제해주세요.");
+      }
+
+      // HTML 내용 생성 (값들은 getCNSPayHtml 내부에서 이스케이프 처리됨)
+      const htmlContent = getCNSPayHtml({
+        txnId: data.txnId,
+        mid: data.mid,
+        moid: data.moid,
+        goodsName: data.goodsName,
+        amount: data.amount,
+        buyerName: data.buyerName || "",
+        buyerTel: data.buyerTel || "",
+        buyerEmail: data.buyerEmail || "",
+        ediDate: data.ediDate,
+        encryptData: data.encryptData,
+        cardCd: selectedCard,
+      }, window.location.origin);
+
+      // 팝업 창에 HTML 쓰기
+      paymentWindow.document.open();
+      paymentWindow.document.write(htmlContent);
+      paymentWindow.document.close();
+
+      paymentWindowRef.current = paymentWindow;
+
+      // 팝업 창 닫힘 감지
+      const checkClosed = setInterval(() => {
+        if (paymentWindow.closed) {
+          clearInterval(checkClosed);
           setIsLoading(false);
+          paymentWindowRef.current = null;
         }
-      });
+      }, 500);
 
-      // 결제창이 열리면 로딩 해제
-      setIsLoading(false);
     } catch (err) {
       console.error("❌ 결제 요청 오류:", err);
       setError(
-        err instanceof Error
-          ? err.message
-          : "결제 요청 중 오류가 발생했습니다."
+        err instanceof Error ? err.message : "결제 요청 중 오류가 발생했습니다."
       );
       setIsLoading(false);
     }
@@ -168,14 +246,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   return (
     <>
-      {/* Nice Payments JS SDK 로드 */}
-      <Script
-        src={process.env.NEXT_PUBLIC_NICEPAY_JS_SDK_URL || "https://pay.nicepay.co.kr/v1/js/"}
-        onLoad={handleScriptLoad}
-        onError={handleScriptError}
-        strategy="afterInteractive"
-      />
-
       {/* 모달 오버레이 */}
       <div
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]"
@@ -221,6 +291,35 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               </div>
             </div>
 
+            {/* 결제 안내 */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 m-0">
+                💳 LG CNS CNSPay를 통한 안전한 신용카드 결제입니다.
+              </p>
+              <p className="text-xs text-blue-600 mt-2 m-0">
+                ※ 팝업 차단을 해제해주세요. 결제창이 새 창에서 열립니다.
+              </p>
+            </div>
+
+            {/* 카드사 선택 */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                결제 카드사 선택
+              </label>
+              <select
+                value={selectedCard}
+                onChange={(e) => setSelectedCard(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isLoading}
+              >
+                {CARD_CODES.map((card) => (
+                  <option key={card.code} value={card.code}>
+                    {card.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* 에러 메시지 */}
             {error && (
               <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm mt-4">
@@ -240,13 +339,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 {error}
               </div>
             )}
-
-            {/* 로딩 메시지 */}
-            {!sdkLoaded && !error && (
-              <div className="text-center py-3 text-gray-600 text-sm">
-                결제 시스템을 준비하고 있습니다...
-              </div>
-            )}
           </div>
 
           {/* 모달 푸터 */}
@@ -260,7 +352,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <button
               className="bg-blue-600 text-white border-none px-6 py-3 rounded-md font-medium text-sm cursor-pointer transition-all duration-200 min-w-[100px] hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-600/30 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
               onClick={handlePayment}
-              disabled={isLoading || !sdkLoaded}
+              disabled={isLoading}
             >
               {isLoading ? "처리 중..." : "결제하기"}
             </button>
