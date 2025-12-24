@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { parseRecCert, generateDate } from "@/lib/kmcCrypto";
+import { parseRecCert, generateDate, kmcDecryptSimple } from "@/lib/kmcCrypto";
 import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@supabase/supabase-js";
 
@@ -72,38 +72,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 요청번호 확인
-    if (session.certNum !== certNum) {
-      console.error("KMC 결과 조회 오류: 요청번호 불일치", {
-        sessionCertNum: session.certNum,
-        receivedCertNum: certNum,
-      });
-      return NextResponse.json(
-        { error: "잘못된 요청입니다." },
-        { status: 400 }
-      );
+    // [중요] apiToken과 certNum은 암호화되어 오므로 반드시 복호화해서 사용해야 함
+    const decryptedToken = kmcDecryptSimple(apiToken);
+    const decryptedCertNum = kmcDecryptSimple(certNum);
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[KMC Debug] Decrypted Token:", decryptedToken);
+      console.log("[KMC Debug] Decrypted CertNum:", decryptedCertNum);
     }
 
-    // KMC 토큰 API 호출
-    const tokenApiUrl = process.env.KMC_TOKEN_API_URL;
-    if (!tokenApiUrl) {
-      console.error("KMC 결과 조회 오류: KMC_TOKEN_API_URL 미설정");
-      return NextResponse.json(
-        { error: "서버 설정 오류입니다." },
-        { status: 500 }
-      );
-    }
-
+    // KMC 토큰 API 호출 (결과를 먼저 받아온 뒤 요청번호 검증 진행)
+    const tokenApiUrl = process.env.KMC_TOKEN_API_URL || "https://www.kmcert.com/kmcis/api/kmcisToken_api.jsp";
     const apiDate = generateDate();
 
-    // KMC 토큰 API 호출
     const tokenResponse = await fetch(tokenApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        apiToken,
+        apiToken: decryptedToken,
         apiDate,
       }),
     });
@@ -118,20 +106,25 @@ export async function POST(request: NextRequest) {
     }
 
     const tokenResult = await tokenResponse.json();
+    
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[KMC Debug] Token API Raw Response:", tokenResult);
+    }
 
-    // 응답 코드 확인
-    const resultCode = tokenResult.resultCode || tokenResult.result_code;
+    // 응답 코드 확인 (KMC 샘플은 result_cd 사용)
+    const resultCode = tokenResult.result_cd || tokenResult.resultCode || tokenResult.result_code;
+    
     if (resultCode !== "APR01") {
-      const errorMessage = KMC_RESULT_CODES[resultCode] || "알 수 없는 오류";
+      const errorMessage = KMC_RESULT_CODES[resultCode as string] || "알 수 없는 오류";
       console.error("KMC 토큰 검증 실패:", resultCode, errorMessage);
       return NextResponse.json(
-        { error: `본인인증 실패: ${errorMessage}` },
+        { error: `본인인증 실패: ${errorMessage} (${resultCode})` },
         { status: 400 }
       );
     }
 
-    // rec_cert 복호화
-    const recCert = tokenResult.rec_cert || tokenResult.recCert;
+    // rec_cert 복호화 (KMC 샘플은 apiRecCert 사용)
+    const recCert = tokenResult.apiRecCert || tokenResult.rec_cert || tokenResult.recCert;
     if (!recCert) {
       console.error("KMC 결과 조회 오류: rec_cert 없음");
       return NextResponse.json(
@@ -143,11 +136,28 @@ export async function POST(request: NextRequest) {
     // 2단계 복호화 및 파싱
     const userData = parseRecCert(recCert);
 
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[KMC Debug] User Data Object:", userData);
+    }
+
+    // [중요] 복호화된 데이터 내부의 요청번호와 세션 요청번호 비교
+    if (session.certNum !== userData.certNum) {
+      console.error("KMC 결과 조회 오류: 요청번호 불일치 (검증 실패)", {
+        sessionCertNum: session.certNum,
+        decryptedCertNum: userData.certNum,
+      });
+      return NextResponse.json(
+        { error: "잘못된 요청입니다. (인증번호 불일치)" },
+        { status: 400 }
+      );
+    }
+
     // 인증 결과 확인
     if (userData.result !== "Y") {
-      console.error("KMC 본인인증 실패:", userData.result);
+      console.error("KMC 본인인증 실패 - 결과 코드:", userData.result);
+      console.error("데이터 전체:", userData);
       return NextResponse.json(
-        { error: "본인인증에 실패했습니다." },
+        { error: `본인인증에 실패했습니다. (결과코드: ${userData.result})` },
         { status: 400 }
       );
     }

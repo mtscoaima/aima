@@ -89,6 +89,23 @@ export default function GeneralSignupForm() {
   };
 
   const handleIdentityVerification = async () => {
+    // 팝업 차단을 방지하기 위해 클릭 즉시 빈 팝업을 먼저 엽니다.
+    const width = 425;
+    const height = 550;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      "about:blank",
+      "KMCAuthWindow",
+      "width=425,height=550,top=" + top + ",left=" + left + ",toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,copyhistory=no"
+    );
+
+    if (!popup) {
+      alert("팝업이 차단되었습니다. 브라우저 설정에서 팝업 차단을 해제해주세요.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       // KMC 인증 요청 API 호출
@@ -106,30 +123,14 @@ export default function GeneralSignupForm() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        popup.close(); // 에러 시 미리 열어둔 팝업 닫기
         throw new Error(errorData.error || "인증 요청에 실패했습니다.");
       }
 
       const data = await response.json();
 
       if (data.success && data.authUrl && data.params) {
-        // KMC 인증 팝업 열기
-        const width = 425;
-        const height = 550;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
-
-        const popup = window.open(
-          "",
-          "KMCAuthWindow",
-          `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no,status=no,titlebar=no,toolbar=no`
-        );
-
-        if (!popup) {
-          alert("팝업이 차단되었습니다. 팝업 차단을 해제해주세요.");
-          return;
-        }
-
-        // 폼 생성 및 제출
+        // 미리 열어둔 팝업(KMCAuthWindow)에 폼을 제출합니다.
         const form = document.createElement("form");
         form.method = "POST";
         form.action = data.authUrl;
@@ -148,6 +149,7 @@ export default function GeneralSignupForm() {
         form.submit();
         document.body.removeChild(form);
       } else {
+        popup.close();
         throw new Error("인증 정보를 받지 못했습니다.");
       }
     } catch (error) {

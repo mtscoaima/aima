@@ -46,6 +46,8 @@ function KmcAuthSuccessContent() {
             const origin =
               window.location.origin ||
               `${window.location.protocol}//${window.location.host}`;
+            
+            console.log("[KMC] Sending success message to opener");
             window.opener.postMessage(
               {
                 type: "kmc-auth-success",
@@ -55,15 +57,22 @@ function KmcAuthSuccessContent() {
               origin
             );
 
-            // 팝업 닫기
+            // 팝업 닫기 (메시지 전달 후 즉시 시도)
+            window.close();
+            
+            // 만약 위 명령으로 안 닫힐 경우를 대비한 2차 시도
             setTimeout(() => {
-              window.close();
+              if (!window.closed) window.close();
             }, 500);
           } else {
-            // 팝업이 아닌 경우 회원가입 페이지로 리디렉션
+            // 팝업이 아닌 경우(새 탭 등) 처리
+            console.warn("[KMC] No opener found, redirecting to signup");
             const signupParams = new URLSearchParams({
               verified: "true",
               verificationId: data.verificationId,
+              name: data.userInfo.name,
+              phone: data.userInfo.phoneNumber,
+              birthDate: data.userInfo.birthDate
             });
             window.location.href = `/signup?${signupParams.toString()}`;
           }
