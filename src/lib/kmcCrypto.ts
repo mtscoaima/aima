@@ -126,12 +126,16 @@ export function generateCertNum(): string {
 }
 
 export function generateDate(): string {
+  // 현재 시간을 KST(UTC+9)로 변환 (서버 UTC 환경 대응)
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstDate = new Date(now.getTime() + kstOffset);
+  
+  const year = kstDate.getUTCFullYear();
+  const month = String(kstDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kstDate.getUTCDate()).padStart(2, "0");
+  const hours = String(kstDate.getUTCHours()).padStart(2, "0");
+  const minutes = String(kstDate.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(kstDate.getUTCSeconds()).padStart(2, "0");
   return `${year}${month}${day}${hours}${minutes}${seconds}`;
 }
