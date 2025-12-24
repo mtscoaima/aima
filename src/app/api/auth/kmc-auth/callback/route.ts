@@ -47,34 +47,10 @@ export async function POST(request: NextRequest) {
 
 /**
  * 요청에서 베이스 URL 추출
+ * (KMC 콜백은 외부에서 들어오므로 host 헤더를 신뢰해야 함)
  */
 function getBaseUrl(request: NextRequest): string {
-  // 기본 URL
-  let baseUrl = "http://localhost:3000";
-
-  // 1. host 헤더 사용
-  const host = request.headers.get("host");
-  if (host) {
-    const protocol = request.headers.get("x-forwarded-proto") || "http";
-    baseUrl = `${protocol}://${host}`;
-  }
-
-  // 2. origin 헤더 확인
-  const origin = request.headers.get("origin");
-  if (origin && origin !== "null") {
-    baseUrl = origin;
-  }
-
-  // 3. referer 헤더에서 추출
-  const referer = request.headers.get("referer");
-  if (referer) {
-    try {
-      const refererUrl = new URL(referer);
-      baseUrl = `${refererUrl.protocol}//${refererUrl.host}`;
-    } catch (e) {
-      console.error("Referer URL 파싱 실패:", e);
-    }
-  }
-
-  return baseUrl;
+  const host = request.headers.get("host") || "localhost:3000";
+  const protocol = request.headers.get("x-forwarded-proto") || "http";
+  return `${protocol}://${host}`;
 }
