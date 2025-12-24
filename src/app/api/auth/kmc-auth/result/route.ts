@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
     }
 
     // [중요] apiToken과 certNum은 암호화되어 오므로 반드시 복호화해서 사용해야 함
-    const decryptedToken = kmcDecryptSimple(apiToken);
-    const decryptedCertNum = kmcDecryptSimple(certNum);
+    const decryptedToken = await kmcDecryptSimple(apiToken);
+    const decryptedCertNum = await kmcDecryptSimple(certNum);
 
     if (process.env.NODE_ENV !== "production") {
       console.log("[KMC Debug] Decrypted Token:", decryptedToken);
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2단계 복호화 및 파싱
-    const userData = parseRecCert(recCert);
+    const userData = await parseRecCert(recCert);
 
     if (process.env.NODE_ENV !== "production") {
       console.log("[KMC Debug] User Data Object:", userData);

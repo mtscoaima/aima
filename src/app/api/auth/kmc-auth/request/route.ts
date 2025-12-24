@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = `${protocol}://${host}`;
     const trUrl = `${baseUrl}/api/auth/kmc-auth/callback`;
 
-    const trCert = generateTrCert({
+    const trCert = await generateTrCert({
       cpId,
       urlCode,
       certNum,
