@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getKSTISOString, generateReferralCode } from "@/lib/utils";
+import { sendWelcomeNotification } from "@/lib/unifiedNotificationService";
 
 // 서버 사이드에서는 서비스 역할 키 사용
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -500,6 +501,18 @@ export async function POST(request: NextRequest) {
           console.error("문서 정보 업데이트 실패:", updateError);
         }
       }
+    }
+
+    // 회원가입 환영 알림 발송 (SMS + 이메일 + 인앱)
+    try {
+      await sendWelcomeNotification({
+        userId: newUser.id,
+        userName: newUser.name,
+        userEmail: newUser.email,
+      });
+    } catch (notificationError) {
+      console.error("회원가입 알림 발송 실패:", notificationError);
+      // 알림 실패해도 회원가입은 성공으로 처리
     }
 
     // 성공 응답

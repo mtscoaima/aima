@@ -8,14 +8,14 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// POST /api/reservations/auto-send-check - 자동 발송 체크 및 실행 (Cron)
-export async function POST(request: NextRequest) {
+// GET /api/reservations/auto-send-check - 자동 발송 체크 및 실행 (Cron)
+export async function GET(request: NextRequest) {
   try {
-    // Cron Secret 검증 (보안)
+    // Cron Secret 검증 (보안) - 환경 변수가 있을 때만 검증
     const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET || "your-secret-key";
+    const cronSecret = process.env.CRON_SECRET;
 
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

@@ -12,6 +12,7 @@ public class CryptoController {
 
     @PostMapping("/encrypt-step1")
     public Map<String, String> encryptStep1(@RequestBody Map<String, String> params) {
+        System.out.println("[KMC Debug] Encrypt Request Params: " + params);
         String cpId = params.get("cpId");
         String urlCode = params.get("urlCode");
         String certNum = params.get("certNum");
@@ -21,9 +22,11 @@ public class CryptoController {
         String extendVar = params.getOrDefault("extendVar", "0000000000000000");
 
         String tr_cert = cpId + "/" + urlCode + "/" + certNum + "/" + date + "/" + certMet + "///////" + plusInfo + "/" + extendVar;
+        System.out.println("[KMC Debug] trCertData: " + tr_cert);
         String enc_tr_cert = seed.getEnc(tr_cert, "");
         String hmacMsg = seed.getMsg(enc_tr_cert);
         String final_tr_cert = seed.getEnc(enc_tr_cert + "/" + hmacMsg + "/" + extendVar, "");
+        System.out.println("[KMC Debug] final_tr_cert: " + final_tr_cert);
 
         Map<String, String> result = new HashMap<>();
         result.put("tr_cert", final_tr_cert);

@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
 import { getKSTISOString, generateReferralCode } from "@/lib/utils";
-import { triggerNotification } from "@/lib/notificationService";
-import { NotificationEventType } from "@/types/notificationEvents";
+import { sendWelcomeNotification } from "@/lib/unifiedNotificationService";
 
 
 // 서버 사이드에서는 서비스 역할 키 사용
@@ -477,14 +476,12 @@ export async function POST(request: NextRequest) {
     // 파일 업로드는 현재 UI에서 지원하지 않음
     // 추후 필요시 구현 예정
 
-    // 회원가입 축하 알림 발송
+    // 회원가입 환영 알림 발송 (SMS + 이메일 + 인앱)
     try {
-      await triggerNotification({
-        eventType: NotificationEventType.USER_SIGNUP,
+      await sendWelcomeNotification({
         userId: newUser.id,
-        data: {
-          userName: newUser.name,
-        }
+        userName: newUser.name,
+        userEmail: newUser.email,
       });
     } catch (notificationError) {
       console.error("회원가입 알림 발송 실패:", notificationError);

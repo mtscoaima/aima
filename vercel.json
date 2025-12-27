@@ -7,6 +7,10 @@
     {
       "path": "/api/messages/scheduled-send-check",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/reservations/auto-send-check",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

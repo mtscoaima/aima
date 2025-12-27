@@ -39,7 +39,6 @@ export default function MessageSenderContactPage() {
   const [isDefaultNumberModalOpen, setIsDefaultNumberModalOpen] = useState(false);
   const [isHostContactModalOpen, setIsHostContactModalOpen] = useState(false);
   const [isAddNumberModalOpen, setIsAddNumberModalOpen] = useState(false);
-  const [newNumberForm, setNewNumberForm] = useState({ phoneNumber: "", displayName: "" });
 
   // 공간 목록 조회
   const fetchSpaces = async () => {
@@ -172,42 +171,6 @@ export default function MessageSenderContactPage() {
     }
   };
 
-  // 신규 발신번호 등록
-  const handleAddNumber = async () => {
-    if (!newNumberForm.phoneNumber || !newNumberForm.displayName) {
-      alert("발신번호와 명의자를 모두 입력해주세요.");
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch("/api/sender-numbers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          number: newNumberForm.phoneNumber,
-          name: newNumberForm.displayName,
-        }),
-      });
-
-      if (response.ok) {
-        await fetchSenderNumbers();
-        setIsAddNumberModalOpen(false);
-        setNewNumberForm({ phoneNumber: "", displayName: "" });
-        alert("발신번호가 등록되었습니다.");
-      } else {
-        const data = await response.json();
-        alert(data.error || "발신번호 등록에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("Error adding sender number:", error);
-      alert("발신번호 등록 중 오류가 발생했습니다.");
-    }
-  };
-
   // 전화번호 포맷팅
   const formatPhoneNumber = (number: string) => {
     if (!number) return "";
@@ -320,16 +283,23 @@ export default function MessageSenderContactPage() {
         </div>
       </div>
 
-      {/* 1. 준비중 모달 */}
+      {/* 1. 발신번호 안내 모달 */}
       {isDefaultNumberModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="text-center">
-              <div className="text-4xl mb-4">⏳</div>
-              <h3 className="text-lg font-bold mb-2">기본 발신번호 설정</h3>
-              <p className="text-gray-600 mb-2">기본 발신번호 변경 기능은 준비중입니다.</p>
+              <div className="text-4xl mb-4">📱</div>
+              <h3 className="text-lg font-bold mb-2">발신번호 안내</h3>
+              <p className="text-gray-600 mb-2">
+                발신번호는 <strong>프로필의 전화번호</strong>가 사용됩니다.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
+                <p className="text-sm text-blue-800">
+                  📌 전화번호 변경은 <strong>마이페이지 &gt; 프로필 설정</strong>에서 가능합니다.
+                </p>
+              </div>
               <p className="text-sm text-gray-500 mb-6">
-                현재는 시스템 기본번호만 사용 가능합니다. 추후 업데이트 예정입니다.
+                모든 메시지는 회원님의 전화번호로 발송되며, 수신자가 회신할 수 있습니다.
               </p>
               <button
                 onClick={() => setIsDefaultNumberModalOpen(false)}
@@ -350,14 +320,23 @@ export default function MessageSenderContactPage() {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-blue-800">
-                📌 발신번호 수정/삭제는 마이페이지 &gt; 발신번호 관리에서 가능합니다
+                📌 발신번호는 프로필의 전화번호가 사용됩니다. 변경은 마이페이지 &gt; 프로필 설정에서 가능합니다.
               </p>
             </div>
 
             {senderNumbersLoading ? (
               <div className="text-center py-8 text-gray-500">로딩 중...</div>
             ) : senderNumbers.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">등록된 발신번호가 없습니다.</div>
+              <div className="py-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                  <p className="text-sm text-yellow-800 mb-2">
+                    발신번호는 <strong>프로필의 전화번호</strong>가 사용됩니다.
+                  </p>
+                  <p className="text-xs text-yellow-600">
+                    전화번호가 등록되지 않은 경우 마이페이지에서 등록해주세요.
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-2 mb-4">
                 {senderNumbers.map((number) => (
@@ -403,7 +382,7 @@ export default function MessageSenderContactPage() {
                 onClick={() => setIsAddNumberModalOpen(true)}
                 className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200"
               >
-                신규 발신번호 등록
+                발신번호 안내
               </button>
               <button
                 onClick={() => {
@@ -426,56 +405,34 @@ export default function MessageSenderContactPage() {
         </div>
       )}
 
-      {/* 3. 신규 발신번호 등록 모달 */}
+      {/* 3. 발신번호 정책 안내 모달 (기존 등록 모달 대체) */}
       {isAddNumberModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4">발신번호 등록</h3>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  발신번호 입력
-                </label>
-                <input
-                  type="text"
-                  placeholder="010-1111-4574"
-                  value={newNumberForm.phoneNumber}
-                  onChange={(e) => setNewNumberForm({ ...newNumberForm, phoneNumber: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+            <div className="text-center">
+              <div className="text-4xl mb-4">ℹ️</div>
+              <h3 className="text-lg font-bold mb-4">발신번호 안내</h3>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-left">
+                <p className="text-sm text-blue-800 mb-2">
+                  현재 발신번호는 <strong>프로필의 전화번호</strong>만 사용 가능합니다.
+                </p>
+                <p className="text-xs text-blue-600">
+                  발신번호 변경이 필요한 경우 마이페이지 &gt; 프로필 설정에서 전화번호를 수정해주세요.
+                </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  발신번호 명의자
-                </label>
-                <input
-                  type="text"
-                  placeholder="명의자를 입력해주세요."
-                  value={newNumberForm.displayName}
-                  onChange={(e) => setNewNumberForm({ ...newNumberForm, displayName: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6 text-left">
+                <p className="text-xs text-gray-600">
+                  💡 모든 메시지는 회원님의 전화번호로 발송됩니다. 수신자가 해당 번호로 회신할 수 있습니다.
+                </p>
               </div>
-            </div>
 
-            <div className="flex gap-2">
               <button
-                onClick={() => {
-                  setIsAddNumberModalOpen(false);
-                  setNewNumberForm({ phoneNumber: "", displayName: "" });
-                }}
-                className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200"
+                onClick={() => setIsAddNumberModalOpen(false)}
+                className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
               >
-                취소
-              </button>
-              <button
-                onClick={handleAddNumber}
-                disabled={!newNumberForm.phoneNumber || !newNumberForm.displayName}
-                className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                등록하기
+                확인
               </button>
             </div>
           </div>
