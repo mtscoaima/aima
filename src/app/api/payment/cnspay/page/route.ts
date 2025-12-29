@@ -77,6 +77,48 @@ export async function GET(request: NextRequest) {
         border-radius: 0;
         padding: 20px;
       }
+      
+      /* CNSPay SDK가 생성하는 레이어/iframe 강제 전체화면 */
+      #lgcns_layer, #lgpg-bg, .lg-cns-layer, .lgpg-layer,
+      div[id*="cnspay"], div[id*="lgpg"], div[class*="cnspay"], div[class*="lgpg"] {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        z-index: 99999 !important;
+      }
+      
+      /* iframe도 전체화면 */
+      #lgcns_layer iframe, #lgpg-bg iframe, 
+      div[id*="cnspay"] iframe, div[id*="lgpg"] iframe,
+      body > iframe {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        border: none !important;
+        z-index: 99999 !important;
+      }
+    }
+    
+    /* PC에서도 레이어 중앙 정렬 */
+    @media (min-width: 769px) {
+      #lgcns_layer, #lgpg-bg {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
     }
     .spinner {
       width: 50px;
@@ -166,6 +208,44 @@ export async function GET(request: NextRequest) {
         }, parentOrigin);
         setTimeout(function() { window.close(); }, 500);
       }
+    }
+
+    // 모바일 감지
+    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+    
+    // 모바일에서 CNSPay 레이어 전체화면 강제 적용
+    function forceFullscreen() {
+      if (!isMobile) return;
+      
+      var selectors = ['#lgcns_layer', '#lgpg-bg', '.lg-cns-layer', '.lgpg-layer', 'div[id*="cnspay"]', 'div[id*="lgpg"]'];
+      selectors.forEach(function(selector) {
+        var elements = document.querySelectorAll(selector);
+        elements.forEach(function(el) {
+          el.style.cssText = 'position: fixed !important; left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; margin: 0 !important; padding: 0 !important; transform: none !important; z-index: 99999 !important;';
+          
+          var iframes = el.querySelectorAll('iframe');
+          iframes.forEach(function(iframe) {
+            iframe.style.cssText = 'position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; border: none !important; z-index: 99999 !important;';
+          });
+        });
+      });
+      
+      // body 직접 자식 iframe도 처리
+      var bodyIframes = document.querySelectorAll('body > iframe');
+      bodyIframes.forEach(function(iframe) {
+        iframe.style.cssText = 'position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; border: none !important; z-index: 99999 !important;';
+      });
+    }
+    
+    // MutationObserver로 DOM 변경 감지
+    if (isMobile) {
+      var observer = new MutationObserver(function() {
+        forceFullscreen();
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      
+      // 주기적으로도 체크 (inline style 덮어쓰기 대응)
+      setInterval(forceFullscreen, 200);
     }
 
     // CNSPay 인증 취소/실패 콜백
