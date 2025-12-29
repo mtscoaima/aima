@@ -179,6 +179,20 @@ export const getCNSPayHtml = (data: {
       // 로딩 스피너 숨기기 (CNSPay 레이어가 표시되므로)
       document.getElementById('status').style.display = 'none';
       goPay(document.payForm);
+      
+      // goPay 호출 후 레이어가 생성되면 위치 조정 시도 (1초 후)
+      setTimeout(function() {
+        try {
+          // CNSPay SDK가 제공하는 창 크기 변수 확인
+          if (typeof cnsPopWidth !== 'undefined' && typeof cnsPopHeight !== 'undefined') {
+            var newWidth = Math.max(cnsPopWidth + 50, 550);
+            var newHeight = Math.max(cnsPopHeight + 100, 750);
+            window.resizeTo(newWidth, newHeight);
+            // 화면 중앙으로 이동
+            window.moveTo((screen.width - newWidth) / 2, (screen.height - newHeight) / 2);
+          }
+        } catch(e) { console.log('창 조정 오류:', e); }
+      }, 1000);
     } else {
       showError('결제 시스템을 불러올 수 없습니다. (goPay not found)');
     }

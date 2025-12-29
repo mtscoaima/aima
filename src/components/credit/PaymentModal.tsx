@@ -186,10 +186,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       };
 
       // 2. 결제 팝업 창 열기 (URL 파라미터로 데이터 전달)
-      const width = 500;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
+      // 창 크기를 넉넉하게 설정 (CNSPay SDK 레이어가 잘리지 않도록)
+      const width = 600;
+      const height = 800;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
 
       // about:blank 창을 먼저 열고 내용을 직접 씁니다. (document.write 문제 해결)
       const paymentWindow = window.open(
