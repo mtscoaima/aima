@@ -1,5 +1,8 @@
+import { NextRequest, NextResponse } from "next/server";
+
+// HTML 이스케이프 함수
 const escapeHtml = (unsafe: string | number) => {
-  if (unsafe === null || unsafe === undefined) return '';
+  if (unsafe === null || unsafe === undefined) return "";
   return String(unsafe)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -8,39 +11,36 @@ const escapeHtml = (unsafe: string | number) => {
     .replace(/'/g, "&#039;");
 };
 
-// CNSPay 카드사 코드
-export const CARD_CODES = [
-  { code: "01", name: "비씨카드" },
-  { code: "02", name: "KB국민카드" },
-  { code: "03", name: "하나카드" },
-  { code: "04", name: "삼성카드" },
-  { code: "06", name: "신한카드" },
-  { code: "07", name: "현대카드" },
-  { code: "08", name: "롯데카드" },
-  { code: "11", name: "씨티카드" },
-  { code: "12", name: "NH농협카드" },
-  { code: "15", name: "우리카드" },
-] as const;
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
 
-export const getCNSPayHtml = (data: {
-  txnId: string;
-  mid: string;
-  moid: string;
-  goodsName: string;
-  amount: number;
-  buyerName: string;
-  buyerTel: string;
-  buyerEmail: string;
-  ediDate: string;
-  encryptData: string;
-  cardCd: string; // 카드사 코드 (필수)
-}, origin: string) => {
-  return `
+  // URL 파라미터에서 결제 정보 추출
+  const txnId = searchParams.get("txnId") || "";
+  const mid = searchParams.get("mid") || "";
+  const moid = searchParams.get("moid") || "";
+  const goodsName = searchParams.get("goodsName") || "";
+  const amount = searchParams.get("amount") || "0";
+  const buyerName = searchParams.get("buyerName") || "";
+  const buyerTel = searchParams.get("buyerTel") || "";
+  const buyerEmail = searchParams.get("buyerEmail") || "";
+  const ediDate = searchParams.get("ediDate") || "";
+  const encryptData = searchParams.get("encryptData") || "";
+  const cardCd = searchParams.get("cardCd") || "";
+  const origin = searchParams.get("origin") || "";
+
+  // 필수 파라미터 검증
+  if (!txnId || !mid || !encryptData) {
+    return new NextResponse("필수 파라미터가 누락되었습니다.", { status: 400 });
+  }
+
+  // BC카드(01)는 레이어 방식 미지원, 팝업 방식 사용
+  const useLayerDlp = cardCd === "01" ? "N" : "Y";
+
+  const html = `
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <base href="${origin}/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>결제 진행 중...</title>
   <style>
@@ -98,25 +98,27 @@ export const getCNSPayHtml = (data: {
   </div>
 
   <form id="payForm" name="payForm" method="post">
-    <input type="hidden" name="TxnId" value="${escapeHtml(data.txnId)}" />
-    <input type="hidden" name="MID" value="${escapeHtml(data.mid)}" />
+    <input type="hidden" name="TxnId" value="${escapeHtml(txnId)}" />
+    <input type="hidden" name="MID" value="${escapeHtml(mid)}" />
     <input type="hidden" name="PayMethod" value="CARD" />
-    <input type="hidden" name="Moid" value="${escapeHtml(data.moid)}" />
-    <input type="hidden" name="GoodsNm" value="${escapeHtml(data.goodsName)}" />
+    <input type="hidden" name="Moid" value="${escapeHtml(moid)}" />
+    <input type="hidden" name="GoodsNm" value="${escapeHtml(goodsName)}" />
     <input type="hidden" name="Currency" value="KRW" />
-    <input type="hidden" name="Amt" value="${escapeHtml(data.amount)}" />
-    <input type="hidden" name="BuyerNm" value="${escapeHtml(data.buyerName)}" />
-    <input type="hidden" name="BuyerTel" value="${escapeHtml(data.buyerTel)}" />
-    <input type="hidden" name="BuyerEmail" value="${escapeHtml(data.buyerEmail)}" />
-    <input type="hidden" name="EdiDate" value="${escapeHtml(data.ediDate)}" />
-    <input type="hidden" name="EncryptData" value="${escapeHtml(data.encryptData)}" />
-    <input type="hidden" name="CardCd" value="${escapeHtml(data.cardCd)}" />
-    <input type="hidden" name="UseLayerDlp" value="${data.cardCd === '01' ? 'N' : 'Y'}" />
+    <input type="hidden" name="Amt" value="${escapeHtml(amount)}" />
+    <input type="hidden" name="BuyerNm" value="${escapeHtml(buyerName)}" />
+    <input type="hidden" name="BuyerTel" value="${escapeHtml(buyerTel)}" />
+    <input type="hidden" name="BuyerEmail" value="${escapeHtml(buyerEmail)}" />
+    <input type="hidden" name="EdiDate" value="${escapeHtml(ediDate)}" />
+    <input type="hidden" name="EncryptData" value="${escapeHtml(encryptData)}" />
+    <input type="hidden" name="CardCd" value="${escapeHtml(cardCd)}" />
+    <input type="hidden" name="UseLayerDlp" value="${useLayerDlp}" />
     <input type="hidden" name="CardQuota" value="00" />
     <input type="hidden" name="CardInterest" value="0" />
   </form>
 
   <script>
+    var parentOrigin = "${escapeHtml(origin)}";
+    
     // 에러 표시
     function showError(msg) {
       document.getElementById('status').innerHTML = 
@@ -138,13 +140,13 @@ export const getCNSPayHtml = (data: {
           resultCd: message.ResultCd,
           resultMsg: message.ResultMsg,
           paymentData: {
-            txnId: "${escapeHtml(data.txnId)}", // JS string needs different escaping, but mostly safe for alphanum IDs
-            mid: "${escapeHtml(data.mid)}",
-            moid: "${escapeHtml(data.moid)}",
-            ediDate: "${escapeHtml(data.ediDate)}",
-            encryptData: "${escapeHtml(data.encryptData)}"
+            txnId: "${escapeHtml(txnId)}",
+            mid: "${escapeHtml(mid)}",
+            moid: "${escapeHtml(moid)}",
+            ediDate: "${escapeHtml(ediDate)}",
+            encryptData: "${escapeHtml(encryptData)}"
           }
-        }, '*');
+        }, parentOrigin);
         setTimeout(function() { window.close(); }, 500);
       }
     }
@@ -162,7 +164,7 @@ export const getCNSPayHtml = (data: {
       }
       
       if (window.opener) {
-        window.opener.postMessage({ type: 'CNSPAY_CLOSE', error: errorMsg }, '*');
+        window.opener.postMessage({ type: 'CNSPAY_CLOSE', error: errorMsg }, parentOrigin);
       }
       showError(errorMsg);
     }
@@ -173,22 +175,19 @@ export const getCNSPayHtml = (data: {
   <script src="https://pg.cnspay.co.kr/dlpnonv2/cnspay_tr.js"></script>
 
   <script>
-    // SDK 로드 직후 바로 실행 (HTML 파싱 중 실행되므로 document.write 가능)
+    // SDK 로드 직후 바로 실행
     if (typeof goPay === 'function') {
       console.log('goPay 호출');
-      // 로딩 스피너 숨기기 (CNSPay 레이어가 표시되므로)
       document.getElementById('status').style.display = 'none';
       goPay(document.payForm);
       
-      // goPay 호출 후 레이어가 생성되면 위치 조정 시도 (1초 후)
+      // 창 크기 자동 조정
       setTimeout(function() {
         try {
-          // CNSPay SDK가 제공하는 창 크기 변수 확인
           if (typeof cnsPopWidth !== 'undefined' && typeof cnsPopHeight !== 'undefined') {
             var newWidth = Math.max(cnsPopWidth + 50, 550);
             var newHeight = Math.max(cnsPopHeight + 100, 750);
             window.resizeTo(newWidth, newHeight);
-            // 화면 중앙으로 이동
             window.moveTo((screen.width - newWidth) / 2, (screen.height - newHeight) / 2);
           }
         } catch(e) { console.log('창 조정 오류:', e); }
@@ -199,6 +198,13 @@ export const getCNSPayHtml = (data: {
   </script>
 </body>
 </html>
-  `;
-};
+`;
+
+  return new NextResponse(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+}
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCNSPayHtml, CARD_CODES } from "@/utils/cnspay";
+import { CARD_CODES } from "@/utils/cnspay";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -185,16 +185,32 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         buyerEmail: data.buyerEmail || "",
       };
 
-      // 2. 결제 팝업 창 열기 (URL 파라미터로 데이터 전달)
-      // 창 크기를 넉넉하게 설정 (CNSPay SDK 레이어가 잘리지 않도록)
+      // 2. 결제 팝업 창 열기 (실제 URL로 열어서 팝업 차단 문제 해결)
       const width = 600;
       const height = 800;
       const left = (window.screen.width - width) / 2;
       const top = (window.screen.height - height) / 2;
 
-      // about:blank 창을 먼저 열고 내용을 직접 씁니다. (document.write 문제 해결)
+      // URL 파라미터 구성
+      const params = new URLSearchParams({
+        txnId: data.txnId,
+        mid: data.mid,
+        moid: data.moid,
+        goodsName: data.goodsName,
+        amount: String(data.amount),
+        buyerName: data.buyerName || "",
+        buyerTel: data.buyerTel || "",
+        buyerEmail: data.buyerEmail || "",
+        ediDate: data.ediDate,
+        encryptData: data.encryptData,
+        cardCd: selectedCard,
+        origin: window.location.origin,
+      });
+
+      // 실제 URL로 결제 페이지 열기 (about:blank 대신)
+      const paymentUrl = `/api/payment/cnspay/page?${params.toString()}`;
       const paymentWindow = window.open(
-        "",
+        paymentUrl,
         "CNSPayPayment",
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
       );
@@ -202,26 +218,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       if (!paymentWindow) {
         throw new Error("팝업 차단으로 결제창을 열 수 없습니다. 팝업 차단을 해제해주세요.");
       }
-
-      // HTML 내용 생성 (값들은 getCNSPayHtml 내부에서 이스케이프 처리됨)
-      const htmlContent = getCNSPayHtml({
-        txnId: data.txnId,
-        mid: data.mid,
-        moid: data.moid,
-        goodsName: data.goodsName,
-        amount: data.amount,
-        buyerName: data.buyerName || "",
-        buyerTel: data.buyerTel || "",
-        buyerEmail: data.buyerEmail || "",
-        ediDate: data.ediDate,
-        encryptData: data.encryptData,
-        cardCd: selectedCard,
-      }, window.location.origin);
-
-      // 팝업 창에 HTML 쓰기
-      paymentWindow.document.open();
-      paymentWindow.document.write(htmlContent);
-      paymentWindow.document.close();
 
       paymentWindowRef.current = paymentWindow;
 
