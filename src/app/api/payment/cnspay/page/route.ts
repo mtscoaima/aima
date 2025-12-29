@@ -45,6 +45,10 @@ export async function GET(request: NextRequest) {
   <title>결제 진행 중...</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
       background: #f5f5f5;
@@ -60,6 +64,19 @@ export async function GET(request: NextRequest) {
       border-radius: 16px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       max-width: 400px;
+      margin: 20px;
+    }
+    
+    /* 모바일 대응: CNSPay 레이어가 전체 화면을 차지하도록 */
+    @media (max-width: 768px) {
+      body {
+        background: #fff;
+      }
+      .container {
+        box-shadow: none;
+        border-radius: 0;
+        padding: 20px;
+      }
     }
     .spinner {
       width: 50px;

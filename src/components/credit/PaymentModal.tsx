@@ -186,11 +186,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       };
 
       // 2. 결제 팝업 창 열기 (실제 URL로 열어서 팝업 차단 문제 해결)
-      const width = 600;
-      const height = 800;
-      const left = (window.screen.width - width) / 2;
-      const top = (window.screen.height - height) / 2;
-
       // URL 파라미터 구성
       const params = new URLSearchParams({
         txnId: data.txnId,
@@ -207,13 +202,29 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         origin: window.location.origin,
       });
 
-      // 실제 URL로 결제 페이지 열기 (about:blank 대신)
       const paymentUrl = `/api/payment/cnspay/page?${params.toString()}`;
-      const paymentWindow = window.open(
-        paymentUrl,
-        "CNSPayPayment",
-        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-      );
+      
+      // 모바일 감지 (터치 디바이스 또는 화면 너비 기준)
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+        || window.innerWidth <= 768;
+
+      let paymentWindow: Window | null;
+      
+      if (isMobile) {
+        // 모바일: 새 탭으로 전체 화면 열기
+        paymentWindow = window.open(paymentUrl, "_blank");
+      } else {
+        // PC: 지정된 크기의 팝업으로 열기
+        const width = 600;
+        const height = 800;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2;
+        paymentWindow = window.open(
+          paymentUrl,
+          "CNSPayPayment",
+          `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+      }
 
       if (!paymentWindow) {
         throw new Error("팝업 차단으로 결제창을 열 수 없습니다. 팝업 차단을 해제해주세요.");
