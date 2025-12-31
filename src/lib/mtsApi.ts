@@ -3536,3 +3536,377 @@ export async function removeProfileFromGroup(
 }
 
 
+// ============================================================================
+// 발송 결과 응답요청 API (Polling 방식)
+// ============================================================================
+
+/**
+ * 알림톡 발송 결과 조회 (응답요청)
+ * POST /rspns/atk/rspnsMessages
+ * 
+ * 발송 후 결과를 받기까지 최대 5분이 걸릴 수 있습니다.
+ * 
+ * @param senderKey 발신 프로필 키
+ * @param sendDate 발송일자 (YYYYMMDD 형식, 최소 8자리)
+ * @param templateCode 템플릿코드 (선택)
+ * @param page 페이지 번호 (기본값: 1)
+ * @param count 페이지당 건수 (기본값: 1000)
+ * @returns 발송 결과 목록
+ */
+export async function getAlimtalkResults(
+  senderKey: string,
+  sendDate: string,
+  templateCode?: string,
+  page: number = 1,
+  count: number = 1000
+): Promise<MtsApiResult> {
+  try {
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    const requestBody: Record<string, unknown> = {
+      auth_code: MTS_AUTH_CODE,
+      sender_key: senderKey,
+      send_date: sendDate,
+      page,
+      count,
+    };
+
+    if (templateCode) {
+      requestBody.template_code = templateCode;
+    }
+
+    const response = await fetch(`${MTS_API_URL}/rspns/atk/rspnsMessages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    if (result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '알림톡 결과 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('알림톡 결과 조회 오류:', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * SMS 발송 결과 조회 (응답요청)
+ * POST /rspns/sms/rspnsMessages
+ * 
+ * 발송 후 결과를 받기까지 최대 48시간이 걸릴 수 있습니다.
+ * 
+ * @param sendDate 발송일자 (YYYYMMDD 형식, 최소 8자리)
+ * @param page 페이지 번호 (기본값: 1)
+ * @param count 페이지당 건수 (기본값: 1000)
+ * @returns 발송 결과 목록
+ */
+export async function getSmsResults(
+  sendDate: string,
+  page: number = 1,
+  count: number = 1000
+): Promise<MtsApiResult> {
+  try {
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      send_date: sendDate,
+      page,
+      count,
+    };
+
+    const response = await fetch(`${MTS_API_URL}/rspns/sms/rspnsMessages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    if (result.code === '0000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || 'SMS 결과 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('SMS 결과 조회 오류:', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * MMS/LMS 발송 결과 조회 (응답요청)
+ * POST /rspns/mms/rspnsMessages
+ * 
+ * 발송 후 결과를 받기까지 최대 72시간이 걸릴 수 있습니다.
+ * 
+ * @param sendDate 발송일자 (YYYYMMDD 형식, 최소 8자리)
+ * @param page 페이지 번호 (기본값: 1)
+ * @param count 페이지당 건수 (기본값: 1000)
+ * @returns 발송 결과 목록
+ */
+export async function getMmsResults(
+  sendDate: string,
+  page: number = 1,
+  count: number = 1000
+): Promise<MtsApiResult> {
+  try {
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      send_date: sendDate,
+      page,
+      count,
+    };
+
+    const response = await fetch(`${MTS_API_URL}/rspns/mms/rspnsMessages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    if (result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || 'MMS 결과 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('MMS 결과 조회 오류:', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * 친구톡 V2 발송 결과 조회 (응답요청)
+ * POST /rspns/ftk/rspnsMessagesV2
+ * 
+ * 발송 후 결과를 받기까지 최대 5분이 걸릴 수 있습니다.
+ * 
+ * @param senderKey 발신 프로필 키
+ * @param sendDate 발송일자 (YYYYMMDD 형식, 최소 8자리)
+ * @param page 페이지 번호 (기본값: 1)
+ * @param count 페이지당 건수 (기본값: 1000)
+ * @returns 발송 결과 목록
+ */
+export async function getFriendtalkResults(
+  senderKey: string,
+  sendDate: string,
+  page: number = 1,
+  count: number = 1000
+): Promise<MtsApiResult> {
+  try {
+    if (!MTS_AUTH_CODE) {
+      return {
+        success: false,
+        error: 'MTS_AUTH_CODE가 설정되지 않았습니다.',
+        errorCode: 'CONFIG_ERROR',
+      };
+    }
+
+    const requestBody = {
+      auth_code: MTS_AUTH_CODE,
+      sender_key: senderKey,
+      send_date: sendDate,
+      page,
+      count,
+    };
+
+    const response = await fetch(`${MTS_API_URL}/rspns/ftk/rspnsMessagesV2`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const result = await response.json();
+
+    if (result.code === '0000' || result.code === '1000') {
+      return {
+        success: true,
+        responseData: result,
+      };
+    }
+
+    return {
+      success: false,
+      error: getErrorMessage(result.code) || result.message || '친구톡 결과 조회 실패',
+      errorCode: result.code,
+      responseData: result,
+    };
+  } catch (error) {
+    console.error('친구톡 결과 조회 오류:', error);
+
+    if (error instanceof TypeError) {
+      return {
+        success: false,
+        error: '네트워크 오류: MTS API에 연결할 수 없습니다.',
+        errorCode: 'NETWORK_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+// 결과코드에 따른 수신 상태 매핑
+export function getDeliveryStatusFromResultCode(resultCode: string): 'delivered' | 'failed' | 'unknown' {
+  // 알림톡/친구톡 성공 코드
+  if (resultCode === '1000') return 'delivered';
+  
+  // SMS/MMS 성공 코드
+  if (resultCode === '00' || resultCode === '0000') return 'delivered';
+  
+  // 알림톡/친구톡 실패 코드
+  const kakaoFailCodes = ['3005', '3006', '3008', '3015', '3016', '3018', '3019', '3020', '3021', '3022', '3024', '3027'];
+  if (kakaoFailCodes.includes(resultCode)) return 'failed';
+  
+  // SMS/MMS 실패 코드
+  const smsFailCodes = ['03', '10', '11', '31', '33', '34', '35', '36', '37', '40', '41', '50', '55'];
+  if (smsFailCodes.includes(resultCode)) return 'failed';
+  
+  // 그 외는 unknown
+  return 'unknown';
+}
+
+// 결과코드에 대한 한글 설명
+export function getResultCodeDescription(resultCode: string): string {
+  const descriptions: Record<string, string> = {
+    // 성공
+    '1000': '성공',
+    '00': '성공',
+    '0000': '성공',
+    
+    // 알림톡/친구톡 실패
+    '3005': '메시지를 발송했으나 수신확인 안됨 (성공 불확실)',
+    '3006': '내부 시스템 오류로 메시지 전송 실패',
+    '3008': '전화번호 오류',
+    '3015': '템플릿을 찾을 수 없음',
+    '3016': '메시지 내용이 템플릿과 일치하지 않음',
+    '3018': '메시지를 전송할 수 없음',
+    '3019': '톡 유저가 아님',
+    '3020': '알림톡 수신 차단',
+    '3021': '카카오톡 최소 버전 미지원',
+    '3022': '메시지 발송 가능한 시간이 아님 (08~20시)',
+    '3024': '메시지에 포함된 이미지를 전송할 수 없음',
+    '3027': '메시지 버튼/바로연결이 템플릿과 일치하지 않음',
+    
+    // SMS/MMS 실패
+    '03': '스팸 처리됨',
+    '10': '한도 초과 발신 제한',
+    '11': '수신번호 정합성 오류',
+    '31': 'Timeout, 음영지역, 파워오프',
+    '33': '기타 오류 (이통사 문의 필요)',
+    '34': '결번',
+    '35': '단말기 파워오프',
+    '36': '음영지역',
+    '37': '기타 오류 (이통사 문의 필요)',
+    '40': '발신번호 세칙 오류',
+    '41': '발신번호 변작으로 등록된 발신번호 사용',
+    '50': '사전 미등록 발신번호 사용',
+    '55': '레포트 수신시간 만료',
+  };
+  
+  return descriptions[resultCode] || `알 수 없는 결과코드 (${resultCode})`;
+}
+
+
