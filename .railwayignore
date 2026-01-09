@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.cursor/
+.idea/
+
+# Documentation
+docs/
+manager/
+
+# References
+references/
+
+# Misc
+.DS_Store
+*.pem
+*.log
+new-landing/
+kmc_decompiled/
+bg_progress/
